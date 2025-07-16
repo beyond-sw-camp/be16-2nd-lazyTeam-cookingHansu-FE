@@ -1,30 +1,75 @@
-# cooking_hansu
+# 🍳 요리한수 (Cooking Hansu)
 
-This template should help get you started developing with Vue 3 in Vite.
+> 누구나 요리를 배우고, 나누고, 소통하는 All-in-One 요리 플랫폼  
+> 레시피 공유부터 요리 전문가 강의까지, 한 수 배워보세요!
 
-## Recommended IDE Setup
+---
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+## 👨‍💻 Team Members
 
-## Customize configuration
+<table>
+<!--   <tr>
+    <td align="center">
+      <img src="" width="150"/>
+    </td>
+    <td align="center">
+      <img src="" width="150"/>
+    </td>
+    <td align="center">
+      <img src="" width="150"/>
+    </td>
+    <td align="center">
+      <img src="" width="150"/>
+    </td>
+    <td align="center">
+      <img src="" width="150"/>
+    </td>
+  </tr> -->
+    <tr>
+    <td align="center"> 김건동</td>
+    <td align="center"> 이승지</td>
+    <td align="center">최재혁</td>
+    <td align="center">조민형</td>
+    <td align="center">김상환</td>
+  </tr>
+  <tr>
+    <td align="center"><a href="#" target="_blank"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white"/></a>
+    </td>
+    <td align="center"><a href="#" target="_blank"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white"/></a>
+    </td>
+    <td align="center"><a href="#" target="_blank"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white"/></a> 
+    </td>
+    <td align="center"><a href="#" target="_blank"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white"/></a></td>
+    <td align="center"><a href="#" target="_blank"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white"/></a></td>
+  </tr>
+</table>
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+---
 
-## Project Setup
+## 🛠️ 기술 스택
 
-```sh
-npm install
-```
+### 📦 Frontend
 
-### Compile and Hot-Reload for Development
+- **Vue 3**
+- **Vite**
+- **Vuetify 3**
+- **Pinia** – 상태 관리
+- **Vue Router 4** – SPA 라우팅
+- **Axios** – API 통신
+- **SCSS** – 스타일링
+- **JavaScript (ES6+)**
 
-```sh
-npm run dev
-```
+🎯 Commit Convention
+---
 
-### Compile and Minify for Production
+| 태그         | 설명                   |
+| ---------- | -------------------- |
+| `feat`     | 기능 추가                |
+| `fix`      | 버그 수정                |
+| `refactor` | 리팩토링 (기능 변경 없음)      |
+| `style`    | 코드 스타일 수정 (공백, 포맷 등) |
+| `docs`     | 문서 작성/수정             |
+| `test`     | 테스트 코드 작성            |
+| `chore`    | 빌드, 패키지, 설정 등 기타 변경  |
+| `ci`       | CI/CD 설정 관련          |
 
-```sh
-npm run build
-```
->>>>>>> 6cdee52 (feat: 프로젝트 생성 및 폴더구조 생성)
