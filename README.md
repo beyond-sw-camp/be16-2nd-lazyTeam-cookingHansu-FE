@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-# be16-2nd-lazyTeam-cookingHansu-FE
-=======
 # cooking_hansu
 
 This template should help get you started developing with Vue 3 in Vite.
