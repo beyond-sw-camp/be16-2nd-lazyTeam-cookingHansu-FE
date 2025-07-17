@@ -1,6 +1,5 @@
 <script setup>
-import HelloWorld from './components/HelloWorld.vue'
-import TheWelcome from './components/TheWelcome.vue'
+import Appheader from './components/admin/layout/Appheader.vue';
 </script>
 
 <template>
@@ -8,12 +7,19 @@ import TheWelcome from './components/TheWelcome.vue'
     <img alt="Vue logo" class="logo" src="./assets/logo.svg" width="125" height="125" />
 
     <div class="wrapper">
-      <HelloWorld msg="You did it!" />
+      <h1>Vue 3 + Vite</h1>
+      <p>
+        Edit <code>src/App.vue</code> to test hot module replacement.
+      </p>
+      <p>
+        <a href="https://vitejs.dev/guide/features.html" target="_blank">Vite Docs</a> |
+        <a href="https://vuejs.org/guide/introduction.html" target="_blank">Vue Docs</a>
+      </p>
     </div>
   </header>
 
   <main>
-    <TheWelcome />
+    <Appheader/>
   </main>
 </template>
 
