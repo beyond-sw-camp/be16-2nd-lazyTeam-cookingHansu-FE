@@ -1,18 +1,27 @@
 <template>
-    <v-app-bar app color="primary" dark>
-      <v-toolbar-title>요리한수</v-toolbar-title>
+    <v-app-bar app :color="colors.text" dark>
+      <v-toolbar-title :style="{ color: colors.primary }">요리한수</v-toolbar-title>
       <v-spacer></v-spacer>
       <div class="user-info">
-        <v-icon>관리자 아이콘</v-icon>
-        <span>관리자</span>
-        <v-btn text @click="logout">로그아웃</v-btn>
+        <img src="@/assets/icons/dashboard.ico" alt="user" width="20" />
+        <span>관리자님</span>
+        <v-btn text :color="colors.white" @click="logout">로그아웃</v-btn>
       </div>
     </v-app-bar>
   </template>
   
-  <script setup>
-  const logout = () => {
-    console.log('로그아웃')
+  <script>
+  import { colors } from '@/constants/color.js'
+  
+  export default {
+    data() {
+      return { colors }
+    },
+    methods: {
+      logout() {
+        console.log('로그아웃')
+      },
+    },
   }
   </script>
   
@@ -21,5 +30,6 @@
     display: flex;
     align-items: center;
     gap: 10px;
+    color: #fff;
   }
   </style>

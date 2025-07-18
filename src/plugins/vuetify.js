@@ -1,8 +1,9 @@
-// src/plugins/vuetify.js
 import 'vuetify/styles'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
+import { aliases, mdi } from 'vuetify/iconsets/mdi'
+import { colors } from '@/constants/color.js'
 
 export default createVuetify({
   components,
@@ -12,11 +13,18 @@ export default createVuetify({
     themes: {
       light: {
         colors: {
-          primary: '#FF6B6B',
-          background: '#FFFFFF',
-          surface: '#FFE3E3',
+          primary: colors.primary,
+          background: colors.background,
+          surface: colors.white,
+          success: colors.success,
+          text: colors.text,
         },
       },
     },
+  },
+  icons: {
+    defaultSet: 'mdi',
+    aliases,
+    sets: { mdi },
   },
 })
