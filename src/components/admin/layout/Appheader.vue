@@ -1,6 +1,6 @@
 <template>
     <v-app-bar app :color="colors.text" dark>
-      <v-toolbar-title :style="{ color: colors.primary }">요리한수</v-toolbar-title>
+      <v-toolbar-title class="text-h5 font-weight-bold" :style="{color: colors.primary}">요리한수</v-toolbar-title>
       <v-spacer></v-spacer>
       <div class="user-info">
         <div class="icon-wrapper">
@@ -34,8 +34,5 @@
     gap: 10px;
     color: #fff;
   }
-  .icon-wrapper {
-  background-color: transparent;
-}
 
   </style>

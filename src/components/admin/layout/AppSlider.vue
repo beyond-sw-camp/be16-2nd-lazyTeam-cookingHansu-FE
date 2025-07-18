@@ -34,28 +34,28 @@ export default {
       {
         text: "대시보드",
         icon: new URL("@/assets/icons/dashboard.ico", import.meta.url).href,
-        route: "/dashboard",
+        route: "/admin/dashboard",
       },
       {
         text: "강의 승인",
         icon: new URL("@/assets/icons/lecture_approval.ico", import.meta.url)
           .href,
-        route: "/lecture-approval",
+        route: "/admin/lecture-approval",
       },
       {
         text: "요리사 승인",
         icon: new URL("@/assets/icons/chef_approval.ico", import.meta.url).href,
-        route: "/chef-approval",
+        route: "/admin/chef-approval",
       },
       {
         text: "공지사항 관리",
         icon: new URL("@/assets/icons/announcement_mgmt.ico", import.meta.url).href,
-        route: "/notice-management",
+        route: "/admin/notice-management",
       },
       {
         text: "사용자 관리",
         icon: new URL("@/assets/icons/user_mgmt.ico", import.meta.url).href,
-        route: "/user-management",
+        route: "/admin/user-management",
       },
     ];
 
