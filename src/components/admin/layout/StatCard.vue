@@ -29,8 +29,8 @@ export default {
 .stat-card {
   padding: 20px;
   display: flex;
-  align-items: center;
-  height: 120px;
+  align-items: start;
+  height: 200px;
   background-color: var(--color-white);
   border-radius: 12px;
 }
