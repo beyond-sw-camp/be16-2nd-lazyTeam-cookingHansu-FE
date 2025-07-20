@@ -13,7 +13,7 @@ const routes = [
     children: [
       { path: '', redirect: '/admin/dashboard' }, // 기본 경로 → 대시보드로 리디렉트
       { path: 'dashboard', name: 'Dashboard', component: Dashboard },
-      { path: 'lecture-approval', name: 'LectureApproval', component: LectureApproval },
+      { path: 'lecture-approval', name: '/admin/LectureApproval', component: LectureApproval },
       { path: 'chef-approval', name: 'ChefApproval', component: ChefApproval },
       { path: 'notice-management', name: 'NoticeManagement', component: NoticeManagement },
       { path: 'user-management', name: 'UserManagement', component: UserManagement },
