@@ -73,19 +73,18 @@
             <td>{{ notice.date }}</td>
             <td>{{ notice.views }}</td>
             <td>
-              <v-btn
-                icon
-                @click="editNotice(getOriginalIndex(idx))"
-                color="orange"
-              >
-                <v-icon>mdi-pencil-outline</v-icon>
+              <v-btn icon variant="plain"
+                density="compact"
+                class="pa-0 ma-0"
+                @click="editNotice(getOriginalIndex(idx))" >
+                <v-icon color="orange">mdi-pencil-outline</v-icon>
               </v-btn>
-              <v-btn
-                icon
-                @click="deleteNotice(getOriginalIndex(idx))"
-                color="red"
-              >
-                <v-icon>mdi-delete-outline</v-icon>
+
+              <v-btn icon variant="plain"
+                density="compact"
+                class="pa-0 ma-0"
+                @click="deleteNotice(getOriginalIndex(idx))">
+                <v-icon color="red">mdi-delete-outline</v-icon>
               </v-btn>
             </td>
           </tr>
@@ -111,7 +110,8 @@
 
 <script setup>
 import { ref } from "vue";
-import { computed } from 'vue'
+import { computed } from "vue";
+import { icons } from "@/assets/icons/icons.js";
 
 const notices = ref([
   {
@@ -260,9 +260,8 @@ function deleteNotice(idx) {
 }
 
 function getOriginalIndex(paginatedIdx) {
-  return (currentPage.value - 1) * perPage + paginatedIdx
+  return (currentPage.value - 1) * perPage + paginatedIdx;
 }
-
 
 const currentPage = ref(1);
 const perPage = 10;
@@ -280,5 +279,14 @@ th,
 td {
   padding: 14px;
   text-align: left;
+}
+.icon-button {
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  width: auto;
+  height: auto;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 </style>
