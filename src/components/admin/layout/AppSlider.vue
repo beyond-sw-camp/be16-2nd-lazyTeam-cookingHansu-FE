@@ -57,6 +57,11 @@ export default {
         icon: new URL("@/assets/icons/user_mgmt.ico", import.meta.url).href,
         route: "/admin/user-management",
       },
+      {
+        text: "신고 관리",
+        icon: new URL("@/assets/icons/announcement_mgmt.ico", import.meta.url).href,
+        route: "/admin/report-management",
+      },
     ];
 
     return { items, navigate, colors };

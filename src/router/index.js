@@ -5,6 +5,7 @@ import LectureApproval from '@/views/admin/LectureApproval.vue'
 import ChefApproval from '@/views/admin/ChefApproval.vue'
 import NoticeManagement from '@/views/admin/NoticeManagement.vue'
 import UserManagement from '@/views/admin/UserManagement.vue'
+import ReportManagement from '@/views/admin/ReportManagement.vue'
 const routes = [
   {
     path: '/admin',
@@ -16,6 +17,7 @@ const routes = [
       { path: 'chef-approval', name: 'ChefApproval', component: ChefApproval },
       { path: 'notice-management', name: 'NoticeManagement', component: NoticeManagement },
       { path: 'user-management', name: 'UserManagement', component: UserManagement },
+      { path: "report-management", name: "ReportManagement", component: ReportManagement },
     ],
   },
 ]
