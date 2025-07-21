@@ -12,6 +12,6 @@
   </template>
   
   <script setup>
-  import AppHeader from '@/components/admin/layout/Appheader.vue'
-  import AppSlider from '@/components/admin/layout/AppSlider.vue'
+  import AppHeader from '@/components/admin/Appheader.vue'
+  import AppSlider from '@/components/admin/AppSlider.vue'
   </script>
