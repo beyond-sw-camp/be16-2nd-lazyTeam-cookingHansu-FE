@@ -43,18 +43,21 @@ export default {
   name: 'Footer',
   data() {
     return {
-      isMobile: false,
-      isTablet: false,
+      isMobile: false, // max-width: 700px 이하
+      isTablet: false, // max-width: 900px 이하
     };
   },
+//   모바일 화면 크기 체크 
   mounted() {
     this.checkDevice();
     window.addEventListener('resize', this.checkDevice);
   },
+//   컴포넌트 삭제 시 이벤트 리스너 삭제 
   beforeDestroy() {
     window.removeEventListener('resize', this.checkDevice);
   },
   methods: {
+    // 모바일 & 태블릿릿 화면 크기 범위 체크 
     checkDevice() {
       const width = window.innerWidth;
       this.isMobile = width <= 700;
