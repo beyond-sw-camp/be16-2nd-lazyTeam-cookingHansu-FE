@@ -6,47 +6,69 @@
       <v-col cols="12" md="3" class="chat-list">
         <v-sheet class="h-100 pa-4" elevation="2">
           <h3 class="text-h6 font-weight-bold mb-4">채팅 목록</h3>
-          <v-list dense nav>
-            <v-list-item
-              v-for="chat in chatList"
-              :key="chat.id"
-              @click="selectChat(chat.id)"
-              :class="{ 'bg-grey-lighten-4': chat.id === selectedChatId }"
-              class="py-4 px-3"
-            >
-              <div class="d-flex w-100 align-start">
-                <!-- 아바타 -->
-                <v-avatar size="48" class="mr-4">
-                  <v-icon color="grey">mdi-account</v-icon>
-                </v-avatar>
+          <div
+            ref="chatScroll"
+            class="chat-scroll-wrapper"
+            @scroll.passive="onScroll"
+            style="max-height: calc(100vh - 200px); overflow-y: auto"
+          >
+            <v-list dense nav>
+              <v-list-item
+                v-for="chat in chatList"
+                :key="chat.id"
+                @click="selectChat(chat.id)"
+                :class="{ 'bg-grey-lighten-4': chat.id === selectedChatId }"
+                class="py-4 px-3"
+              >
+                <div class="d-flex w-100 align-start">
+                  <!-- 아바타 -->
+                  <v-avatar size="48" class="mr-4">
+                    <v-icon color="grey">mdi-account</v-icon>
+                  </v-avatar>
 
-                <!-- 텍스트 섹션 -->
-                <div class="flex-grow-1">
-                  <div class="d-flex justify-space-between align-start">
-                    <div class="text-subtitle-1 font-weight-bold">
-                      {{ chat.name }}
+                  <!-- 텍스트 섹션 -->
+                  <div class="flex-grow-1">
+                    <div class="d-flex justify-space-between align-start">
+                      <div class="text-subtitle-1 font-weight-bold">
+                        {{ chat.name }}
+                      </div>
+                      <div class="text-caption text-grey mt-1">
+                        {{ chat.time }}
+                      </div>
                     </div>
-                    <div class="text-caption text-grey mt-1">
-                      {{ chat.time }}
+                    <!-- 1줄이상 해당 컨테이너 벗어나면 ... 적용 -->
+                    <div
+                      class="text-body-2 text-grey-darken-1"
+                      :style="{
+                        overflow: 'hidden',
+                        'text-overflow': 'ellipsis',
+                        'white-space': 'nowrap',
+                      }"
+                    >
+                      {{ chat.lastMessage }}
                     </div>
                   </div>
-                  <div class="text-body-2 text-grey-darken-1 mt-1">
-                    {{ chat.lastMessage }}
-                  </div>
-                </div>
 
-                <!-- 뱃지 -->
-                <div v-if="chat.unreadCount > 0" class="d-flex align-end ml-2">
+                  <!-- 뱃지 -->
                   <div
-                    class="rounded-circle text-white text-caption font-weight-bold d-flex align-center justify-center"
-                    style="background-color: orange; width: 20px; height: 20px"
+                    v-if="chat.unreadCount > 0"
+                    class="d-flex align-end ml-2"
                   >
-                    {{ chat.unreadCount }}
+                    <div
+                      class="rounded-circle text-white text-caption font-weight-bold d-flex align-center justify-center"
+                      style="
+                        background-color: orange;
+                        width: 20px;
+                        height: 20px;
+                      "
+                    >
+                      {{ chat.unreadCount }}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </v-list-item>
-          </v-list>
+              </v-list-item>
+            </v-list>
+          </div>
         </v-sheet>
       </v-col>
 
@@ -83,7 +105,8 @@ const chatList = ref([
   {
     id: 1,
     name: "김한식",
-    lastMessage: "강의 관련해서 질문이 있어서 연락드립니다.",
+    lastMessage:
+      "강의 관련해서 질문이 있어서 연락드립니다.강의 관련해서 질문이 있어서 연락드립니다.강의 관련해서 질문이 있어서 연락드립니다.",
     time: "오후 01:43",
     unreadCount: 3,
   },
@@ -129,6 +152,41 @@ const chatList = ref([
     time: "오후 07:15",
     unreadCount: 4,
   },
+  {
+    id: 8,
+    name: "정수현",
+    lastMessage: "다음 주 수업 일정 확인 부탁드립니다.",
+    time: "오후 08:45",
+    unreadCount: 0,
+  },
+  {
+    id: 9,
+    name: "이영호",
+    lastMessage: "레시피에 대한 피드백 감사합니다.",
+    time: "오후 09:30",
+    unreadCount: 1,
+  },
+  {
+    id: 10,
+    name: "김지민",
+    lastMessage: "요리 재료 구매 관련 문의입니다.",
+    time: "오후 10:00",
+    unreadCount: 0,
+  },
+  {
+    id: 11,
+    name: "박준영",
+    lastMessage: "강의 관련해서 질문이 있어서 연락드립니다.",
+    time: "오후 10:30",
+    unreadCount: 3,
+  },
+  {
+    id: 12,
+    name: "최수정",
+    lastMessage: "레시피 공유 감사합니다!",
+    time: "오후 11:00",
+    unreadCount: 0,
+  },
 ]);
 
 const selectedChatId = ref(null);
@@ -136,4 +194,20 @@ const selectChat = (id) => (selectedChatId.value = id);
 const selectedChat = computed(() =>
   chatList.value.find((c) => c.id === selectedChatId.value)
 );
+
+const visibleCount = ref(5);
+const visibleChats = computed(() =>
+  chatList.value.slice(0, visibleCount.value)
+);
+const chatScroll = ref(null);
+
+const onScroll = () => {
+  const el = chatScroll.value;
+  if (!el) return;
+
+  const bottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 10;
+  if (bottom && visibleCount.value < chatList.value.length) {
+    visibleCount.value += 5;
+  }
+};
 </script>

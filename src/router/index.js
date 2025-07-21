@@ -6,7 +6,6 @@ import ChefApproval from '@/views/admin/ChefApproval.vue'
 import NoticeManagement from '@/views/admin/NoticeManagement.vue'
 import UserManagement from '@/views/admin/UserManagement.vue'
 import ReportManagement from '@/views/admin/ReportManagement.vue'
-
 import DefaultLayout from '@/layouts//common/DefaultLayout.vue'
 import chat from '@/views/chat/ChatScreen.vue'
 const routes = [
