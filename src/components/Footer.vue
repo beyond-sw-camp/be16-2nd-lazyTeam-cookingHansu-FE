@@ -99,6 +99,7 @@ export default {
 .footer__desc {
   font-size: 1rem;
   color: #495057;
+  word-break: keep-all;
 }
 .footer__subtitle {
   font-size: 1.1rem;
