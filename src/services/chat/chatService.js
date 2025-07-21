@@ -3,6 +3,7 @@
 import ChatRoom from '../../models/ChatRoom';
 import ChatMessage from '../../models/ChatMessage';
 
+
 const dummyRooms = [
   new ChatRoom({
     id: 'room1',
@@ -104,6 +105,7 @@ export function sendMessage(roomId, senderId, content, file = null, fileName = '
   // if (!dummyMessages[roomId]) dummyMessages[roomId] = [];
   // dummyMessages[roomId].push(newMsg);
   
+
   return Promise.resolve(newMsg);
 }
 
