@@ -14,7 +14,7 @@
           >
             <v-list dense nav>
               <v-list-item
-                v-for="chat in chatList"
+                v-for="chat in visibleChats"
                 :key="chat.id"
                 @click="selectChat(chat.id)"
                 :class="{ 'bg-grey-lighten-4': chat.id === selectedChatId }"
@@ -23,9 +23,13 @@
                 <div class="d-flex w-100 align-start">
                   <!-- 아바타 -->
                   <v-avatar size="48" class="mr-4">
-                    <v-icon color="grey">mdi-account</v-icon>
+                    <template v-if="chat.avatar">
+                      <v-img :src="chat.avatar" />
+                    </template>
+                    <template v-else>
+                      <span class="text-h6 font-weight-bold">{{ chat.name.charAt(0) }}</span>
+                    </template>
                   </v-avatar>
-
                   <!-- 텍스트 섹션 -->
                   <div class="flex-grow-1">
                     <div class="d-flex justify-space-between align-start">
@@ -33,7 +37,7 @@
                         {{ chat.name }}
                       </div>
                       <div class="text-caption text-grey mt-1">
-                        {{ chat.time }}
+                        {{ formatTime(chat.lastMessageTime) }}
                       </div>
                     </div>
                     <!-- 1줄이상 해당 컨테이너 벗어나면 ... 적용 -->
@@ -98,116 +102,45 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
+import { storeToRefs } from 'pinia';
+import { useChatStore } from '@/store/chat/chat';
 import ChatDetailView from "@/views/chat/chatDetailScreen.vue";
 
-const chatList = ref([
-  {
-    id: 1,
-    name: "김한식",
-    lastMessage:
-      "강의 관련해서 질문이 있어서 연락드립니다.강의 관련해서 질문이 있어서 연락드립니다.강의 관련해서 질문이 있어서 연락드립니다.",
-    time: "오후 01:43",
-    unreadCount: 3,
-  },
-  {
-    id: 2,
-    name: "요리맘",
-    lastMessage: "레시피 공유 감사합니다!",
-    time: "오후 02:14",
-    unreadCount: 0,
-  },
-  {
-    id: 3,
-    name: "김건동",
-    lastMessage: "문의하신 내용에 대해 답변드립니다.",
-    time: "오후 03:05",
-    unreadCount: 1,
-  },
-  {
-    id: 4,
-    name: "홍길동",
-    lastMessage: "다음 주 수업 예약 부탁드립니다.",
-    time: "오후 04:20",
-    unreadCount: 0,
-  },
-  {
-    id: 5,
-    name: "이순신",
-    lastMessage: "요리 재료 문의드립니다.",
-    time: "오후 05:10",
-    unreadCount: 2,
-  },
-  {
-    id: 6,
-    name: "박영희",
-    lastMessage: "레시피에 대해 궁금한 점이 있습니다.",
-    time: "오후 06:30",
-    unreadCount: 0,
-  },
-  {
-    id: 7,
-    name: "최재원",
-    lastMessage: "강의 자료를 다시 보내주세요.",
-    time: "오후 07:15",
-    unreadCount: 4,
-  },
-  {
-    id: 8,
-    name: "정수현",
-    lastMessage: "다음 주 수업 일정 확인 부탁드립니다.",
-    time: "오후 08:45",
-    unreadCount: 0,
-  },
-  {
-    id: 9,
-    name: "이영호",
-    lastMessage: "레시피에 대한 피드백 감사합니다.",
-    time: "오후 09:30",
-    unreadCount: 1,
-  },
-  {
-    id: 10,
-    name: "김지민",
-    lastMessage: "요리 재료 구매 관련 문의입니다.",
-    time: "오후 10:00",
-    unreadCount: 0,
-  },
-  {
-    id: 11,
-    name: "박준영",
-    lastMessage: "강의 관련해서 질문이 있어서 연락드립니다.",
-    time: "오후 10:30",
-    unreadCount: 3,
-  },
-  {
-    id: 12,
-    name: "최수정",
-    lastMessage: "레시피 공유 감사합니다!",
-    time: "오후 11:00",
-    unreadCount: 0,
-  },
-]);
+const chatStore = useChatStore();
+const { rooms, currentRoomId, loading } = storeToRefs(chatStore);
 
-const selectedChatId = ref(null);
-const selectChat = (id) => (selectedChatId.value = id);
-const selectedChat = computed(() =>
-  chatList.value.find((c) => c.id === selectedChatId.value)
-);
+const selectChat = (id) => {
+  chatStore.fetchMessages(id);
+};
 
-const visibleCount = ref(5);
-const visibleChats = computed(() =>
-  chatList.value.slice(0, visibleCount.value)
-);
+const selectedChatId = computed(() => chatStore.currentRoomId);
+const selectedChat = computed(() => rooms.value.find((c) => c.id === selectedChatId.value));
+
 const chatScroll = ref(null);
+const visibleCount = ref(5);
+const visibleChats = computed(() => rooms.value.slice(0, visibleCount.value));
 
 const onScroll = () => {
   const el = chatScroll.value;
   if (!el) return;
-
   const bottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 10;
-  if (bottom && visibleCount.value < chatList.value.length) {
+  if (bottom && visibleCount.value < rooms.value.length) {
     visibleCount.value += 5;
   }
 };
+
+function formatTime(isoString) {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  const hours = date.getHours();
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  const isPM = hours >= 12;
+  const hour12 = hours % 12 || 12;
+  return `${isPM ? '오후' : '오전'} ${hour12}:${minutes}`;
+}
+
+onMounted(() => {
+  chatStore.fetchRooms();
+});
 </script>

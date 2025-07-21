@@ -5,9 +5,10 @@ import LectureApproval from '@/views/admin/LectureApproval.vue'
 import ChefApproval from '@/views/admin/ChefApproval.vue'
 import NoticeManagement from '@/views/admin/NoticeManagement.vue'
 import UserManagement from '@/views/admin/UserManagement.vue'
-import ReportManagement from '@/views/admin/ReportManagement.vue'
+import ReportManagement from '@/views/admin/reportManagement.vue'
 import DefaultLayout from '@/layouts//common/DefaultLayout.vue'
-import chat from '@/views/chat/ChatScreen.vue'
+import chat from '@/views/chat/chatScreen.vue'
+
 const routes = [
   {
     path: '/',
@@ -21,6 +22,10 @@ const routes = [
         name: 'Chat',
         component: chat,
       },
+      {
+        path: '/chat/:id',
+        name: 'ChatDetail',
+      }
       // { path: 'mypage', component: () => import('@/views/MyPage.vue') },
       // { path: 'login', component: () => import('@/views/Login.vue') },
       // { path: 'logout', beforeEnter: () => { /* 로그아웃 처리 후 리다이렉트 */ return '/' } },
