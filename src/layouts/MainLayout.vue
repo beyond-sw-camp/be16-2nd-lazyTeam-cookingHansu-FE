@@ -7,8 +7,10 @@
         <router-view />
       </v-container>
     </v-main>
+    <Footer />
   </v-app>
 </template>
 <script setup>
+import Footer from '@/components/Footer.vue';
 import Header from '@/components/Header.vue'
 </script> 
