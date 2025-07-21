@@ -1,198 +1,159 @@
 <template>
-  <v-footer color="grey-lighten-4" class="footer" padless>
-    <v-container class="footer-container">
-      <v-row no-gutters align="start" class="footer-row" justify="space-between">
-        <v-col cols="12" md="auto" class="footer-col" >
-          <h3 class="footer-title">요리한수</h3>
-          <p class="footer-desc">
-            한국 요리의 정수를 배우고 나누는 공간입니다.
-          </p>
-        </v-col>
-        <v-col cols="12" md="auto" class="footer-col" v-if="!isMobile && !isTablet">
-          <h4 class="footer-heading">서비스</h4>
-          <ul class="footer-list">
-            <li>레시피 공유</li>
-            <li>온라인 강의</li>
-            <li>1:1 채팅</li>
-            <li>커뮤니티</li>
-          </ul>
-        </v-col>
-        <v-col cols="12" md="auto" class="footer-col" v-if="!isMobile && !isTablet">
-          <h4 class="footer-heading">지원</h4>
-          <ul class="footer-list">
-            <li>자주 묻는 질문</li>
-            <li>고객센터</li>
-            <li>이용약관</li>
-            <li>개인정보처리방침</li>
-          </ul>
-        </v-col>
-        <v-col cols="12" md="auto" class="footer-col">
-          <h4 class="footer-heading">연락처</h4>
-          <p class="footer-text">이메일: support@yorihansu.com</p>
-          <p class="footer-text">전화: 02-1234-5678</p>
-          <p class="footer-text">운영시간: 평일 9:00-18:00</p>
-        </v-col>
-      </v-row>
-      <v-divider class="my-8" />
-      <div class="footer-bottom text-center">
-        © 2024 요리한수. All rights reserved.
+  <footer class="footer">
+    <div class="footer__container">
+      <div class="footer__section footer__intro">
+        <h2 class="footer__title">요리한수</h2>
+        <p class="footer__desc">한국 요리의 정수를 배우고 나누는 공간입니다.</p>
       </div>
-    </v-container>
-  </v-footer>
+      <div class="footer__section footer__service" v-if="!isMobile && !isTablet">
+        <h3 class="footer__subtitle">서비스</h3>
+        <ul>
+          <li>레시피 공유</li>
+          <li>온라인 강의</li>
+          <li>1:1 채팅</li>
+          <li>커뮤니티</li>
+        </ul>
+      </div>
+      <div class="footer__section footer__support" v-if="!isMobile && !isTablet">
+        <h3 class="footer__subtitle">지원</h3>
+        <ul>
+          <li>자주 묻는 질문</li>
+          <li>고객센터</li>
+          <li>이용약관</li>
+          <li>개인정보처리방침</li>
+        </ul>
+      </div>
+      <div class="footer__section footer__contact">
+        <h3 class="footer__subtitle">연락처</h3>
+        <ul>
+          <li>이메일: support@yorihansu.com</li>
+          <li>전화: 02-1234-5678</li>
+          <li>운영시간: 평일 9:00-18:00</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer__copyright">
+      © 2024 요리한수. All rights reserved.
+    </div>
+  </footer>
 </template>
 
-<script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
-const width = ref(window.innerWidth)
-const isMobile = computed(() => width.value <= 600)
-const isTablet = computed(() => width.value > 600 && width.value <= 960)
-function handleResize() {
-  width.value = window.innerWidth
-}
-onMounted(() => {
-  handleResize()
-  window.addEventListener('resize', handleResize)
-})
-onUnmounted(() => {
-  window.removeEventListener('resize', handleResize)
-})
+<script>
+export default {
+  name: 'Footer',
+  data() {
+    return {
+      isMobile: false,
+      isTablet: false,
+    };
+  },
+  mounted() {
+    this.checkDevice();
+    window.addEventListener('resize', this.checkDevice);
+  },
+  beforeDestroy() {
+    window.removeEventListener('resize', this.checkDevice);
+  },
+  methods: {
+    checkDevice() {
+      const width = window.innerWidth;
+      this.isMobile = width <= 700;
+      this.isTablet = width > 700 && width <= 900;
+    },
+  },
+};
 </script>
 
 <style scoped>
 .footer {
-  background-color: #f3f4f6 !important;
-  padding: 16px 0 !important;
+  background: #F8F9FA;
+  color: #495057;
+  font-family: 'Noto Sans', 'Sans-Serif';
+  padding: 40px 0 0 0;
+  border-top: 1px solid #e9ecef;
 }
-
-.footer-container {
-  max-width: 1440px;
-  margin: 0;
-  padding: 0 16px;
-}
-
-.footer-row {
-  flex-wrap: wrap !important;
-  column-gap: 16px;
-  row-gap: 0;
-  justify-content: center !important;
-}
-
-.footer-col {
-  min-width: 180px;
+.footer__container {
+  display: flex;
+  justify-content: space-between;
   max-width: 100%;
-  margin-bottom: 8px;
-  text-align: left;
-  box-sizing: border-box;
+  margin: 0 auto;
+  padding: 0 32px;
+  flex-wrap: wrap;
 }
-
-.footer-title {
+.footer__section {
+  flex: 1 1 80px;
+  margin-bottom: 24px;
+}
+.footer__intro {
+  min-width: 220px;
+}
+.footer__title {
+  color: #FF6B35;
+  font-size: 1.5rem;
   font-weight: 700;
-  font-size: 18px;
   margin-bottom: 8px;
-  color: #fb6a11;
 }
-
-.footer-desc {
-  color: #4b5563;
-  font-size: 13px;
-  line-height: 1.5;
+.footer__desc {
+  font-size: 1rem;
+  color: #495057;
 }
-
-.footer-heading {
-  font-weight: 600;
-  font-size: 14px;
-  margin-bottom: 8px;
-  color: #1f2937;
+.footer__subtitle {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: #495057;
 }
-
-.footer-list {
+.footer__section ul {
   list-style: none;
   padding: 0;
   margin: 0;
-  line-height: 1.7;
-  font-size: 13px;
-  color: #4b5563;
 }
-
-.footer-text {
-  font-size: 13px;
-  margin-bottom: 4px;
-  color: #4b5563;
+.footer__section li {
+  margin-bottom: 8px;
+  font-size: 1rem;
+  color: #495057;
 }
-
-.footer-bottom {
-  font-size: 11px;
-  color: #9ca3af;
-  margin-top: 8px;
+.footer__contact li {
+  word-break: keep-all;
 }
-
-.v-divider {
-  margin: 16px 0 !important;
+.footer__copyright {
+  text-align: center;
+  color: #868e96;
+  font-size: 1rem;
+  padding: 24px 0 16px 0;
+  border-top: 1px solid #e9ecef;
+  background: #F8F9FA;
+  margin-top: 16px;
 }
-
-@media (max-width: 1200px) {
-  .footer-container {
-    max-width: 100vw;
-    margin: 0 auto;
+@media (max-width: 900px) {
+  .footer__container {
+    flex-direction: row;
+    align-items: flex-start;
+    padding: 0 16px;
+  }
+  .footer__section {
+    width: 100%;
+    margin-bottom: 16px;
+  }
+}
+@media (max-width: 700px) {
+  .footer__container {
+    flex-direction: column;
+    align-self: center;
+    justify-content: center;
     padding: 0 8px;
   }
-  .footer-row {
-    column-gap: 8px;
-    row-gap: 8px;
-    justify-content: center !important;
+  .footer__section {
+    width: 100%;
+    margin-bottom: 12px;
   }
-  .footer-col {
-    min-width: 160px;
-    max-width: 100%;
-    flex: 1 1 220px;
-    text-align: center;
+  .footer__service,
+  .footer__support {
+    display: none !important;
   }
-}
-@media (max-width: 960px) {
-  .footer-row {
-    flex-wrap: wrap !important;
-    column-gap: 0;
-    row-gap: 8px;
-    justify-content: center !important;
-  }
-  .footer-col {
-    min-width: 0;
-    max-width: 100%;
-    flex: 1 1 320px;
-    text-align: center;
-    margin-bottom: 8px;
+  .footer__copyright {
+    font-size: 0.95rem;
+    padding: 16px 0 10px 0;
   }
 }
-/* @media (max-width: 600px) {
-  .footer-container {
-    padding: 0 6px;
-  }
-  .footer-row {
-    flex-direction: column !important;
-    align-items: center !important;
-    row-gap: 8px;
-  }
-  .footer-col {
-    min-width: 0;
-    max-width: 100%;
-    margin-bottom: 4px;
-    text-align: center;
-  }
-  .footer-title {
-    font-size: 16px;
-  }
-  .footer-heading {
-    font-size: 13px;
-  }
-  .footer-desc, .footer-list, .footer-text {
-    font-size: 12px;
-  }
-  .footer-bottom {
-    font-size: 10px;
-    margin-top: 4px;
-  }
-  .v-divider {
-    margin: 10px 0 !important;
-  }
-} */
-</style>
+</style> 
