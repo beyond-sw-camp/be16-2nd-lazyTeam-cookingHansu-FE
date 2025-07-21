@@ -9,6 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@jamescoyle/vue-icon": "^0.1.2",
+    "@mdi/js": "^7.4.47",
     "axios": "^1.10.0",
     "node": "^20.19.4",
     "pinia": "^3.0.3",
@@ -17,6 +19,7 @@
     "vuetify": "^3.9.0"
   },
   "devDependencies": {
+    "@mdi/font": "^7.4.47",
     "@vitejs/plugin-vue": "^6.0.0",
     "sass": "^1.89.2",
     "vite": "^7.0.0",

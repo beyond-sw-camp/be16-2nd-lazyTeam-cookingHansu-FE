@@ -1,7 +1,7 @@
-export const COLORS = {
-    primary: '#FF7043',
-    secondary: '#FFAB91',
-    accent: '#FFC107',
-    background: '#F9F9F9',
-    text: '#212121',
-  };
+export const colors = {
+  primary: "#FF6B35",
+  white: "#FFFFFF",
+  background: "#F8F9FA",
+  text: "#495057",
+  success: "#28A745",
+};
