@@ -37,32 +37,53 @@
 
       <!-- 오른쪽: 알림 + 사용자 + 로그인/로그아웃 -->
       <div class="right">
-        <v-badge
-          :content="notificationCount"
-          color="red"
-          overlap
+        <!-- 알림 있는 경우 -->
+        <v-btn
           v-if="isLoggedIn && notificationCount > 0"
+          icon
+          size="small"
+          elevation="0"
+          class="pa-0 ma-0"
+          @click="goTo('/notifications')"
         >
-          <template #badge>
-            <v-icon>mdi-bell</v-icon>
-          </template>
-        </v-badge>
-        <v-icon v-else-if="isLoggedIn">mdi-bell-outline</v-icon>
+          <v-badge
+            :content="notificationCount"
+            color="red"
+            location="top end"
+            offset-x="4"
+            offset-y="4"
+          >
+            <v-icon size="24">mdi-bell</v-icon>
+          </v-badge>
+        </v-btn>
+
+        <!-- 알림 없는 경우 -->
+        <v-btn v-else icon size="small" elevation="0" class="pa-0 ma-0" @click="goTo('/notifications')">
+          <v-icon size="24">mdi-bell</v-icon>
+        </v-btn>
 
         <span v-if="isLoggedIn" class="welcome-text"
           >{{ userName }}님 반갑습니다!</span
         >
 
+        <!-- 배경 색 회색 -->
+
         <v-btn
           v-if="isLoggedIn"
           @click="goTo('/logout')"
-          variant="outlined"
           size="small"
+          class="logout-btn"
         >
           로그아웃
         </v-btn>
 
-        <v-btn @click="goTo('/login')" color="orange" class="login-btn" rounded>
+        <v-btn
+          v-else
+          @click="goTo('/login')"
+          color="orange"
+          class="login-btn"
+          rounded
+        >
           로그인
         </v-btn>
       </div>
@@ -77,9 +98,9 @@ import { ref } from "vue";
 const router = useRouter();
 const goTo = (path) => router.push(path);
 
-const isLoggedIn = ref(false);
+const isLoggedIn = ref(true);
 const userName = ref("김요리");
-const userType = ref("ADMIN"); // GENERAL | CHEF | OWNER | ADMIN
+const userType = ref("GENERAL"); // GENERAL | CHEF | OWNER | ADMIN
 const notificationCount = ref(3);
 </script>
 
@@ -104,6 +125,17 @@ const notificationCount = ref(3);
   font-size: 14px;
   border-radius: 10px;
   min-width: 72px;
+  text-transform: none;
+  box-shadow: none;
+}
+
+.logout-btn {
+  background-color: #f3f4f6 !important;
+  font-weight: 600;
+  font-size: 14px;
+  border-radius: 8px;
+  min-width: 72px;
+  min-height: 32px;
   text-transform: none;
   box-shadow: none;
 }

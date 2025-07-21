@@ -1,6 +1,6 @@
 <template>
   <v-container fluid class="pa-6">
-    <v-row no-gutters class="chat-wrapper" style="min-height: 600px;">
+    <v-row no-gutters class="chat-wrapper" style="min-height: 600px">
       <!-- 채팅 목록 -->
       <v-col md="1.5" />
       <v-col cols="12" md="3" class="chat-list">
@@ -82,7 +82,7 @@ import ChatDetailView from "@/views/chat/chatDetailScreen.vue";
 const chatList = ref([
   {
     id: 1,
-    name: "김한식 셰프",
+    name: "김한식",
     lastMessage: "강의 관련해서 질문이 있어서 연락드립니다.",
     time: "오후 01:43",
     unreadCount: 3,
@@ -94,41 +94,41 @@ const chatList = ref([
     time: "오후 02:14",
     unreadCount: 0,
   },
-    {
-        id: 3,
-        name: "요리한수 고객센터",
-        lastMessage: "문의하신 내용에 대해 답변드립니다.",
-        time: "오후 03:05",
-        unreadCount: 1,
-    },
-    {
-        id: 4,
-        name: "홍길동",
-        lastMessage: "다음 주 수업 예약 부탁드립니다.",
-        time: "오후 04:20",
-        unreadCount: 0,
-    },
-    {
-        id: 5,
-        name: "이순신",
-        lastMessage: "요리 재료 문의드립니다.",
-        time: "오후 05:10",
-        unreadCount: 2,
-    },
-    {
-        id: 6,
-        name: "박영희",
-        lastMessage: "레시피에 대해 궁금한 점이 있습니다.",
-        time: "오후 06:30",
-        unreadCount: 0,
-    },
-    {
-        id: 7,
-        name: "최재원",
-        lastMessage: "강의 자료를 다시 보내주세요.",
-        time: "오후 07:15",
-        unreadCount: 4,
-    },
+  {
+    id: 3,
+    name: "김건동",
+    lastMessage: "문의하신 내용에 대해 답변드립니다.",
+    time: "오후 03:05",
+    unreadCount: 1,
+  },
+  {
+    id: 4,
+    name: "홍길동",
+    lastMessage: "다음 주 수업 예약 부탁드립니다.",
+    time: "오후 04:20",
+    unreadCount: 0,
+  },
+  {
+    id: 5,
+    name: "이순신",
+    lastMessage: "요리 재료 문의드립니다.",
+    time: "오후 05:10",
+    unreadCount: 2,
+  },
+  {
+    id: 6,
+    name: "박영희",
+    lastMessage: "레시피에 대해 궁금한 점이 있습니다.",
+    time: "오후 06:30",
+    unreadCount: 0,
+  },
+  {
+    id: 7,
+    name: "최재원",
+    lastMessage: "강의 자료를 다시 보내주세요.",
+    time: "오후 07:15",
+    unreadCount: 4,
+  },
 ]);
 
 const selectedChatId = ref(null);
