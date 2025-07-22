@@ -20,3 +20,10 @@
     border-radius: 12px !important;
   }
   
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--color-primary);
+  }
