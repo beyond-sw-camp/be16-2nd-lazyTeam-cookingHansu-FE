@@ -22,10 +22,7 @@ const routes = [
         name: 'Chat',
         component: chat,
       },
-      {
-        path: '/chat/:id',
-        name: 'ChatDetail',
-      }
+
       // { path: 'mypage', component: () => import('@/views/MyPage.vue') },
       // { path: 'login', component: () => import('@/views/Login.vue') },
       // { path: 'logout', beforeEnter: () => { /* 로그아웃 처리 후 리다이렉트 */ return '/' } },

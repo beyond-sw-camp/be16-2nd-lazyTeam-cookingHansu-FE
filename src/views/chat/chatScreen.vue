@@ -27,46 +27,32 @@
                       <v-img :src="chat.avatar" />
                     </template>
                     <template v-else>
-                      <span class="text-h6 font-weight-bold">{{ chat.name.charAt(0) }}</span>
+                      <span class="text-h6 font-weight-bold">{{ chat.participants[1] }}</span>
                     </template>
                   </v-avatar>
-                  <!-- 텍스트 섹션 -->
-                  <div class="flex-grow-1">
+                  <!-- 텍스트+시간+뱃지 영역 -->
+                  <div class="flex-grow-1 min-width-0">
                     <div class="d-flex justify-space-between align-start">
                       <div class="text-subtitle-1 font-weight-bold">
-                        {{ chat.name }}
+                        {{ chat.participants[1] }}
                       </div>
-                      <div class="text-caption text-grey mt-1">
-                        {{ formatTime(chat.lastMessageTime) }}
+                      <!-- 시간+뱃지 묶음 -->
+                      <div class="d-flex align-center flex-shrink-0" style="min-width: 60px;">
+                        <span class="text-caption text-grey mt-1 mr-1">
+                          {{ formatTime(chat.lastMessageTime) }}
+                        </span>
+                        <div v-if="chat.unreadCount > 0"
+                          class="rounded-circle text-white text-caption font-weight-bold d-flex align-center justify-center"
+                          style="background-color: orange; width: 20px; height: 20px;">
+                          {{ chat.unreadCount }}
+                        </div>
                       </div>
                     </div>
-                    <!-- 1줄이상 해당 컨테이너 벗어나면 ... 적용 -->
                     <div
                       class="text-body-2 text-grey-darken-1"
-                      :style="{
-                        overflow: 'hidden',
-                        'text-overflow': 'ellipsis',
-                        'white-space': 'nowrap',
-                      }"
+                      style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px;"
                     >
                       {{ chat.lastMessage }}
-                    </div>
-                  </div>
-
-                  <!-- 뱃지 -->
-                  <div
-                    v-if="chat.unreadCount > 0"
-                    class="d-flex align-end ml-2"
-                  >
-                    <div
-                      class="rounded-circle text-white text-caption font-weight-bold d-flex align-center justify-center"
-                      style="
-                        background-color: orange;
-                        width: 20px;
-                        height: 20px;
-                      "
-                    >
-                      {{ chat.unreadCount }}
                     </div>
                   </div>
                 </div>
@@ -111,7 +97,7 @@ const chatStore = useChatStore();
 const { rooms, currentRoomId, loading } = storeToRefs(chatStore);
 
 const selectChat = (id) => {
-  chatStore.fetchMessages(id);
+  chatStore.fetchMessages(id); // 여기서만 호출
 };
 
 const selectedChatId = computed(() => chatStore.currentRoomId);

@@ -1,11 +1,11 @@
 // 더미 데이터 기반 채팅 서비스
 
 import ChatRoom from '../../models/ChatRoom';
+import ChatMessage from '../../models/ChatMessage';
 
 const dummyRooms = [
   new ChatRoom({
     id: 'room1',
-    name: '일반 채팅방',
     participants: ['user1', 'user2'],
     lastMessage: '안녕하세요!',
     lastMessageTime: new Date().toISOString(),
@@ -14,40 +14,68 @@ const dummyRooms = [
   }),
   new ChatRoom({
     id: 'room2',
-    name: '공지방',
-    participants: ['admin', 'user1'],
-    lastMessage: '공지사항입니다.',
+    participants: ['user1', 'user3'],
+    lastMessage: '안녕하세요! 여쭤볼게있는데 채팅 가능할까요? 안녕하세요! 여쭤볼게있는데 채팅 가능할까요? 안녕하세요! 여쭤볼게있는데 채팅 가능할까요? ',
     lastMessageTime: new Date().toISOString(),
-    unreadCount: 1,
+    unreadCount: 3,
     avatar: '',
   }),
 ];
 
 const dummyMessages = {
   room1: [
-    {
+    new ChatMessage({
       id: 'msg1',
       roomId: 'room1',
-      sender: 'user1',
+      senderId: 'user1',
       content: '안녕하세요!',
       timestamp: new Date().toISOString(),
-    },
-    {
+      file: null,
+      fileName: '',
+      fileType: '',
+    }),
+    new ChatMessage({
       id: 'msg2',
       roomId: 'room1',
-      sender: 'user2',
+      senderId: 'user2',
       content: '반갑습니다!',
       timestamp: new Date().toISOString(),
-    },
+      file: null,
+      fileName: '',
+      fileType: '',
+    }),
   ],
   room2: [
-    {
+    new ChatMessage({
       id: 'msg3',
       roomId: 'room2',
-      sender: 'admin',
-      content: '공지사항입니다.',
+      senderId: 'user3',
+      content: '안녕하세요! 여쭤볼게있는데 채팅 가능할까요? 안녕하세요! 여쭤볼게있는데 채팅 가능할까요? 안녕하세요! 여쭤볼게있는데 채팅 가능할까요? ',
       timestamp: new Date().toISOString(),
-    },
+      file: null,
+      fileName: '',
+      fileType: '',
+    }),
+    new ChatMessage({
+      id: 'msg4',
+      roomId: 'room2',
+      senderId: 'user3',
+      content: '안녕하세요! 여쭤볼게있는데 채팅 가능할까요? 안녕하세요! 여쭤볼게있는데 채팅 가능할까요? 안녕하세요! 여쭤볼게있는데 채팅 가능할까요? ',
+      timestamp: new Date().toISOString(),
+      file: null,
+      fileName: '',
+      fileType: '',
+    }),
+    new ChatMessage({
+      id: 'msg5',
+      roomId: 'room2',
+      senderId: 'user3',
+      content: '안녕하세요! 여쭤볼게있는데 채팅 가능할까요? 안녕하세요! 여쭤볼게있는데 채팅 가능할까요? 안녕하세요! 여쭤볼게있는데 채팅 가능할까요? ',
+      timestamp: new Date().toISOString(),
+      file: null,
+      fileName: '',
+      fileType: '',
+    }),
   ],
 };
 
@@ -59,16 +87,23 @@ export function getMessages(roomId) {
   return Promise.resolve(dummyMessages[roomId] || []);
 }
 
-export function sendMessage(roomId, sender, content) {
-  const newMsg = {
+export function sendMessage(roomId, senderId, content, file = null, fileName = '', fileType = '') {
+  const newMsg = new ChatMessage({
     id: 'msg' + Math.random().toString(36).substr(2, 9),
     roomId,
-    sender,
+    senderId,
     content,
     timestamp: new Date().toISOString(),
-  };
-  if (!dummyMessages[roomId]) dummyMessages[roomId] = [];
-  dummyMessages[roomId].push(newMsg);
+    file,
+    fileName,
+    fileType,
+  });
+  
+  // 더미 데이터에는 저장하지 않고, 메시지 객체만 반환
+  // store에서 직접 messages 배열에 추가하도록 함
+  // if (!dummyMessages[roomId]) dummyMessages[roomId] = [];
+  // dummyMessages[roomId].push(newMsg);
+  
   return Promise.resolve(newMsg);
 }
 
