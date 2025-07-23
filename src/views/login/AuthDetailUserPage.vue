@@ -3,25 +3,23 @@
     <div class="top-bar">
       <span class="back-link" @click="goHome">&lt; 홈으로 돌아가기</span>
     </div>
-    <ProgressStep :step="2" :animate="progressAnimate" />
+    <ProgressStep :step="3" />
     <transition name="box-slide" mode="out-in">
       <div class="add-info-box" v-if="showBox" key="add-info-box">
         <div class="form-title">요리한수</div>
-        <div class="form-subtitle">기본 정보 입력</div>
-        <form class="form-content" @submit.prevent="onNext">
-          <label class="form-label">닉네임</label>
-          <input class="form-input" :class="{ error: errors.nickname }" v-model="form.nickname" placeholder="닉네임을 입력하세요" />
-          <div v-if="errors.nickname" class="input-error"><span class="error-icon">&#10006;</span> 닉네임을 입력해 주세요!</div>
-          <label class="form-label">역할 선택</label>
-          <div class="role-group">
-            <div v-for="role in roles" :key="role.value" :class="['role-radio', { selected: form.role === role.value }]" @click="form.role = role.value">
-              <input type="radio" :value="role.value" v-model="form.role" :id="role.value" />
-              <label :for="role.value">
-                <div class="role-title">{{ role.label }}</div>
-                <div class="role-desc">{{ role.desc }}</div>
-              </label>
-            </div>
+        <div class="form-subtitle">추가 정보 입력</div>
+        <form class="form-content" @submit.prevent="onSubmit">
+          <label class="form-label">추가 정보</label>
+          <div class="select-wrapper">
+            <select class="form-input" :class="{ error: errors.extra }" v-model="form.extra" @focus="handleSelectOpen" @blur="handleSelectClose">
+              <option disabled value="">추가 정보를 선택하세요</option>
+              <option v-for="opt in extraOptions" :key="opt" :value="opt">{{ opt }}</option>
+            </select>
+            <span class="select-arrow" :class="{ open: selectOpen }">
+              <svg width="18" height="18" viewBox="0 0 20 20"><path d="M5 8l5 5 5-5" stroke="#bdbdbd" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+            </span>
           </div>
+          <div v-if="errors.extra" class="input-error"><span class="error-icon">&#10006;</span> 추가 정보를 입력해 주세요!</div>
           <div class="form-actions">
             <button type="button" class="btn prev" @click="onPrev" @mousedown="btnActive('prev')" @mouseup="btnInactive('prev')" @mouseleave="btnInactive('prev')">이전</button>
             <button type="submit" class="btn next" @mousedown="btnActive('next')" @mouseup="btnInactive('next')" @mouseleave="btnInactive('next')">다음</button>
@@ -37,56 +35,28 @@ import { useRouter } from 'vue-router'
 import ProgressStep from '@/components/ProgressStep.vue'
 
 const router = useRouter()
-const form = ref({
-  nickname: '',
-  role: 'user'
-})
-const errors = ref({ nickname: false })
-const roles = [
-  { value: 'user', label: '일반 사용자', desc: '레시피 공유 및 강의 수강' },
-  { value: 'cook', label: '요식업 종사자', desc: '요리사, 요리연구가' },
-  { value: 'owner', label: '요식업 자영업자', desc: '식당, 카페 운영자' }
-]
 const showBox = ref(true)
-const progressAnimate = ref(false)
-
-function goHome() {
-  router.push('/')
-}
-function onPrev() {
-  progressAnimate.value = true
-  showBox.value = false
-  setTimeout(() => {
-    router.push('/login')
-  }, 350)
-}
+const selectOpen = ref(false)
+const form = ref({
+  extra: ''
+})
+const errors = ref({ extra: false })
+const extraOptions = ['학생', '주부', '자취생', '기타']
+function goHome() { router.push('/') }
+function onPrev() { router.push('/add-info') }
 function validate() {
-  errors.value.nickname = !form.value.nickname
-  return !errors.value.nickname
+  errors.value.extra = !form.value.extra
+  return !errors.value.extra
 }
-function onNext() {
+function onSubmit() {
   if (!validate()) return
-  progressAnimate.value = true
-  showBox.value = false
-  setTimeout(() => {
-    if (form.value.role === 'user') {
-      router.push('/auth-detail-user')
-    } else if (form.value.role === 'cook') {
-      router.push('/auth-detail-cook')
-    } else if (form.value.role === 'owner') {
-      router.push('/auth-detail-owner')
-    } else {
-      router.push('/')
-    }
-  }, 350)
+  router.push('/signup-complete')
 }
-function btnActive(type) {
-  const btn = document.querySelector('.btn.' + type)
-  if (btn) btn.classList.add('active')
+function handleSelectOpen() {
+  selectOpen.value = true
 }
-function btnInactive(type) {
-  const btn = document.querySelector('.btn.' + type)
-  if (btn) btn.classList.remove('active')
+function handleSelectClose() {
+  selectOpen.value = false
 }
 </script>
 <style scoped>
@@ -192,69 +162,6 @@ function btnInactive(type) {
   font-size: 1.1em;
   margin-right: 2px;
 }
-.profile-upload {
-  display: flex;
-  align-items: center;
-  margin-bottom: 8px;
-}
-.profile-label {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: #f3f3f3;
-  border: 1.5px solid #e9ecef;
-  cursor: pointer;
-  overflow: hidden;
-}
-.profile-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 50%;
-}
-.profile-placeholder {
-  font-size: 2rem;
-  color: #bdbdbd;
-}
-.role-group {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-.role-radio {
-  display: flex;
-  align-items: center;
-  border: 1.5px solid #e9ecef;
-  border-radius: 12px;
-  background: var(--color-background);
-  padding: 14px 16px;
-  cursor: pointer;
-  transition: border 0.2s, background 0.2s;
-  margin-bottom: 2px;
-}
-.role-radio.selected {
-  border: 1.5px solid var(--color-primary);
-  background: #fff5ea;
-}
-.role-radio input[type="radio"] {
-  margin-right: 18px;
-  accent-color: var(--color-primary);
-  width: 22px;
-  height: 22px;
-}
-.role-title {
-  font-weight: bold;
-  color: var(--color-text);
-  font-size: 1.08rem;
-}
-.role-desc {
-  color: #bdbdbd;
-  font-size: 0.98rem;
-}
 .form-actions {
   display: flex;
   justify-content: space-between;
@@ -289,5 +196,36 @@ function btnInactive(type) {
   filter: brightness(0.93);
   background: #ff884d !important;
   color: #fff !important;
+}
+.select-wrapper {
+  position: relative;
+  width: 100%;
+}
+.select-arrow {
+  position: absolute;
+  top: 50%;
+  right: 18px;
+  transform: translateY(-50%) rotate(0deg);
+  pointer-events: none;
+  transition: transform 0.2s;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.select-arrow.open {
+  transform: translateY(-50%) rotate(180deg);
+}
+.box-slide-enter-active, .box-slide-leave-active {
+  transition: all 0.35s cubic-bezier(.4,0,.2,1);
+}
+.box-slide-enter-from {
+  opacity: 0;
+  transform: translateX(60px);
+}
+.box-slide-leave-to {
+  opacity: 0;
+  transform: translateX(-60px);
 }
 </style> 

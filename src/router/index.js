@@ -10,9 +10,10 @@ import MainLayout from '@/layouts/MainLayout.vue'
 import LoginPage from '@/views/login/LoginPage.vue'
 import AddInfoPage from '@/views/login/AddInfoPage.vue'
 import AdminLoginPage from '@/views/admin/AdminLoginPage.vue'
-// AuthDetailCookPage/AuthDetailOwnerPage는 추후 구현 예정, 임시 컴포넌트로 등록
-const AuthDetailCookPage = { template: '<div>요식업 종사자 상세 인증 (추후 구현)</div>' }
-const AuthDetailOwnerPage = { template: '<div>요식업 자영업자 상세 인증 (추후 구현)</div>' }
+import AuthDetailCookPage from '@/views/login/AuthDetailCookPage.vue'
+import AuthDetailOwnerPage from '@/views/login/AuthDetailOwnerPage.vue'
+import AuthDetailUserPage from '@/views/login/AuthDetailUserPage.vue'
+
 const routes = [
   {
     path: '/admin-login',
@@ -46,6 +47,11 @@ const routes = [
     path: '/add-info',
     name: 'AddInfo',
     component: AddInfoPage,
+  },
+  {
+    path: '/auth-detail-user', 
+    name: 'AuthDetailUser', 
+    component: AuthDetailUserPage, 
   },
   {
     path: '/auth-detail-cook',

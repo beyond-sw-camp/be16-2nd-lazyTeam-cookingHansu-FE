@@ -27,7 +27,6 @@
           placeholder="비밀번호를 입력하세요"
           required
         />
-        <router-link to="/admin-register" class="admin-login-register-link">관리자 회원가입</router-link>
         <button type="submit" class="admin-login-btn">로그인</button>
         <button type="button" class="admin-login-home-btn" @click="goBack()">
           ← 메인으로 돌아가기
@@ -127,18 +126,6 @@ function goBack() {
   margin-bottom: 12px;
   background: var(--color-background);
   font-family: 'NotoSansKR', sans-serif;
-}
-
-.admin-login-register-link {
-  color: var(--color-primary);
-  font-size: 0.95rem;
-  margin-bottom: 8px;
-  text-decoration: none;
-  align-self: flex-start;
-  transition: text-decoration 0.2s;
-}
-.admin-login-register-link:hover {
-  text-decoration: underline;
 }
 
 .admin-login-btn {
