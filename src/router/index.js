@@ -5,29 +5,11 @@ import LectureApproval from '@/views/admin/LectureApproval.vue'
 import ChefApproval from '@/views/admin/ChefApproval.vue'
 import NoticeManagement from '@/views/admin/NoticeManagement.vue'
 import UserManagement from '@/views/admin/UserManagement.vue'
-import ReportManagement from '@/views/admin/reportManagement.vue'
-import DefaultLayout from '@/layouts//common/DefaultLayout.vue'
 import chat from '@/views/chat/chatScreen.vue'
+import ReportManagement from '@/views/admin/ReportManagement.vue'
+import MainLayout from '@/layouts/MainLayout.vue' // 유저용 레이아웃
 
 const routes = [
-  {
-    path: '/',
-    component: DefaultLayout,
-    children: [
-      { path: '', redirect: '/chat' }, // 기본 경로 → 홈으로 리디렉트
-      // { path: 'recipes', component: () => import('@/views/RecipeList.vue') },
-      // { path: 'courses', component: () => import('@/views/CourseList.vue') },
-      {
-        path: '/chat',
-        name: 'Chat',
-        component: chat,
-      },
-
-      // { path: 'mypage', component: () => import('@/views/MyPage.vue') },
-      // { path: 'login', component: () => import('@/views/Login.vue') },
-      // { path: 'logout', beforeEnter: () => { /* 로그아웃 처리 후 리다이렉트 */ return '/' } },
-    ]
-  },
   {
     path: '/admin',
     component: AdminLayout, // 관리자 공통 레이아웃
@@ -39,6 +21,22 @@ const routes = [
       { path: 'notice-management', name: 'NoticeManagement', component: NoticeManagement },
       { path: 'user-management', name: 'UserManagement', component: UserManagement },
       { path: "report-management", name: "ReportManagement", component: ReportManagement },
+    ],
+  },
+  {
+    path: '/',
+    component: MainLayout,
+    children: [
+      // 여기에 유저용 페이지 라우트 추가 (예시)
+      { path: '', redirect: '/recipes' },
+      { path: 'recipes', component: { template: '<div>레시피 공유 게시글</div>' } },
+      { path: 'lectures', component: { template: '<div>판매중인 강의</div>' } },
+      {
+        path: '/chat',
+        name: 'Chat',
+        component: chat,
+      },
+      { path: 'mypage', component: { template: '<div>마이페이지</div>' } },
     ],
   },
 ]
