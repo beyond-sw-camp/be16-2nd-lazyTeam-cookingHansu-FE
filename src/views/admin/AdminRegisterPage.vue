@@ -69,14 +69,17 @@ export default {
 .admin-login-container {
   background: var(--color-white);
   border-radius: 16px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.06);
-  padding: 48px 40px 40px 40px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+  padding: 48px 32px 32px 32px;
   width: 100%;
-  min-width: 350px;
-  max-width: 500px;
+  max-width: 600px;
+  margin: 0 auto 20px auto;
   display: flex;
   flex-direction: column;
   align-items: center;
+  overflow-y: auto;
+  max-height: calc(100vh - 40px);
+  transition: box-shadow 0.2s;
 }
 .shield-icon {
   margin-bottom: 16px;
