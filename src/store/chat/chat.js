@@ -20,7 +20,6 @@ export const useChatStore = defineStore('chat', {
       this.messages = await getMessages(roomId);
       this.loading = false;
       // 기존 WebSocket 연결 해제 후 새로 연결
-
       // disconnectWebSocket();
       // connectWebSocket(roomId, (msg) => {
       //   this.messages.push(msg);
@@ -47,7 +46,6 @@ export const useChatStore = defineStore('chat', {
       const room = this.rooms.find(r => r.id === this.currentRoomId);
       if (room) {
         room.lastMessage = msg.content || msg.fileName;
-
         room.lastMessageTime = msg.timestamp;
         room.unreadCount = 0;
       }
