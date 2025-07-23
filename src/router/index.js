@@ -5,8 +5,13 @@ import LectureApproval from '@/views/admin/LectureApproval.vue'
 import ChefApproval from '@/views/admin/ChefApproval.vue'
 import NoticeManagement from '@/views/admin/NoticeManagement.vue'
 import UserManagement from '@/views/admin/UserManagement.vue'
-import ReportManagement from '@/views/admin/ReportManagement.vue'
+import ReportManagement from '@/views/admin/reportManagement.vue'
 import MainLayout from '@/layouts/MainLayout.vue'
+import LoginPage from '@/views/login/LoginPage.vue'
+import AddInfoPage from '@/views/login/AddInfoPage.vue'
+// AuthDetailCookPage/AuthDetailOwnerPage는 추후 구현 예정, 임시 컴포넌트로 등록
+const AuthDetailCookPage = { template: '<div>요식업 종사자 상세 인증 (추후 구현)</div>' }
+const AuthDetailOwnerPage = { template: '<div>요식업 자영업자 상세 인증 (추후 구현)</div>' }
 const routes = [
   {
     path: '/admin',
@@ -20,6 +25,26 @@ const routes = [
       { path: 'user-management', name: 'UserManagement', component: UserManagement },
       { path: "report-management", name: "ReportManagement", component: ReportManagement },
     ],
+  },
+  {
+    path: '/login',
+    name: 'Login',
+    component: LoginPage,
+  },
+  {
+    path: '/add-info',
+    name: 'AddInfo',
+    component: AddInfoPage,
+  },
+  {
+    path: '/auth-detail-cook',
+    name: 'AuthDetailCook',
+    component: AuthDetailCookPage,
+  },
+  {
+    path: '/auth-detail-owner',
+    name: 'AuthDetailOwner',
+    component: AuthDetailOwnerPage,
   },
   {
     path: '/',
