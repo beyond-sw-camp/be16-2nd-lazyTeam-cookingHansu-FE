@@ -34,7 +34,7 @@ function socialLogin(type) {
   router.push('/add-info')
 }
 function goAdmin() {
-  router.push('/admin')
+  router.push('/admin-login')
 }
 </script>
 
