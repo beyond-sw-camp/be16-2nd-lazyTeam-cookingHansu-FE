@@ -17,7 +17,7 @@ const props = defineProps({
 })
 </script>
 <style scoped>
-@import '../assets/styles/layout.css';
+@import '../../assets/styles/layout.css';
 .progress-indicator {
   display: flex;
   gap: 18px;

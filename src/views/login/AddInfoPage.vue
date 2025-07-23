@@ -107,8 +107,8 @@ function handleSelectClose() {
 }
 </script>
 <style scoped>
-@import '../assets/fonts/global.scss';
-@import '../assets/styles/layout.css';
+@import '../../assets/fonts/global.scss';
+@import '../../assets/styles/layout.css';
 .add-info-page {
   min-height: 100vh;
   background: #F5F1E8;
