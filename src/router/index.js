@@ -13,6 +13,7 @@ import AdminLoginPage from '@/views/admin/AdminLoginPage.vue'
 import AuthDetailCookPage from '@/views/login/AuthDetailCookPage.vue'
 import AuthDetailOwnerPage from '@/views/login/AuthDetailOwnerPage.vue'
 import AuthDetailUserPage from '@/views/login/AuthDetailUserPage.vue'
+import RegistrationCompletePage from '@/views/login/RegistrationCompletePage.vue'
 
 const routes = [
   {
@@ -57,6 +58,11 @@ const routes = [
     path: '/auth-detail-owner',
     name: 'AuthDetailOwner',
     component: AuthDetailOwnerPage,
+  },
+  {
+    path: '/complete',
+    name: 'RegistrationComplete',
+    component: RegistrationCompletePage
   },
   {
     path: '/',

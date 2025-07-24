@@ -22,7 +22,7 @@
           <div v-if="errors.extra" class="input-error"><span class="error-icon">&#10006;</span> 추가 정보를 입력해 주세요!</div>
           <div class="form-actions">
             <button type="button" class="btn prev" @click="onPrev" @mousedown="btnActive('prev')" @mouseup="btnInactive('prev')" @mouseleave="btnInactive('prev')">이전</button>
-            <button type="submit" class="btn next" @mousedown="btnActive('next')" @mouseup="btnInactive('next')" @mouseleave="btnInactive('next')">다음</button>
+            <button type="submit" class="btn next" @mousedown="btnActive('next')" @mouseup="btnInactive('next')" @mouseleave="btnInactive('next')">가입 완료</button>
           </div>
         </form>
       </div>
@@ -50,7 +50,7 @@ function validate() {
 }
 function onSubmit() {
   if (!validate()) return
-  router.push('/signup-complete')
+  router.push('/complete')
 }
 function handleSelectOpen() {
   selectOpen.value = true
@@ -95,7 +95,7 @@ function handleSelectClose() {
   background: var(--color-white);
   border-radius: 16px;
   box-shadow: 0 2px 16px rgba(0,0,0,0.07);
-  padding: 48px 32px 32px 32px;
+  padding: 32px 32px 32px 32px;
   width: 100%;
   max-width: 600px;
   margin: 0 auto 30px auto;
@@ -110,7 +110,7 @@ function handleSelectClose() {
   color: var(--color-primary);
   font-weight: bold;
   font-size: 2rem;
-  margin-bottom: 8px;
+  margin-bottom: 5px;
   text-align: center;
 }
 .form-subtitle {

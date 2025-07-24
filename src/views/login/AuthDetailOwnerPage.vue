@@ -72,7 +72,7 @@ const form = ref({
 })
 function goHome() { router.push('/') }
 function onPrev() { router.push('/add-info') }
-function onSubmit() { router.push('/signup-complete') }
+function onSubmit() { router.push('/complete') }
 function onBizFileChange(e) {
   const file = e.target.files[0]
   if (file) {
@@ -117,7 +117,7 @@ function onBizFileChange(e) {
   background: var(--color-white);
   border-radius: 16px;
   box-shadow: 0 2px 16px rgba(0,0,0,0.07);
-  padding: 48px 32px 32px 32px;
+  padding: 32px 32px 32px 32px;
   width: 100%;
   max-width: 600px;
   margin: 0 auto 30px auto;
@@ -132,7 +132,7 @@ function onBizFileChange(e) {
   color: var(--color-primary);
   font-weight: bold;
   font-size: 2rem;
-  margin-bottom: 8px;
+  margin-bottom: 5px;
   text-align: center;
 }
 .form-subtitle {
