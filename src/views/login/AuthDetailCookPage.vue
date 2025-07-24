@@ -38,16 +38,26 @@
           <input class="form-input" v-model="form.certNum" placeholder="자격증 관리번호를 입력하세요" required />
 
           <!-- 사업장 정보 추가 등록 -->
-          <div class="owner-add-box">
-            <input type="checkbox" v-model="showOwnerFields" id="addOwner" />
-            <label for="addOwner" class="owner-add-label">
-              <span class="checkbox-custom"></span>
-              사업장 정보 추가 등록
-            </label>
-            <div class="owner-add-desc">본인의 사업장이 있으신 경우 추가 등록하실 수 있습니다.</div>
-          </div>
+          <label class="business-info-card">
+            <input
+              type="checkbox"
+              v-model="form.businessInfo"
+              class="business-info-checkbox"
+            />
+            <div class="business-info-content">
+              <span class="checkbox-icon">
+                <svg v-if="form.businessInfo" width="16" height="16" viewBox="0 0 24 24">
+                  <path fill="currentColor" d="M20 6L9 17l-5-5" />
+                </svg>
+              </span>
+              <div class="business-info-text">
+                <div class="title">사업장 정보 추가 등록</div>
+                <div class="desc">본인의 사업장이 있으신 경우 추가 등록하실 수 있습니다.</div>
+              </div>
+            </div>
+          </label>
 
-          <div v-if="showOwnerFields" class="owner-fields">
+          <div v-if="form.businessInfo" class="owner-fields">
             <div class="section-title">요식업 자영업자 인증</div>
             <!-- 사업자 등록증 -->
             <label class="form-label">사업자 등록증 <span class="required">*</span></label>
@@ -68,15 +78,15 @@
             <label class="form-label">가게 이름 <span class="required">*</span></label>
             <input class="form-input" v-model="form.shopName" placeholder="가게 이름을 입력하세요" />
             <!-- 가게 주소 -->
-            <label class="form-label">가게 주소 <span class="required">*</span></label>
-            <input class="form-input" v-model="form.shopAddr" placeholder="가게 주소를 입력하세요" />
-          </div>
-
-          <div class="form-actions">
-            <button type="button" class="btn prev" @click="onPrev">이전</button>
-            <button type="submit" class="btn next">가입 완료</button>
+            <!-- <label class="form-label">가게 주소 <span class="required">*</span></label>
+            <input class="form-input" v-model="form.shopAddr" placeholder="가게 주소를 입력하세요" /> -->
+            <Address />
           </div>
         </form>
+        <div class="form-actions">
+            <button type="button" class="btn prev" @click="onPrev">이전</button>
+            <button type="button" class="btn next">가입 완료</button>
+          </div>
       </div>
     </transition>
   </div>
@@ -85,6 +95,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import ProgressStep from '@/components/ProgressStep.vue'
+import Address from '@/components/login/Address.vue'
 
 const router = useRouter()
 const showBox = ref(true)
@@ -96,6 +107,7 @@ const form = ref({
   certFile: null,
   certFileName: '',
   certNum: '',
+  businessInfo: false,
   bizFile: null,
   bizFileName: '',
   bizNum: '',
@@ -159,7 +171,7 @@ function onBizFileChange(e) {
   padding: 48px 32px 32px 32px;
   width: 100%;
   max-width: 600px;
-  margin: 0 auto 20px auto;
+  margin: 0 auto 30px auto;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -256,44 +268,48 @@ function onBizFileChange(e) {
   align-items: center;
   font-size: 1.05rem;
 }
-.owner-add-box {
-  background: #fff4e5;
-  border-radius: 8px;
-  padding: 14px 16px 10px 12px;
-  margin: 10px 0 0 0;
+.business-info-card {
+  display: block;
+  background: #fff5ea; /* 연한 주황 베이지 */
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  user-select: none;
+  margin-bottom: 20px;
+}
+.business-info-checkbox {
+  display: none;
+}
+.business-info-content {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  flex-direction: column;
 }
-.owner-add-label {
-  font-size: 1.05rem;
-  color: var(--color-primary);
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.checkbox-custom {
-  width: 18px;
-  height: 18px;
+.checkbox-icon {
+  width: 20px;
+  height: 20px;
   border: 2px solid #ff884d;
   border-radius: 4px;
-  display: inline-block;
-  margin-right: 4px;
-  background: #fff;
-  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  background: #ffffff;
 }
-input[type="checkbox"]:checked + .owner-add-label .checkbox-custom {
+.business-info-checkbox:checked + .business-info-content .checkbox-icon {
   background: #ff884d;
   border-color: #ff884d;
+  color: #ffffff;
 }
-.owner-add-desc {
-  font-size: 0.97rem;
-  color: #ff884d;
-  margin-left: 2px;
-  margin-top: 2px;
+.business-info-text .title {
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: var(--color-text);
+  margin-bottom: 4px;
+}
+.business-info-text .desc {
+  font-size: 0.95rem;
+  color: #bdbdbd;
 }
 .owner-fields {
   margin-top: 18px;
@@ -302,6 +318,7 @@ input[type="checkbox"]:checked + .owner-add-label .checkbox-custom {
   border-radius: 10px;
 }
 .form-actions {
+  width: 100%;
   display: flex;
   justify-content: space-between;
   gap: 16px;

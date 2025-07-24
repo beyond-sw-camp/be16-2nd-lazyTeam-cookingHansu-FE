@@ -21,11 +21,6 @@ const routes = [
     component: AdminLoginPage,
   },
   {
-    path: '/admin-register',
-    name: 'AdminRegister',
-    component: () => import('@/views/admin/AdminRegisterPage.vue'),
-  },
-  {
     path: '/admin',
     component: AdminLayout, // 관리자 공통 레이아웃
     children: [

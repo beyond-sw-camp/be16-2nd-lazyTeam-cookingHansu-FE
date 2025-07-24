@@ -43,11 +43,11 @@
           <!-- <label class="form-label">가게 주소 <span class="required">*</span></label>
           <input class="form-input" v-model="form.shopAddr" placeholder="가게 주소를 입력하세요" /> -->
           <Address />
-          <div class="form-actions">
-            <button type="button" class="btn prev" @click="onPrev">이전</button>
-            <button type="submit" class="btn next">가입 완료</button>
-          </div>
         </form>
+        <div class="form-actions">
+            <button type="button" class="btn prev" @click="onPrev">이전</button>
+            <button type="button" class="btn next">가입 완료</button>
+        </div>
       </div>
     </transition>
   </div>
@@ -120,7 +120,7 @@ function onBizFileChange(e) {
   padding: 48px 32px 32px 32px;
   width: 100%;
   max-width: 600px;
-  margin: 0 auto 20px auto;
+  margin: 0 auto 30px auto;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -218,6 +218,7 @@ function onBizFileChange(e) {
   font-size: 1.05rem;
 }
 .form-actions {
+  width: 100%;
   display: flex;
   justify-content: space-between;
   gap: 16px;

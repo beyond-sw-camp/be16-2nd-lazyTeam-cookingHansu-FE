@@ -98,7 +98,7 @@ function handleSelectClose() {
   padding: 48px 32px 32px 32px;
   width: 100%;
   max-width: 600px;
-  margin: 0 auto 20px auto;
+  margin: 0 auto 30px auto;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -163,6 +163,7 @@ function handleSelectClose() {
   margin-right: 2px;
 }
 .form-actions {
+  width: 100%;
   display: flex;
   justify-content: space-between;
   gap: 16px;

@@ -9,24 +9,34 @@
         <div class="form-title">요리한수</div>
         <div class="form-subtitle">기본 정보 입력</div>
         <form class="form-content" @submit.prevent="onNext">
-          <label class="form-label">닉네임</label>
+          <label class="form-label">닉네임 <span class="required">*</span></label>
           <input class="form-input" :class="{ error: errors.nickname }" v-model="form.nickname" placeholder="닉네임을 입력하세요" />
           <div v-if="errors.nickname" class="input-error"><span class="error-icon">&#10006;</span> 닉네임을 입력해 주세요!</div>
-          <label class="form-label">역할 선택</label>
+          <label class="form-label">역할 선택 <span class="required">*</span></label>
           <div class="role-group">
-            <div v-for="role in roles" :key="role.value" :class="['role-radio', { selected: form.role === role.value }]" @click="form.role = role.value">
-              <input type="radio" :value="role.value" v-model="form.role" :id="role.value" />
-              <label :for="role.value">
-                <div class="role-title">{{ role.label }}</div>
-                <div class="role-desc">{{ role.desc }}</div>
-              </label>
+              <div
+                v-for="role in roles"
+                :key="role.value"
+                class="role-radio"
+                :class="{ selected: form.role === role.value }"
+                @click="form.role = role.value"
+              >
+                <div class="role-input">
+                  <span class="radio-circle">
+                    <span v-if="form.role === role.value" class="radio-dot"></span>
+                  </span>
+                </div>
+                <div class="role-text">
+                  <div class="role-title">{{ role.label }}</div>
+                  <div class="role-desc">{{ role.desc }}</div>
+                </div>
+              </div>
             </div>
-          </div>
-          <div class="form-actions">
-            <button type="button" class="btn prev" @click="onPrev" @mousedown="btnActive('prev')" @mouseup="btnInactive('prev')" @mouseleave="btnInactive('prev')">이전</button>
-            <button type="submit" class="btn next" @mousedown="btnActive('next')" @mouseup="btnInactive('next')" @mouseleave="btnInactive('next')">다음</button>
-          </div>
         </form>
+        <div class="form-actions">
+            <button type="button" class="btn prev" @click="onPrev" @mousedown="btnActive('prev')" @mouseup="btnInactive('prev')" @mouseleave="btnInactive('prev')">이전</button>
+            <button type="button" class="btn next" @click="onNext" @mousedown="btnActive('next')" @mouseup="btnInactive('next')" @mouseleave="btnInactive('next')">다음</button>
+        </div>
       </div>
     </transition>
   </div>
@@ -99,7 +109,6 @@ function btnInactive(type) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  font-family: 'NotoSansKR', 'Noto Sans', sans-serif;
   overflow: hidden;
 }
 .top-bar {
@@ -128,7 +137,7 @@ function btnInactive(type) {
   padding: 48px 32px 32px 32px;
   width: 100%;
   max-width: 600px;
-  margin: 0 auto 20px auto;
+  margin: 0 auto 30px auto;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -155,6 +164,11 @@ function btnInactive(type) {
   flex-direction: column;
   gap: 12px;
   overflow-y: auto;
+}
+.required {
+  color: #ff884d;
+  font-size: 1.1em;
+  margin-left: 2px;
 }
 .form-label {
   font-size: 1.05rem;
@@ -192,72 +206,60 @@ function btnInactive(type) {
   font-size: 1.1em;
   margin-right: 2px;
 }
-.profile-upload {
-  display: flex;
-  align-items: center;
-  margin-bottom: 8px;
-}
-.profile-label {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: #f3f3f3;
-  border: 1.5px solid #e9ecef;
-  cursor: pointer;
-  overflow: hidden;
-}
-.profile-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 50%;
-}
-.profile-placeholder {
-  font-size: 2rem;
-  color: #bdbdbd;
-}
-.role-group {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 8px;
+.role-group { 
+  display: flex; 
+  flex-direction: column; 
 }
 .role-radio {
-  display: flex;
+  display: flex; 
   align-items: center;
-  border: 1.5px solid #e9ecef;
+  border: 1.5px solid #e9ecef; 
   border-radius: 12px;
-  background: var(--color-background);
-  padding: 14px 16px;
-  cursor: pointer;
+  background: var(--color-white); 
+  padding: 14px 16px; 
+  margin-bottom: 8px;
+  cursor: pointer; 
   transition: border 0.2s, background 0.2s;
-  margin-bottom: 2px;
 }
-.role-radio.selected {
-  border: 1.5px solid var(--color-primary);
-  background: #fff5ea;
+.role-radio.selected { 
+  border-color: var(--color-primary); 
+  background: #fff5ea; 
 }
-.role-radio input[type="radio"] {
-  margin-right: 18px;
-  accent-color: var(--color-primary);
-  width: 22px;
+.role-input { 
+  margin-right: 18px; 
+}
+.radio-circle {
+  width: 22px; 
   height: 22px;
+  border: 2px solid var(--color-primary); 
+  border-radius: 50%;
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
 }
-.role-title {
-  font-weight: bold;
-  color: var(--color-text);
-  font-size: 1.08rem;
+.radio-dot { 
+  width: 12px; 
+  height: 12px; 
+  background: var(--color-primary); 
+  border-radius: 50%; 
 }
-.role-desc {
-  color: #bdbdbd;
-  font-size: 0.98rem;
+.role-text { 
+  display: flex; 
+  flex-direction: column; 
+}
+.role-title { 
+  font-size: 1.08rem; 
+  font-weight: bold; 
+  color: var(--color-text); 
+}
+.role-desc { 
+  font-size: 0.98rem; 
+  color: #bdbdbd; 
 }
 .form-actions {
   display: flex;
   justify-content: space-between;
+  width: 100%;
   gap: 16px;
   margin-top: 18px;
 }
