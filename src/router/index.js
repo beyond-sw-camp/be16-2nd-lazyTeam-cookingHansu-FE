@@ -6,7 +6,26 @@ import ChefApproval from '@/views/admin/ChefApproval.vue'
 import NoticeManagement from '@/views/admin/NoticeManagement.vue'
 import UserManagement from '@/views/admin/UserManagement.vue'
 import ReportManagement from '@/views/admin/ReportManagement.vue'
+import RecipeMainPage from '@/views/home/RecipeMainPage.vue'
+import LectureList from '@/views/home/LectureList.vue'
+import Notification from '@/views/home/Notification.vue'
+
 const routes = [
+  {
+    path: '/',
+    name: 'RecipeMainPage',
+    component: RecipeMainPage,
+  },
+  {
+    path: '/lecture-list',
+    name: 'LectureList',
+    component: LectureList,
+  },
+  {
+    path: '/notification',
+    name: 'Notification',
+    component: Notification,
+  },
   {
     path: '/admin',
     component: AdminLayout, // 관리자 공통 레이아웃
