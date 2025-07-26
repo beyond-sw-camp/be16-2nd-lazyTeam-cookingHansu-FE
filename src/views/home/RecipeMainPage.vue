@@ -10,6 +10,7 @@
         강의 목록
       </button>
     </div>
+
     <!-- 필터 영역 -->
     <div class="filter-card">
       <div class="filter-title-row">
@@ -88,9 +89,14 @@
 import Header from '@/components/Header.vue';
 import Footer from '@/components/Footer.vue';
 
+const defaultThumbnail = '/src/assets/images/smu_mascort1.jpg';
+
 export default {
   name: "RecipeMainPage",
-  components: { Header, Footer },
+  components: {
+    Header,
+    Footer,
+  },
   data() {
     return {
       currentTab: "recipe",
@@ -99,6 +105,106 @@ export default {
       selectedUserType: "",
       selectedCategory: "",
       selectedSort: "latest",
+      recipes: [
+        {
+          id: 1,
+          image: '/src/assets/images/smu_mascort1.jpg',
+          category: 'KOREAN',
+          title: '집밥 백선생의 한식 레시피',
+          authorType: 'CHEF',
+          description: '쉽고 맛있는 한식 레시피 모음',
+          likes: 120,
+          comments: 15,
+          views: 500,
+          time: '1시간 전',
+        },
+        {
+          id: 2,
+          image: '/src/assets/images/smu_mascort2.jpg',
+          category: 'CHINESE',
+          title: '중식 고수의 꿀팁',
+          authorType: 'OWNER',
+          description: '중식당 사장님의 인기 레시피',
+          likes: 80,
+          comments: 8,
+          views: 300,
+          time: '2시간 전',
+        },
+        {
+          id: 3,
+          image: '/src/assets/images/smu_mascort3.jpg',
+          category: 'WESTERN',
+          title: '이탈리안 파스타 마스터',
+          authorType: 'GENERAL',
+          description: '집에서 즐기는 정통 파스타',
+          likes: 60,
+          comments: 5,
+          views: 200,
+          time: '3시간 전',
+        },
+        {
+          id: 4,
+          image: '/src/assets/images/smu_mascort4.jpg',
+          category: 'JAPANESE',
+          title: '스시의 모든 것',
+          authorType: 'CHEF',
+          description: '스시 장인의 노하우',
+          likes: 90,
+          comments: 10,
+          views: 250,
+          time: '4시간 전',
+        },
+        {
+          id: 5,
+          image: '/src/assets/images/smu_mascort5.jpg',
+          category: 'KOREAN',
+          title: '매콤한 김치찌개',
+          authorType: 'GENERAL',
+          description: '집밥의 정석, 김치찌개 레시피',
+          likes: 70,
+          comments: 6,
+          views: 180,
+          time: '5시간 전',
+        },
+        {
+          id: 6,
+          image: '/src/assets/images/smu_mascort1.jpg',
+          category: 'CHINESE',
+          title: '깐풍기 쉽게 만들기',
+          authorType: 'OWNER',
+          description: '바삭하고 매콤한 깐풍기',
+          likes: 55,
+          comments: 4,
+          views: 160,
+          time: '6시간 전',
+        },
+        {
+          id: 7,
+          image: '/src/assets/images/smu_mascort2.jpg',
+          category: 'WESTERN',
+          title: '홈메이드 피자',
+          authorType: 'CHEF',
+          description: '도우부터 토핑까지 직접!',
+          likes: 100,
+          comments: 12,
+          views: 400,
+          time: '7시간 전',
+        },
+        {
+          id: 8,
+          image: '/src/assets/images/smu_mascort3.jpg',
+          category: 'JAPANESE',
+          title: '라멘 마스터 클래스',
+          authorType: 'OWNER',
+          description: '진한 국물의 비법 공개',
+          likes: 65,
+          comments: 7,
+          views: 210,
+          time: '8시간 전',
+        },
+      ],
+    };
+  },
   computed: {
     pagedRecipes() {
       let filtered = this.recipes;
@@ -157,9 +263,45 @@ export default {
         default: return '알 수 없음';
       }
     },
+    userTypeClass(type) {
+      return type ? `user-${type.toLowerCase()}` : '';
+    },
+    onImgError(e) {
+      if (!e.target.src.includes('smu_mascort1.jpg')) {
+        e.target.src = defaultThumbnail;
+      }
+    },
   },
 };
 </script>
+
+<style scoped>
+.recipe-main-page {
+  background: #fafbfc;
+  box-sizing: border-box;
+  padding-bottom: 0;
+  margin-top: 80px; /* 헤더 높이(64px) + 여유 */
+}
+.nav-tabs {
+  display: flex;
+  justify-content: center;
+  margin: 32px 0 24px 0;
+  gap: 12px;
+}
+.nav-tabs button {
+  padding: 10px 24px;
+  border: none;
+  background: #fff;
+  color: #ff7a00;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.nav-tabs button.active {
+  background: #ff7a00;
+  color: #fff;
+}
 .filter-card {
   background: #fff;
   border-radius: 12px;
@@ -355,5 +497,13 @@ export default {
 .pagination button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+</style>
+
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 </style>
