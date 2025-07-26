@@ -45,6 +45,38 @@
         </div>
       </div>
     </div>
+
+    <!-- 강의 카드 리스트 -->
+    <div class="lecture-grid">
+      <div v-for="lecture in pagedLectures" :key="lecture.id" class="lecture-card">
+        <img :src="lecture.image" class="lecture-img" />
+        <div class="card-content">
+          <div class="category-row">
+            <span class="category-badge" :class="categoryClass(lecture.category)">{{ lecture.category }}</span>
+            <span class="price">{{ lecture.price.toLocaleString() }}원</span>
+          </div>
+          <div class="title">{{ lecture.title }}</div>
+          <div class="desc">{{ lecture.description }}</div>
+          <div class="card-footer">
+            <div class="meta">
+              <span class="meta-rating">
+                <span class="stars">
+                  <span v-for="i in 5" :key="i" class="star" :class="{ filled: i <= Math.round(lecture.rating) }">
+                    ★
+                  </span>
+                </span>
+                <span class="meta-count">({{ lecture.ratingCount }})</span>
+              </span>
+              <span class="meta-likes"><span class="meta-icon">&#9829;</span> {{ lecture.likes }}</span>
+              <span class="meta-comments"><span class="meta-icon">💬</span> {{ lecture.comments }}</span>
+              <span class="meta-students"><span class="meta-icon">👥</span> {{ lecture.students }}</span>
+            </div>
+            <div class="date">{{ lecture.date }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
     <Footer />
   </div>
 </template>
@@ -189,6 +221,16 @@ export default {
   },
   methods: {
     goToRecipe() { this.$router.push({ name: 'RecipeMainPage' }); },
+    categoryClass(category) {
+      switch (category) {
+        case '한식': return 'cat-korean';
+        case '양식': return 'cat-western';
+        case '일식': return 'cat-japanese';
+        case '중식': return 'cat-chinese';
+        case '디저트': return 'cat-dessert';
+        default: return '';
+      }
+    },
   },
 };
 </script>
@@ -206,4 +248,114 @@ export default {
 .filter-col { display: flex; flex-direction: column; flex: 1; min-width: 120px; }
 .filter-col label { font-size: 13px; color: #444; font-weight: 500; margin-bottom: 4px; }
 .filter-col select { padding: 6px 10px; border-radius: 6px; border: 1px solid #eee; font-size: 14px; background: #fafbfc; }
+
+.lecture-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 16px;
+  max-width: 1040px;
+  margin: 0 auto 24px auto;
+  
+}
+
+.lecture-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1.5px solid #f3f3f3;
+}
+.lecture-img { width: 100%; height: 90px; object-fit: cover; border-radius: 12px 12px 0 0; margin-bottom: 0; }
+.card-content { display: flex; flex-direction: column; padding: 10px 12px 8px 12px; }
+.category-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.category-badge { font-size: 13px; font-weight: 600; padding: 2px 10px; border-radius: 10px; background: #f5f5f5; }
+.cat-korean { background: #ffe5c2; color: #ff7a00; }
+.cat-chinese { background: #ffe2e2; color: #ff3b3b; }
+.cat-western { background: #e2f0ff; color: #007aff; }
+.cat-japanese { background: #e2ffe7; color: #00b86b; }
+.cat-dessert { background: #fff3e2; color: #ff7a00; }
+.price { font-size: 17px; color: #ff7a00; font-weight: 700; }
+
+.title {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: #222;
+  white-space: normal;
+  word-break: keep-all;
+  overflow: visible;
+  text-overflow: unset;
+}
+
+.desc {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 10px;
+  line-height: 1.5;
+  display: block;
+  overflow: visible;
+  white-space: normal;
+  word-break: keep-all;
+}
+
+.card-footer {
+  display: flex;
+  flex-direction: column; /* 아이콘과 날짜 세로배치 */
+  align-items: flex-start;
+  gap: 4px;
+  margin-top: auto;
+}
+
+.meta {
+  display: flex;
+  gap: 10px;
+  font-size: 12px;
+  align-items: center;
+  line-height: 1;
+}
+
+.meta span {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.meta-icon {
+  font-size: 12px;
+}
+
+.meta-rating .star {
+  color: #ddd;
+  font-size: 12px;
+}
+.meta-rating .star.filled {
+  color: #ffc107;
+}
+
+.meta-count {
+  font-size: 12px;
+  color: #888;
+}
+
+.meta-likes,
+.meta-comments,
+.meta-students {
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+
+}
+
+.date {
+  font-size: 11px;
+  color: #bbb;
+  font-weight: 400;
+  white-space: nowrap;
+  align-self: flex-end;
+}
 </style>
