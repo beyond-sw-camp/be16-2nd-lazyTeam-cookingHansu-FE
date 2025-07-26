@@ -77,6 +77,19 @@
       </div>
     </div>
     
+    <!-- 페이지네이션 -->
+    <div class="pagination">
+      <button @click="changePage(currentPage - 1)" :disabled="currentPage === 1"> &lt; </button>
+      <button
+        v-for="page in totalPages"
+        :key="page"
+        :class="{ active: page === currentPage }"
+        @click="changePage(page)"
+      >
+        {{ page }}
+      </button>
+      <button @click="changePage(currentPage + 1)" :disabled="currentPage === totalPages"> &gt; </button>
+    </div>
     <Footer />
   </div>
 </template>
@@ -91,6 +104,8 @@ export default {
   data() {
     return {
       currentTab: 'lecture',
+      currentPage: 1,
+      lecturesPerPage: 8,
       selectedCategory: '',
       selectedPrice: '',
       selectedSort: 'latest',
@@ -218,9 +233,39 @@ export default {
       ],
     };
   },
+  computed: {
+    pagedLectures() {
+      let filtered = this.lectures;
+      if (this.selectedCategory) filtered = filtered.filter(l => l.category === this.selectedCategory);
+      if (this.selectedPrice) {
+        filtered = filtered.filter(l => {
+          if (this.selectedPrice === 'low') return l.price < 30000;
+          if (this.selectedPrice === 'mid') return l.price >= 30000 && l.price <= 50000;
+          if (this.selectedPrice === 'high') return l.price > 50000;
+        });
+      }
+      if (this.selectedSort === 'latest') filtered = filtered.slice().sort((a, b) => b.id - a.id);
+      else if (this.selectedSort === 'popular') filtered = filtered.slice().sort((a, b) => b.likes - a.likes);
+      const start = (this.currentPage - 1) * this.lecturesPerPage;
+      const end = start + this.lecturesPerPage;
+      return filtered.slice(start, end);
+    },
+    totalPages() {
+      let filtered = this.lectures;
+      if (this.selectedCategory) filtered = filtered.filter(l => l.category === this.selectedCategory);
+      if (this.selectedPrice) {
+        filtered = filtered.filter(l => {
+          if (this.selectedPrice === 'low') return l.price < 30000;
+          if (this.selectedPrice === 'mid') return l.price >= 30000 && l.price <= 50000;
+          if (this.selectedPrice === 'high') return l.price > 50000;
+        });
+      }
+      return Math.max(1, Math.ceil(filtered.length / this.lecturesPerPage));
+    },
   },
   methods: {
     goToRecipe() { this.$router.push({ name: 'RecipeMainPage' }); },
+    changePage(page) { if (page >= 1 && page <= this.totalPages) this.currentPage = page; },
     categoryClass(category) {
       switch (category) {
         case '한식': return 'cat-korean';
@@ -358,4 +403,30 @@ export default {
   white-space: nowrap;
   align-self: flex-end;
 }
+
+
+.pagination { display: flex; justify-content: center; gap: 8px; margin-bottom: 40px; }
+.pagination button { border: none; background: #fff; color: #ff7a00; border-radius: 4px; padding: 6px 12px; cursor: pointer; font-weight: 600; }
+.pagination button.active { background: #ff7a00; color: #fff; }
+.meta {
+  display: flex;
+  gap: 8px;
+  font-size: 10px;
+  align-items: center;
+  line-height: 1;
+}
+
+.meta-icon {
+  font-size: 14px;
+}
+
+.meta-count {
+  font-size: 12px;
+  color: #888;
+}
+
+.meta-rating .star {
+  font-size: 12px;
+}
+
 </style>
