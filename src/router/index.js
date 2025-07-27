@@ -5,8 +5,10 @@ import LectureApproval from '@/views/admin/LectureApproval.vue'
 import ChefApproval from '@/views/admin/ChefApproval.vue'
 import NoticeManagement from '@/views/admin/NoticeManagement.vue'
 import UserManagement from '@/views/admin/UserManagement.vue'
+import chat from '@/views/chat/chatScreen.vue'
 import ReportManagement from '@/views/admin/ReportManagement.vue'
-import MainLayout from '@/layouts/MainLayout.vue'
+import MainLayout from '@/layouts/MainLayout.vue' // 유저용 레이아웃
+
 const routes = [
   {
     path: '/admin',
@@ -29,7 +31,11 @@ const routes = [
       { path: '', redirect: '/recipes' },
       { path: 'recipes', component: { template: '<div>레시피 공유 게시글</div>' } },
       { path: 'lectures', component: { template: '<div>판매중인 강의</div>' } },
-      { path: 'chat', component: { template: '<div>1:1채팅</div>' } },
+      {
+        path: '/chat',
+        name: 'Chat',
+        component: chat,
+      },
       { path: 'mypage', component: { template: '<div>마이페이지</div>' } },
     ],
   },
