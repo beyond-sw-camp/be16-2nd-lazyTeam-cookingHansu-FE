@@ -8,7 +8,6 @@ import UserManagement from '@/views/admin/UserManagement.vue'
 import ReportManagement from '@/views/admin/ReportManagement.vue'
 import RecipeMainPage from '@/views/home/RecipeMainPage.vue'
 import LectureList from '@/views/home/LectureList.vue'
-import Notification from '@/views/home/Notification.vue'
 
 import MainLayout from '@/layouts/MainLayout.vue'
 
@@ -23,11 +22,7 @@ const routes = [
     name: 'LectureList',
     component: LectureList,
   },
-  {
-    path: '/notification',
-    name: 'Notification',
-    component: Notification,
-  },
+
   {
     path: '/admin',
     component: AdminLayout, // 관리자 공통 레이아웃
