@@ -90,17 +90,15 @@
       </button>
       <button @click="changePage(currentPage + 1)" :disabled="currentPage >= totalPages"> &gt; </button>
     </div>
-    <Footer />
   </div>
 </template>
 
 <script>
 import Header from '@/components/Header.vue';
-import Footer from '@/components/Footer.vue';
 
 export default {
   name: 'LectureList',
-  components: { Header, Footer },
+  components: { Header },
   data() {
     return {
       currentTab: 'lecture',
@@ -487,8 +485,8 @@ export default {
 </script>
 
 <style scoped>
-.lecture-list-page { background: #fafbfc; min-height: 100vh; margin-top: 80px; }
-.nav-tabs { display: flex; justify-content: center; margin: 32px 0 24px 0; gap: 12px; }
+.lecture-list-page { background: #fafbfc; min-height: 100vh; margin-top: 64px; }
+.nav-tabs { display: flex; justify-content: center; margin: 16px 0 24px 0; gap: 12px; }
 .nav-tabs button { padding: 10px 24px; border: none; background: #fff; color: #ff7a00; font-weight: 600; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
 .nav-tabs button.active { background: #ff7a00; color: #fff; }
 
@@ -527,7 +525,6 @@ export default {
 .lecture-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-  border-color: #ff7a00;
 }
 .lecture-img { width: 100%; height: 90px; object-fit: cover; border-radius: 12px 12px 0 0; margin-bottom: 0; }
 .card-content { display: flex; flex-direction: column; padding: 10px 12px 8px 12px; }

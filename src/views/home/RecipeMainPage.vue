@@ -81,13 +81,11 @@
       </button>
       <button @click="changePage(currentPage + 1)" :disabled="currentPage >= totalPages"> &gt; </button>
     </div>
-    <Footer />
   </div>
 </template>
 
 <script>
 import Header from '@/components/Header.vue';
-import Footer from '@/components/Footer.vue';
 
 const defaultThumbnail = '/src/assets/images/smu_mascort1.jpg';
 
@@ -95,7 +93,6 @@ export default {
   name: "RecipeMainPage",
   components: {
     Header,
-    Footer,
   },
   data() {
     return {
@@ -442,12 +439,12 @@ export default {
   background: #fafbfc;
   box-sizing: border-box;
   padding-bottom: 0;
-  margin-top: 80px; /* 헤더 높이(64px) + 여유 */
+  margin-top: 64px; /* 헤더 높이만큼만 */
 }
 .nav-tabs {
   display: flex;
   justify-content: center;
-  margin: 32px 0 24px 0;
+  margin: 16px 0 24px 0;
   gap: 12px;
 }
 .nav-tabs button {
@@ -544,7 +541,6 @@ export default {
 .recipe-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-  border-color: #ff7a00;
 }
 .recipe-img {
   width: 100%;
