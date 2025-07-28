@@ -129,6 +129,7 @@ const menuItems = [
   { text: '레시피 공유 게시글', route: '/recipes' },
   { text: '판매중인 강의', route: '/lectures' },
   { text: '1:1채팅', route: '/chat' },
+  { text: '공지사항', route: '/notice' },
   { text: '마이페이지', route: '/mypage' }
 ]
 
