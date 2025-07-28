@@ -48,7 +48,7 @@
 
     <!-- 강의 카드 리스트 -->
     <div class="lecture-grid">
-      <div v-for="lecture in pagedLectures" :key="lecture.id" class="lecture-card">
+      <div v-for="lecture in pagedLectures" :key="lecture.id" class="lecture-card" @click="handleCardClick(lecture)">
         <img :src="lecture.image" class="lecture-img" />
         <div class="card-content">
           <div class="category-row">
@@ -109,6 +109,8 @@ export default {
       selectedCategory: '',
       selectedPrice: '',
       selectedSort: 'latest',
+      selectedLecture: null, // 선택된 강의
+      showClickEffect: false, // 클릭 효과 표시 여부
       lectures: [
         {
           id: 1,
@@ -266,6 +268,19 @@ export default {
   methods: {
     goToRecipe() { this.$router.push({ name: 'RecipeMainPage' }); },
     changePage(page) { if (page >= 1 && page <= this.totalPages) this.currentPage = page; },
+    handleCardClick(lecture) {
+      // 카드 클릭 이벤트 -> 추후 상태관리..
+      console.log('강의 클릭:', lecture.id, lecture.title);
+      
+      // 클릭된 강의
+      this.selectedLecture = lecture;
+      
+      
+      this.showClickEffect = true;
+      setTimeout(() => {
+        this.showClickEffect = false;
+      }, 200);
+    },
     categoryClass(category) {
       switch (category) {
         case '한식': return 'cat-korean';
@@ -314,6 +329,14 @@ export default {
   align-items: stretch;
   overflow: hidden;
   border: 1.5px solid #f3f3f3;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.lecture-card:hover {
+  transform: translateY(-4px) scale(1.03) rotateY(3deg);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25);
+  border-color: #ff7a00;
 }
 .lecture-img { width: 100%; height: 90px; object-fit: cover; border-radius: 12px 12px 0 0; margin-bottom: 0; }
 .card-content { display: flex; flex-direction: column; padding: 10px 12px 8px 12px; }

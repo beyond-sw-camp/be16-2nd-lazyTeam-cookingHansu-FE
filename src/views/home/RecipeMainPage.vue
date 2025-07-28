@@ -1,86 +1,104 @@
 <template>
   <div class="recipe-main-page">
     <Header />
-    <!-- 상단 탭 -->
-    <div class="nav-tabs">
-      <button :class="{ active: currentTab === 'recipe' }" @click="currentTab = 'recipe'">
-        레시피 게시글
+    
+    <!-- 탭 네비게이션 -->
+    <div class="tab-navigation">
+      <button 
+        :class="{ active: currentTab === 'recipe' }" 
+        @click="currentTab = 'recipe'"
+        class="tab-button"
+      >
+        레시피 공유 게시글
       </button>
-      <button :class="{ active: currentTab === 'lecture' }" @click="goToLecture">
-        강의 목록
+      <button 
+        :class="{ active: currentTab === 'lecture' }" 
+        @click="goToLecture"
+        class="tab-button"
+      >
+        판매중인 강의
       </button>
     </div>
 
-    <!-- 필터 영역 -->
-    <div class="filter-card">
-      <div class="filter-title-row">
-        <div class="filter-title">레시피 필터</div>
-        <button class="write-btn">게시글 등록하기</button>
-      </div>
-      <div class="filter-row">
-        <div class="filter-col">
-          <label>사용자 유형</label>
-          <select v-model="selectedUserType">
-            <option value="">전체</option>
-            <option value="GENERAL">일반 사용자</option>
-            <option value="CHEF">요리 전문가</option>
-            <option value="OWNER">자영업자</option>
-          </select>
+    <!-- 레시피 섹션 -->
+    <div v-if="currentTab === 'recipe'" class="recipe-section">
+      <!-- 필터 영역 -->
+      <div class="filter-card">
+        <div class="filter-title-row">
+          <div class="filter-title">레시피 필터</div>
+          <button class="write-btn">게시글 등록하기</button>
         </div>
-        <div class="filter-col">
-          <label>요식 종류</label>
-          <select v-model="selectedCategory">
-            <option value="">전체</option>
-            <option value="KOREAN">한식</option>
-            <option value="CHINESE">중식</option>
-            <option value="WESTERN">양식</option>
-            <option value="JAPANESE">일식</option>
-          </select>
-        </div>
-        <div class="filter-col">
-          <label>정렬</label>
-          <select v-model="selectedSort">
-            <option value="latest">최신순</option>
-            <option value="popular">인기순</option>
-          </select>
-        </div>
-      </div>
-    </div>
-    <!-- 레시피 카드 리스트 (2행 4열) -->
-    <div class="recipe-grid">
-      <div v-for="recipe in pagedRecipes" :key="recipe.id" class="recipe-card">
-        <img :src="recipe.image" alt="썸네일" class="recipe-img" @error="onImgError" />
-        <div class="card-content">
-          <div class="card-header">
-            <span class="category-label" :class="categoryClass(recipe.category)">{{ categoryText(recipe.category) }}</span>
-            <span class="author-type">{{ userTypeText(recipe.authorType) }}</span>
+        <div class="filter-row">
+          <div class="filter-col">
+            <label>사용자 유형</label>
+            <select v-model="selectedUserType">
+              <option value="">전체</option>
+              <option value="GENERAL">일반 사용자</option>
+              <option value="CHEF">요리 전문가</option>
+              <option value="OWNER">자영업자</option>
+            </select>
           </div>
-          <div class="title">{{ recipe.title }}</div>
-          <div class="desc">{{ recipe.description || '간단한 레시피 설명이 들어갑니다.' }}</div>
-          <div class="card-footer">
-            <div class="meta">
-              <span class="meta-views"><span class="meta-icon">&#128065;</span> {{ recipe.views }}</span>
-              <span class="meta-likes">❤️ {{ recipe.likes }}</span>
-              <span class="meta-comments">💬 {{ recipe.comments }}</span>
+          <div class="filter-col">
+            <label>요식 종류</label>
+            <select v-model="selectedCategory">
+              <option value="">전체</option>
+              <option value="KOREAN">한식</option>
+              <option value="CHINESE">중식</option>
+              <option value="WESTERN">양식</option>
+              <option value="JAPANESE">일식</option>
+            </select>
+          </div>
+          <div class="filter-col">
+            <label>정렬</label>
+            <select v-model="selectedSort">
+              <option value="latest">최신순</option>
+              <option value="popular">인기순</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 레시피 카드 리스트 -->
+      <div class="recipe-grid">
+        <div v-for="recipe in pagedRecipes" :key="recipe.id" class="recipe-card" @click="handleCardClick(recipe)">
+          <img :src="recipe.image" alt="썸네일" class="recipe-img" @error="onImgError" />
+          <div class="card-content">
+            <div class="card-header">
+              <span class="category-label" :class="categoryClass(recipe.category)">{{ categoryText(recipe.category) }}</span>
+              <span class="author-type">{{ userTypeText(recipe.authorType) }}</span>
             </div>
-            <div class="time">{{ recipe.time }}</div>
+            <div class="title">{{ recipe.title }}</div>
+            <div class="desc">{{ recipe.description || '간단한 레시피 설명이 들어갑니다.' }}</div>
+            <div class="card-footer">
+              <div class="meta">
+                <span class="meta-views"><span class="meta-icon">&#128065;</span> {{ recipe.views }}</span>
+                <span class="meta-likes">❤️ {{ recipe.likes }}</span>
+                <span class="meta-comments">💬 {{ recipe.comments }}</span>
+              </div>
+              <div class="time">{{ recipe.time }}</div>
+            </div>
           </div>
         </div>
       </div>
+      
+      <!-- 페이지네이션 -->
+      <div class="pagination">
+        <button @click="changePage(currentPage - 1)" :disabled="currentPage <= 1"> &lt; </button>
+        <button
+          v-for="page in totalPages"
+          :key="page"
+          :class="{ active: page === currentPage }"
+          @click="changePage(page)"
+        >
+          {{ page }}
+        </button>
+        <button @click="changePage(currentPage + 1)" :disabled="currentPage >= totalPages"> &gt; </button>
+      </div>
     </div>
-    <!-- 페이지네이션-->
-    <div class="pagination">
-      <button @click="changePage(currentPage - 1)" :disabled="currentPage === 1"> &lt; </button>
-      <button
-        v-for="page in totalPages"
-        :key="page"
-        :class="{ active: page === currentPage }"
-        @click="changePage(page)"
-      >
-        {{ page }}
-      </button>
-      <button @click="changePage(currentPage + 1)" :disabled="currentPage === totalPages"> &gt; </button>
-    </div>
+
+    
+
+
     <Footer />
   </div>
 </template>
@@ -99,12 +117,14 @@ export default {
   },
   data() {
     return {
-      currentTab: "recipe",
+      currentTab: "recipe", // 기본 : 레시피
       currentPage: 1,
       recipesPerPage: 8,
       selectedUserType: "",
       selectedCategory: "",
       selectedSort: "latest",
+      selectedRecipe: null,
+      showClickEffect: false,
       recipes: [
         {
           id: 1,
@@ -271,6 +291,19 @@ export default {
         e.target.src = defaultThumbnail;
       }
     },
+    handleCardClick(recipe) {
+      // 추후 상태관리
+      console.log('레시피 클릭:', recipe.id, recipe.title);
+      
+      // 클릭된 레시피
+      this.selectedRecipe = recipe;
+      
+      
+      this.showClickEffect = true;
+      setTimeout(() => {
+        this.showClickEffect = false;
+      }, 200);
+    },
   },
 };
 </script>
@@ -282,13 +315,13 @@ export default {
   padding-bottom: 0;
   margin-top: 80px; /* 헤더 높이(64px) + 여유 */
 }
-.nav-tabs {
+.tab-navigation {
   display: flex;
   justify-content: center;
   margin: 32px 0 24px 0;
   gap: 12px;
 }
-.nav-tabs button {
+.tab-button {
   padding: 10px 24px;
   border: none;
   background: #fff;
@@ -298,9 +331,18 @@ export default {
   cursor: pointer;
   transition: background 0.2s;
 }
-.nav-tabs button.active {
+.tab-button.active {
   background: #ff7a00;
   color: #fff;
+}
+.section-placeholder {
+  text-align: center;
+  padding: 60px 20px;
+  color: #666;
+}
+.section-placeholder h2 {
+  color: #ff7a00;
+  margin-bottom: 16px;
 }
 .filter-card {
   background: #fff;
@@ -375,6 +417,14 @@ export default {
   min-height: 220px;
   overflow: hidden;
   border: 1.5px solid #f3f3f3;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.recipe-card:hover {
+  transform: translateY(-4px) scale(1.03) rotateY(3deg);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25);
+  border-color: #ff7a00;
 }
 .recipe-img {
   width: 100%;
