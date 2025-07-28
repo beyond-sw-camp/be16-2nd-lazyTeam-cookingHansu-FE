@@ -5,11 +5,27 @@ import LectureApproval from '@/views/admin/LectureApproval.vue'
 import ChefApproval from '@/views/admin/ChefApproval.vue'
 import NoticeManagement from '@/views/admin/NoticeManagement.vue'
 import UserManagement from '@/views/admin/UserManagement.vue'
+import ReportManagement from '@/views/admin/reportManagement.vue'
+import MainLayout from '@/layouts/MainLayout.vue'
+import LoginPage from '@/views/login/LoginPage.vue'
+import AddInfoPage from '@/views/login/AddInfoPage.vue'
+import AdminLoginPage from '@/views/admin/AdminLoginPage.vue'
+import AuthDetailCookPage from '@/views/login/AuthDetailCookPage.vue'
+import AuthDetailOwnerPage from '@/views/login/AuthDetailOwnerPage.vue'
+import AuthDetailUserPage from '@/views/login/AuthDetailUserPage.vue'
+import RegistrationCompletePage from '@/views/login/RegistrationCompletePage.vue'
+
 import chat from '@/views/chat/chatScreen.vue'
 import ReportManagement from '@/views/admin/ReportManagement.vue'
 import MainLayout from '@/layouts/MainLayout.vue' // 유저용 레이아웃
 
+
 const routes = [
+  {
+    path: '/admin-login',
+    name: 'AdminLogin',
+    component: AdminLoginPage,
+  },
   {
     path: '/admin',
     component: AdminLayout, // 관리자 공통 레이아웃
@@ -22,6 +38,36 @@ const routes = [
       { path: 'user-management', name: 'UserManagement', component: UserManagement },
       { path: "report-management", name: "ReportManagement", component: ReportManagement },
     ],
+  },
+  {
+    path: '/login',
+    name: 'Login',
+    component: LoginPage,
+  },
+  {
+    path: '/add-info',
+    name: 'AddInfo',
+    component: AddInfoPage,
+  },
+  {
+    path: '/auth-detail-user', 
+    name: 'AuthDetailUser', 
+    component: AuthDetailUserPage, 
+  },
+  {
+    path: '/auth-detail-cook',
+    name: 'AuthDetailCook',
+    component: AuthDetailCookPage,
+  },
+  {
+    path: '/auth-detail-owner',
+    name: 'AuthDetailOwner',
+    component: AuthDetailOwnerPage,
+  },
+  {
+    path: '/complete',
+    name: 'RegistrationComplete',
+    component: RegistrationCompletePage
   },
   {
     path: '/',
