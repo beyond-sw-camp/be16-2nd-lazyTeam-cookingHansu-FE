@@ -4,5 +4,8 @@ import './assets/fonts/global.scss';
 import vuetify from './plugins/vuetify'
 import router from './router'
 import './assets/styles/layout.css'
+import { createPinia } from 'pinia'
 
-createApp(App).use(router).use(vuetify).mount('#app')
+const pinia = createPinia()
+
+createApp(App).use(router).use(vuetify).use(pinia).mount('#app')

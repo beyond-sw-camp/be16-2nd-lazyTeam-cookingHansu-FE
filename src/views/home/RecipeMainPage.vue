@@ -70,7 +70,7 @@
     </div>
     <!-- 페이지네이션-->
     <div class="pagination">
-      <button @click="changePage(currentPage - 1)" :disabled="currentPage === 1"> &lt; </button>
+      <button @click="changePage(currentPage - 1)" :disabled="currentPage <= 1"> &lt; </button>
       <button
         v-for="page in totalPages"
         :key="page"
@@ -79,15 +79,13 @@
       >
         {{ page }}
       </button>
-      <button @click="changePage(currentPage + 1)" :disabled="currentPage === totalPages"> &gt; </button>
+      <button @click="changePage(currentPage + 1)" :disabled="currentPage >= totalPages"> &gt; </button>
     </div>
-    <Footer />
   </div>
 </template>
 
 <script>
 import Header from '@/components/Header.vue';
-import Footer from '@/components/Footer.vue';
 
 const defaultThumbnail = '/src/assets/images/smu_mascort1.jpg';
 
@@ -95,7 +93,6 @@ export default {
   name: "RecipeMainPage",
   components: {
     Header,
-    Footer,
   },
   data() {
     return {
@@ -202,42 +199,204 @@ export default {
           views: 210,
           time: '8시간 전',
         },
+        {
+          id: 9,
+          image: '/src/assets/images/smu_mascort4.jpg',
+          category: 'KOREAN',
+          title: '된장찌개 완벽 가이드',
+          authorType: 'CHEF',
+          description: '집에서 만드는 맛있는 된장찌개',
+          likes: 85,
+          comments: 9,
+          views: 320,
+          time: '9시간 전',
+        },
+        {
+          id: 10,
+          image: '/src/assets/images/smu_mascort5.jpg',
+          category: 'CHINESE',
+          title: '짜장면 홈메이드',
+          authorType: 'GENERAL',
+          description: '집에서 만드는 정통 짜장면',
+          likes: 75,
+          comments: 6,
+          views: 280,
+          time: '10시간 전',
+        },
+        {
+          id: 11,
+          image: '/src/assets/images/smu_mascort1.jpg',
+          category: 'WESTERN',
+          title: '스테이크 마스터',
+          authorType: 'CHEF',
+          description: '완벽한 스테이크 굽기 비법',
+          likes: 110,
+          comments: 13,
+          views: 450,
+          time: '11시간 전',
+        },
+        {
+          id: 12,
+          image: '/src/assets/images/smu_mascort2.jpg',
+          category: 'JAPANESE',
+          title: '우동 레시피',
+          authorType: 'OWNER',
+          description: '진한 국물의 우동 만들기',
+          likes: 60,
+          comments: 5,
+          views: 190,
+          time: '12시간 전',
+        },
+        {
+          id: 13,
+          image: '/src/assets/images/smu_mascort3.jpg',
+          category: 'KOREAN',
+          title: '불고기 홈메이드',
+          authorType: 'GENERAL',
+          description: '집에서 만드는 맛있는 불고기',
+          likes: 95,
+          comments: 11,
+          views: 380,
+          time: '13시간 전',
+        },
+        {
+          id: 14,
+          image: '/src/assets/images/smu_mascort4.jpg',
+          category: 'CHINESE',
+          title: '탕수육 완벽 레시피',
+          authorType: 'CHEF',
+          description: '바삭한 탕수육 만들기',
+          likes: 88,
+          comments: 8,
+          views: 290,
+          time: '14시간 전',
+        },
+        {
+          id: 15,
+          image: '/src/assets/images/smu_mascort5.jpg',
+          category: 'WESTERN',
+          title: '샐러드 마스터',
+          authorType: 'OWNER',
+          description: '건강한 샐러드 만들기',
+          likes: 70,
+          comments: 7,
+          views: 220,
+          time: '15시간 전',
+        },
+        {
+          id: 16,
+          image: '/src/assets/images/smu_mascort1.jpg',
+          category: 'JAPANESE',
+          title: '초밥 홈메이드',
+          authorType: 'GENERAL',
+          description: '집에서 만드는 초밥',
+          likes: 82,
+          comments: 9,
+          views: 310,
+          time: '16시간 전',
+        },
+        {
+          id: 17,
+          image: '/src/assets/images/smu_mascort2.jpg',
+          category: 'KOREAN',
+          title: '비빔밥 레시피',
+          authorType: 'CHEF',
+          description: '건강한 비빔밥 만들기',
+          likes: 78,
+          comments: 6,
+          views: 260,
+          time: '17시간 전',
+        },
+        {
+          id: 18,
+          image: '/src/assets/images/smu_mascort3.jpg',
+          category: 'CHINESE',
+          title: '마파두부 홈메이드',
+          authorType: 'OWNER',
+          description: '매콤달콤한 마파두부',
+          likes: 66,
+          comments: 5,
+          views: 200,
+          time: '18시간 전',
+        },
+        {
+          id: 19,
+          image: '/src/assets/images/smu_mascort4.jpg',
+          category: 'WESTERN',
+          title: '파스타 카르보나라',
+          authorType: 'GENERAL',
+          description: '진한 카르보나라 레시피',
+          likes: 92,
+          comments: 10,
+          views: 340,
+          time: '19시간 전',
+        },
+        {
+          id: 20,
+          image: '/src/assets/images/smu_mascort5.jpg',
+          category: 'JAPANESE',
+          title: '덮밥 레시피',
+          authorType: 'CHEF',
+          description: '간단한 덮밥 만들기',
+          likes: 73,
+          comments: 7,
+          views: 240,
+          time: '20시간 전',
+        },
       ],
     };
   },
   computed: {
-    pagedRecipes() {
+    filteredRecipes() {
       let filtered = this.recipes;
+      
+      // 사용자 유형 필터
       if (this.selectedUserType) {
         filtered = filtered.filter(r => r.authorType === this.selectedUserType);
       }
+      
+      // 카테고리 필터
       if (this.selectedCategory) {
         filtered = filtered.filter(r => r.category === this.selectedCategory);
       }
+      
+      // 정렬
       if (this.selectedSort === 'latest') {
         filtered = filtered.slice().sort((a, b) => b.id - a.id);
       } else if (this.selectedSort === 'popular') {
         filtered = filtered.slice().sort((a, b) => b.likes - a.likes);
       }
+      
+      return filtered;
+    },
+    pagedRecipes() {
       const start = (this.currentPage - 1) * this.recipesPerPage;
       const end = start + this.recipesPerPage;
-      return filtered.slice(start, end);
+      return this.filteredRecipes.slice(start, end);
     },
     totalPages() {
-      let filtered = this.recipes;
-      if (this.selectedUserType) {
-        filtered = filtered.filter(r => r.authorType === this.selectedUserType);
-      }
-      if (this.selectedCategory) {
-        filtered = filtered.filter(r => r.category === this.selectedCategory);
-      }
-      return Math.max(1, Math.ceil(filtered.length / this.recipesPerPage));
+      return Math.max(1, Math.ceil(this.filteredRecipes.length / this.recipesPerPage));
+    },
+  },
+  watch: {
+    selectedUserType() {
+      this.currentPage = 1;
+    },
+    selectedCategory() {
+      this.currentPage = 1;
+    },
+    selectedSort() {
+      this.currentPage = 1;
     },
   },
   methods: {
     changePage(page) {
       if (page >= 1 && page <= this.totalPages) {
         this.currentPage = page;
+      } else if (page > this.totalPages) {
+        this.currentPage = this.totalPages;
+      } else if (page < 1) {
+        this.currentPage = 1;
       }
     },
     goToLecture() {
@@ -280,12 +439,12 @@ export default {
   background: #fafbfc;
   box-sizing: border-box;
   padding-bottom: 0;
-  margin-top: 80px; /* 헤더 높이(64px) + 여유 */
+  margin-top: 64px; /* 헤더 높이만큼만 */
 }
 .nav-tabs {
   display: flex;
   justify-content: center;
-  margin: 32px 0 24px 0;
+  margin: 16px 0 24px 0;
   gap: 12px;
 }
 .nav-tabs button {
@@ -375,6 +534,13 @@ export default {
   min-height: 220px;
   overflow: hidden;
   border: 1.5px solid #f3f3f3;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.recipe-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 .recipe-img {
   width: 100%;

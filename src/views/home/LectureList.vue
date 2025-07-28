@@ -11,7 +11,7 @@
       </button>
     </div>
 
-    <!-- 필터 영역 -->
+    <!-- 필터 -->
     <div class="filter-card">
       <div class="filter-title-row">
         <div class="filter-title">강의 필터</div>
@@ -79,7 +79,7 @@
     
     <!-- 페이지네이션 -->
     <div class="pagination">
-      <button @click="changePage(currentPage - 1)" :disabled="currentPage === 1"> &lt; </button>
+      <button @click="changePage(currentPage - 1)" :disabled="currentPage <= 1"> &lt; </button>
       <button
         v-for="page in totalPages"
         :key="page"
@@ -88,19 +88,17 @@
       >
         {{ page }}
       </button>
-      <button @click="changePage(currentPage + 1)" :disabled="currentPage === totalPages"> &gt; </button>
+      <button @click="changePage(currentPage + 1)" :disabled="currentPage >= totalPages"> &gt; </button>
     </div>
-    <Footer />
   </div>
 </template>
 
 <script>
 import Header from '@/components/Header.vue';
-import Footer from '@/components/Footer.vue';
 
 export default {
   name: 'LectureList',
-  components: { Header, Footer },
+  components: { Header },
   data() {
     return {
       currentTab: 'lecture',
@@ -230,42 +228,248 @@ export default {
           students: 70,
           date: '2달 전',
         },
+        {
+          id: 9,
+          image: '/src/assets/images/smu_mascort4.jpg',
+          category: '한식',
+          title: '김치찌개 마스터 클래스',
+          description: '매콤달콤한 김치찌개 만드는 비법을 배워보세요.',
+          price: 28000,
+          teacher: '김치 셰프',
+          rating: 4,
+          ratingCount: 156,
+          likes: 420,
+          comments: 25,
+          students: 280,
+          date: '1주 전',
+        },
+        {
+          id: 10,
+          image: '/src/assets/images/smu_mascort5.jpg',
+          category: '양식',
+          title: '스테이크 홈메이드',
+          description: '집에서 만드는 완벽한 스테이크 레시피를 배워보세요.',
+          price: 45000,
+          teacher: '스테이크 셰프',
+          rating: 5,
+          ratingCount: 89,
+          likes: 350,
+          comments: 18,
+          students: 150,
+          date: '2주 전',
+        },
+        {
+          id: 11,
+          image: '/src/assets/images/smu_mascort1.jpg',
+          category: '일식',
+          title: '라멘 홈메이드',
+          description: '진한 국물의 라멘을 집에서 만들어보세요.',
+          price: 38000,
+          teacher: '라멘 셰프',
+          rating: 4,
+          ratingCount: 67,
+          likes: 220,
+          comments: 12,
+          students: 95,
+          date: '3주 전',
+        },
+        {
+          id: 12,
+          image: '/src/assets/images/smu_mascort2.jpg',
+          category: '중식',
+          title: '짜장면 홈메이드',
+          description: '정통 짜장면을 집에서 만들어보세요.',
+          price: 25000,
+          teacher: '짜장 셰프',
+          rating: 3,
+          ratingCount: 45,
+          likes: 180,
+          comments: 8,
+          students: 120,
+          date: '1달 전',
+        },
+        {
+          id: 13,
+          image: '/src/assets/images/smu_mascort3.jpg',
+          category: '디저트',
+          title: '티라미수 마스터',
+          description: '이탈리안 디저트의 정석, 티라미수를 배워보세요.',
+          price: 36000,
+          teacher: '티라미수 셰프',
+          rating: 5,
+          ratingCount: 78,
+          likes: 280,
+          comments: 15,
+          students: 110,
+          date: '2주 전',
+        },
+        {
+          id: 14,
+          image: '/src/assets/images/smu_mascort4.jpg',
+          category: '한식',
+          title: '비빔밥 홈메이드',
+          description: '건강한 비빔밥을 집에서 만들어보세요.',
+          price: 32000,
+          teacher: '비빔밥 셰프',
+          rating: 4,
+          ratingCount: 92,
+          likes: 310,
+          comments: 22,
+          students: 180,
+          date: '3주 전',
+        },
+        {
+          id: 15,
+          image: '/src/assets/images/smu_mascort5.jpg',
+          category: '양식',
+          title: '피자 홈메이드',
+          description: '도우부터 토핑까지 직접 만드는 피자 클래스.',
+          price: 41000,
+          teacher: '피자 셰프',
+          rating: 4,
+          ratingCount: 103,
+          likes: 290,
+          comments: 19,
+          students: 140,
+          date: '1달 전',
+        },
+        {
+          id: 16,
+          image: '/src/assets/images/smu_mascort1.jpg',
+          category: '일식',
+          title: '우동 홈메이드',
+          description: '진한 국물의 우동을 집에서 만들어보세요.',
+          price: 29000,
+          teacher: '우동 셰프',
+          rating: 3,
+          ratingCount: 56,
+          likes: 160,
+          comments: 9,
+          students: 85,
+          date: '2주 전',
+        },
+        {
+          id: 17,
+          image: '/src/assets/images/smu_mascort2.jpg',
+          category: '중식',
+          title: '탕수육 홈메이드',
+          description: '바삭한 탕수육을 집에서 만들어보세요.',
+          price: 34000,
+          teacher: '탕수육 셰프',
+          rating: 4,
+          ratingCount: 73,
+          likes: 240,
+          comments: 14,
+          students: 130,
+          date: '3주 전',
+        },
+        {
+          id: 18,
+          image: '/src/assets/images/smu_mascort3.jpg',
+          category: '디저트',
+          title: '마카롱 마스터',
+          description: '프랑스 디저트의 정석, 마카롱을 배워보세요.',
+          price: 48000,
+          teacher: '마카롱 셰프',
+          rating: 5,
+          ratingCount: 88,
+          likes: 320,
+          comments: 20,
+          students: 95,
+          date: '1달 전',
+        },
+        {
+          id: 19,
+          image: '/src/assets/images/smu_mascort4.jpg',
+          category: '한식',
+          title: '된장찌개 홈메이드',
+          description: '건강한 된장찌개를 집에서 만들어보세요.',
+          price: 26000,
+          teacher: '된장 셰프',
+          rating: 4,
+          ratingCount: 134,
+          likes: 380,
+          comments: 28,
+          students: 220,
+          date: '2주 전',
+        },
+        {
+          id: 20,
+          image: '/src/assets/images/smu_mascort5.jpg',
+          category: '양식',
+          title: '샐러드 마스터',
+          description: '건강한 샐러드를 맛있게 만드는 비법을 배워보세요.',
+          price: 22000,
+          teacher: '샐러드 셰프',
+          rating: 3,
+          ratingCount: 41,
+          likes: 140,
+          comments: 7,
+          students: 75,
+          date: '3주 전',
+        },
       ],
     };
   },
   computed: {
-    pagedLectures() {
+    filteredLectures() {
       let filtered = this.lectures;
-      if (this.selectedCategory) filtered = filtered.filter(l => l.category === this.selectedCategory);
+      
+      // 카테고리 필터
+      if (this.selectedCategory) {
+        filtered = filtered.filter(l => l.category === this.selectedCategory);
+      }
+      
+      // 가격대 필터
       if (this.selectedPrice) {
         filtered = filtered.filter(l => {
           if (this.selectedPrice === 'low') return l.price < 30000;
           if (this.selectedPrice === 'mid') return l.price >= 30000 && l.price <= 50000;
           if (this.selectedPrice === 'high') return l.price > 50000;
+          return true;
         });
       }
-      if (this.selectedSort === 'latest') filtered = filtered.slice().sort((a, b) => b.id - a.id);
-      else if (this.selectedSort === 'popular') filtered = filtered.slice().sort((a, b) => b.likes - a.likes);
+      
+      // 정렬
+      if (this.selectedSort === 'latest') {
+        filtered = filtered.slice().sort((a, b) => b.id - a.id);
+      } else if (this.selectedSort === 'popular') {
+        filtered = filtered.slice().sort((a, b) => b.likes - a.likes);
+      }
+      
+      return filtered;
+    },
+    pagedLectures() {
       const start = (this.currentPage - 1) * this.lecturesPerPage;
       const end = start + this.lecturesPerPage;
-      return filtered.slice(start, end);
+      return this.filteredLectures.slice(start, end);
     },
     totalPages() {
-      let filtered = this.lectures;
-      if (this.selectedCategory) filtered = filtered.filter(l => l.category === this.selectedCategory);
-      if (this.selectedPrice) {
-        filtered = filtered.filter(l => {
-          if (this.selectedPrice === 'low') return l.price < 30000;
-          if (this.selectedPrice === 'mid') return l.price >= 30000 && l.price <= 50000;
-          if (this.selectedPrice === 'high') return l.price > 50000;
-        });
-      }
-      return Math.max(1, Math.ceil(filtered.length / this.lecturesPerPage));
+      return Math.max(1, Math.ceil(this.filteredLectures.length / this.lecturesPerPage));
+    },
+  },
+  watch: {
+    selectedCategory() {
+      this.currentPage = 1;
+    },
+    selectedPrice() {
+      this.currentPage = 1;
+    },
+    selectedSort() {
+      this.currentPage = 1;
     },
   },
   methods: {
     goToRecipe() { this.$router.push({ name: 'RecipeMainPage' }); },
-    changePage(page) { if (page >= 1 && page <= this.totalPages) this.currentPage = page; },
+    changePage(page) {
+      if (page >= 1 && page <= this.totalPages) {
+        this.currentPage = page;
+      } else if (page > this.totalPages) {
+        this.currentPage = this.totalPages;
+      } else if (page < 1) {
+        this.currentPage = 1;
+      }
+    },
     categoryClass(category) {
       switch (category) {
         case '한식': return 'cat-korean';
@@ -281,8 +485,8 @@ export default {
 </script>
 
 <style scoped>
-.lecture-list-page { background: #fafbfc; min-height: 100vh; margin-top: 80px; }
-.nav-tabs { display: flex; justify-content: center; margin: 32px 0 24px 0; gap: 12px; }
+.lecture-list-page { background: #fafbfc; min-height: 100vh; margin-top: 64px; }
+.nav-tabs { display: flex; justify-content: center; margin: 16px 0 24px 0; gap: 12px; }
 .nav-tabs button { padding: 10px 24px; border: none; background: #fff; color: #ff7a00; font-weight: 600; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
 .nav-tabs button.active { background: #ff7a00; color: #fff; }
 
@@ -314,6 +518,13 @@ export default {
   align-items: stretch;
   overflow: hidden;
   border: 1.5px solid #f3f3f3;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.lecture-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 .lecture-img { width: 100%; height: 90px; object-fit: cover; border-radius: 12px 12px 0 0; margin-bottom: 0; }
 .card-content { display: flex; flex-direction: column; padding: 10px 12px 8px 12px; }
@@ -405,9 +616,36 @@ export default {
 }
 
 
-.pagination { display: flex; justify-content: center; gap: 8px; margin-bottom: 40px; }
-.pagination button { border: none; background: #fff; color: #ff7a00; border-radius: 4px; padding: 6px 12px; cursor: pointer; font-weight: 600; }
-.pagination button.active { background: #ff7a00; color: #fff; }
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+  margin-top: 0;
+}
+.pagination button {
+  border: none;
+  background: #fff;
+  color: #ff7a00;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-weight: 600;
+  min-width: 26px;
+  min-height: 26px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  font-size: 15px;
+  transition: background 0.15s, color 0.15s;
+}
+.pagination button.active {
+  background: #ff7a00;
+  color: #fff;
+}
+.pagination button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 .meta {
   display: flex;
   gap: 8px;
