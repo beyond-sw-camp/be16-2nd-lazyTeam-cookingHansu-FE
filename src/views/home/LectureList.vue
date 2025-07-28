@@ -48,7 +48,7 @@
 
     <!-- 강의 카드 리스트 -->
     <div class="lecture-grid">
-      <div v-for="lecture in pagedLectures" :key="lecture.id" class="lecture-card">
+      <div v-for="lecture in pagedLectures" :key="lecture.id" class="lecture-card" @click="handleCardClick(lecture)">
         <img :src="lecture.image" class="lecture-img" />
         <div class="card-content">
           <div class="category-row">
@@ -107,6 +107,8 @@ export default {
       selectedCategory: '',
       selectedPrice: '',
       selectedSort: 'latest',
+      selectedLecture: null,
+      showClickEffect: false,
       lectures: [
         {
           id: 1,
@@ -480,6 +482,18 @@ export default {
         default: return '';
       }
     },
+    handleCardClick(lecture) {
+
+      console.log('강의 클릭:', lecture.id, lecture.title);
+      
+      this.selectedLecture = lecture;
+      
+      // 클릭 효과
+      this.showClickEffect = true;
+      setTimeout(() => {
+        this.showClickEffect = false;
+      }, 200);
+    },
   },
 };
 </script>
@@ -561,7 +575,7 @@ export default {
 
 .card-footer {
   display: flex;
-  flex-direction: column; /* 아이콘과 날짜 세로배치 */
+  flex-direction: column;
   align-items: flex-start;
   gap: 4px;
   margin-top: auto;

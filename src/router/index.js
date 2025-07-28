@@ -17,6 +17,7 @@ import AuthDetailUserPage from '@/views/login/AuthDetailUserPage.vue'
 import RegistrationCompletePage from '@/views/login/RegistrationCompletePage.vue'
 import RecipeMainPage from '@/views/home/RecipeMainPage.vue'
 import LectureList from '@/views/home/LectureList.vue'
+import MyPage from '@/views/MyPage/MyPage.vue'
 
 import chat from '@/views/chat/chatScreen.vue'
 
@@ -83,7 +84,7 @@ const routes = [
         name: 'Chat',
         component: chat,
       },
-      { path: 'mypage', component: { template: '<div>마이페이지</div>' } },
+      { path: 'mypage', name: 'MyPage', component: MyPage },
     ],
   },
 ]
