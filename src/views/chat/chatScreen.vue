@@ -1,5 +1,5 @@
 <template>
-  <v-container fluid class="pa-6">
+  <v-container fluid class="pa-6" style="margin-top: 80px;">
     <v-row no-gutters class="chat-wrapper" style="min-height: 600px">
       <!-- 채팅 목록 -->
       <v-col md="1.5" />

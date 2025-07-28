@@ -2,8 +2,8 @@
 <template>
   <v-app>
     <Header />
-    <v-main style="padding-top: 80px;" >
-      <v-container fluid class="pa-4" style="padding-top:80px;">
+    <v-main>
+      <v-container fluid class="pa-4">
         <router-view />
       </v-container>
     </v-main>

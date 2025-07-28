@@ -15,10 +15,10 @@ import AuthDetailCookPage from '@/views/login/AuthDetailCookPage.vue'
 import AuthDetailOwnerPage from '@/views/login/AuthDetailOwnerPage.vue'
 import AuthDetailUserPage from '@/views/login/AuthDetailUserPage.vue'
 import RegistrationCompletePage from '@/views/login/RegistrationCompletePage.vue'
+import RecipeMainPage from '@/views/home/RecipeMainPage.vue'
+import LectureList from '@/views/home/LectureList.vue'
 
 import chat from '@/views/chat/chatScreen.vue'
-import ReportManagement from '@/views/admin/ReportManagement.vue'
-import MainLayout from '@/layouts/MainLayout.vue' // 유저용 레이아웃
 
 const routes = [
   {
@@ -73,11 +73,11 @@ const routes = [
     path: '/',
     component: MainLayout,
     children: [
-      // 여기에 유저용 페이지 라우트 추가 (예시)
+      // 여기에 유저용 페이지 라우트 추가
       { path: '', redirect: '/recipes' },
       { path: 'landing', name: 'LandingPage', component: LandingPage },
-      { path: 'recipes', component: { template: '<div>레시피 공유 게시글</div>' } },
-      { path: 'lectures', component: { template: '<div>판매중인 강의</div>' } },
+      { path: 'recipes', name: 'RecipeMainPage', component: RecipeMainPage },
+      { path: 'lectures', name: 'LectureList', component: LectureList },
       {
         path: '/chat',
         name: 'Chat',
