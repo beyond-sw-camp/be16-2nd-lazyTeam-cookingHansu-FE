@@ -15,6 +15,11 @@ import AuthDetailOwnerPage from '@/views/login/AuthDetailOwnerPage.vue'
 import AuthDetailUserPage from '@/views/login/AuthDetailUserPage.vue'
 import RegistrationCompletePage from '@/views/login/RegistrationCompletePage.vue'
 
+import chat from '@/views/chat/chatScreen.vue'
+import ReportManagement from '@/views/admin/ReportManagement.vue'
+import MainLayout from '@/layouts/MainLayout.vue' // 유저용 레이아웃
+
+
 const routes = [
   {
     path: '/admin-login',
@@ -72,7 +77,11 @@ const routes = [
       { path: '', redirect: '/recipes' },
       { path: 'recipes', component: { template: '<div>레시피 공유 게시글</div>' } },
       { path: 'lectures', component: { template: '<div>판매중인 강의</div>' } },
-      { path: 'chat', component: { template: '<div>1:1채팅</div>' } },
+      {
+        path: '/chat',
+        name: 'Chat',
+        component: chat,
+      },
       { path: 'mypage', component: { template: '<div>마이페이지</div>' } },
     ],
   },
