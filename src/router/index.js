@@ -8,6 +8,7 @@ import UserManagement from '@/views/admin/UserManagement.vue'
 import ReportManagement from '@/views/admin/ReportManagement.vue'
 import RecipeMainPage from '@/views/home/RecipeMainPage.vue'
 import LectureList from '@/views/home/LectureList.vue'
+import PaymentDetails from '@/views/payment/PaymentDetails.vue'
 
 import MainLayout from '@/layouts/MainLayout.vue'
 
@@ -21,6 +22,11 @@ const routes = [
     path: '/lecture-list',
     name: 'LectureList',
     component: LectureList,
+  },
+  {
+    path: '/payment-details/:orderId',
+    name: 'PaymentDetails',
+    component: PaymentDetails,
   },
 
   {
