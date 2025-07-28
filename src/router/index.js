@@ -36,18 +36,18 @@ const routes = [
       { path: "report-management", name: "ReportManagement", component: ReportManagement },
     ],
   },
-  {
-    path: '/',
-    component: MainLayout,
-    children: [
-      // 여기에 유저용 페이지 라우트 추가 (예시)
-      { path: '', redirect: '/recipes' },
-      { path: 'recipes', component: { template: '<div>레시피 공유 게시글</div>' } },
-      { path: 'lectures', component: { template: '<div>판매중인 강의</div>' } },
-      { path: 'chat', component: { template: '<div>1:1채팅</div>' } },
-      { path: 'mypage', component: { template: '<div>마이페이지</div>' } },
-    ],
-  },
+  // {
+  //   path: '/',
+  //   component: MainLayout,
+  //   children: [
+  //     // 여기에 유저용 페이지 라우트 추가 (예시)
+  //     { path: '', redirect: '/recipes' },
+  //     { path: 'recipes', component: { template: '<div>레시피 공유 게시글</div>' } },
+  //     { path: 'lectures', component: { template: '<div>판매중인 강의</div>' } },
+  //     { path: 'chat', component: { template: '<div>1:1채팅</div>' } },
+  //     { path: 'mypage', component: { template: '<div>마이페이지</div>' } },
+  //   ],
+  // },
 ]
 
 export default createRouter({

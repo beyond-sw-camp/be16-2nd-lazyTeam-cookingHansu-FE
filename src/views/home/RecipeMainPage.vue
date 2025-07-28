@@ -70,7 +70,7 @@
     </div>
     <!-- 페이지네이션-->
     <div class="pagination">
-      <button @click="changePage(currentPage - 1)" :disabled="currentPage === 1"> &lt; </button>
+      <button @click="changePage(currentPage - 1)" :disabled="currentPage <= 1"> &lt; </button>
       <button
         v-for="page in totalPages"
         :key="page"
@@ -79,7 +79,7 @@
       >
         {{ page }}
       </button>
-      <button @click="changePage(currentPage + 1)" :disabled="currentPage === totalPages"> &gt; </button>
+      <button @click="changePage(currentPage + 1)" :disabled="currentPage >= totalPages"> &gt; </button>
     </div>
     <Footer />
   </div>
@@ -350,38 +350,56 @@ export default {
     };
   },
   computed: {
-    pagedRecipes() {
+    filteredRecipes() {
       let filtered = this.recipes;
+      
+      // 사용자 유형 필터
       if (this.selectedUserType) {
         filtered = filtered.filter(r => r.authorType === this.selectedUserType);
       }
+      
+      // 카테고리 필터
       if (this.selectedCategory) {
         filtered = filtered.filter(r => r.category === this.selectedCategory);
       }
+      
+      // 정렬
       if (this.selectedSort === 'latest') {
         filtered = filtered.slice().sort((a, b) => b.id - a.id);
       } else if (this.selectedSort === 'popular') {
         filtered = filtered.slice().sort((a, b) => b.likes - a.likes);
       }
+      
+      return filtered;
+    },
+    pagedRecipes() {
       const start = (this.currentPage - 1) * this.recipesPerPage;
       const end = start + this.recipesPerPage;
-      return filtered.slice(start, end);
+      return this.filteredRecipes.slice(start, end);
     },
     totalPages() {
-      let filtered = this.recipes;
-      if (this.selectedUserType) {
-        filtered = filtered.filter(r => r.authorType === this.selectedUserType);
-      }
-      if (this.selectedCategory) {
-        filtered = filtered.filter(r => r.category === this.selectedCategory);
-      }
-      return Math.max(1, Math.ceil(filtered.length / this.recipesPerPage));
+      return Math.max(1, Math.ceil(this.filteredRecipes.length / this.recipesPerPage));
+    },
+  },
+  watch: {
+    selectedUserType() {
+      this.currentPage = 1;
+    },
+    selectedCategory() {
+      this.currentPage = 1;
+    },
+    selectedSort() {
+      this.currentPage = 1;
     },
   },
   methods: {
     changePage(page) {
       if (page >= 1 && page <= this.totalPages) {
         this.currentPage = page;
+      } else if (page > this.totalPages) {
+        this.currentPage = this.totalPages;
+      } else if (page < 1) {
+        this.currentPage = 1;
       }
     },
     goToLecture() {
@@ -519,6 +537,14 @@ export default {
   min-height: 220px;
   overflow: hidden;
   border: 1.5px solid #f3f3f3;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.recipe-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  border-color: #ff7a00;
 }
 .recipe-img {
   width: 100%;
