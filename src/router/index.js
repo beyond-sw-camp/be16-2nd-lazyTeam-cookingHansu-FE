@@ -7,6 +7,7 @@ import NoticeManagement from '@/views/admin/NoticeManagement.vue'
 import UserManagement from '@/views/admin/UserManagement.vue'
 import ReportManagement from '@/views/admin/reportManagement.vue'
 import MainLayout from '@/layouts/MainLayout.vue'
+import LandingPage from '@/views/landing/LandingPage.vue'
 import LoginPage from '@/views/login/LoginPage.vue'
 import AddInfoPage from '@/views/login/AddInfoPage.vue'
 import AdminLoginPage from '@/views/admin/AdminLoginPage.vue'
@@ -18,7 +19,6 @@ import RegistrationCompletePage from '@/views/login/RegistrationCompletePage.vue
 import chat from '@/views/chat/chatScreen.vue'
 import ReportManagement from '@/views/admin/ReportManagement.vue'
 import MainLayout from '@/layouts/MainLayout.vue' // 유저용 레이아웃
-
 
 const routes = [
   {
@@ -75,6 +75,7 @@ const routes = [
     children: [
       // 여기에 유저용 페이지 라우트 추가 (예시)
       { path: '', redirect: '/recipes' },
+      { path: 'landing', name: 'LandingPage', component: LandingPage },
       { path: 'recipes', component: { template: '<div>레시피 공유 게시글</div>' } },
       { path: 'lectures', component: { template: '<div>판매중인 강의</div>' } },
       {
