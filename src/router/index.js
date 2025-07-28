@@ -17,7 +17,9 @@ import AuthDetailUserPage from '@/views/login/AuthDetailUserPage.vue'
 import RegistrationCompletePage from '@/views/login/RegistrationCompletePage.vue'
 import RecipeMainPage from '@/views/home/RecipeMainPage.vue'
 import LectureList from '@/views/home/LectureList.vue'
+
 import PaymentDetails from '@/views/payment/PaymentDetails.vue'
+
 import MyPage from '@/views/MyPage/MyPage.vue'
 
 import chat from '@/views/chat/chatScreen.vue'

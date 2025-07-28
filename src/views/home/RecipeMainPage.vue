@@ -48,7 +48,7 @@
     </div>
     <!-- 레시피 카드 리스트 (2행 4열) -->
     <div class="recipe-grid">
-      <div v-for="recipe in pagedRecipes" :key="recipe.id" class="recipe-card">
+      <div v-for="recipe in pagedRecipes" :key="recipe.id" class="recipe-card" @click="handleCardClick(recipe)">
         <img :src="recipe.image" alt="썸네일" class="recipe-img" @error="onImgError" />
         <div class="card-content">
           <div class="card-header">
@@ -102,6 +102,8 @@ export default {
       selectedUserType: "",
       selectedCategory: "",
       selectedSort: "latest",
+      selectedRecipe: null,
+      showClickEffect: false,
       recipes: [
         {
           id: 1,
@@ -430,6 +432,18 @@ export default {
         e.target.src = defaultThumbnail;
       }
     },
+    handleCardClick(recipe) {
+      // 카드 클릭 이벤트 처리 -> 추후 상태관리..
+      console.log('레시피 클릭:', recipe.id, recipe.title);
+      
+      // 클릭된 레시피 정보
+      this.selectedRecipe = recipe;
+        // 클릭 효과
+      this.showClickEffect = true;
+      setTimeout(() => {
+        this.showClickEffect = false;
+      }, 200);
+    },
   },
 };
 </script>
@@ -439,7 +453,7 @@ export default {
   background: #fafbfc;
   box-sizing: border-box;
   padding-bottom: 0;
-  margin-top: 64px; /* 헤더 높이만큼만 */
+  margin-top: 64px;
 }
 .nav-tabs {
   display: flex;

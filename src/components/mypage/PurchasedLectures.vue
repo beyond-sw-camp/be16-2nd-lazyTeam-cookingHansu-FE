@@ -12,7 +12,9 @@
         <div class="lecture-content">
           <div class="lecture-header">
             <span class="category-badge" :class="categoryClass(lecture.category)">{{ lecture.category }}</span>
+
             <router-link :to="{ name: 'PaymentDetails', params: { orderId: 'ORDER_20250111_001' } }" class="payment-history-link">결제 내역</router-link>
+
           </div>
           <h3 class="lecture-title">{{ lecture.title }}</h3>
           <p class="lecture-description">{{ lecture.description }}</p>
