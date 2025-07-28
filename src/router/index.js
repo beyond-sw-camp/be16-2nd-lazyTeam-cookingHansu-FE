@@ -8,7 +8,6 @@ import UserManagement from '@/views/admin/UserManagement.vue'
 import ReportManagement from '@/views/admin/ReportManagement.vue'
 import MainLayout from '@/layouts/MainLayout.vue'
 import LandingPage from '@/views/landing/LandingPage.vue'
-import { templateRef } from 'vuetify/lib/util'
 const routes = [
   {
     path: '/admin',
