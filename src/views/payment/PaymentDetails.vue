@@ -163,15 +163,7 @@ export default {
             originalPrice: 65000,
             discountRate: 30
           },
-          {
-            id: 2,
-            title: '김치 담그기 마스터 클래스 - 전통 발효법부터 현대적 응용까지',
-            instructor: '박정희 요리연구가',
-            image: '/src/assets/images/smu_mascort2.jpg',
-            currentPrice: 35000,
-            originalPrice: 50000,
-            discountRate: 30
-          }
+          
         ]
       }
     };
