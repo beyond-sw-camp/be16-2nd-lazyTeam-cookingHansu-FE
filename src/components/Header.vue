@@ -136,7 +136,7 @@ function goHome() {
   router.push('/')
 }
 function login() {
-  isLoggedIn.value = true
+  router.push('/login')
   closeMobileMenu()
 }
 function logout() {
