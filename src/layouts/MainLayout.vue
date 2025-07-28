@@ -2,7 +2,7 @@
 <template>
   <v-app>
     <Header />
-    <v-main>
+    <v-main style="padding-top: 80px;" >
       <v-container fluid class="pa-4" style="padding-top:80px;">
         <router-view />
       </v-container>
