@@ -17,6 +17,9 @@ import AuthDetailUserPage from '@/views/login/AuthDetailUserPage.vue'
 import RegistrationCompletePage from '@/views/login/RegistrationCompletePage.vue'
 import RecipeMainPage from '@/views/home/RecipeMainPage.vue'
 import LectureList from '@/views/home/LectureList.vue'
+
+import PaymentDetails from '@/views/payment/PaymentDetails.vue'
+
 import MyPage from '@/views/MyPage/MyPage.vue'
 
 import chat from '@/views/chat/chatScreen.vue'
@@ -27,6 +30,12 @@ const routes = [
     name: 'AdminLogin',
     component: AdminLoginPage,
   },
+  {
+    path: '/payment-details/:orderId',
+    name: 'PaymentDetails',
+    component: PaymentDetails,
+  },
+
   {
     path: '/admin',
     component: AdminLayout, // 관리자 공통 레이아웃
@@ -80,7 +89,7 @@ const routes = [
       { path: 'recipes', name: 'RecipeMainPage', component: RecipeMainPage },
       { path: 'lectures', name: 'LectureList', component: LectureList },
       {
-        path: '/chat',
+        path: 'chat',
         name: 'Chat',
         component: chat,
       },
