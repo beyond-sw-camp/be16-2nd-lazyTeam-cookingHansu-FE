@@ -1,104 +1,126 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import AdminLayout from '@/layouts/admin/AdminLayout.vue' 
-import Dashboard from '@/views/admin/Dashboard.vue'
-import LectureApproval from '@/views/admin/LectureApproval.vue'
-import ChefApproval from '@/views/admin/ChefApproval.vue'
-import NoticeManagement from '@/views/admin/NoticeManagement.vue'
-import UserManagement from '@/views/admin/UserManagement.vue'
-import ReportManagement from '@/views/admin/reportManagement.vue'
-import MainLayout from '@/layouts/MainLayout.vue'
-import LandingPage from '@/views/landing/LandingPage.vue'
-import LoginPage from '@/views/login/LoginPage.vue'
-import AddInfoPage from '@/views/login/AddInfoPage.vue'
-import AdminLoginPage from '@/views/admin/AdminLoginPage.vue'
-import AuthDetailCookPage from '@/views/login/AuthDetailCookPage.vue'
-import AuthDetailOwnerPage from '@/views/login/AuthDetailOwnerPage.vue'
-import AuthDetailUserPage from '@/views/login/AuthDetailUserPage.vue'
-import RegistrationCompletePage from '@/views/login/RegistrationCompletePage.vue'
-import RecipeMainPage from '@/views/home/RecipeMainPage.vue'
-import LectureList from '@/views/home/LectureList.vue'
+import { createRouter, createWebHistory } from "vue-router";
+import AdminLayout from "@/layouts/admin/AdminLayout.vue";
+import Dashboard from "@/views/admin/Dashboard.vue";
+import LectureApproval from "@/views/admin/LectureApproval.vue";
+import ChefApproval from "@/views/admin/ChefApproval.vue";
+import NoticeManagement from "@/views/admin/NoticeManagement.vue";
+import UserManagement from "@/views/admin/UserManagement.vue";
+import ReportManagement from "@/views/admin/reportManagement.vue";
+import MainLayout from "@/layouts/MainLayout.vue";
+import LandingPage from "@/views/landing/LandingPage.vue";
+import LoginPage from "@/views/login/LoginPage.vue";
+import AddInfoPage from "@/views/login/AddInfoPage.vue";
+import AdminLoginPage from "@/views/admin/AdminLoginPage.vue";
+import AuthDetailCookPage from "@/views/login/AuthDetailCookPage.vue";
+import AuthDetailOwnerPage from "@/views/login/AuthDetailOwnerPage.vue";
+import AuthDetailUserPage from "@/views/login/AuthDetailUserPage.vue";
+import RegistrationCompletePage from "@/views/login/RegistrationCompletePage.vue";
+import RecipeMainPage from "@/views/home/RecipeMainPage.vue";
+import LectureList from "@/views/home/LectureList.vue";
 
-import PaymentDetails from '@/views/payment/PaymentDetails.vue'
+import PaymentDetails from "@/views/payment/PaymentDetails.vue";
 
-import MyPage from '@/views/MyPage/MyPage.vue'
+import MyPage from "@/views/MyPage/MyPage.vue";
 
-import chat from '@/views/chat/chatScreen.vue'
+import chat from "@/views/chat/chatScreen.vue";
+import GoogleRedirect from "@/views/login/oauth/GoogleRedirect.vue";
 
 const routes = [
   {
-    path: '/admin-login',
-    name: 'AdminLogin',
+    path: "/admin-login",
+    name: "AdminLogin",
     component: AdminLoginPage,
   },
   {
-    path: '/payment-details/:orderId',
-    name: 'PaymentDetails',
+    path: "/payment-details/:orderId",
+    name: "PaymentDetails",
     component: PaymentDetails,
   },
 
   {
-    path: '/admin',
+    path: "/admin",
     component: AdminLayout, // 관리자 공통 레이아웃
     children: [
-      { path: '', redirect: '/admin/dashboard' }, // 기본 경로 → 대시보드로 리디렉트
-      { path: 'dashboard', name: 'Dashboard', component: Dashboard },
-      { path: 'lecture-approval', name: '/LectureApproval', component: LectureApproval },
-      { path: 'chef-approval', name: 'ChefApproval', component: ChefApproval },
-      { path: 'notice-management', name: 'NoticeManagement', component: NoticeManagement },
-      { path: 'user-management', name: 'UserManagement', component: UserManagement },
-      { path: "report-management", name: "ReportManagement", component: ReportManagement },
+      { path: "", redirect: "/admin/dashboard" }, // 기본 경로 → 대시보드로 리디렉트
+      { path: "dashboard", name: "Dashboard", component: Dashboard },
+      {
+        path: "lecture-approval",
+        name: "/LectureApproval",
+        component: LectureApproval,
+      },
+      { path: "chef-approval", name: "ChefApproval", component: ChefApproval },
+      {
+        path: "notice-management",
+        name: "NoticeManagement",
+        component: NoticeManagement,
+      },
+      {
+        path: "user-management",
+        name: "UserManagement",
+        component: UserManagement,
+      },
+      {
+        path: "report-management",
+        name: "ReportManagement",
+        component: ReportManagement,
+      },
     ],
   },
   {
-    path: '/login',
-    name: 'Login',
+    path: "/login",
+    name: "Login",
     component: LoginPage,
   },
   {
-    path: '/add-info',
-    name: 'AddInfo',
+    path: "/oauth/google/redirect",
+    name: "GoogleOAuthRedirect",
+    component: GoogleRedirect,
+  },
+  {
+    path: "/add-info",
+    name: "AddInfo",
     component: AddInfoPage,
   },
   {
-    path: '/auth-detail-user', 
-    name: 'AuthDetailUser', 
-    component: AuthDetailUserPage, 
+    path: "/auth-detail-user",
+    name: "AuthDetailUser",
+    component: AuthDetailUserPage,
   },
   {
-    path: '/auth-detail-cook',
-    name: 'AuthDetailCook',
+    path: "/auth-detail-cook",
+    name: "AuthDetailCook",
     component: AuthDetailCookPage,
   },
   {
-    path: '/auth-detail-owner',
-    name: 'AuthDetailOwner',
+    path: "/auth-detail-owner",
+    name: "AuthDetailOwner",
     component: AuthDetailOwnerPage,
   },
   {
-    path: '/complete',
-    name: 'RegistrationComplete',
-    component: RegistrationCompletePage
+    path: "/complete",
+    name: "RegistrationComplete",
+    component: RegistrationCompletePage,
   },
   {
-    path: '/',
+    path: "/",
     component: MainLayout,
     children: [
       // 여기에 유저용 페이지 라우트 추가
-      { path: '', redirect: '/recipes' },
-      { path: 'landing', name: 'LandingPage', component: LandingPage },
-      { path: 'recipes', name: 'RecipeMainPage', component: RecipeMainPage },
-      { path: 'lectures', name: 'LectureList', component: LectureList },
+      { path: "", redirect: "/recipes" },
+      { path: "landing", name: "LandingPage", component: LandingPage },
+      { path: "recipes", name: "RecipeMainPage", component: RecipeMainPage },
+      { path: "lectures", name: "LectureList", component: LectureList },
       {
-        path: 'chat',
-        name: 'Chat',
+        path: "chat",
+        name: "Chat",
         component: chat,
       },
-      { path: 'mypage', name: 'MyPage', component: MyPage },
+      { path: "mypage", name: "MyPage", component: MyPage },
     ],
   },
-]
+];
 
 export default createRouter({
   history: createWebHistory(),
   routes,
-})
+});
