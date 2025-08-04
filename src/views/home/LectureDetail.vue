@@ -91,7 +91,32 @@
           </div>
           
           <div v-if="activeTab === 'reviews'" class="reviews-content">
-            <button class="write-review-btn">리뷰 작성하기</button>
+            <div v-if="isPurchased" class="review-actions">
+              <button class="write-review-btn" @click="showReviewModal = true">리뷰 작성하기</button>
+            </div>
+            <div v-else class="purchase-notice">
+              <p>리뷰를 작성하려면 강의를 구매해주세요.</p>
+              <button class="purchase-btn" @click="purchaseLecture">강의 구매하기</button>
+            </div>
+            
+            <!-- 리뷰 목록 -->
+            <div v-if="lecture.reviews.length > 0" class="reviews-list">
+              <div v-for="review in lecture.reviews" :key="review.id" class="review-item">
+                <div class="review-header">
+                  <div class="reviewer-info">
+                    <span class="reviewer-name">{{ review.reviewerId }}</span>
+                    <div class="rating">
+                      <span v-for="i in 5" :key="i" class="star" :class="{ filled: i <= review.rating }">★</span>
+                    </div>
+                  </div>
+                  <span class="review-date">{{ review.date }}</span>
+                </div>
+                <div class="review-content">
+                  <p>{{ review.content }}</p>
+                </div>
+              </div>
+            </div>
+            
             <div v-if="lecture.reviews.length === 0" class="no-reviews">
               <p>아직 리뷰가 없습니다.</p>
               <p>첫 번째 리뷰를 작성해보세요!</p>
@@ -99,6 +124,33 @@
           </div>
           
           <div v-if="activeTab === 'qa'" class="qa-content">
+            <button class="write-qa-btn" @click="showQAModal = true">질문하기</button>
+            
+            <!-- Q&A 목록 -->
+            <div v-if="lecture.qa.length > 0" class="qa-list">
+              <div v-for="qa in lecture.qa" :key="qa.id" class="qa-item">
+                <div class="question">
+                  <div class="question-header">
+                    <span class="questioner-name">{{ qa.questionerId }}</span>
+                    <span class="question-date">{{ qa.questionDate }}</span>
+                  </div>
+                  <div class="question-content">
+                    <p>{{ qa.question }}</p>
+                  </div>
+                </div>
+                
+                <div v-if="qa.answer" class="answer">
+                  <div class="answer-header">
+                    <span class="answerer-name">{{ qa.answererId }}</span>
+                    <span class="answer-date">{{ qa.answerDate }}</span>
+                  </div>
+                  <div class="answer-content">
+                    <p>{{ qa.answer }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
             <div v-if="lecture.qa.length === 0" class="no-qa">
               <p>아직 Q&A가 없습니다.</p>
             </div>
@@ -199,7 +251,7 @@
           </div>
           <div class="share-option" @click="shareToKakaoTalk">
             <div class="share-icon kakaotalk">
-              <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDNDNi40OCAzIDIgNy40OCAyIDEzQzIgMTUuNzUgMy4yNSAxNy43NSA1LjI1IDE5LjI1TDUuMjUgMjIuMjVDNS4yNSAyMi44IDUuOCAyMy4yNSA2LjI1IDIzLjI1QzYuNSAyMy4yNSA2Ljc1IDIzLjE1IDYuOTUgMjIuOTVMMTAuNzUgMTkuMjVDMTEuNSAxOS40NSAxMi4yNSAxOS41IDEzIDE5LjVDMTguNTIgMTkuNSAyMyAxNS41MiAyMyAxMEMyMyA0LjQ4IDE4LjUyIDAgMTMgMEMxMi4zMyAwIDEyIDMgMTIgM1oiIGZpbGw9IiMwMDAiLz4KPHBhdGggZD0iTTggMTJDNy40NDc3MiAxMiA3IDExLjU1MjMgNyAxMUM3IDEwLjQ0NzcgNy40NDc3MiAxMCA4IDEwQzguNTUyMjggMTAgOSAxMC40NDc3IDkgMTFDOSAxMS41NTIzIDguNTUyMjggMTIgOCAxMloiIGZpbGw9IiMwMDAiLz4KPHBhdGggZD0iTTE2IDEyQzE1LjQ0NzcgMTIgMTUgMTEuNTUyMyAxNSAxMUMxNSAxMC40NDc3IDE1LjQ0NzcgMTAgMTYgMTBDMTYuNTUyMyAxMCAxNyAxMC40NDc3IDE3IDExQzE3IDExLjU1MjMgMTYuNTUyMyAxMiAxNiAxMloiIGZpbGw9IiMwMDAiLz4KPC9zdmc+Cg==" alt="KakaoTalk" />
+              <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDNDNi40OCAzIDIgNy40OCAyIDEzQzIgMTUuNzUgMy4yNSAxNy43NSA1LjI1IDE5LjI1TDUuMjUgMjIuMjVDNS4yNSAyMi44IDUuOCAyMy4yNSA2LjI1IDIzLjI1QzYuNSAyMy4yNSA2Ljc1IDIzLjE1IDYuOTUgMjIuOTVMMTAuNzUgMTkuMjRDMTEuNSAxOS40NSAxMi4yNSAxOS41IDEzIDE5LjVDMTguNTIgMTkuNSAyMyAxNS41MiAyMyAxMEMyMyA0LjQ4IDE4LjUyIDAgMTMgMEMxMi4zMyAwIDEyIDMgMTIgM1oiIGZpbGw9IiMwMDAiLz4KPHBhdGggZD0iTTggMTJDNy40NDc3MiAxMiA3IDExLjU1MjMgNyAxMUM3IDEwLjQ0NzcgNy40NDc3MiAxMCA4IDEwQzguNTUyMjggMTAgOSAxMC40NDc3IDkgMTFDOSAxMS41NTIzIDguNTUyMjggMTIgOCAxMloiIGZpbGw9IiMwMDAiLz4KPHBhdGggZD0iTTE2IDEyQzE1LjQ0NzcgMTIgMTUgMTEuNTUyMyAxNSAxMUMxNSAxMC40NDc3IDE1LjQ0NzcgMTAgMTYgMTBDMTYuNTUyMyAxMCAxNyAxMC40NDc3IDE3IDExQzE3IDExLjU1MjMgMTYuNTUyMyAxMiAxNiAxMloiIGZpbGw9IiMwMDAiLz4KPC9zdmc+Cg==" alt="KakaoTalk" />
             </div>
             <span>카카오톡</span>
           </div>
@@ -218,6 +270,66 @@
         </div>
       </div>
     </div>
+
+    <!-- 리뷰 작성 모달 -->
+    <div v-if="showReviewModal" class="modal-overlay" @click="showReviewModal = false">
+      <div class="modal" @click.stop>
+        <div class="modal-header">
+          <h3>리뷰 작성</h3>
+          <button class="close-btn" @click="showReviewModal = false">×</button>
+        </div>
+        <div class="modal-content">
+          <div class="rating-section">
+            <label>평점</label>
+            <div class="rating-input">
+              <span 
+                v-for="i in 5" 
+                :key="i" 
+                class="star-input" 
+                :class="{ filled: i <= newReview.rating }"
+                @click="newReview.rating = i"
+              >★</span>
+            </div>
+          </div>
+          <div class="content-section">
+            <label>리뷰 내용</label>
+            <textarea 
+              v-model="newReview.content" 
+              placeholder="강의에 대한 솔직한 리뷰를 작성해주세요."
+              rows="5"
+            ></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="cancel-btn" @click="showReviewModal = false">취소</button>
+          <button class="submit-btn" @click="submitReview">리뷰 등록</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q&A 작성 모달 -->
+    <div v-if="showQAModal" class="modal-overlay" @click="showQAModal = false">
+      <div class="modal" @click.stop>
+        <div class="modal-header">
+          <h3>질문하기</h3>
+          <button class="close-btn" @click="showQAModal = false">×</button>
+        </div>
+        <div class="modal-content">
+          <div class="content-section">
+            <label>질문 내용</label>
+            <textarea 
+              v-model="newQuestion.content" 
+              placeholder="강의에 대한 궁금한 점을 질문해주세요."
+              rows="5"
+            ></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="cancel-btn" @click="showQAModal = false">취소</button>
+          <button class="submit-btn" @click="submitQuestion">질문 등록</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -232,6 +344,17 @@ export default {
       activeTab: 'reviews',
       lecture: null,
       showShareModal: false,
+      showReviewModal: false,
+      showQAModal: false,
+      newReview: {
+        rating: 0,
+        content: ''
+      },
+      newQuestion: {
+        content: ''
+      },
+      // 구매 상태 (실제로는 API에서 확인)
+      isPurchased: false,
       // 강의 목록 데이터 (실제로는 API에서 가져옴)
       lecturesData: [
         {
@@ -1337,6 +1460,88 @@ export default {
         console.error('클립보드 복사 실패:', err);
         alert('링크 복사에 실패했습니다. 수동으로 복사해주세요.');
       }
+    },
+
+    // 리뷰 제출
+    submitReview() {
+      if (this.newReview.rating === 0) {
+        alert('평점을 선택해주세요.');
+        return;
+      }
+      
+      if (!this.newReview.content.trim()) {
+        alert('리뷰 내용을 작성해주세요.');
+        return;
+      }
+
+      // 새로운 리뷰 객체 생성
+      const review = {
+        id: Date.now(),
+        reviewerId: 'user123', // 실제로는 로그인된 사용자 ID
+        rating: this.newReview.rating,
+        content: this.newReview.content,
+        date: new Date().toLocaleDateString('ko-KR')
+      };
+
+      // 리뷰 추가
+      this.lecture.reviews.push(review);
+
+      // 평점 업데이트
+      this.updateLectureRating();
+
+      // 모달 닫기 및 폼 초기화
+      this.showReviewModal = false;
+      this.newReview = { rating: 0, content: '' };
+
+      alert('리뷰가 등록되었습니다!');
+    },
+
+    // Q&A 제출
+    submitQuestion() {
+      if (!this.newQuestion.content.trim()) {
+        alert('질문 내용을 작성해주세요.');
+        return;
+      }
+
+      // 새로운 Q&A 객체 생성
+      const qa = {
+        id: Date.now(),
+        questionerId: 'user123', // 실제로는 로그인된 사용자 ID
+        question: this.newQuestion.content,
+        questionDate: new Date().toLocaleDateString('ko-KR'),
+        answer: null,
+        answererId: null,
+        answerDate: null
+      };
+
+      // Q&A 추가
+      this.lecture.qa.push(qa);
+
+      // 모달 닫기 및 폼 초기화
+      this.showQAModal = false;
+      this.newQuestion = { content: '' };
+
+      alert('질문이 등록되었습니다!');
+    },
+
+    // 강의 평점 업데이트
+    updateLectureRating() {
+      if (this.lecture.reviews.length === 0) {
+        this.lecture.rating = 0;
+        this.lecture.ratingCount = 0;
+        return;
+      }
+
+      const totalRating = this.lecture.reviews.reduce((sum, review) => sum + review.rating, 0);
+      this.lecture.rating = (totalRating / this.lecture.reviews.length).toFixed(1);
+      this.lecture.ratingCount = this.lecture.reviews.length;
+    },
+
+    // 강의 구매
+    purchaseLecture() {
+      // 실제로는 결제 API 호출
+      this.isPurchased = true;
+      alert('강의가 구매되었습니다! 이제 리뷰를 작성할 수 있습니다.');
     }
   },
   mounted() {
@@ -1628,7 +1833,7 @@ export default {
   border-bottom-color: #ff7a00;
 }
 
-.write-review-btn {
+.write-review-btn, .write-qa-btn {
   background: #ff7a00;
   color: white;
   border: none;
@@ -1637,6 +1842,100 @@ export default {
   font-weight: 600;
   cursor: pointer;
   margin-bottom: 24px;
+}
+
+.reviews-list, .qa-list {
+  margin-top: 24px;
+}
+
+.review-item, .qa-item {
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 16px;
+  background: white;
+}
+
+.review-header, .question-header, .answer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.reviewer-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.reviewer-name, .questioner-name, .answerer-name {
+  font-weight: 600;
+  color: #333;
+}
+
+.review-date, .question-date, .answer-date {
+  color: #999;
+  font-size: 14px;
+}
+
+.rating {
+  display: flex;
+  gap: 2px;
+}
+
+.star {
+  color: #ddd;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.star.filled {
+  color: #ff7a00;
+}
+
+.review-content, .question-content, .answer-content {
+  color: #666;
+  line-height: 1.6;
+}
+
+.question {
+  margin-bottom: 16px;
+}
+
+.answer {
+  background: #f8f9fa;
+  padding: 16px;
+  border-radius: 6px;
+  margin-top: 12px;
+  border-left: 3px solid #ff7a00;
+}
+
+.purchase-notice {
+  text-align: center;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+
+.purchase-notice p {
+  margin: 0 0 16px 0;
+  color: #666;
+}
+
+.purchase-btn {
+  background: #ff7a00;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.purchase-btn:hover {
+  background: #e65c00;
 }
 
 .no-reviews, .no-qa {
@@ -1999,5 +2298,126 @@ export default {
     width: 95%;
     margin: 20px;
   }
+}
+
+/* 모달 스타일 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #eee;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #222;
+}
+
+.modal-content {
+  margin-bottom: 24px;
+}
+
+.rating-section, .content-section {
+  margin-bottom: 20px;
+}
+
+.rating-section label, .content-section label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #333;
+}
+
+.rating-input {
+  display: flex;
+  gap: 8px;
+}
+
+.star-input {
+  font-size: 24px;
+  color: #ddd;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.star-input.filled {
+  color: #ff7a00;
+}
+
+.star-input:hover {
+  color: #ff7a00;
+}
+
+.content-section textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.content-section textarea:focus {
+  outline: none;
+  border-color: #ff7a00;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.cancel-btn, .submit-btn {
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+}
+
+.cancel-btn {
+  background: #f0f0f0;
+  color: #666;
+}
+
+.submit-btn {
+  background: #ff7a00;
+  color: white;
+}
+
+.cancel-btn:hover {
+  background: #e0e0e0;
+}
+
+.submit-btn:hover {
+  background: #e65c00;
 }
 </style> 
