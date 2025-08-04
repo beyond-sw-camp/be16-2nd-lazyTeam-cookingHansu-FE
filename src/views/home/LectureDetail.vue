@@ -355,6 +355,11 @@ export default {
       },
       // 구매 상태 (실제로는 API에서 확인)
       isPurchased: false,
+      // 페이지네이션 설정
+      reviewsPerPage: 5,
+      qaPerPage: 5,
+      currentReviewsPage: 1,
+      currentQAPage: 1,
       // 강의 목록 데이터 (실제로는 API에서 가져옴)
       lecturesData: [
         {
