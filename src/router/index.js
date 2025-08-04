@@ -17,6 +17,7 @@ import AuthDetailUserPage from '@/views/login/AuthDetailUserPage.vue'
 import RegistrationCompletePage from '@/views/login/RegistrationCompletePage.vue'
 import RecipeMainPage from '@/views/home/RecipeMainPage.vue'
 import LectureList from '@/views/home/LectureList.vue'
+import LectureDetail from '@/views/home/LectureDetail.vue'
 
 import PaymentDetails from '@/views/payment/PaymentDetails.vue'
 
@@ -88,6 +89,7 @@ const routes = [
       { path: 'landing', name: 'LandingPage', component: LandingPage },
       { path: 'recipes', name: 'RecipeMainPage', component: RecipeMainPage },
       { path: 'lectures', name: 'LectureList', component: LectureList },
+      { path: 'lectures/:id', name: 'LectureDetail', component: LectureDetail },
       {
         path: 'chat',
         name: 'Chat',

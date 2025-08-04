@@ -1,94 +1,186 @@
 <template>
-  <div class="lecture-list-page">
+  <div class="lecture-detail-page">
     <Header />
-    <!-- 상단 탭 -->
-    <div class="nav-tabs">
-      <button :class="{ active: currentTab === 'recipe' }" @click="goToRecipe">
-        레시피 게시글
-      </button>
-      <button :class="{ active: currentTab === 'lecture' }" @click="currentTab = 'lecture'">
-        강의 목록
-      </button>
-    </div>
-
-    <!-- 필터 -->
-    <div class="filter-card">
-      <div class="filter-title-row">
-        <div class="filter-title">강의 필터</div>
-      </div>
-      <div class="filter-row">
-        <div class="filter-col">
-          <label>요리종류</label>
-          <select v-model="selectedCategory">
-            <option value="">전체</option>
-            <option value="한식">한식</option>
-            <option value="양식">양식</option>
-            <option value="일식">일식</option>
-            <option value="중식">중식</option>
-          </select>
-        </div>
-        <div class="filter-col">
-          <label>가격대</label>
-          <select v-model="selectedPrice">
-            <option value="">전체</option>
-            <option value="low">3만원 이하</option>
-            <option value="mid">3~5만원</option>
-            <option value="high">5만원 이상</option>
-          </select>
-        </div>
-        <div class="filter-col">
-          <label>정렬</label>
-          <select v-model="selectedSort">
-            <option value="latest">최신순</option>
-            <option value="popular">인기순</option>
-          </select>
-        </div>
-      </div>
-    </div>
-
-    <!-- 강의 카드 리스트 -->
-    <div class="lecture-grid">
-      <div v-for="lecture in pagedLectures" :key="lecture.id" class="lecture-card" @click="handleCardClick(lecture)">
-        <img :src="lecture.image" class="lecture-img" />
-        <div class="card-content">
-          <div class="category-row">
-            <span class="category-badge" :class="categoryClass(lecture.category)">{{ lecture.category }}</span>
-            <span class="price">{{ lecture.price.toLocaleString() }}원</span>
+    
+    <div v-if="lecture" class="detail-container">
+      <!-- 메인 콘텐츠 영역 -->
+      <div class="main-content">
+        <!-- 강의 제목 및 설명 -->
+        <div class="lecture-header">
+          <div class="tags">
+            <span class="tag cuisine">{{ lecture.category }}</span>
+            <span class="tag level">{{ lecture.level }}</span>
           </div>
-          <div class="title">{{ lecture.title }}</div>
-          <div class="desc">{{ lecture.description }}</div>
-          <div class="card-footer">
-            <div class="meta">
-              <span class="meta-rating">
-                <span class="stars">
-                  <span v-for="i in 5" :key="i" class="star" :class="{ filled: i <= Math.round(lecture.rating) }">
-                    ★
-                  </span>
-                </span>
-                <span class="meta-count">({{ lecture.ratingCount }})</span>
-              </span>
-              <span class="meta-likes"><span class="meta-icon">&#9829;</span> {{ lecture.likes }}</span>
-              <span class="meta-comments"><span class="meta-icon">💬</span> {{ lecture.comments }}</span>
-              <span class="meta-students"><span class="meta-icon">👥</span> {{ lecture.students }}</span>
+          <h1 class="lecture-title">{{ lecture.title }}</h1>
+          <p class="lecture-description">{{ lecture.description }}</p>
+        </div>
+
+        <!-- 비디오 미리보기 -->
+        <div class="video-preview">
+          <div class="video-container">
+            <div class="video-placeholder">
+              <div class="play-button">▶</div>
             </div>
-            <div class="date">{{ lecture.date }}</div>
+            <div class="video-info">
+              <h3>강의 미리보기</h3>
+              <p>{{ lecture.title }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 강의 커리큘럼 -->
+        <div class="curriculum-section">
+          <div class="section-header">
+            <h2>강의 목록</h2>
+            <span class="total-lessons">총 {{ lecture.lessons.length }}강</span>
+          </div>
+          <div class="lessons-list">
+            <div 
+              v-for="(lesson, index) in lecture.lessons" 
+              :key="index" 
+              class="lesson-item"
+              :class="{ 'preview': lesson.isPreview }"
+            >
+              <div class="lesson-info">
+                <div class="lesson-icon">
+                  <span v-if="lesson.isPreview" class="play-icon">▶</span>
+                  <span v-else class="lock-icon">🔒</span>
+                </div>
+                <div class="lesson-content">
+                  <h3>{{ lesson.title }}</h3>
+                  <p>{{ lesson.description }}</p>
+                </div>
+              </div>
+              <div class="lesson-meta">
+                <span class="duration">{{ lesson.duration }}</span>
+                <span v-if="lesson.isPreview" class="preview-badge">미리보기</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 강사 소개 -->
+        <div class="instructor-section">
+          <h2>강사 소개</h2>
+          <div class="instructor-info">
+            <div class="instructor-avatar">
+              <span>{{ lecture.instructor.name.charAt(0) }}</span>
+            </div>
+            <div class="instructor-details">
+              <h3>{{ lecture.instructor.name }}</h3>
+              <p>{{ lecture.instructor.title }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 리뷰 및 Q&A -->
+        <div class="reviews-section">
+          <div class="tabs">
+            <button 
+              :class="{ active: activeTab === 'reviews' }" 
+              @click="activeTab = 'reviews'"
+            >
+              수강평 ({{ lecture.reviews.length }})
+            </button>
+            <button 
+              :class="{ active: activeTab === 'qa' }" 
+              @click="activeTab = 'qa'"
+            >
+              Q&A ({{ lecture.qa.length }})
+            </button>
+          </div>
+          
+          <div v-if="activeTab === 'reviews'" class="reviews-content">
+            <button class="write-review-btn">리뷰 작성하기</button>
+            <div v-if="lecture.reviews.length === 0" class="no-reviews">
+              <p>아직 리뷰가 없습니다.</p>
+              <p>첫 번째 리뷰를 작성해보세요!</p>
+            </div>
+          </div>
+          
+          <div v-if="activeTab === 'qa'" class="qa-content">
+            <div v-if="lecture.qa.length === 0" class="no-qa">
+              <p>아직 Q&A가 없습니다.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 사이드바 -->
+      <div class="sidebar">
+        <!-- 구매 정보 -->
+        <div class="purchase-section">
+          <div class="price">{{ lecture.price.toLocaleString() }}원</div>
+          <button class="enroll-btn">지금 수강하기</button>
+          <div class="share-section">
+            <span class="share-icon">📤</span>
+            <span>공유하기</span>
+          </div>
+        </div>
+
+        <!-- 강의 요약 -->
+        <div class="course-summary">
+          <div class="summary-item">
+            <span class="label">총 강의 수</span>
+            <span class="value">{{ lecture.lessons.length }}강</span>
+          </div>
+          <div class="summary-item">
+            <span class="label">총 시간</span>
+            <span class="value">{{ lecture.totalDuration }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="label">난이도</span>
+            <span class="value">{{ lecture.level }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="label">수강생</span>
+            <span class="value">{{ lecture.students }}명</span>
+          </div>
+          <div class="summary-item">
+            <span class="label">평점</span>
+            <span class="value">☆ {{ lecture.rating }}({{ lecture.ratingCount }})</span>
+          </div>
+        </div>
+
+        <!-- 레시피 -->
+        <div class="recipe-section">
+          <h3>레시피 📖</h3>
+          <div class="recipe-card">
+            <h4>{{ lecture.recipe.title }}</h4>
+            <p>{{ lecture.recipe.description }}</p>
+            <div class="recipe-meta">
+              <span>{{ lecture.recipe.servings }}</span>
+              <span>{{ lecture.recipe.cookTime }}</span>
+              <span>{{ lecture.recipe.difficulty }}</span>
+            </div>
+            
+            <div class="ingredients">
+              <h5>재료 ({{ lecture.recipe.servings }})</h5>
+              <ul>
+                <li v-for="ingredient in lecture.recipe.ingredients" :key="ingredient.name">
+                  {{ ingredient.name }}: {{ ingredient.amount }}
+                </li>
+              </ul>
+            </div>
+            
+            <div class="cooking-steps">
+              <h5>조리 과정</h5>
+              <ol>
+                <li v-for="(step, index) in lecture.recipe.steps" :key="step">
+                  <span class="step-number">{{ index + 1 }}</span>
+                  <span class="step-text">{{ step }}</span>
+                </li>
+              </ol>
+            </div>
           </div>
         </div>
       </div>
     </div>
     
-    <!-- 페이지네이션 -->
-    <div class="pagination">
-      <button @click="changePage(currentPage - 1)" :disabled="currentPage <= 1"> &lt; </button>
-      <button
-        v-for="page in totalPages"
-        :key="page"
-        :class="{ active: page === currentPage }"
-        @click="changePage(page)"
-      >
-        {{ page }}
-      </button>
-      <button @click="changePage(currentPage + 1)" :disabled="currentPage >= totalPages"> &gt; </button>
+    <!-- 로딩 상태 -->
+    <div v-else class="loading-container">
+      <div class="loading-spinner"></div>
+      <p>강의 정보를 불러오는 중...</p>
     </div>
   </div>
 </template>
@@ -97,19 +189,14 @@
 import Header from '@/components/Header.vue';
 
 export default {
-  name: 'LectureList',
+  name: 'LectureDetail',
   components: { Header },
   data() {
     return {
-      currentTab: 'lecture',
-      currentPage: 1,
-      lecturesPerPage: 8,
-      selectedCategory: '',
-      selectedPrice: '',
-      selectedSort: 'latest',
-      selectedLecture: null,
-      showClickEffect: false,
-      lectures: [
+      activeTab: 'reviews',
+      lecture: null,
+      // 강의 목록 데이터 (실제로는 API에서 가져옴)
+      lecturesData: [
         {
           id: 1,
           image: '/src/assets/images/smu_mascort1.jpg',
@@ -860,269 +947,791 @@ export default {
           students: 140,
           date: '2주 전',
         },
-      ],
+      ]
     };
   },
-  computed: {
-    filteredLectures() {
-      let filtered = this.lectures;
-      
-      // 카테고리 필터
-      if (this.selectedCategory) {
-        filtered = filtered.filter(l => l.category === this.selectedCategory);
-      }
-      
-      // 가격대 필터
-      if (this.selectedPrice) {
-        filtered = filtered.filter(l => {
-          if (this.selectedPrice === 'low') return l.price < 30000;
-          if (this.selectedPrice === 'mid') return l.price >= 30000 && l.price <= 50000;
-          if (this.selectedPrice === 'high') return l.price > 50000;
-          return true;
-        });
-      }
-      
-      // 정렬
-      if (this.selectedSort === 'latest') {
-        filtered = filtered.slice().sort((a, b) => b.id - a.id);
-      } else if (this.selectedSort === 'popular') {
-        filtered = filtered.slice().sort((a, b) => b.likes - a.likes);
-      }
-      
-      return filtered;
-    },
-    pagedLectures() {
-      const start = (this.currentPage - 1) * this.lecturesPerPage;
-      const end = start + this.lecturesPerPage;
-      return this.filteredLectures.slice(start, end);
-    },
-    totalPages() {
-      return Math.max(1, Math.ceil(this.filteredLectures.length / this.lecturesPerPage));
-    },
-  },
-  watch: {
-    selectedCategory() {
-      this.currentPage = 1;
-    },
-    selectedPrice() {
-      this.currentPage = 1;
-    },
-    selectedSort() {
-      this.currentPage = 1;
-    },
-  },
   methods: {
-    goToRecipe() { this.$router.push({ name: 'RecipeMainPage' }); },
-    changePage(page) {
-      if (page >= 1 && page <= this.totalPages) {
-        this.currentPage = page;
-      } else if (page > this.totalPages) {
-        this.currentPage = this.totalPages;
-      } else if (page < 1) {
-        this.currentPage = 1;
-      }
-    },
-    categoryClass(category) {
-      switch (category) {
-        case '한식': return 'cat-korean';
-        case '양식': return 'cat-western';
-        case '일식': return 'cat-japanese';
-        case '중식': return 'cat-chinese';
-        case '디저트': return 'cat-dessert';
-        default: return '';
-      }
-    },
-    handleCardClick(lecture) {
-      console.log('강의 클릭:', lecture.id, lecture.title);
+    // 강의 데이터를 받아오는 메서드 (실제로는 API 호출)
+    async fetchLectureData(lectureId) {
+      // 실제 구현에서는 API에서 강의 데이터를 가져옴
+      console.log('강의 ID:', lectureId);
       
-      // 강의 상세 페이지로 이동
-      this.$router.push({ name: 'LectureDetail', params: { id: lecture.id } });
+      // 강의 목록에서 해당 ID의 강의 찾기
+      const baseLecture = this.lecturesData.find(l => l.id == lectureId);
+      
+      if (baseLecture) {
+        // 강의 상세 정보 생성
+        this.lecture = {
+          ...baseLecture,
+          level: this.getLevelByCategory(baseLecture.category),
+          totalDuration: this.generateTotalDuration(),
+          instructor: {
+            name: baseLecture.teacher,
+            title: '요리 전문가'
+          },
+          lessons: this.generateLessons(baseLecture),
+          reviews: [],
+          qa: [],
+          recipe: this.generateRecipe(baseLecture)
+        };
+      } else {
+        // 강의를 찾을 수 없는 경우 기본 데이터 사용
+        this.lecture = this.getDefaultLecture();
+      }
     },
+    
+    getLevelByCategory(category) {
+      const levelMap = {
+        '한식': '초급',
+        '양식': '중급',
+        '일식': '고급',
+        '중식': '중급',
+        '디저트': '초급'
+      };
+      return levelMap[category] || '초급';
+    },
+    
+    generateTotalDuration() {
+      const durations = ['1시간 15분', '1시간 30분', '2시간', '1시간 45분', '1시간 20분'];
+      return durations[Math.floor(Math.random() * durations.length)];
+    },
+    
+    generateLessons(baseLecture) {
+      const lessonTemplates = {
+        '한식': [
+          { title: '기본 재료 준비하기', description: '한식의 기본 재료와 도구 준비', duration: '15분', isPreview: true },
+          { title: '양념 만들기', description: '한식의 핵심, 양념 만들기', duration: '25분', isPreview: false },
+          { title: '조리법 완성하기', description: '완성도 높은 한식 조리법', duration: '20분', isPreview: false }
+        ],
+        '양식': [
+          { title: '파스타 면 삶기의 비법', description: '알덴테 파스타를 위한 삶기 방법', duration: '15분', isPreview: true },
+          { title: '크림 소스 만들기', description: '진짜 이탈리아식 크림 소스 레시피', duration: '30분', isPreview: false },
+          { title: '파스타와 소스 결합하기', description: '면과 소스를 완벽하게 결합하는 방법', duration: '10분', isPreview: false }
+        ],
+        '일식': [
+          { title: '스시 밥 만들기', description: '스시의 기본, 밥 만들기', duration: '20분', isPreview: true },
+          { title: '생선 손질하기', description: '신선한 생선 손질 방법', duration: '25분', isPreview: false },
+          { title: '스시 완성하기', description: '완벽한 스시 만들기', duration: '15분', isPreview: false }
+        ],
+        '중식': [
+          { title: '중식 기본 재료', description: '중식의 기본 재료 준비', duration: '15분', isPreview: true },
+          { title: '양념과 소스', description: '중식의 핵심 양념 만들기', duration: '20분', isPreview: false },
+          { title: '완성도 높은 중식', description: '정통 중식 완성하기', duration: '25분', isPreview: false }
+        ],
+        '디저트': [
+          { title: '디저트 기본기', description: '디저트의 기본 재료와 도구', duration: '15분', isPreview: true },
+          { title: '크림 만들기', description: '부드러운 크림 만들기', duration: '20분', isPreview: false },
+          { title: '디저트 완성', description: '완벽한 디저트 완성하기', duration: '15분', isPreview: false }
+        ]
+      };
+      
+      return lessonTemplates[baseLecture.category] || lessonTemplates['한식'];
+    },
+    
+    generateRecipe(baseLecture) {
+      const recipeTemplates = {
+        '한식': {
+          title: '김치찌개',
+          description: '매콤달콤한 김치찌개',
+          servings: '2인분',
+          cookTime: '30분',
+          difficulty: '초급',
+          ingredients: [
+            { name: '김치', amount: '200g' },
+            { name: '돼지고기', amount: '150g' },
+            { name: '두부', amount: '1/2모' },
+            { name: '양파', amount: '1/2개' },
+            { name: '대파', amount: '1대' },
+            { name: '고춧가루', amount: '1큰술' }
+          ],
+          steps: [
+            '김치를 적당한 크기로 썰어둡니다',
+            '돼지고기를 준비합니다',
+            '양파와 대파를 썰어둡니다',
+            '냄비에 기름을 두르고 고기를 볶습니다',
+            '김치를 넣고 볶습니다',
+            '물을 넣고 끓입니다',
+            '두부와 채소를 넣고 끓입니다'
+          ]
+        },
+        '양식': {
+          title: '크림 파스타',
+          description: '진짜 이탈리아식 크림 파스타',
+          servings: '2인분',
+          cookTime: '25분',
+          difficulty: '초급',
+          ingredients: [
+            { name: '파스타 면', amount: '200 g' },
+            { name: '생크림', amount: '200 ml' },
+            { name: '파마산 치즈', amount: '50 g' },
+            { name: '마늘', amount: '3쪽' },
+            { name: '올리브오일', amount: '2큰술' },
+            { name: '후추', amount: '적당량' }
+          ],
+          steps: [
+            '파스타 면을 알덴테로 삶는다',
+            '팬에 올리브오일과 마늘을 볶는다',
+            '생크림을 넣고 끓인다',
+            '파마산 치즈를 넣어 녹인다',
+            '삶은 면을 넣고 소스와 잘 섞는다',
+            '후추로 마무리한다'
+          ]
+        },
+        '일식': {
+          title: '스시',
+          description: '신선한 스시',
+          servings: '2인분',
+          cookTime: '40분',
+          difficulty: '고급',
+          ingredients: [
+            { name: '쌀', amount: '2컵' },
+            { name: '생선', amount: '200g' },
+            { name: '초밥초', amount: '적당량' },
+            { name: '와사비', amount: '적당량' },
+            { name: '간장', amount: '적당량' }
+          ],
+          steps: [
+            '쌀을 깨끗이 씻어서 밥을 짓습니다',
+            '초밥초를 섞어서 식힙니다',
+            '생선을 손질합니다',
+            '밥을 적당한 크기로 뭉칩니다',
+            '생선을 올려서 완성합니다'
+          ]
+        },
+        '중식': {
+          title: '짜장면',
+          description: '정통 짜장면',
+          servings: '2인분',
+          cookTime: '30분',
+          difficulty: '중급',
+          ingredients: [
+            { name: '면', amount: '300g' },
+            { name: '돼지고기', amount: '200g' },
+            { name: '양파', amount: '1개' },
+            { name: '춘장', amount: '3큰술' },
+            { name: '식용유', amount: '적당량' }
+          ],
+          steps: [
+            '면을 삶아서 준비합니다',
+            '돼지고기를 다집니다',
+            '양파를 썰어둡니다',
+            '기름을 두르고 고기를 볶습니다',
+            '춘장을 넣고 볶습니다',
+            '면과 섞어서 완성합니다'
+          ]
+        },
+        '디저트': {
+          title: '티라미수',
+          description: '이탈리안 디저트',
+          servings: '4인분',
+          cookTime: '20분',
+          difficulty: '중급',
+          ingredients: [
+            { name: '마스카포네', amount: '250g' },
+            { name: '계란', amount: '3개' },
+            { name: '설탕', amount: '60g' },
+            { name: '커피', amount: '200ml' },
+            { name: '레이디핑거', amount: '적당량' }
+          ],
+          steps: [
+            '계란 노른자와 설탕을 섞습니다',
+            '마스카포네를 넣고 섞습니다',
+            '계란 흰자를 거품내어 섞습니다',
+            '커피에 레이디핑거를 담급니다',
+            '크림을 올려서 완성합니다'
+          ]
+        }
+      };
+      
+      return recipeTemplates[baseLecture.category] || recipeTemplates['한식'];
+    },
+    
+    getDefaultLecture() {
+      return {
+        id: 1,
+        title: '크림 파스타의 모든 것',
+        description: '진짜 이탈리아 스타일 크림 파스타 만들기. 면 삶기부터 크림 소스 만들기까지 모든 노하우를 담았습니다.',
+        category: '양식',
+        level: '초급',
+        price: 35000,
+        totalDuration: '1시간 15분',
+        students: 142,
+        rating: 0.0,
+        ratingCount: 0,
+        instructor: {
+          name: '김 요리',
+          title: '요리 전문가'
+        },
+        lessons: [
+          {
+            title: '파스타 면 삶기의 비법',
+            description: '알덴테 파스타를 위한 삶기 방법',
+            duration: '15분',
+            isPreview: true
+          },
+          {
+            title: '크림 소스 만들기',
+            description: '진짜 이탈리아식 크림 소스 레시피',
+            duration: '30분',
+            isPreview: false
+          },
+          {
+            title: '파스타와 소스 결합하기',
+            description: '면과 소스를 완벽하게 결합하는 방법',
+            duration: '10분',
+            isPreview: false
+          }
+        ],
+        reviews: [],
+        qa: [],
+        recipe: {
+          title: '크림 파스타',
+          description: '진짜 이탈리아식 크림 파스타',
+          servings: '2인분',
+          cookTime: '25분',
+          difficulty: '초급',
+          ingredients: [
+            { name: '파스타 면', amount: '200 g' },
+            { name: '생크림', amount: '200 ml' },
+            { name: '파마산 치즈', amount: '50 g' },
+            { name: '마늘', amount: '3쪽' },
+            { name: '올리브오일', amount: '2큰술' },
+            { name: '후추', amount: '적당량' }
+          ],
+          steps: [
+            '파스타 면을 알덴테로 삶는다',
+            '팬에 올리브오일과 마늘을 볶는다',
+            '생크림을 넣고 끓인다',
+            '파마산 치즈를 넣어 녹인다',
+            '삶은 면을 넣고 소스와 잘 섞는다',
+            '후추로 마무리한다'
+          ]
+        }
+      };
+    }
   },
+  mounted() {
+    // URL 파라미터에서 강의 ID를 가져와서 데이터 로드
+    const lectureId = this.$route.params.id;
+    if (lectureId) {
+      this.fetchLectureData(lectureId);
+    }
+  }
 };
 </script>
 
 <style scoped>
-.lecture-list-page { background: #fafbfc; min-height: 100vh; margin-top: 64px; }
-.nav-tabs { display: flex; justify-content: center; margin: 16px 0 24px 0; gap: 12px; }
-.nav-tabs button { padding: 10px 24px; border: none; background: #fff; color: #ff7a00; font-weight: 600; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
-.nav-tabs button.active { background: #ff7a00; color: #fff; }
+.lecture-detail-page {
+  background: #fafbfc;
+  min-height: 100vh;
+  margin-top: 64px;
+}
 
-.filter-card { background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); padding: 10px 14px 6px 14px; max-width: 1040px; margin: 0 auto 16px auto; }
-.filter-title { font-size: 15px; font-weight: 700; margin-bottom: 8px; color: #222; }
-.filter-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-.filter-row { display: flex; justify-content: space-between; gap: 16px; }
-.filter-col { display: flex; flex-direction: column; flex: 1; min-width: 120px; }
-.filter-col label { font-size: 13px; color: #444; font-weight: 500; margin-bottom: 4px; }
-.filter-col select { padding: 6px 10px; border-radius: 6px; border: 1px solid #eee; font-size: 14px; background: #fafbfc; }
-
-.lecture-grid {
+.detail-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 20px;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  grid-template-rows: repeat(2, 1fr);
-  gap: 16px;
-  max-width: 1040px;
-  margin: 0 auto 24px auto;
-  
+  grid-template-columns: 1fr 350px;
+  gap: 40px;
 }
 
-.lecture-card {
-  background: #fff;
+.main-content {
+  background: white;
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-  padding: 0;
+  padding: 40px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.lecture-header {
+  margin-bottom: 40px;
+}
+
+.tags {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  overflow: hidden;
-  border: 1.5px solid #f3f3f3;
-  transition: all 0.3s ease;
-  cursor: pointer;
-}
-
-.lecture-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-}
-.lecture-img { width: 100%; height: 90px; object-fit: cover; border-radius: 12px 12px 0 0; margin-bottom: 0; }
-.card-content { display: flex; flex-direction: column; padding: 10px 12px 8px 12px; }
-.category-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-.category-badge { font-size: 13px; font-weight: 600; padding: 2px 10px; border-radius: 10px; background: #f5f5f5; }
-.cat-korean { background: #ffe5c2; color: #ff7a00; }
-.cat-chinese { background: #ffe2e2; color: #ff3b3b; }
-.cat-western { background: #e2f0ff; color: #007aff; }
-.cat-japanese { background: #e2ffe7; color: #00b86b; }
-.cat-dessert { background: #fff3e2; color: #ff7a00; }
-.price { font-size: 17px; color: #ff7a00; font-weight: 700; }
-
-.title {
-  font-size: 17px;
-  font-weight: 700;
-  margin-bottom: 4px;
-  color: #222;
-  white-space: normal;
-  word-break: keep-all;
-  overflow: visible;
-  text-overflow: unset;
-}
-
-.desc {
-  font-size: 13px;
-  color: #666;
-  margin-bottom: 10px;
-  line-height: 1.5;
-  display: block;
-  overflow: visible;
-  white-space: normal;
-  word-break: keep-all;
-}
-
-.card-footer {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  margin-top: auto;
-}
-
-.meta {
-  display: flex;
-  gap: 10px;
-  font-size: 12px;
-  align-items: center;
-  line-height: 1;
-}
-
-.meta span {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.meta-icon {
-  font-size: 12px;
-}
-
-.meta-rating .star {
-  color: #ddd;
-  font-size: 12px;
-}
-.meta-rating .star.filled {
-  color: #ffc107;
-}
-
-.meta-count {
-  font-size: 12px;
-  color: #888;
-}
-
-.meta-likes,
-.meta-comments,
-.meta-students {
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-
-}
-
-.date {
-  font-size: 11px;
-  color: #bbb;
-  font-weight: 400;
-  white-space: nowrap;
-  align-self: flex-end;
-}
-
-
-.pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
   gap: 8px;
-  margin-bottom: 24px;
-  margin-top: 0;
+  margin-bottom: 16px;
 }
-.pagination button {
-  border: none;
-  background: #fff;
-  color: #ff7a00;
-  border-radius: 4px;
-  padding: 4px 8px;
-  cursor: pointer;
+
+.tag {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
   font-weight: 600;
-  min-width: 26px;
-  min-height: 26px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-  font-size: 15px;
-  transition: background 0.15s, color 0.15s;
-}
-.pagination button.active {
-  background: #ff7a00;
-  color: #fff;
-}
-.pagination button:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-.meta {
-  display: flex;
-  gap: 8px;
-  font-size: 10px;
-  align-items: center;
-  line-height: 1;
 }
 
-.meta-icon {
+.tag.cuisine {
+  background: #e8f5e8;
+  color: #2d5a2d;
+}
+
+.tag.level {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.lecture-title {
+  font-size: 32px;
+  font-weight: 700;
+  color: #222;
+  margin: 0 0 16px 0;
+  line-height: 1.3;
+}
+
+.lecture-description {
+  font-size: 16px;
+  color: #666;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.video-preview {
+  margin-bottom: 40px;
+}
+
+.video-container {
+  border-radius: 12px;
+  overflow: hidden;
+  border-bottom-left-radius: 20px;
+  border-bottom-right-radius: 20px;
+}
+
+.video-placeholder {
+  background: #2c3e50;
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.play-button {
+  color: white;
+  font-size: 48px;
+  cursor: pointer;
+}
+
+.video-info {
+  background: white;
+  padding: 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.video-info h3 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.video-info p {
+  margin: 0;
+  color: #666;
+}
+
+.curriculum-section {
+  margin-bottom: 40px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.section-header h2 {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.total-lessons {
+  color: #666;
   font-size: 14px;
 }
 
-.meta-count {
-  font-size: 12px;
-  color: #888;
+.lessons-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.meta-rating .star {
-  font-size: 12px;
+.lesson-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  background: white;
 }
 
-</style>
+.lesson-item.preview {
+  border-color: #ff7a00;
+  background: #fff8f0;
+}
+
+.lesson-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+
+.lesson-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.play-icon {
+  color: #ff7a00;
+}
+
+.lock-icon {
+  color: #999;
+}
+
+.lesson-content h3 {
+  margin: 0 0 4px 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.lesson-content p {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.lesson-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.duration {
+  color: #666;
+  font-size: 14px;
+}
+
+.preview-badge {
+  background: #ff7a00;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.instructor-section {
+  margin-bottom: 40px;
+}
+
+.instructor-section h2 {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 24px 0;
+}
+
+.instructor-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.instructor-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 600;
+  color: #666;
+}
+
+.instructor-details h3 {
+  margin: 0 0 4px 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.instructor-details p {
+  margin: 0;
+  color: #666;
+}
+
+.reviews-section {
+  margin-bottom: 40px;
+}
+
+.tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 24px;
+}
+
+.tabs button {
+  padding: 12px 24px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: #666;
+  border-bottom: 2px solid transparent;
+}
+
+.tabs button.active {
+  color: #ff7a00;
+  border-bottom-color: #ff7a00;
+}
+
+.write-review-btn {
+  background: #ff7a00;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 24px;
+}
+
+.no-reviews, .no-qa {
+  text-align: center;
+  color: #999;
+  padding: 40px 0;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.purchase-section {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  text-align: center;
+}
+
+.price {
+  font-size: 32px;
+  font-weight: 700;
+  color: #ff7a00;
+  margin-bottom: 16px;
+}
+
+.enroll-btn {
+  width: 100%;
+  background: #ff7a00;
+  color: white;
+  border: none;
+  padding: 16px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 16px;
+}
+
+.share-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #666;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.course-summary {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.summary-item:last-child {
+  border-bottom: none;
+}
+
+.summary-item .label {
+  color: #666;
+  font-size: 14px;
+}
+
+.summary-item .value {
+  font-weight: 600;
+  color: #222;
+}
+
+.recipe-section {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.recipe-section h3 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.recipe-card h4 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.recipe-card p {
+  margin: 0 0 16px 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.recipe-meta {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  color: #666;
+}
+
+.ingredients, .cooking-steps {
+  margin-bottom: 20px;
+}
+
+.ingredients h5, .cooking-steps h5 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #222;
+}
+
+.ingredients ul {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 14px;
+  color: #666;
+}
+
+.ingredients li {
+  margin-bottom: 4px;
+}
+
+.cooking-steps ol {
+  margin: 0;
+  padding-left: 0;
+  font-size: 14px;
+  color: #666;
+  list-style: none;
+}
+
+.cooking-steps li {
+  margin-bottom: 12px;
+  line-height: 1.5;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.step-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: #ff7a00;
+  color: white;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.step-text {
+  flex: 1;
+}
+
+@media (max-width: 1024px) {
+  .detail-container {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  
+  .sidebar {
+    order: -1;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    padding: 24px;
+  }
+  
+  .lecture-title {
+    font-size: 24px;
+  }
+  
+  .lesson-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .lesson-meta {
+    align-self: flex-end;
+  }
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  gap: 20px;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #ff7a00;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-container p {
+  color: #666;
+  font-size: 16px;
+}
+</style> 
