@@ -112,7 +112,7 @@
         <div class="purchase-section">
           <div class="price">{{ lecture.price.toLocaleString() }}원</div>
           <button class="enroll-btn">지금 수강하기</button>
-          <div class="share-section">
+          <div class="share-section" @click="showShareModal = true">
             <span class="share-icon">📤</span>
             <span>공유하기</span>
           </div>
@@ -182,6 +182,42 @@
       <div class="loading-spinner"></div>
       <p>강의 정보를 불러오는 중...</p>
     </div>
+
+    <!-- 공유 모달 -->
+    <div v-if="showShareModal" class="share-modal-overlay" @click="showShareModal = false">
+      <div class="share-modal" @click.stop>
+        <div class="share-modal-header">
+          <h3>공유하기</h3>
+          <button class="close-btn" @click="showShareModal = false">×</button>
+        </div>
+        <div class="share-options">
+          <div class="share-option" @click="shareToFacebook">
+            <div class="share-icon facebook">
+              <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTI0IDEyQzI0IDUuMzcyNTggMTguNjI3NCAwIDEyIDBDNS4zNzI1OCAwIDAgNS4zNzI1OCAwIDEyQzAgMTcuOTkxNSA0LjM4ODI3IDIyLjk1NDEgMTAuMTI1IDIzLjg1NDJWMTQuNDY4OEg3LjA3ODEyVjEySDEwLjEyNVY5Ljg0Mzc1QzEwLjEyNSA2LjY2MjUgMTEuOTE2NyA1LjA5Mzc1IDE0LjY1NzYgNS4wOTM3NUMxNS40OTAyIDUuMDkzNzUgMTYuMzY3MiA1LjI4MTI1IDE2LjM2NzIgNS4yODEyNUwxNi4zNjcyIDcuNTYyNUgxNS4xOTUzQzE0LjA0MjcgNy41NjI1IDEzLjc1IDguMzM3NSAxMy43NSA5LjQ2ODc1VjEySDE2LjI2NTZMMTUuODk4NCAxNC40Njg4SDEzLjc1VjIzLjg1NDFDMjAuNjExNyAyMi45NTQxIDI0IDE3Ljk5MTUgMjQgMTJaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K" alt="Facebook" />
+            </div>
+            <span>페이스북</span>
+          </div>
+          <div class="share-option" @click="shareToKakaoTalk">
+            <div class="share-icon kakaotalk">
+              <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDNDNi40OCAzIDIgNy40OCAyIDEzQzIgMTUuNzUgMy4yNSAxNy43NSA1LjI1IDE5LjI1TDUuMjUgMjIuMjVDNS4yNSAyMi44IDUuOCAyMy4yNSA2LjI1IDIzLjI1QzYuNSAyMy4yNSA2Ljc1IDIzLjE1IDYuOTUgMjIuOTVMMTAuNzUgMTkuMjVDMTEuNSAxOS40NSAxMi4yNSAxOS41IDEzIDE5LjVDMTguNTIgMTkuNSAyMyAxNS41MiAyMyAxMEMyMyA0LjQ4IDE4LjUyIDAgMTMgMEMxMi4zMyAwIDEyIDMgMTIgM1oiIGZpbGw9IiMwMDAiLz4KPHBhdGggZD0iTTggMTJDNy40NDc3MiAxMiA3IDExLjU1MjMgNyAxMUM3IDEwLjQ0NzcgNy40NDc3MiAxMCA4IDEwQzguNTUyMjggMTAgOSAxMC40NDc3IDkgMTFDOSAxMS41NTIzIDguNTUyMjggMTIgOCAxMloiIGZpbGw9IiMwMDAiLz4KPHBhdGggZD0iTTE2IDEyQzE1LjQ0NzcgMTIgMTUgMTEuNTUyMyAxNSAxMUMxNSAxMC40NDc3IDE1LjQ0NzcgMTAgMTYgMTBDMTYuNTUyMyAxMCAxNyAxMC40NDc3IDE3IDExQzE3IDExLjU1MjMgMTYuNTUyMyAxMiAxNiAxMloiIGZpbGw9IiMwMDAiLz4KPC9zdmc+Cg==" alt="KakaoTalk" />
+            </div>
+            <span>카카오톡</span>
+          </div>
+          <div class="share-option" @click="shareToInstagram">
+            <div class="share-icon instagram">
+              <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyQzIgMTcuNTIgNi40OCAyMiAxMiAyMkMxNy41MiAyMiAyMiAxNy41MiAyMiAxMkMyMiA2LjQ4IDE3LjUyIDIgMTIgMlpNMTIgMjBDNy41OSAyMCA0IDE2LjQxIDQgMTJDNCA3LjU5IDcuNTkgNCAxMiA0QzE2LjQxIDQgMjAgNy41OSAyMCAxMkMyMCAxNi40MSAxNi40MSAyMCAxMiAyMFoiIGZpbGw9IndoaXRlIi8+CjxwYXRoIGQ9Ik0xNyA4QzE3LjU1MjMgOCAxOCA3LjU1MjMgMTggN0MxOCA2LjQ0NzcgMTcuNTUyMyA2IDE3IDZDMTYuNDQ3NyA2IDE2IDYuNDQ3NyAxNiA3QzE2IDcuNTUyMyAxNi40NDc3IDggMTcgOFoiIGZpbGw9IndoaXRlIi8+CjxwYXRoIGQ9Ik0xMiA5QzEwLjM0MzEgOSA5IDEwLjM0MzEgOSAxMkM5IDEzLjY1NjkgMTAuMzQzMSAxNSAxMiAxNUMxMy42NTY5IDE1IDE1IDEzLjY1NjkgMTUgMTJDMTUgMTAuMzQzMSAxMy42NTY5IDkgMTIgOVoiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPgo=" alt="Instagram" />
+            </div>
+            <span>인스타그램</span>
+          </div>
+          <div class="share-option" @click="copyToClipboard">
+            <div class="share-icon link">
+              <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEwLjU5IDEzLjQxQzEyLjQ5MzcgMTUuMzEyNyAxNS41MDYzIDE1LjMxMjcgMTcuNDEgMTMuNDFMMjAuNTkgMTAuMjNDMjIuNDkzNyA4LjMyNzI3IDIyLjQ5MzcgNS4zMTQ3MyAyMC41OSAzLjQxTDE3LjQxIDAuMjNDMTUuNTA2MyAtMS42ODcyNyAxMi40OTM3IC0xLjY4NzI3IDEwLjU5IDAuMjNMNy40MSAzLjQxQzUuNTA2MyA1LjMxNDczIDUuNTA2MyA4LjMyNzI3IDcuNDEgMTAuMjNMMTAuNTkgMTMuNDFaIiBmaWxsPSJ3aGl0ZSIvPgo8cGF0aCBkPSJNMTMuNDEgMTAuNTlDMTEuNTA2MyA4LjY4NzI3IDguNDkzNyA4LjY4NzI3IDYuNTkgMTAuNTlMMy40MSAxMy43N0MxLjUwNjMgMTUuNjczMyAxLjUwNjMgMTguNjc1OCAzLjQxIDIwLjU3NUw2LjU5IDIzLjc1QzguNDkzNyAyNS42NTI3IDExLjUwNjMgMjUuNjUyNyAxMy40MSAyMy43NUwxNi41OSAyMC41N0MxOC40OTM3IDE4LjY3NTggMTguNDkzNyAxNS42NzMzIDE2LjU5IDEzLjc3TDEzLjQxIDEwLjU5WiIgZmlsbD0id2hpdGUiLz4KPC9zdmc+Cg==" alt="Link" />
+            </div>
+            <span>링크 복사</span>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -195,6 +231,7 @@ export default {
     return {
       activeTab: 'reviews',
       lecture: null,
+      showShareModal: false,
       // 강의 목록 데이터 (실제로는 API에서 가져옴)
       lecturesData: [
         {
@@ -1208,6 +1245,76 @@ export default {
           ]
         }
       };
+    },
+
+    // 공유 기능 메서드들
+    getShareUrl() {
+      return `${window.location.origin}/lectures/${this.lecture.id}`;
+    },
+
+    getShareText() {
+      return `${this.lecture.title} - ${this.lecture.description}`;
+    },
+
+    shareToFacebook() {
+      const url = encodeURIComponent(this.getShareUrl());
+      const text = encodeURIComponent(this.getShareText());
+      const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}&quote=${text}`;
+      window.open(facebookUrl, '_blank', 'width=600,height=400');
+      this.showShareModal = false;
+    },
+
+    shareToKakaoTalk() {
+      // Kakao SDK 초기화
+      if (typeof Kakao !== 'undefined') {
+        if (!Kakao.isInitialized()) {
+          Kakao.init("3a1a982f8ee6ddbc64171c2f80850243");
+        }
+        
+        // Kakao Link 전송
+        Kakao.Link.sendDefault({
+          objectType: 'feed',
+          content: {
+            title: `🔥 ${this.lecture.title}`,
+            description: this.lecture.description,
+            imageUrl: this.lecture.image || 'https://yourdomain.com/images/share-thumb.png',
+            link: {
+              mobileWebUrl: this.getShareUrl(),
+              webUrl: this.getShareUrl(),
+            },
+          },
+          buttons: [
+            {
+              title: '강의 보러가기',
+              link: {
+                mobileWebUrl: this.getShareUrl(),
+                webUrl: this.getShareUrl(),
+              },
+            },
+          ],
+        });
+      } else {
+        // Kakao SDK가 로드되지 않은 경우 링크 복사로 대체
+        this.copyToClipboard();
+      }
+      this.showShareModal = false;
+    },
+
+    shareToInstagram() {
+      // 인스타그램은 직접 링크 공유가 제한적이므로 링크 복사로 대체
+      this.copyToClipboard();
+    },
+
+    async copyToClipboard() {
+      try {
+        const shareText = `${this.getShareText()}\n\n${this.getShareUrl()}`;
+        await navigator.clipboard.writeText(shareText);
+        alert('링크가 클립보드에 복사되었습니다!');
+        this.showShareModal = false;
+      } catch (err) {
+        console.error('클립보드 복사 실패:', err);
+        alert('링크 복사에 실패했습니다. 수동으로 복사해주세요.');
+      }
     }
   },
   mounted() {
@@ -1215,6 +1322,11 @@ export default {
     const lectureId = this.$route.params.id;
     if (lectureId) {
       this.fetchLectureData(lectureId);
+    }
+    
+    // Kakao SDK 초기화
+    if (typeof Kakao !== 'undefined' && !Kakao.isInitialized()) {
+      Kakao.init("3a1a982f8ee6ddbc64171c2f80850243");
     }
   }
 };
@@ -1733,5 +1845,137 @@ export default {
 .loading-container p {
   color: #666;
   font-size: 16px;
+}
+
+/* 공유 모달 스타일 */
+.share-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.share-modal {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.share-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #eee;
+}
+
+.share-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #222;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #666;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.close-btn:hover {
+  background: #f0f0f0;
+}
+
+.share-options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.share-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.share-option:hover {
+  background: #f8f9fa;
+  border-color: #ff7a00;
+  transform: translateY(-2px);
+}
+
+.share-option .share-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #f8f9fa;
+}
+
+.share-option .share-icon img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.share-option .share-icon.facebook {
+  background: #1877f2;
+}
+
+.share-option .share-icon.kakaotalk {
+  background: #fee500;
+}
+
+.share-option .share-icon.instagram {
+  background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+}
+
+.share-option .share-icon.link {
+  background: #28a745;
+}
+
+.share-option span {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+@media (max-width: 480px) {
+  .share-options {
+    grid-template-columns: 1fr;
+  }
+  
+  .share-modal {
+    width: 95%;
+    margin: 20px;
+  }
 }
 </style> 
