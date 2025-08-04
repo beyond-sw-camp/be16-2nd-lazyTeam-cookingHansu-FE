@@ -1301,8 +1301,30 @@ export default {
     },
 
     shareToInstagram() {
-      // 인스타그램은 직접 링크 공유가 제한적이므로 링크 복사로 대체
-      this.copyToClipboard();
+      // 인스타그램 공유 개선: 모바일에서는 인스타그램 앱으로, 데스크톱에서는 링크 복사
+      if (this.isMobile()) {
+        // 모바일에서는 인스타그램 앱으로 공유 시도
+        const shareUrl = `instagram://library?AssetPickerSourceType=1`;
+        window.location.href = shareUrl;
+        
+        // 3초 후 링크 복사로 대체 (인스타그램 앱이 없거나 실패한 경우)
+        setTimeout(() => {
+          this.copyToClipboard();
+        }, 3000);
+      } else {
+        // 데스크톱에서는 인스타그램 웹으로 이동
+        const instagramUrl = `https://www.instagram.com/`;
+        window.open(instagramUrl, '_blank');
+        
+        // 동시에 링크 복사
+        setTimeout(() => {
+          this.copyToClipboard();
+        }, 1000);
+      }
+    },
+
+    isMobile() {
+      return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     },
 
     async copyToClipboard() {
