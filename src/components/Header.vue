@@ -38,6 +38,14 @@
                 </div>
               </transition>
             </div>
+            <div class="cart-wrapper">
+              <button class="cart-btn" @click="goToCart">
+                <span class="icon-cart">
+                  <svg xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 0 24 24" fill="none" stroke="#495057" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                </span>
+                <span v-if="cartStore.cartCount > 0" class="cart-badge">{{ cartStore.cartCount }}</span>
+              </button>
+            </div>
             <button class="logout-btn" @click="logout">로그아웃</button>
           </template>
           <!-- 로그아웃 상태 -->
@@ -80,6 +88,14 @@
                 </div>
               </transition>
             </div>
+            <div class="cart-wrapper">
+              <button class="cart-btn" @click="goToCart">
+                <span class="icon-cart">
+                  <svg xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 0 24 24" fill="none" stroke="#495057" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                </span>
+                <span v-if="cartStore.cartCount > 0" class="cart-badge">{{ cartStore.cartCount }}</span>
+              </button>
+            </div>
             <span class="welcome">{{ nickname }}님 반갑습니다!</span>
             <button class="logout-btn" @click="logout">로그아웃</button>
           </template>
@@ -90,6 +106,7 @@
       <div v-if="isMobile && showMobileMenu" class="mobile-menu">
         <nav class="mobile-menu-bar">
           <a v-for="item in menuItems" :key="item.text" :href="item.route" class="mobile-menu-item" @click="closeMobileMenu">{{ item.text }}</a>
+          <a href="/cart" class="mobile-menu-item" @click="closeMobileMenu">장바구니 ({{ cartStore.cartCount }})</a>
         </nav>
       </div>
     </transition>
@@ -99,8 +116,10 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useCartStore } from '@/store/cart.js'
 
 const router = useRouter()
+const cartStore = useCartStore()
 const isLoggedIn = ref(false) // 임시: 실제 로그인 상태와 연동 필요
 const nickname = ref('김요리') // 임시: 실제 닉네임 연동 필요
 const hoverMenu = ref('')
@@ -156,6 +175,10 @@ function toggleMobileMenu() {
 }
 function closeMobileMenu() {
   showMobileMenu.value = false
+}
+function goToCart() {
+  router.push('/cart')
+  closeMobileMenu()
 }
 onMounted(() => {
   handleResize()
@@ -341,6 +364,32 @@ onUnmounted(() => {
   overflow: hidden;
   white-space: nowrap;
   max-width: 180px;
+}
+.cart-wrapper {
+  position: relative;
+}
+.cart-btn {
+  background: none;
+  border: none;
+  position: relative;
+  font-size: 1.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 0;
+}
+.cart-badge {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  background: #ff7a00;
+  color: #fff;
+  border-radius: 50%;
+  font-size: 0.8rem;
+  padding: 2px 6px;
+  min-width: 20px;
+  text-align: center;
+  font-weight: bold;
 }
 .fade-slide-enter-active, .fade-slide-leave-active {
   transition: opacity 0.25s, transform 0.25s;

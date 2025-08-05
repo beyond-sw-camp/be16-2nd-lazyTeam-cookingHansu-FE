@@ -101,7 +101,7 @@
             
             <!-- 리뷰 목록 -->
             <div v-if="lecture.reviews.length > 0" class="reviews-list">
-              <div v-for="review in lecture.reviews" :key="review.id" class="review-item">
+              <div v-for="review in paginatedReviews" :key="review.id" class="review-item">
                 <div class="review-header">
                   <div class="reviewer-info">
                     <span class="reviewer-name">{{ review.reviewerId }}</span>
@@ -114,6 +114,13 @@
                 <div class="review-content">
                   <p>{{ review.content }}</p>
                 </div>
+              </div>
+              
+              <!-- 더 보기 버튼 -->
+              <div v-if="showReviewsMoreButton" class="more-button-container">
+                <button class="more-button" @click="loadMoreReviews">
+                  더 보기
+                </button>
               </div>
             </div>
             
@@ -128,7 +135,7 @@
             
             <!-- Q&A 목록 -->
             <div v-if="lecture.qa.length > 0" class="qa-list">
-              <div v-for="qa in lecture.qa" :key="qa.id" class="qa-item">
+              <div v-for="qa in paginatedQA" :key="qa.id" class="qa-item">
                 <div class="question">
                   <div class="question-header">
                     <span class="questioner-name">{{ qa.questionerId }}</span>
@@ -149,6 +156,13 @@
                   </div>
                 </div>
               </div>
+              
+              <!-- 더 보기 버튼 -->
+              <div v-if="showQAMoreButton" class="more-button-container">
+                <button class="more-button" @click="loadMoreQA">
+                  더 보기
+                </button>
+              </div>
             </div>
             
             <div v-if="lecture.qa.length === 0" class="no-qa">
@@ -163,7 +177,13 @@
         <!-- 구매 정보 -->
         <div class="purchase-section">
           <div class="price">{{ lecture.price.toLocaleString() }}원</div>
-          <button class="enroll-btn">지금 수강하기</button>
+          <button 
+            class="enroll-btn" 
+            :class="{ 'in-cart': cartStore && cartStore.isInCart(lecture.id) }"
+            @click="enrollLecture"
+          >
+            {{ cartStore && cartStore.isInCart(lecture.id) ? '장바구니에 추가됨' : '지금 수강하기' }}
+          </button>
           <div class="share-section" @click="showShareModal = true">
             <span class="share-icon">📤</span>
             <span>공유하기</span>
@@ -335,6 +355,7 @@
 
 <script>
 import Header from '@/components/Header.vue';
+import { useCartStore } from '@/store/cart.js';
 
 export default {
   name: 'LectureDetail',
@@ -360,6 +381,8 @@ export default {
       qaPerPage: 5,
       currentReviewsPage: 1,
       currentQAPage: 1,
+      // 장바구니 스토어
+      cartStore: null,
       // 강의 목록 데이터 (실제로는 API에서 가져옴)
       lecturesData: [
         {
@@ -1115,6 +1138,35 @@ export default {
       ]
     };
   },
+  computed: {
+    // 페이지네이션된 리뷰 목록
+    paginatedReviews() {
+      if (!this.lecture || !this.lecture.reviews) return [];
+      const startIndex = 0;
+      const endIndex = this.currentReviewsPage * this.reviewsPerPage;
+      return this.lecture.reviews.slice(startIndex, endIndex);
+    },
+    
+    // 페이지네이션된 Q&A 목록
+    paginatedQA() {
+      if (!this.lecture || !this.lecture.qa) return [];
+      const startIndex = 0;
+      const endIndex = this.currentQAPage * this.qaPerPage;
+      return this.lecture.qa.slice(startIndex, endIndex);
+    },
+    
+    // 리뷰 더 보기 버튼 표시 여부
+    showReviewsMoreButton() {
+      if (!this.lecture || !this.lecture.reviews) return false;
+      return this.currentReviewsPage * this.reviewsPerPage < this.lecture.reviews.length;
+    },
+    
+    // Q&A 더 보기 버튼 표시 여부
+    showQAMoreButton() {
+      if (!this.lecture || !this.lecture.qa) return false;
+      return this.currentQAPage * this.qaPerPage < this.lecture.qa.length;
+    }
+  },
   methods: {
     // 강의 데이터를 받아오는 메서드 (실제로는 API 호출)
     async fetchLectureData(lectureId) {
@@ -1135,8 +1187,8 @@ export default {
             title: '요리 전문가'
           },
           lessons: this.generateLessons(baseLecture),
-          reviews: [],
-          qa: [],
+          reviews: this.generateReviews(baseLecture),
+          qa: this.generateQA(baseLecture),
           recipe: this.generateRecipe(baseLecture)
         };
       } else {
@@ -1309,6 +1361,287 @@ export default {
       };
       
       return recipeTemplates[baseLecture.category] || recipeTemplates['한식'];
+    },
+    
+    generateReviews(baseLecture) {
+      const reviewTemplates = [
+        {
+          id: 1,
+          reviewerId: '김요리',
+          rating: 5,
+          content: '정말 좋은 강의였습니다! 설명이 자세하고 따라하기 쉬워요.',
+          date: '2024.01.15'
+        },
+        {
+          id: 2,
+          reviewerId: '이요리',
+          rating: 4,
+          content: '기초부터 차근차근 설명해주셔서 초보자도 쉽게 따라할 수 있었어요.',
+          date: '2024.01.14'
+        },
+        {
+          id: 3,
+          reviewerId: '박요리',
+          rating: 5,
+          content: '실습 위주로 진행되어서 실제로 요리할 때 도움이 많이 됩니다.',
+          date: '2024.01.13'
+        },
+        {
+          id: 4,
+          reviewerId: '최요리',
+          rating: 4,
+          content: '재료 준비부터 완성까지 모든 과정이 체계적으로 정리되어 있어요.',
+          date: '2024.01.12'
+        },
+        {
+          id: 5,
+          reviewerId: '정요리',
+          rating: 5,
+          content: '강사님이 친절하게 설명해주셔서 어려운 부분도 쉽게 이해할 수 있었습니다.',
+          date: '2024.01.11'
+        },
+        {
+          id: 6,
+          reviewerId: '한요리',
+          rating: 4,
+          content: '실제 요리할 때 필요한 팁들이 많이 나와서 유용했어요.',
+          date: '2024.01.10'
+        },
+        {
+          id: 7,
+          reviewerId: '조요리',
+          rating: 5,
+          content: '레시피가 정확하고 맛있게 나왔습니다. 강추합니다!',
+          date: '2024.01.09'
+        },
+        {
+          id: 8,
+          reviewerId: '윤요리',
+          rating: 4,
+          content: '시간 배분이 적절해서 부담없이 수강할 수 있었어요.',
+          date: '2024.01.08'
+        },
+        {
+          id: 9,
+          reviewerId: '임요리',
+          rating: 5,
+          content: '기초부터 고급까지 단계별로 배울 수 있어서 좋았습니다.',
+          date: '2024.01.07'
+        },
+        {
+          id: 10,
+          reviewerId: '서요리',
+          rating: 4,
+          content: '실습 영상이 깔끔하게 편집되어 있어서 보기 편했어요.',
+          date: '2024.01.06'
+        },
+        {
+          id: 11,
+          reviewerId: '강요리',
+          rating: 5,
+          content: '재료 구하기 쉬운 레시피라서 실제로 만들어보기 좋았습니다.',
+          date: '2024.01.05'
+        },
+        {
+          id: 12,
+          reviewerId: '송요리',
+          rating: 4,
+          content: '강사님의 설명이 명확하고 이해하기 쉬워요.',
+          date: '2024.01.04'
+        },
+        {
+          id: 13,
+          reviewerId: '백요리',
+          rating: 5,
+          content: '실제 요리할 때 발생할 수 있는 문제점들도 미리 알려주셔서 좋았어요.',
+          date: '2024.01.03'
+        },
+        {
+          id: 14,
+          reviewerId: '남요리',
+          rating: 4,
+          content: '레시피가 정확하고 맛있게 나왔습니다.',
+          date: '2024.01.02'
+        },
+        {
+          id: 15,
+          reviewerId: '오요리',
+          rating: 5,
+          content: '기초부터 차근차근 설명해주셔서 초보자도 쉽게 따라할 수 있었어요.',
+          date: '2024.01.01'
+        }
+      ];
+      
+      return reviewTemplates;
+    },
+    
+    generateQA(baseLecture) {
+      const qaTemplates = [
+        {
+          id: 1,
+          questionerId: '김질문',
+          question: '이 강의는 몇 분 분량인가요?',
+          questionDate: '2024.01.15',
+          answer: '약 30분입니다.',
+          answererId: '강사',
+          answerDate: '2024.01.15'
+        },
+        {
+          id: 2,
+          questionerId: '이질문',
+          question: '재료는 어디서 구매하나요?',
+          questionDate: '2024.01.14',
+          answer: '쿠팡, 마트 등에서 가능합니다.',
+          answererId: '강사',
+          answerDate: '2024.01.14'
+        },
+        {
+          id: 3,
+          questionerId: '박질문',
+          question: '대체 재료가 있을까요?',
+          questionDate: '2024.01.13',
+          answer: '두부 대신 버섯도 좋아요.',
+          answererId: '강사',
+          answerDate: '2024.01.13'
+        },
+        {
+          id: 4,
+          questionerId: '최질문',
+          question: '초보자도 따라할 수 있나요?',
+          questionDate: '2024.01.12',
+          answer: '네, 기초부터 차근차근 설명드립니다.',
+          answererId: '강사',
+          answerDate: '2024.01.12'
+        },
+        {
+          id: 5,
+          questionerId: '정질문',
+          question: '실습 영상이 포함되어 있나요?',
+          questionDate: '2024.01.11',
+          answer: '네, 모든 과정이 영상으로 제공됩니다.',
+          answererId: '강사',
+          answerDate: '2024.01.11'
+        },
+        {
+          id: 6,
+          questionerId: '한질문',
+          question: '레시피 PDF도 제공되나요?',
+          questionDate: '2024.01.10',
+          answer: '네, 강의 자료로 PDF가 포함되어 있습니다.',
+          answererId: '강사',
+          answerDate: '2024.01.10'
+        },
+        {
+          id: 7,
+          questionerId: '조질문',
+          question: '재료 양은 몇 인분 기준인가요?',
+          questionDate: '2024.01.09',
+          answer: '2인분 기준으로 설명드립니다.',
+          answererId: '강사',
+          answerDate: '2024.01.09'
+        },
+        {
+          id: 8,
+          questionerId: '윤질문',
+          question: '조리 시간은 얼마나 걸리나요?',
+          questionDate: '2024.01.08',
+          answer: '약 20-30분 정도 소요됩니다.',
+          answererId: '강사',
+          answerDate: '2024.01.08'
+        },
+        {
+          id: 9,
+          questionerId: '임질문',
+          question: '난이도는 어느 정도인가요?',
+          questionDate: '2024.01.07',
+          answer: '초급자도 쉽게 따라할 수 있는 난이도입니다.',
+          answererId: '강사',
+          answerDate: '2024.01.07'
+        },
+        {
+          id: 10,
+          questionerId: '서질문',
+          question: '보관 방법도 알려주시나요?',
+          questionDate: '2024.01.06',
+          answer: '네, 보관 방법과 재가열 방법도 포함되어 있습니다.',
+          answererId: '강사',
+          answerDate: '2024.01.06'
+        },
+        {
+          id: 11,
+          questionerId: '강질문',
+          question: '양념 비율을 조절할 수 있나요?',
+          questionDate: '2024.01.05',
+          answer: '네, 개인 취향에 맞게 조절 가능합니다.',
+          answererId: '강사',
+          answerDate: '2024.01.05'
+        },
+        {
+          id: 12,
+          questionerId: '송질문',
+          question: '실패했을 때 대처 방법도 있나요?',
+          questionDate: '2024.01.04',
+          answer: '네, 자주 발생하는 실패 케이스와 해결 방법을 포함했습니다.',
+          answererId: '강사',
+          answerDate: '2024.01.04'
+        },
+        {
+          id: 13,
+          questionerId: '백질문',
+          question: '추가 질문이 있으면 어떻게 하나요?',
+          questionDate: '2024.01.03',
+          answer: 'Q&A 게시판을 통해 언제든 질문하실 수 있습니다.',
+          answererId: '강사',
+          answerDate: '2024.01.03'
+        },
+        {
+          id: 14,
+          questionerId: '남질문',
+          question: '재료 준비 시간은 얼마나 걸리나요?',
+          questionDate: '2024.01.02',
+          answer: '약 10-15분 정도 소요됩니다.',
+          answererId: '강사',
+          answerDate: '2024.01.02'
+        },
+        {
+          id: 15,
+          questionerId: '오질문',
+          question: '완성도는 어느 정도인가요?',
+          questionDate: '2024.01.01',
+          answer: '레스토랑 수준의 완성도를 목표로 합니다.',
+          answererId: '강사',
+          answerDate: '2024.01.01'
+        },
+        {
+          id: 16,
+          questionerId: '김질문2',
+          question: '추가 재료가 필요할 수 있나요?',
+          questionDate: '2024.01.01',
+          answer: null,
+          answererId: null,
+          answerDate: null
+        },
+        {
+          id: 17,
+          questionerId: '이질문2',
+          question: '조리 도구는 어떤 것이 필요한가요?',
+          questionDate: '2024.01.01',
+          answer: null,
+          answererId: null,
+          answerDate: null
+        },
+        {
+          id: 18,
+          questionerId: '박질문2',
+          question: '보관 기간은 얼마나 되나요?',
+          questionDate: '2024.01.01',
+          answer: null,
+          answererId: null,
+          answerDate: null
+        }
+      ];
+      
+      return qaTemplates;
     },
     
     getDefaultLecture() {
@@ -1547,9 +1880,42 @@ export default {
       // 실제로는 결제 API 호출
       this.isPurchased = true;
       alert('강의가 구매되었습니다! 이제 리뷰를 작성할 수 있습니다.');
+    },
+
+    // 장바구니에 강의 추가
+    enrollLecture() {
+      if (!this.lecture) {
+        alert('강의 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+        return;
+      }
+
+      // 이미 장바구니에 있는 경우
+      if (this.cartStore.isInCart(this.lecture.id)) {
+        alert('이미 장바구니에 있는 강의입니다.');
+        return;
+      }
+
+      // 장바구니에 강의 추가
+      const result = this.cartStore.addToCart(this.lecture);
+      
+      // 결과 메시지 표시
+      alert(result.message);
+    },
+    
+    // 리뷰 더 보기 버튼 클릭
+    loadMoreReviews() {
+      this.currentReviewsPage++;
+    },
+    
+    // Q&A 더 보기 버튼 클릭
+    loadMoreQA() {
+      this.currentQAPage++;
     }
   },
   mounted() {
+    // 장바구니 스토어 초기화
+    this.cartStore = useCartStore();
+    
     // URL 파라미터에서 강의 ID를 가져와서 데이터 로드
     const lectureId = this.$route.params.id;
     if (lectureId) {
@@ -1943,6 +2309,28 @@ export default {
   background: #e65c00;
 }
 
+.more-button-container {
+  text-align: center;
+  margin-top: 24px;
+}
+
+.more-button {
+  background: #f8f9fa;
+  color: #666;
+  border: 1px solid #ddd;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.more-button:hover {
+  background: #e9ecef;
+  color: #495057;
+  border-color: #adb5bd;
+}
+
 .no-reviews, .no-qa {
   text-align: center;
   color: #999;
@@ -1981,6 +2369,22 @@ export default {
   font-weight: 600;
   cursor: pointer;
   margin-bottom: 16px;
+  transition: all 0.3s ease;
+}
+
+.enroll-btn:hover {
+  background: #e65c00;
+  transform: translateY(-1px);
+}
+
+.enroll-btn.in-cart {
+  background: #28a745;
+  cursor: default;
+}
+
+.enroll-btn.in-cart:hover {
+  background: #28a745;
+  transform: none;
 }
 
 .share-section {
