@@ -37,7 +37,7 @@ export async function getChatHistory(roomId) {
 // 메시지 읽음 처리 API
 export async function markMessageAsRead(roomId) {
   try {
-    const response = await apiGet(`/chat/room/${roomId}/read`);
+    const response = await apiPost(`/chat/room/${roomId}/read`);
     const apiResponse = await handleApiResponse(response);
     return apiResponse.getData();
   } catch (error) {
@@ -82,13 +82,17 @@ export async function leaveChatRoom(roomId) {
   }
 }
 
-// 메시지 전송 API (추후 WebSocket으로 구현 예정)
-export async function sendMessage(roomId, content, file = null) {
+// 메시지 전송 API (WebSocket 사용 권장)
+export async function sendMessage(roomId, content, files = null) {
   try {
     const formData = new FormData();
     formData.append('content', content);
-    if (file) {
-      formData.append('file', file);
+    
+    if (files && files.length > 0) {
+      files.forEach((file, index) => {
+        formData.append(`files[${index}].file`, file);
+        formData.append(`files[${index}].fileType`, getFileTypeFromFile(file));
+      });
     }
 
     const response = await apiPostFormData(`/chat/room/${roomId}/message`, formData);
@@ -100,6 +104,33 @@ export async function sendMessage(roomId, content, file = null) {
   } catch (error) {
     console.error('메시지 전송 실패:', error);
     throw error;
+  }
+}
+
+// 파일로부터 파일 타입 추정
+function getFileTypeFromFile(file) {
+  if (!file || !file.name) {
+    return 'UNKNOWN';
+  }
+  
+  const fileName = file.name;
+  const lastDotIndex = fileName.lastIndexOf(".");
+  
+  if (lastDotIndex === -1) {
+    return 'UNKNOWN';
+  }
+  
+  const extension = fileName.substring(lastDotIndex + 1).toLowerCase();
+  
+  const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+  const videoExtensions = ['mp4', 'avi', 'mov'];
+  
+  if (imageExtensions.includes(extension)) {
+    return 'IMAGE';
+  } else if (videoExtensions.includes(extension)) {
+    return 'VIDEO';
+  } else {
+    return 'UNKNOWN';
   }
 }
 

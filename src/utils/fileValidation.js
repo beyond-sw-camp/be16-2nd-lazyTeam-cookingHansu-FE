@@ -97,6 +97,12 @@ export function validateMessageAndFiles(message, files) {
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const fileType = getFileTypeFromFile(file);
+      
+      // UNKNOWN 타입은 거부
+      if (fileType === 'UNKNOWN') {
+        return { isValid: false, error: `파일 ${i + 1}: 지원하지 않는 파일 형식입니다. 이미지는 jpg, jpeg, png, gif, webp, 비디오는 mp4, avi, mov 형식만 허용됩니다.` };
+      }
+      
       const validation = validateFile(file, fileType);
       
       if (!validation.isValid) {

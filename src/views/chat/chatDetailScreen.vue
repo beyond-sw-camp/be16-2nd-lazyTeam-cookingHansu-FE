@@ -236,7 +236,7 @@
           </div>
           <v-img 
             v-if="selectedFileTypes[index] && selectedFileTypes[index].startsWith('image/')" 
-            :src="file" 
+            :src="file.preview" 
             max-width="60" 
             class="ml-2 rounded" 
           />
@@ -303,7 +303,8 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from "vue";
+import { ref, computed, watch, nextTick, onBeforeUnmount } from "vue";
+import { useRouter, onBeforeRouteLeave } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useChatStore } from '@/store/chat/chat';
 import { formatRelativeTime } from '@/utils/timeUtils';
@@ -315,6 +316,7 @@ const props = defineProps({
   chat: Object,
 });
 
+const router = useRouter();
 const chatStore = useChatStore();
 const { messages, currentRoomId, loading } = storeToRefs(chatStore);
 
@@ -368,6 +370,17 @@ watch(chatMessages, () => {
     }
   });
 }, { deep: true });
+
+// 컴포넌트가 언마운트되기 전에 WebSocket 연결 해제
+onBeforeUnmount(() => {
+  chatStore.disconnectWebSocket();
+});
+
+// 라우트를 떠나기 전에 WebSocket 연결 해제
+onBeforeRouteLeave((to, from, next) => {
+  chatStore.disconnectWebSocket();
+  next();
+});
 
 // 컴포저블의 함수들을 래핑하여 message ref를 전달
 const handleFileChangeWrapper = (e) => handleFileChange(e, message);
@@ -426,7 +439,8 @@ const sendMessage = async (event) => {
   if (isSending.value || loading.value) return;
   
   // 메시지와 파일 유효성 검사
-  const validation = validateMessageAndFiles(message.value, selectedFiles.value);
+  const files = selectedFiles.value.map(item => item.file); // 원본 파일 객체들
+  const validation = validateMessageAndFiles(message.value, files);
   if (!validation.isValid) {
     alert(validation.error);
     return;
@@ -436,17 +450,17 @@ const sendMessage = async (event) => {
   
   try {
     const hasText = message.value.trim();
-    const hasFiles = selectedFiles.value.length > 0;
+    const hasFiles = files.length > 0;
     
     if (hasText && !hasFiles) {
       // 텍스트만 있는 경우
       await chatStore.sendMessage(message.value, null);
     } else if (!hasText && hasFiles) {
       // 파일만 있는 경우
-      await chatStore.sendMessage("", selectedFiles.value);
+      await chatStore.sendMessage("", files);
     } else if (hasText && hasFiles) {
       // 텍스트와 파일 모두 있는 경우
-      await chatStore.sendMessage(message.value, selectedFiles.value);
+      await chatStore.sendMessage(message.value, files);
     }
     
     message.value = "";

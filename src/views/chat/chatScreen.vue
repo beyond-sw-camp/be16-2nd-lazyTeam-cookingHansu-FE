@@ -16,27 +16,7 @@
               {{ totalUnreadCount }}
             </v-chip>
           </div>
-          
-          <!-- 로딩 상태 -->
-          <v-progress-linear
-            v-if="loading"
-            indeterminate
-            color="primary"
-            class="mb-4"
-          />
-          
-          <!-- 에러 상태 (콘솔 로그만 남기고 UI에서는 제거) -->
-          <!-- <v-alert
-            v-if="error"
-            type="error"
-            variant="tonal"
-            class="mb-4"
-            closable
-            @click:close="clearError"
-          >
-            {{ error }}
-          </v-alert> -->
-          
+        
           <div
             ref="chatScroll"
             class="chat-scroll-wrapper"
@@ -53,7 +33,7 @@
               >
                 <div class="d-flex w-100 align-start">
                   <!-- 아바타 -->
-                  <v-avatar size="48" class="mr-4">
+                  <v-avatar size="48" class="mr-4 flex-shrink-0">
                     <template v-if="chat.otherUserProfileImage">
                       <v-img :src="chat.otherUserProfileImage" />
                     </template>
@@ -62,26 +42,28 @@
                     </template>
                   </v-avatar>
                   <!-- 텍스트+시간+뱃지 영역 -->
-                  <div class="flex-grow-1 min-width-0">
-                    <div class="d-flex justify-space-between align-start">
-                      <div class="text-subtitle-1 font-weight-bold" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 8px;">
+                  <div class="flex-grow-1 min-width-0 d-flex flex-column" style="width: 0;">
+                    <!-- 상단: 채팅방 이름 + 시간 + 읽지 않은 메시지 수 -->
+                    <div class="d-flex justify-space-between align-start mb-1">
+                      <div class="text-subtitle-1 font-weight-bold text-truncate" style="flex: 1; margin-right: 8px;">
                         {{ chat.chatRoomName || chat.otherUserName }}
                       </div>
                       <!-- 시간+뱃지 묶음 -->
                       <div class="d-flex align-center flex-shrink-0">
-                        <span class="text-caption text-grey mt-1 mr-1">
+                        <span class="text-caption text-grey-darken-1 mr-1">
                           {{ formatChatTime(chat.lastMessageTime) }}
                         </span>
                         <div v-if="chat.unreadCount > 0"
-                          class="rounded-circle text-white text-caption font-weight-bold d-flex align-center justify-center"
-                          style="background-color: orange; width: 20px; height: 20px;">
+                          class="rounded-circle text-white text-caption font-weight-bold d-flex align-center justify-center flex-shrink-0"
+                          style="background-color: orange; width: 20px; height: 20px; min-width: 20px;">
                           {{ chat.unreadCount }}
                         </div>
                       </div>
                     </div>
+                    <!-- 하단: 마지막 메시지 -->
                     <div
-                      class="text-body-2 text-grey-darken-1"
-                      style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px;"
+                      class="text-body-2 text-grey-darken-1 text-truncate"
+                      style="line-height: 1.2;"
                     >
                       {{ chat.lastMessage }}
                     </div>

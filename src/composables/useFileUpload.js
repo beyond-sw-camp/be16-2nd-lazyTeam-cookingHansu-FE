@@ -26,6 +26,14 @@ export function useFileUpload() {
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const fileType = getFileTypeFromFile(file);
+      
+      // UNKNOWN 타입은 거부
+      if (fileType === 'UNKNOWN') {
+        alert(`파일 "${file.name}": 지원하지 않는 파일 형식입니다. 이미지는 jpg, jpeg, png, gif, webp, 비디오는 mp4, avi, mov 형식만 허용됩니다.`);
+        e.target.value = '';
+        return;
+      }
+      
       const validation = validateFile(file, fileType);
       
       if (!validation.isValid) {
@@ -36,7 +44,11 @@ export function useFileUpload() {
     }
     
     files.forEach(file => {
-      selectedFiles.value.push(URL.createObjectURL(file));
+      // 원본 파일 객체와 미리보기 URL 모두 저장
+      selectedFiles.value.push({
+        file: file, // 원본 파일 객체
+        preview: URL.createObjectURL(file) // 미리보기용 URL
+      });
       selectedFileNames.value.push(file.name);
       selectedFileTypes.value.push(file.type);
     });
@@ -46,12 +58,22 @@ export function useFileUpload() {
   };
 
   const removeSelectedFile = (index) => {
+    // 미리보기 URL 해제
+    if (selectedFiles.value[index] && selectedFiles.value[index].preview) {
+      URL.revokeObjectURL(selectedFiles.value[index].preview);
+    }
     selectedFiles.value.splice(index, 1);
     selectedFileNames.value.splice(index, 1);
     selectedFileTypes.value.splice(index, 1);
   };
 
   const removeAllFiles = () => {
+    // 모든 미리보기 URL 해제
+    selectedFiles.value.forEach(item => {
+      if (item && item.preview) {
+        URL.revokeObjectURL(item.preview);
+      }
+    });
     selectedFiles.value = [];
     selectedFileNames.value = [];
     selectedFileTypes.value = [];
@@ -70,8 +92,20 @@ export function useFileUpload() {
 
   // 파일로부터 파일 타입 추정
   const getFileTypeFromFile = (file) => {
+    if (!file || !file.name) {
+      console.error('파일 또는 파일 이름이 없습니다:', file);
+      return 'UNKNOWN';
+    }
+    
     const fileName = file.name;
-    const extension = fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase();
+    const lastDotIndex = fileName.lastIndexOf(".");
+    
+    if (lastDotIndex === -1) {
+      console.error('파일 확장자가 없습니다:', fileName);
+      return 'UNKNOWN';
+    }
+    
+    const extension = fileName.substring(lastDotIndex + 1).toLowerCase();
     
     const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
     const videoExtensions = ['mp4', 'avi', 'mov'];
@@ -81,6 +115,7 @@ export function useFileUpload() {
     } else if (videoExtensions.includes(extension)) {
       return 'VIDEO';
     } else {
+      console.error('지원하지 않는 파일 형식입니다:', extension);
       return 'UNKNOWN';
     }
   };

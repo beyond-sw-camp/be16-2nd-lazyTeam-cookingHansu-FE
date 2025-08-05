@@ -1,4 +1,6 @@
 import { defineStore } from 'pinia';
+import Stomp from "webstomp-client";
+import SockJs from "sockjs-client";
 import { 
   getMyChatRooms, 
   getChatHistory, 
@@ -8,6 +10,9 @@ import {
   updateChatRoomName,
   leaveChatRoom
 } from '../../services/chat/chatService';
+import { ChatMessageResponse } from '../../models/chat/ChatResponse';
+
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export const useChatStore = defineStore('chat', {
   state: () => ({
@@ -15,6 +20,7 @@ export const useChatStore = defineStore('chat', {
     messages: {}, // roomId를 키로 하는 메시지 캐시
     currentRoomId: null,
     loading: false,
+    stompClient: null,
     // error: null, // 에러 상태 제거
   }),
   
@@ -31,6 +37,135 @@ export const useChatStore = defineStore('chat', {
   },
   
   actions: {
+    // WebSocket 연결
+    connectWebSocket(roomId) {
+      // 기존 연결이 있으면 해제
+      this.disconnectWebSocket();
+      
+      if (!roomId) return;
+      
+      // const token = localStorage.getItem("token"); // 테스트용: 토큰 없이 연결
+      // if (!token) {
+      //   console.error('토큰이 없습니다.');
+      //   return;
+      // }
+
+      try {
+        const sockJs = new SockJs(`${API_BASE_URL}/connect`);
+        this.stompClient = Stomp.over(sockJs);
+
+        this.stompClient.connect(
+          {
+            // Authorization: `Bearer ${token}`, // 테스트용: 토큰 없이 연결
+          },
+          () => {
+            console.log('WebSocket 연결 성공');
+            
+            // 채팅방 구독
+            this.stompClient.subscribe(
+              `/topic/${roomId}`,
+              (message) => {
+                try {
+                  const parsedMessage = JSON.parse(message.body);
+                  this.receiveMessage(parsedMessage);
+                } catch (error) {
+                  console.error('메시지 파싱 실패:', error);
+                }
+              },
+              {
+                // Authorization: `Bearer ${token}`, // 테스트용: 토큰 없이 구독
+              }
+            );
+          },
+          (error) => {
+            console.error('WebSocket 연결 실패:', error);
+            // 연결 실패 시 HTTP API 사용
+            this.stompClient = null;
+          }
+        );
+      } catch (error) {
+        console.error('WebSocket 초기화 실패:', error);
+        this.stompClient = null;
+      }
+    },
+
+    // WebSocket 연결 해제
+    disconnectWebSocket() {
+      if (this.stompClient && this.stompClient.connected) {
+        try {
+          if (this.currentRoomId) {
+            this.stompClient.unsubscribe(`/topic/${this.currentRoomId}`);
+          }
+          this.stompClient.disconnect();
+          console.log('WebSocket 연결 해제');
+        } catch (error) {
+          console.error('WebSocket 연결 해제 실패:', error);
+        } finally {
+          this.stompClient = null;
+        }
+      }
+    },
+
+    // 메시지 전송 (WebSocket 사용)
+    async sendMessageViaWebSocket(content, files = null) {
+      if (!this.currentRoomId || !this.stompClient || !this.stompClient.connected) {
+        console.error('WebSocket이 연결되지 않았습니다.');
+        return;
+      }
+
+      // 백엔드 ChatMessageReqDto 형식에 맞춤
+      const message = {
+        roomId: this.currentRoomId,
+        senderId: '00000000-0000-0000-0000-000000000000', // 테스트용 고정 ID
+        message: content,
+        files: files ? files.map(file => ({
+          file: file,
+          fileType: this.getFileTypeFromFile(file)
+        })) : null
+      };
+
+      try {
+        this.stompClient.send(
+          `/publish/${this.currentRoomId}`,
+          JSON.stringify(message)
+          // , { Authorization: `Bearer ${token}` } // 테스트용: 토큰 없이 전송
+        );
+      } catch (error) {
+        console.error('WebSocket 메시지 전송 실패:', error);
+        throw error;
+      }
+    },
+
+    // 파일로부터 파일 타입 추정 (백엔드 FileType enum에 맞춤)
+    getFileTypeFromFile(file) {
+      if (!file || !file.name) {
+        console.error('파일 또는 파일 이름이 없습니다:', file);
+        return 'UNKNOWN';
+      }
+      
+      const fileName = file.name;
+      const lastDotIndex = fileName.lastIndexOf(".");
+      
+      if (lastDotIndex === -1) {
+        console.error('파일 확장자가 없습니다:', fileName);
+        return 'UNKNOWN';
+      }
+      
+      const extension = fileName.substring(lastDotIndex + 1).toLowerCase();
+      
+      const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+      const videoExtensions = ['mp4', 'avi', 'mov'];
+      
+      if (imageExtensions.includes(extension)) {
+        return 'IMAGE';
+      } else if (videoExtensions.includes(extension)) {
+        return 'VIDEO';
+      } else {
+        console.error('지원하지 않는 파일 형식입니다:', extension);
+        return 'UNKNOWN';
+      }
+    },
+
     // 내 채팅방 목록 조회
     async fetchMyChatRooms() {
       this.loading = true;
@@ -59,6 +194,9 @@ export const useChatStore = defineStore('chat', {
         
         // 메시지 읽음 처리
         await this.markAsRead(roomId);
+        
+        // WebSocket 연결
+        this.connectWebSocket(roomId);
       } catch (error) {
         console.error('메시지 조회 실패:', error);
         // this.error = error.message; // 에러 상태 제거
@@ -83,31 +221,39 @@ export const useChatStore = defineStore('chat', {
     },
     
     // 메시지 전송
-    async sendMessage(content, file = null) {
+    async sendMessage(content, files = null) {
       if (!this.currentRoomId || this.loading) return;
       
       this.loading = true;
       // this.error = null; // 에러 상태 제거
       
       try {
-        const message = await sendMessage(this.currentRoomId, content, file);
+        const now = new Date().toISOString();
         
-        // 현재 채팅방의 메시지에 추가
-        if (!this.messages[this.currentRoomId]) {
-          this.messages[this.currentRoomId] = [];
+        // WebSocket을 통해 메시지 전송
+        if (this.stompClient && this.stompClient.connected) {
+          await this.sendMessageViaWebSocket(content, files);
+          // WebSocket 연결이 있으면 백엔드에서 받은 메시지를 사용하므로 로컬 추가하지 않음
+        } else {
+          // WebSocket이 연결되지 않은 경우 HTTP API 사용
+          const message = await sendMessage(this.currentRoomId, content, files);
+          if (!this.messages[this.currentRoomId]) {
+            this.messages[this.currentRoomId] = [];
+          }
+          this.messages[this.currentRoomId].push(message);
         }
-        this.messages[this.currentRoomId].push(message);
         
         // 채팅방의 마지막 메시지 정보 업데이트
         const room = this.rooms.find(r => r.chatRoomId === this.currentRoomId);
         if (room) {
           room.lastMessage = content;
-          room.lastMessageTime = message.createdAt || new Date().toISOString();
+          room.lastMessageTime = now;
           room.unreadCount = 0;
         }
       } catch (error) {
         console.error('메시지 전송 실패:', error);
         // this.error = error.message; // 에러 상태 제거
+        throw error;
       } finally {
         this.loading = false;
       }
@@ -158,11 +304,18 @@ export const useChatStore = defineStore('chat', {
     
     // 채팅방 나가기
     async leaveRoom(roomId) {
+      if (!roomId) return;
+      
       this.loading = true;
       // this.error = null; // 에러 상태 제거
       
       try {
         await leaveChatRoom(roomId);
+        
+        // WebSocket 연결 해제
+        if (this.currentRoomId === roomId) {
+          this.disconnectWebSocket();
+        }
         
         // 로컬 상태에서 채팅방 제거
         this.rooms = this.rooms.filter(r => r.chatRoomId !== roomId);
@@ -170,7 +323,7 @@ export const useChatStore = defineStore('chat', {
         // 현재 채팅방이 나간 채팅방이면 선택 해제
         if (this.currentRoomId === roomId) {
           this.currentRoomId = null;
-          this.messages = [];
+          delete this.messages[roomId];
         }
       } catch (error) {
         console.error('채팅방 나가기 실패:', error);
@@ -183,25 +336,33 @@ export const useChatStore = defineStore('chat', {
     
     // 새 메시지 수신 (WebSocket 등에서 호출)
     receiveMessage(message) {
+      console.log('받은 메시지:', message); // 디버깅용
+      console.log('받은 메시지 createdAt:', message.createdAt); // 시간 확인
+      
+      // 백엔드에서 받은 메시지를 ChatMessageResponse 객체로 변환
+      const chatMessageResponse = ChatMessageResponse.fromJson(message);
+      console.log('변환된 메시지:', chatMessageResponse);
+      console.log('변환된 메시지 createdAt:', chatMessageResponse.createdAt);
+      
       // 해당 채팅방의 메시지에 추가
-      if (!this.messages[message.roomId]) {
-        this.messages[message.roomId] = [];
+      if (!this.messages[chatMessageResponse.roomId]) {
+        this.messages[chatMessageResponse.roomId] = [];
       }
-      this.messages[message.roomId].push(message);
+      this.messages[chatMessageResponse.roomId].push(chatMessageResponse);
       
       // 현재 채팅방의 메시지라면 즉시 반영
-      if (message.roomId === this.currentRoomId) {
+      if (chatMessageResponse.roomId === this.currentRoomId) {
         // 이미 추가했으므로 별도 처리 불필요
       }
       
       // 해당 채팅방의 정보 업데이트
-      const room = this.rooms.find(r => r.chatRoomId === message.roomId);
+      const room = this.rooms.find(r => r.chatRoomId === chatMessageResponse.roomId);
       if (room) {
-        room.lastMessage = message.content;
-        room.lastMessageTime = message.createdAt || new Date().toISOString();
+        room.lastMessage = chatMessageResponse.message;
+        room.lastMessageTime = chatMessageResponse.createdAt;
         
         // 현재 채팅방이 아니면 읽지 않은 메시지 수 증가
-        if (message.roomId !== this.currentRoomId) {
+        if (chatMessageResponse.roomId !== this.currentRoomId) {
           room.unreadCount = (room.unreadCount || 0) + 1;
         }
       }
@@ -209,12 +370,21 @@ export const useChatStore = defineStore('chat', {
     
     // 채팅방 선택
     selectRoom(roomId) {
+      if (!roomId) return;
+      
+      // 이전 채팅방의 WebSocket 연결 해제
+      if (this.currentRoomId && this.currentRoomId !== roomId) {
+        this.disconnectWebSocket();
+      }
+      
       this.currentRoomId = roomId;
       
       // 이미 메시지가 캐시되어 있으면 API 호출하지 않음
       if (this.messages[roomId] && this.messages[roomId].length > 0) {
         // 메시지 읽음 처리만 수행
         this.markAsRead(roomId);
+        // WebSocket 연결
+        this.connectWebSocket(roomId);
         return;
       }
       
@@ -229,9 +399,9 @@ export const useChatStore = defineStore('chat', {
     
     // 채팅 연결 해제
     disconnectChat() {
+      this.disconnectWebSocket();
       this.currentRoomId = null;
       this.messages = {};
-      // WebSocket 연결 해제 로직 추가 예정
     },
     
     // 기존 호환성 함수들
