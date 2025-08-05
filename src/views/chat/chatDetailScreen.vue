@@ -99,12 +99,29 @@
     <!-- 메시지 영역 -->
     <div class="flex-grow-1 pa-4 overflow-y-auto chat-scroll" ref="chatContainer">
       <div v-for="(msg, index) in chatMessages" :key="msg.id || index" class="mb-1">
+        <!-- 날짜 구분선 -->
+        <div v-if="shouldShowDateSeparator(index)" class="text-center my-4">
+          <div class="d-flex align-center">
+            <div class="flex-grow-1" style="height: 1px; background-color: #e0e0e0;"></div>
+            <v-chip 
+              size="small" 
+              color="grey-darken-1" 
+              variant="tonal"
+              class="text-caption mx-3"
+              style="background-color: #f5f5f5;"
+            >
+              {{ formatDateSeparator(msg.createdAt) }}
+            </v-chip>
+            <div class="flex-grow-1" style="height: 1px; background-color: #e0e0e0;"></div>
+          </div>
+        </div>
+        
         <div :class="['d-flex', msg.senderId === myId ? 'justify-end' : 'justify-start']">
           
           <!-- 내 메시지 (오른쪽) -->
           <template v-if="msg.senderId === myId">
-            <!-- 시간 (왼쪽) -->
-            <div class="d-flex align-end mr-1" style="min-width: 50px;">
+            <!-- 시간 (왼쪽) - 연속된 메시지에서 마지막에만 표시 -->
+            <div v-if="shouldShowTime(index, true)" class="d-flex align-end mr-1" style="min-width: 50px;">
               <span class="text-caption text-grey-darken-1">
                 {{ formatRelativeTime(msg.createdAt) }}
               </span>
@@ -118,17 +135,22 @@
               
               <!-- 이미지 파일들 -->
               <div v-if="msg.getImageFiles().length > 0" class="mt-1">
-                <div v-for="file in msg.getImageFiles()" :key="file.id" class="mb-1">
-                  <v-img 
-                    :src="file.fileUrl" 
-                    max-width="200" 
-                    class="rounded" 
-                    :alt="file.fileName"
-                    @click="openImage(file.fileUrl)"
-                    style="cursor: pointer;"
-                  />
-                  <div class="text-caption text-grey-darken-1 mt-1">
-                    {{ file.fileName }}
+                <div class="d-flex flex-wrap gap-1" style="max-width: 300px;">
+                  <div 
+                    v-for="file in msg.getImageFiles()" 
+                    :key="file.id" 
+                    class="position-relative"
+                    :style="getImageContainerStyle(msg.getImageFiles().length)"
+                  >
+                    <v-img 
+                      :src="file.fileUrl" 
+                      :width="getImageSize(msg.getImageFiles().length)" 
+                      :height="getImageSize(msg.getImageFiles().length)"
+                      class="rounded" 
+                      :alt="file.fileName"
+                      @click="openImage(file.fileUrl)"
+                      style="cursor: pointer; object-fit: cover;"
+                    />
                   </div>
                 </div>
               </div>
@@ -163,17 +185,22 @@
               
               <!-- 이미지 파일들 -->
               <div v-if="msg.getImageFiles().length > 0" class="mt-1">
-                <div v-for="file in msg.getImageFiles()" :key="file.id" class="mb-1">
-                  <v-img 
-                    :src="file.fileUrl" 
-                    max-width="200" 
-                    class="rounded" 
-                    :alt="file.fileName"
-                    @click="openImage(file.fileUrl)"
-                    style="cursor: pointer;"
-                  />
-                  <div class="text-caption text-grey-darken-1 mt-1">
-                    {{ file.fileName }}
+                <div class="d-flex flex-wrap gap-1" style="max-width: 300px;">
+                  <div 
+                    v-for="file in msg.getImageFiles()" 
+                    :key="file.id" 
+                    class="position-relative"
+                    :style="getImageContainerStyle(msg.getImageFiles().length)"
+                  >
+                    <v-img 
+                      :src="file.fileUrl" 
+                      :width="getImageSize(msg.getImageFiles().length)" 
+                      :height="getImageSize(msg.getImageFiles().length)"
+                      class="rounded" 
+                      :alt="file.fileName"
+                      @click="openImage(file.fileUrl)"
+                      style="cursor: pointer; object-fit: cover;"
+                    />
                   </div>
                 </div>
               </div>
@@ -197,8 +224,8 @@
               </div>
             </div>
             
-            <!-- 시간 (오른쪽) -->
-            <div class="d-flex align-end ml-1" style="min-width: 50px;">
+            <!-- 시간 (오른쪽) - 연속된 메시지에서 마지막에만 표시 -->
+            <div v-if="shouldShowTime(index, false)" class="d-flex align-end ml-1" style="min-width: 50px;">
               <span class="text-caption text-grey-darken-1">
                 {{ formatRelativeTime(msg.createdAt) }}
               </span>
@@ -386,8 +413,82 @@ onBeforeRouteLeave((to, from, next) => {
 const handleFileChangeWrapper = (e) => handleFileChange(e, message);
 const onTextInputWrapper = () => onTextInput(message);
 
+// 시간 표시 로직
+const shouldShowTime = (index, isMyMessage) => {
+  const currentMsg = chatMessages.value[index];
+  const nextMsg = chatMessages.value[index + 1];
+  
+  // 마지막 메시지이거나 다음 메시지가 없는 경우
+  if (!nextMsg) return true;
+  
+  // 같은 발신자의 연속된 메시지인지 확인
+  const isSameSender = currentMsg.senderId === nextMsg.senderId;
+  
+  if (!isSameSender) return true; // 발신자가 다르면 항상 표시
+  
+  // 시간을 분 단위로 비교 (더 정확한 비교)
+  const currentTime = new Date(currentMsg.createdAt);
+  const nextTime = new Date(nextMsg.createdAt);
+  
+  // 같은 분에 보낸 메시지는 시간 표시하지 않음 (마지막에만 표시)
+  const currentMinutes = currentTime.getFullYear() * 100000000 + 
+                        (currentTime.getMonth() + 1) * 1000000 + 
+                        currentTime.getDate() * 10000 + 
+                        currentTime.getHours() * 100 + 
+                        currentTime.getMinutes();
+  
+  const nextMinutes = nextTime.getFullYear() * 100000000 + 
+                     (nextTime.getMonth() + 1) * 1000000 + 
+                     nextTime.getDate() * 10000 + 
+                     nextTime.getHours() * 100 + 
+                     nextTime.getMinutes();
+  
+  return currentMinutes !== nextMinutes;
+};
 
+// 날짜 구분선 표시 로직
+const shouldShowDateSeparator = (index) => {
+  const currentMsg = chatMessages.value[index];
+  const prevMsg = chatMessages.value[index - 1];
 
+  if (!prevMsg) return true; // 첫 메시지는 항상 표시
+
+  const currentDate = new Date(currentMsg.createdAt);
+  const prevDate = new Date(prevMsg.createdAt);
+
+  // 날짜가 다르면 구분선 표시
+  return currentDate.toDateString() !== prevDate.toDateString();
+};
+
+// 날짜 구분선 포맷
+const formatDateSeparator = (timestamp) => {
+  if (!timestamp) return '';
+  const date = new Date(timestamp);
+  // 유효하지 않은 날짜인 경우 빈 문자열 반환
+  if (isNaN(date.getTime())) return '';
+  return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
+};
+
+// 이미지 크기 계산 함수
+const getImageSize = (imageCount) => {
+  if (imageCount === 1) return 300; // 1개일 때는 채팅창 크기와 동일
+  if (imageCount === 2) return 150; // 2개일 때는 절반씩
+  if (imageCount === 3) return 100; // 3개일 때는 1/3씩
+  return 75; // 4개 이상일 때는 1/4씩
+};
+
+// 이미지 컨테이너 스타일 계산 함수
+const getImageContainerStyle = (imageCount) => {
+  if (imageCount === 1) {
+    return 'width: 300px; height: 300px;';
+  } else if (imageCount === 2) {
+    return 'width: 150px; height: 150px;';
+  } else if (imageCount === 3) {
+    return 'width: 100px; height: 100px;';
+  } else {
+    return 'width: 75px; height: 75px;'; // 4개 이상
+  }
+};
 
 
 // 채팅방 이름 변경
@@ -471,8 +572,6 @@ const sendMessage = async (event) => {
     isSending.value = false;
   }
 };
-
-
 
 </script>
 

@@ -28,7 +28,7 @@ export function validateFileType(file, fileType) {
  * @returns {boolean} - 유효한 크기인지 여부
  */
 export function validateFileSize(file) {
-  const maxSize = 10 * 1024 * 1024; // 10MB
+  const maxSize = 100 * 1024 * 1024; // 100MB
   return file.size <= maxSize;
 }
 
@@ -44,7 +44,7 @@ export function validateFile(file, fileType) {
   }
 
   if (!validateFileSize(file)) {
-    return { isValid: false, error: '파일 크기는 10MB 이하여야 합니다.' };
+    return { isValid: false, error: '파일 크기는 100MB 이하여야 합니다.' };
   }
 
   if (!validateFileType(file, fileType)) {

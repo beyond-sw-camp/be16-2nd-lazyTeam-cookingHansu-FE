@@ -82,17 +82,35 @@ export async function leaveChatRoom(roomId) {
   }
 }
 
+// 파일 업로드 API
+export async function uploadFiles(roomId, files, fileTypes) {
+  try {
+    const formData = new FormData();
+    
+    files.forEach((file, index) => {
+      formData.append('files', file);
+      formData.append('fileTypes', fileTypes[index]);
+      console.log(`파일크기: ${file.size}`)
+    });
+
+    const response = await apiPostFormData(`/chat/room/${roomId}/upload`, formData);
+    const apiResponse = await handleApiResponse(response);
+    return apiResponse.getData();
+  } catch (error) {
+    console.error('파일 업로드 실패:', error);
+    throw error;
+  }
+}
+
 // 메시지 전송 API (WebSocket 사용 권장)
-export async function sendMessage(roomId, content, files = null) {
+export async function sendMessage(roomId, content, uploadedFiles = null) {
   try {
     const formData = new FormData();
     formData.append('content', content);
     
-    if (files && files.length > 0) {
-      files.forEach((file, index) => {
-        formData.append(`files[${index}].file`, file);
-        formData.append(`files[${index}].fileType`, getFileTypeFromFile(file));
-      });
+    if (uploadedFiles && uploadedFiles.files && uploadedFiles.files.length > 0) {
+      // 업로드된 파일 정보들을 JSON으로 전송
+      formData.append('files', JSON.stringify(uploadedFiles.files));
     }
 
     const response = await apiPostFormData(`/chat/room/${roomId}/message`, formData);

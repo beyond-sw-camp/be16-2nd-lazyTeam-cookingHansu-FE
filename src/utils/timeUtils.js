@@ -7,29 +7,13 @@ export function formatRelativeTime(isoString) {
   if (!isoString) return '';
   
   const date = new Date(isoString);
-  const now = new Date();
-  const diffMs = now - date;
-  const diffHours = diffMs / (1000 * 60 * 60);
   
-  // 오늘인지 확인
-  const isToday = date.toDateString() === now.toDateString();
-  
-  if (diffHours < 24 && isToday) {
-    // 오늘: 시간만 표시
-    const hours = date.getHours();
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    const isPM = hours >= 12;
-    const hour12 = hours % 12 || 12;
-    return `${isPM ? '오후' : '오전'} ${hour12}:${minutes}`;
-  } else if (diffHours < 48 && isToday) {
-    // 어제
-    return '어제';
-  } else {
-    // 그 이전: 날짜 표시
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
-    return `${month}/${day}`;
-  }
+  // 항상 시간만 표시
+  const hours = date.getHours();
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  const isPM = hours >= 12;
+  const hour12 = hours % 12 || 12;
+  return `${isPM ? '오후' : '오전'} ${hour12}:${minutes}`;
 }
 
 /**

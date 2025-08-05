@@ -5,6 +5,7 @@ import {
   getMyChatRooms, 
   getChatHistory, 
   sendMessage, 
+  uploadFiles,
   markMessageAsRead,
   createChatRoom,
   updateChatRoomName,
@@ -107,7 +108,7 @@ export const useChatStore = defineStore('chat', {
     },
 
     // 메시지 전송 (WebSocket 사용)
-    async sendMessageViaWebSocket(content, files = null) {
+    async sendMessageViaWebSocket(content, uploadedFiles = null) {
       if (!this.currentRoomId || !this.stompClient || !this.stompClient.connected) {
         console.error('WebSocket이 연결되지 않았습니다.');
         return;
@@ -118,10 +119,7 @@ export const useChatStore = defineStore('chat', {
         roomId: this.currentRoomId,
         senderId: '00000000-0000-0000-0000-000000000000', // 테스트용 고정 ID
         message: content,
-        files: files ? files.map(file => ({
-          file: file,
-          fileType: this.getFileTypeFromFile(file)
-        })) : null
+        files: uploadedFiles ? uploadedFiles.files : null // 업로드된 파일 정보들
       };
 
       try {
@@ -230,13 +228,20 @@ export const useChatStore = defineStore('chat', {
       try {
         const now = new Date().toISOString();
         
+        // 파일이 있는 경우 먼저 업로드
+        let uploadedFiles = null;
+        if (files && files.length > 0) {
+          const fileTypes = files.map(file => this.getFileTypeFromFile(file));
+          uploadedFiles = await uploadFiles(this.currentRoomId, files, fileTypes);
+        }
+        
         // WebSocket을 통해 메시지 전송
         if (this.stompClient && this.stompClient.connected) {
-          await this.sendMessageViaWebSocket(content, files);
+          await this.sendMessageViaWebSocket(content, uploadedFiles);
           // WebSocket 연결이 있으면 백엔드에서 받은 메시지를 사용하므로 로컬 추가하지 않음
         } else {
           // WebSocket이 연결되지 않은 경우 HTTP API 사용
-          const message = await sendMessage(this.currentRoomId, content, files);
+          const message = await sendMessage(this.currentRoomId, content, uploadedFiles);
           if (!this.messages[this.currentRoomId]) {
             this.messages[this.currentRoomId] = [];
           }
