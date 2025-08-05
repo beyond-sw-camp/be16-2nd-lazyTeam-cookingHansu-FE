@@ -55,7 +55,7 @@ const data = ref({
 async function socialLogin(provider) {
   try {
     if (provider === "google") {
-      // Google OAuth URL로 리다이렉트
+      // Google OAuth URL로 리다이렉트 (인가 코드 방식)
       const oauthUrl = generateOAuthUrl("google");
       window.location.href = oauthUrl;
     } else {

@@ -14,7 +14,7 @@
         <!-- 모바일 창 크기일 때 -->
         <template v-if="isMobile">
           <!-- 로그인 상태 -->
-          <template v-if="isLoggedIn">
+          <template v-if="authStore.isAuthenticated">
             <div class="notification-wrapper">
               <button class="notification-btn" @click="toggleNotification">
                 <span class="icon-bell">
@@ -51,7 +51,7 @@
         <!-- 데스크탑 창 크기일 때때 -->
         <template v-else>
           <!-- 로그아웃 상태 -->
-          <template v-if="!isLoggedIn">
+          <template v-if="!authStore.isAuthenticated">
             <button class="login-btn" @click="login">로그인</button>
           </template>
           <!-- 로그인 상태 -->
@@ -80,7 +80,7 @@
                 </div>
               </transition>
             </div>
-            <span class="welcome">{{ nickname }}님 반갑습니다!</span>
+            <span class="welcome">{{ userNickname }}님 반갑습니다!</span>
             <button class="logout-btn" @click="logout">로그아웃</button>
           </template>
         </template>
@@ -97,12 +97,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/store/auth'
 
 const router = useRouter()
-const isLoggedIn = ref(false) // 임시: 실제 로그인 상태와 연동 필요
-const nickname = ref('김요리') // 임시: 실제 닉네임 연동 필요
+const authStore = useAuthStore()
+
 const hoverMenu = ref('')
 const showNotification = ref(false)
 const notifications = ref([
@@ -133,34 +134,51 @@ const menuItems = [
   { text: '마이페이지', route: '/mypage' }
 ]
 
+// 사용자 닉네임 계산
+const userNickname = computed(() => {
+  return authStore.user?.nickname || authStore.user?.name || '사용자'
+})
+
 function goHome() {
   router.push('/')
 }
+
 function login() {
   router.push('/login')
   closeMobileMenu()
 }
+
 function logout() {
-  isLoggedIn.value = false
+  authStore.logout()
   closeMobileMenu()
+  router.push('/')
 }
+
 function toggleNotification() {
   showNotification.value = !showNotification.value
 }
+
 function handleResize() {
   isMobile.value = window.innerWidth <= 900
   if (!isMobile.value) showMobileMenu.value = false
 }
+
 function toggleMobileMenu() {
   showMobileMenu.value = !showMobileMenu.value
 }
+
 function closeMobileMenu() {
   showMobileMenu.value = false
 }
-onMounted(() => {
+
+onMounted(async () => {
   handleResize()
   window.addEventListener('resize', handleResize)
+  
+  // 페이지 로드 시 인증 상태 확인
+  await authStore.checkAuth()
 })
+
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
 })

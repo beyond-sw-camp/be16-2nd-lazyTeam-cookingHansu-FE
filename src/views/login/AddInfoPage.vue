@@ -9,6 +9,15 @@
         <div class="form-title">요리한수</div>
         <div class="form-subtitle">기본 정보 입력</div>
         <form class="form-content" @submit.prevent="onNext">
+          <div class="user-info-display" v-if="userInfo">
+            <div class="profile-section">
+              <img :src="userInfo.profileImage" alt="프로필" class="profile-image" />
+              <div class="user-details">
+                <div class="user-name">{{ userInfo.name }}</div>
+                <div class="user-email">{{ userInfo.email }}</div>
+              </div>
+            </div>
+          </div>
           <label class="form-label">닉네임 <span class="required">*</span></label>
           <input class="form-input" :class="{ error: errors.nickname }" v-model="form.nickname" placeholder="닉네임을 입력하세요" />
           <div v-if="errors.nickname" class="input-error"><span class="error-icon">&#10006;</span> 닉네임을 입력해 주세요!</div>
@@ -42,16 +51,21 @@
   </div>
 </template>
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/store/auth'
 import ProgressStep from '@/components/ProgressStep.vue'
 
 const router = useRouter()
+const authStore = useAuthStore()
+
 const form = ref({
   nickname: '',
   role: 'user'
 })
 const errors = ref({ nickname: false })
+const userInfo = ref(null)
+
 const roles = [
   { value: 'user', label: '일반 사용자', desc: '레시피 공유 및 강의 수강' },
   { value: 'cook', label: '요식업 종사자', desc: '요리사, 요리연구가' },
@@ -60,9 +74,24 @@ const roles = [
 const showBox = ref(true)
 const progressAnimate = ref(false)
 
+onMounted(() => {
+  // Pinia store에서 사용자 정보 가져오기
+  const currentUser = authStore.user
+  if (currentUser) {
+    userInfo.value = {
+      name: currentUser.name,
+      email: currentUser.email,
+      profileImage: currentUser.profileImage
+    }
+    // 기본 닉네임으로 이름 설정
+    form.value.nickname = currentUser.name || ''
+  }
+})
+
 function goHome() {
   router.push('/')
 }
+
 function onPrev() {
   progressAnimate.value = true
   showBox.value = false
@@ -70,10 +99,12 @@ function onPrev() {
     router.push('/login')
   }, 350)
 }
+
 function validate() {
   errors.value.nickname = !form.value.nickname
   return !errors.value.nickname
 }
+
 function onNext() {
   if (!validate()) return
   progressAnimate.value = true
@@ -90,10 +121,12 @@ function onNext() {
     }
   }, 350)
 }
+
 function btnActive(type) {
   const btn = document.querySelector('.btn.' + type)
   if (btn) btn.classList.add('active')
 }
+
 function btnInactive(type) {
   const btn = document.querySelector('.btn.' + type)
   if (btn) btn.classList.remove('active')
@@ -157,6 +190,38 @@ function btnInactive(type) {
   font-size: 1rem;
   margin-bottom: 28px;
   text-align: center;
+}
+.user-info-display {
+  width: 100%;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+.profile-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.profile-image {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.user-details {
+  display: flex;
+  flex-direction: column;
+}
+.user-name {
+  font-weight: 600;
+  color: var(--color-text);
+  font-size: 1.1rem;
+}
+.user-email {
+  color: #6c757d;
+  font-size: 0.9rem;
 }
 .form-content {
   width: 100%;

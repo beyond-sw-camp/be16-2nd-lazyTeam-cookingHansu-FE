@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from "vue-router";
+import { useAuthStore } from "@/store/auth";
 import AdminLayout from "@/layouts/admin/AdminLayout.vue";
 import Dashboard from "@/views/admin/Dashboard.vue";
 import LectureApproval from "@/views/admin/LectureApproval.vue";
@@ -35,11 +36,13 @@ const routes = [
     path: "/payment-details/:orderId",
     name: "PaymentDetails",
     component: PaymentDetails,
+    meta: { requiresAuth: true }
   },
 
   {
     path: "/admin",
     component: AdminLayout, // 관리자 공통 레이아웃
+    meta: { requiresAuth: true, requiresAdmin: true },
     children: [
       { path: "", redirect: "/admin/dashboard" }, // 기본 경로 → 대시보드로 리디렉트
       { path: "dashboard", name: "Dashboard", component: Dashboard },
@@ -70,6 +73,7 @@ const routes = [
     path: "/login",
     name: "Login",
     component: LoginPage,
+    meta: { requiresGuest: true }
   },
   {
     path: "/oauth/google/redirect",
@@ -80,26 +84,31 @@ const routes = [
     path: "/add-info",
     name: "AddInfo",
     component: AddInfoPage,
+    meta: { requiresAuth: true }
   },
   {
     path: "/auth-detail-user",
     name: "AuthDetailUser",
     component: AuthDetailUserPage,
+    meta: { requiresAuth: true }
   },
   {
     path: "/auth-detail-cook",
     name: "AuthDetailCook",
     component: AuthDetailCookPage,
+    meta: { requiresAuth: true }
   },
   {
     path: "/auth-detail-owner",
     name: "AuthDetailOwner",
     component: AuthDetailOwnerPage,
+    meta: { requiresAuth: true }
   },
   {
     path: "/complete",
     name: "RegistrationComplete",
     component: RegistrationCompletePage,
+    meta: { requiresAuth: true }
   },
   {
     path: "/",
@@ -114,13 +123,51 @@ const routes = [
         path: "chat",
         name: "Chat",
         component: chat,
+        meta: { requiresAuth: true }
       },
-      { path: "mypage", name: "MyPage", component: MyPage },
+      { 
+        path: "mypage", 
+        name: "MyPage", 
+        component: MyPage,
+        meta: { requiresAuth: true }
+      },
     ],
   },
 ];
 
-export default createRouter({
+const router = createRouter({
   history: createWebHistory(),
   routes,
 });
+
+// 인증 가드
+router.beforeEach(async (to, from, next) => {
+  const authStore = useAuthStore();
+  
+  // 인증 상태 확인
+  if (!authStore.isAuthenticated && authStore.token) {
+    await authStore.checkAuth();
+  }
+  
+  // 로그인이 필요한 페이지
+  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+    next('/login');
+    return;
+  }
+  
+  // 관리자 권한이 필요한 페이지
+  if (to.meta.requiresAdmin && (!authStore.isAuthenticated || authStore.user?.role !== 'admin')) {
+    next('/admin-login');
+    return;
+  }
+  
+  // 게스트만 접근 가능한 페이지 (로그인 페이지)
+  if (to.meta.requiresGuest && authStore.isAuthenticated) {
+    next('/');
+    return;
+  }
+  
+  next();
+});
+
+export default router;
