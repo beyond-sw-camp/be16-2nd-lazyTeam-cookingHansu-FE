@@ -111,7 +111,7 @@ export default {
       showClickEffect: false,
       lectures: [
         {
-          id: 1,
+          id: '550e8400-e29b-41d4-a716-446655440001',
           image: '/src/assets/images/smu_mascort1.jpg',
           category: '한식',
           title: '전문가와 함께하는 한식 기초',
@@ -126,7 +126,7 @@ export default {
           date: '3일 전',
         },
         {
-          id: 2,
+          id: '550e8400-e29b-41d4-a716-446655440002',
           image: '/src/assets/images/smu_mascort3.jpg',
           category: '양식',
           title: '홈메이드 파스타 마스터클래스',
@@ -141,7 +141,7 @@ export default {
           date: '5일 전',
         },
         {
-          id: 3,
+          id: '550e8400-e29b-41d4-a716-446655440003',
           image: '/src/assets/images/smu_mascort2.jpg',
           category: '일식',
           title: '스시의 모든 것',
@@ -156,7 +156,7 @@ export default {
           date: '1주 전',
         },
         {
-          id: 4,
+          id: '550e8400-e29b-41d4-a716-446655440004',
           image: '/src/assets/images/smu_mascort4.jpg',
           category: '중식',
           title: '정통 중식 마스터',
@@ -171,7 +171,7 @@ export default {
           date: '2주 전',
         },
         {
-          id: 5,
+          id: '550e8400-e29b-41d4-a716-446655440005',
           image: '/src/assets/images/smu_mascort5.jpg',
           category: '디저트',
           title: '달콤한 디저트 클래스',
@@ -186,7 +186,7 @@ export default {
           date: '3주 전',
         },
         {
-          id: 6,
+          id: '550e8400-e29b-41d4-a716-446655440006',
           image: '/src/assets/images/smu_mascort1.jpg',
           category: '한식',
           title: '한식 고급반',
@@ -201,7 +201,7 @@ export default {
           date: '4주 전',
         },
         {
-          id: 7,
+          id: '550e8400-e29b-41d4-a716-446655440007',
           image: '/src/assets/images/smu_mascort2.jpg',
           category: '양식',
           title: '이탈리안 파스타 마스터',
@@ -216,7 +216,7 @@ export default {
           date: '1달 전',
         },
         {
-          id: 8,
+          id: '550e8400-e29b-41d4-a716-446655440008',
           image: '/src/assets/images/smu_mascort3.jpg',
           category: '디저트',
           title: '초콜릿 디저트 클래스',
@@ -231,7 +231,7 @@ export default {
           date: '2달 전',
         },
         {
-          id: 9,
+          id: '550e8400-e29b-41d4-a716-446655440009',
           image: '/src/assets/images/smu_mascort4.jpg',
           category: '한식',
           title: '김치찌개 마스터 클래스',
@@ -246,7 +246,7 @@ export default {
           date: '1주 전',
         },
         {
-          id: 10,
+          id: '550e8400-e29b-41d4-a716-446655440010',
           image: '/src/assets/images/smu_mascort5.jpg',
           category: '양식',
           title: '스테이크 홈메이드',
@@ -261,7 +261,7 @@ export default {
           date: '2주 전',
         },
         {
-          id: 11,
+          id: '550e8400-e29b-41d4-a716-446655440011',
           image: '/src/assets/images/smu_mascort1.jpg',
           category: '일식',
           title: '라멘 홈메이드',
@@ -276,7 +276,7 @@ export default {
           date: '3주 전',
         },
         {
-          id: 12,
+          id: '550e8400-e29b-41d4-a716-446655440012',
           image: '/src/assets/images/smu_mascort2.jpg',
           category: '중식',
           title: '짜장면 홈메이드',
@@ -291,7 +291,7 @@ export default {
           date: '1달 전',
         },
         {
-          id: 13,
+          id: '550e8400-e29b-41d4-a716-446655440013',
           image: '/src/assets/images/smu_mascort3.jpg',
           category: '디저트',
           title: '티라미수 마스터',
@@ -306,7 +306,7 @@ export default {
           date: '2주 전',
         },
         {
-          id: 14,
+          id: '550e8400-e29b-41d4-a716-446655440014',
           image: '/src/assets/images/smu_mascort4.jpg',
           category: '한식',
           title: '비빔밥 홈메이드',
@@ -321,7 +321,7 @@ export default {
           date: '3주 전',
         },
         {
-          id: 15,
+          id: '550e8400-e29b-41d4-a716-446655440015',
           image: '/src/assets/images/smu_mascort5.jpg',
           category: '양식',
           title: '피자 홈메이드',
@@ -336,7 +336,7 @@ export default {
           date: '1달 전',
         },
         {
-          id: 16,
+          id: '550e8400-e29b-41d4-a716-446655440016',
           image: '/src/assets/images/smu_mascort1.jpg',
           category: '일식',
           title: '우동 홈메이드',
@@ -351,7 +351,7 @@ export default {
           date: '2주 전',
         },
         {
-          id: 17,
+          id: '550e8400-e29b-41d4-a716-446655440017',
           image: '/src/assets/images/smu_mascort2.jpg',
           category: '중식',
           title: '탕수육 홈메이드',
@@ -366,7 +366,7 @@ export default {
           date: '3주 전',
         },
         {
-          id: 18,
+          id: '550e8400-e29b-41d4-a716-446655440018',
           image: '/src/assets/images/smu_mascort3.jpg',
           category: '디저트',
           title: '마카롱 마스터',
@@ -381,7 +381,7 @@ export default {
           date: '1달 전',
         },
         {
-          id: 19,
+          id: '550e8400-e29b-41d4-a716-446655440019',
           image: '/src/assets/images/smu_mascort4.jpg',
           category: '한식',
           title: '된장찌개 홈메이드',
@@ -411,7 +411,7 @@ export default {
           date: '3주 전',
         },
         {
-          id: 21,
+          id: '550e8400-e29b-41d4-a716-446655440021',
           image: '/src/assets/images/smu_mascort1.jpg',
           category: '한식',
           title: '불고기 홈메이드',
@@ -426,7 +426,7 @@ export default {
           date: '1주 전',
         },
         {
-          id: 22,
+          id: '550e8400-e29b-41d4-a716-446655440022',
           image: '/src/assets/images/smu_mascort2.jpg',
           category: '양식',
           title: '리조또 마스터클래스',
@@ -441,7 +441,7 @@ export default {
           date: '2주 전',
         },
         {
-          id: 23,
+          id: '550e8400-e29b-41d4-a716-446655440023',
           image: '/src/assets/images/smu_mascort3.jpg',
           category: '일식',
           title: '덮밥 홈메이드',
@@ -456,7 +456,7 @@ export default {
           date: '3주 전',
         },
         {
-          id: 24,
+          id: '550e8400-e29b-41d4-a716-446655440024',
           image: '/src/assets/images/smu_mascort4.jpg',
           category: '중식',
           title: '깐풍기 홈메이드',
@@ -471,7 +471,7 @@ export default {
           date: '1달 전',
         },
         {
-          id: 25,
+          id: '550e8400-e29b-41d4-a716-446655440025',
           image: '/src/assets/images/smu_mascort5.jpg',
           category: '디저트',
           title: '크로플 마스터',
@@ -486,7 +486,7 @@ export default {
           date: '2주 전',
         },
         {
-          id: 26,
+          id: '550e8400-e29b-41d4-a716-446655440026',
           image: '/src/assets/images/smu_mascort1.jpg',
           category: '한식',
           title: '삼겹살 홈메이드',
@@ -501,7 +501,7 @@ export default {
           date: '1주 전',
         },
         {
-          id: 27,
+          id: '550e8400-e29b-41d4-a716-446655440027',
           image: '/src/assets/images/smu_mascort2.jpg',
           category: '양식',
           title: '스테이크 소스 마스터',
@@ -516,7 +516,7 @@ export default {
           date: '3주 전',
         },
         {
-          id: 28,
+          id: '550e8400-e29b-41d4-a716-446655440028',
           image: '/src/assets/images/smu_mascort3.jpg',
           category: '일식',
           title: '오니기리 홈메이드',
@@ -531,7 +531,7 @@ export default {
           date: '2주 전',
         },
         {
-          id: 29,
+          id: '550e8400-e29b-41d4-a716-446655440029',
           image: '/src/assets/images/smu_mascort4.jpg',
           category: '중식',
           title: '마파두부 홈메이드',
@@ -546,7 +546,7 @@ export default {
           date: '1달 전',
         },
         {
-          id: 30,
+          id: '550e8400-e29b-41d4-a716-446655440030',
           image: '/src/assets/images/smu_mascort5.jpg',
           category: '디저트',
           title: '치즈케이크 마스터',
@@ -561,7 +561,7 @@ export default {
           date: '1주 전',
         },
         {
-          id: 31,
+          id: '550e8400-e29b-41d4-a716-446655440031',
           image: '/src/assets/images/smu_mascort1.jpg',
           category: '한식',
           title: '닭볶음탕 홈메이드',
@@ -576,7 +576,7 @@ export default {
           date: '2주 전',
         },
         {
-          id: 32,
+          id: '550e8400-e29b-41d4-a716-446655440032',
           image: '/src/assets/images/smu_mascort2.jpg',
           category: '양식',
           title: '크림파스타 마스터',
@@ -591,7 +591,7 @@ export default {
           date: '3주 전',
         },
         {
-          id: 33,
+          id: '550e8400-e29b-41d4-a716-446655440033',
           image: '/src/assets/images/smu_mascort3.jpg',
           category: '일식',
           title: '오코노미야키 홈메이드',
@@ -606,7 +606,7 @@ export default {
           date: '1달 전',
         },
         {
-          id: 34,
+          id: '550e8400-e29b-41d4-a716-446655440034',
           image: '/src/assets/images/smu_mascort4.jpg',
           category: '중식',
           title: '깐풍새우 홈메이드',
@@ -621,7 +621,7 @@ export default {
           date: '2주 전',
         },
         {
-          id: 35,
+          id: '550e8400-e29b-41d4-a716-446655440035',
           image: '/src/assets/images/smu_mascort5.jpg',
           category: '디저트',
           title: '몽블랑 마스터',
@@ -636,7 +636,7 @@ export default {
           date: '1달 전',
         },
         {
-          id: 36,
+          id: '550e8400-e29b-41d4-a716-446655440036',
           image: '/src/assets/images/smu_mascort1.jpg',
           category: '한식',
           title: '갈비찜 홈메이드',
@@ -651,7 +651,7 @@ export default {
           date: '1주 전',
         },
         {
-          id: 37,
+          id: '550e8400-e29b-41d4-a716-446655440037',
           image: '/src/assets/images/smu_mascort2.jpg',
           category: '양식',
           title: '라자냐 마스터클래스',
@@ -666,7 +666,7 @@ export default {
           date: '2주 전',
         },
         {
-          id: 38,
+          id: '550e8400-e29b-41d4-a716-446655440038',
           image: '/src/assets/images/smu_mascort3.jpg',
           category: '일식',
           title: '돈카츠 홈메이드',
@@ -681,7 +681,7 @@ export default {
           date: '3주 전',
         },
         {
-          id: 39,
+          id: '550e8400-e29b-41d4-a716-446655440039',
           image: '/src/assets/images/smu_mascort4.jpg',
           category: '중식',
           title: '훠궈 홈메이드',
@@ -696,7 +696,7 @@ export default {
           date: '1달 전',
         },
         {
-          id: 40,
+          id: '550e8400-e29b-41d4-a716-446655440040',
           image: '/src/assets/images/smu_mascort5.jpg',
           category: '디저트',
           title: '에클레어 마스터',
@@ -711,7 +711,7 @@ export default {
           date: '2주 전',
         },
         {
-          id: 41,
+          id: '550e8400-e29b-41d4-a716-446655440041',
           image: '/src/assets/images/smu_mascort1.jpg',
           category: '한식',
           title: '순두부찌개 홈메이드',
@@ -726,7 +726,7 @@ export default {
           date: '1주 전',
         },
         {
-          id: 42,
+          id: '550e8400-e29b-41d4-a716-446655440042',
           image: '/src/assets/images/smu_mascort2.jpg',
           category: '양식',
           title: '카르보나라 마스터',
@@ -741,7 +741,7 @@ export default {
           date: '2주 전',
         },
         {
-          id: 43,
+          id: '550e8400-e29b-41d4-a716-446655440043',
           image: '/src/assets/images/smu_mascort3.jpg',
           category: '일식',
           title: '가라아게 홈메이드',
@@ -756,7 +756,7 @@ export default {
           date: '3주 전',
         },
         {
-          id: 44,
+          id: '550e8400-e29b-41d4-a716-446655440044',
           image: '/src/assets/images/smu_mascort4.jpg',
           category: '중식',
           title: '꿔바로우 홈메이드',
@@ -771,7 +771,7 @@ export default {
           date: '1달 전',
         },
         {
-          id: 45,
+          id: '550e8400-e29b-41d4-a716-446655440045',
           image: '/src/assets/images/smu_mascort5.jpg',
           category: '디저트',
           title: '마들렌 마스터',
@@ -786,7 +786,7 @@ export default {
           date: '2주 전',
         },
         {
-          id: 46,
+          id: '550e8400-e29b-41d4-a716-446655440046',
           image: '/src/assets/images/smu_mascort1.jpg',
           category: '한식',
           title: '제육볶음 홈메이드',

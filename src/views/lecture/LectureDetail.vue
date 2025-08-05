@@ -184,10 +184,10 @@
           >
             {{ cartStore && cartStore.isInCart(lecture.id) ? '장바구니에 추가됨' : '지금 수강하기' }}
           </button>
-                      <div class="share-section" @click="openShareModal">
-              <span class="share-icon">📤</span>
-              <span>공유하기</span>
-            </div>
+          <div class="share-section" @click="showShareModal = true">
+            <span class="share-icon">📤</span>
+            <span>공유하기</span>
+          </div>
         </div>
 
         <!-- 강의 요약 -->
@@ -256,34 +256,34 @@
     </div>
 
     <!-- 공유 모달 -->
-    <div v-if="showShareModal" class="share-modal-overlay" @click="closeShareModal">
+    <div v-if="showShareModal" class="share-modal-overlay" @click="showShareModal = false">
       <div class="share-modal" @click.stop>
         <div class="share-modal-header">
           <h3>공유하기</h3>
-          <button class="close-btn" @click="closeShareModal">×</button>
+          <button class="close-btn" @click="showShareModal = false">×</button>
         </div>
         <div class="share-options">
-          <div class="share-option facebook-share" @click="shareToFacebook">
-            <div class="share-icon">
-              <img src="@/assets/images/Facebook_Logo_Primary.png" alt="Facebook" />
+          <div class="share-option" @click="shareToFacebook">
+            <div class="share-icon facebook">
+              <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTI0IDEyQzI0IDUuMzcyNTggMTguNjI3NCAwIDEyIDBDNS4zNzI1OCAwIDAgNS4zNzI1OCAwIDEyQzAgMTcuOTkxNSA0LjM4ODI3IDIyLjk1NDEgMTAuMTI1IDIzLjg1NDJWMTQuNDY4OEg3LjA3ODEyVjEySDEwLjEyNVY5Ljg0Mzc1QzEwLjEyNSA2LjY2MjUgMTEuOTE2NyA1LjA5Mzc1IDE0LjY1NzYgNS4wOTM3NUMxNS40OTAyIDUuMDkzNzUgMTYuMzY3MiA1LjI4MTI1IDE2LjM2NzIgNS4yODEyNUwxNi4zNjcyIDcuNTYyNUgxNS4xOTUzQzE0LjA0MjcgNy41NjI1IDEzLjc1IDguMzM3NSAxMy43NSA5LjQ2ODc1VjEySDE2LjI2NTZMMTUuODk4NCAxNC40Njg4SDEzLjc1VjIzLjg1NDFDMjAuNjExNyAyMi45NTQxIDI0IDE3Ljk5MTUgMjQgMTJaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K" alt="Facebook" />
             </div>
             <span>페이스북</span>
           </div>
-          <div class="share-option kakaotalk-share" @click="shareToKakaoTalk">
-            <div class="share-icon">
-              <img src="@/assets/images/kakaotalk_sharing_btn_small.png" alt="KakaoTalk" />
+          <div class="share-option" @click="shareToKakaoTalk">
+            <div class="share-icon kakaotalk">
+              <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDNDNi40OCAzIDIgNy40OCAyIDEzQzIgMTUuNzUgMy4yNSAxNy43NSA1LjI1IDE5LjI1TDUuMjUgMjIuMjVDNS4yNSAyMi44IDUuOCAyMy4yNSA2LjI1IDIzLjI1QzYuNSAyMy4yNSA2Ljc1IDIzLjE1IDYuOTUgMjIuOTVMMTAuNzUgMTkuMjRDMTEuNSAxOS40NSAxMi4yNSAxOS41IDEzIDE5LjVDMTguNTIgMTkuNSAyMyAxNS41MiAyMyAxMEMyMyA0LjQ4IDE4LjUyIDAgMTMgMEMxMi4zMyAwIDEyIDMgMTIgM1oiIGZpbGw9IiMwMDAiLz4KPHBhdGggZD0iTTggMTJDNy40NDc3MiAxMiA3IDExLjU1MjMgNyAxMUM3IDEwLjQ0NzcgNy40NDc3MiAxMCA4IDEwQzguNTUyMjggMTAgOSAxMC40NDc3IDkgMTFDOSAxMS41NTIzIDguNTUyMjggMTIgOCAxMloiIGZpbGw9IiMwMDAiLz4KPHBhdGggZD0iTTE2IDEyQzE1LjQ0NzcgMTIgMTUgMTEuNTUyMyAxNSAxMUMxNSAxMC40NDc3IDE1LjQ0NzcgMTAgMTYgMTBDMTYuNTUyMyAxMCAxNyAxMC40NDc3IDE3IDExQzE3IDExLjU1MjMgMTYuNTUyMyAxMiAxNiAxMloiIGZpbGw9IiMwMDAiLz4KPC9zdmc+Cg==" alt="KakaoTalk" />
             </div>
             <span>카카오톡</span>
           </div>
-          <div class="share-option instagram-share" @click="shareToInstagram">
-            <div class="share-icon">
-              <img src="@/assets/images/Instagram_Glyph_Gradient.png" alt="Instagram" />
+          <div class="share-option" @click="shareToInstagram">
+            <div class="share-icon instagram">
+              <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyQzIgMTcuNTIgNi40OCAyMiAxMiAyMkMxNy41MiAyMiAyMiAxNy41MiAyMiAxMkMyMiA2LjQ4IDE3LjUyIDIgMTIgMlpNMTIgMjBDNy41OSAyMCA0IDE2LjQxIDQgMTJDNCA3LjU5IDcuNTkgNCAxMiA0QzE2LjQxIDQgMjAgNy41OSAyMCAxMkMyMCAxNi40MSAxNi40MSAyMCAxMiAyMFoiIGZpbGw9IndoaXRlIi8+CjxwYXRoIGQ9Ik0xNyA4QzE3LjU1MjMgOCAxOCA3LjU1MjMgMTggN0MxOCA2LjQ0NzcgMTcuNTUyMyA2IDE3IDZDMTYuNDQ3NyA2IDE2IDYuNDQ3NyAxNiA3QzE2IDcuNTUyMyAxNi40NDc3IDggMTcgOFoiIGZpbGw9IndoaXRlIi8+CjxwYXRoIGQ9Ik0xMiA5QzEwLjM0MzEgOSA5IDEwLjM0MzEgOSAxMkM5IDEzLjY1NjkgMTAuMzQzMSAxNSAxMiAxNUMxMy42NTY5IDE1IDE1IDEzLjY1NjkgMTUgMTJDMTUgMTAuMzQzMSAxMy42NTY5IDkgMTIgOVoiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPgo=" alt="Instagram" />
             </div>
             <span>인스타그램</span>
           </div>
-          <div class="share-option link-share" @click="copyToClipboard">
-            <div class="share-icon">
-              <img src="@/assets/images/lecture_shared_icon.png" alt="Link" />
+          <div class="share-option" @click="copyToClipboard">
+            <div class="share-icon link">
+              <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEwLjU5IDEzLjQxQzEyLjQ5MzcgMTUuMzEyNyAxNS41MDYzIDE1LjMxMjcgMTcuNDEgMTMuNDFMMjAuNTkgMTAuMjNDMjIuNDkzNyA4LjMyNzI3IDIyLjQ5MzcgNS4zMTQ3MyAyMC41OSAzLjQxTDE3LjQxIDAuMjNDMTUuNTA2MyAtMS42ODcyNyAxMi40OTM3IC0xLjY4NzI3IDEwLjU5IDAuMjNMNy40MSAzLjQxQzUuNTA2MyA1LjMxNDczIDUuNTA2MyA4LjMyNzI3IDcuNDEgMTAuMjNMMTAuNTkgMTMuNDFaIiBmaWxsPSJ3aGl0ZSIvPgo8cGF0aCBkPSJNMTMuNDEgMTAuNTlDMTEuNTA2MyA4LjY4NzI3IDguNDkzNyA4LjY4NzI3IDYuNTkgMTAuNTlMMy40MSAxMy43N0MxLjUwNjMgMTUuNjczMyAxLjUwNjMgMTguNjc1OCAzLjQxIDIwLjU3NUw2LjU5IDIzLjc1QzguNDkzNyAyNS42NTI3IDExLjUwNjMgMjUuNjUyNyAxMy40MSAyMy43NUwxNi41OSAyMC41N0MxOC40OTM3IDE4LjY3NTggMTguNDkzNyAxNS42NzMzIDE2LjU5IDEzLjc3TDEzLjQxIDEwLjU5WiIgZmlsbD0id2hpdGUiLz4KPC9zdmc+Cg==" alt="Link" />
             </div>
             <span>링크 복사</span>
           </div>
@@ -355,7 +355,7 @@
 
 <script>
 import Header from '@/components/Header.vue';
-import { useCartStore } from '@/store/cart.js';
+import { useCartStore } from '@/views/cart/cart.js';
 
 export default {
   name: 'LectureDetail',
@@ -1717,36 +1717,12 @@ export default {
       return `${this.lecture.title} - ${this.lecture.description}`;
     },
 
-    // 모달 열 때 스크롤 방지
-    openShareModal() {
-      this.showShareModal = true;
-      // 스크롤 방지 - 여러 방법으로 확실하게 처리
-      document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.width = '100%';
-      document.body.style.top = `-${window.scrollY}px`;
-    },
-
-    // 모달 닫을 때 스크롤 복원
-    closeShareModal() {
-      this.showShareModal = false;
-      // 스크롤 복원
-      const scrollY = document.body.style.top;
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.width = '';
-      document.body.style.top = '';
-      if (scrollY) {
-        window.scrollTo(0, parseInt(scrollY || '0') * -1);
-      }
-    },
-
     shareToFacebook() {
       const url = encodeURIComponent(this.getShareUrl());
       const text = encodeURIComponent(this.getShareText());
       const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}&quote=${text}`;
       window.open(facebookUrl, '_blank', 'width=600,height=400');
-      this.closeShareModal();
+      this.showShareModal = false;
     },
 
     shareToKakaoTalk() {
@@ -1782,7 +1758,7 @@ export default {
         // Kakao SDK가 로드되지 않은 경우 링크 복사로 대체
         this.copyToClipboard();
       }
-      this.closeShareModal();
+      this.showShareModal = false;
     },
 
     shareToInstagram() {
@@ -1806,7 +1782,6 @@ export default {
           this.copyToClipboard();
         }, 1000);
       }
-      this.closeShareModal();
     },
 
     isMobile() {
@@ -1815,10 +1790,10 @@ export default {
 
     async copyToClipboard() {
       try {
-        // 링크만 복사 (페이지 정보 제외)
-        await navigator.clipboard.writeText(this.getShareUrl());
+        const shareText = `${this.getShareText()}\n\n${this.getShareUrl()}`;
+        await navigator.clipboard.writeText(shareText);
         alert('링크가 클립보드에 복사되었습니다!');
-        this.closeShareModal();
+        this.showShareModal = false;
       } catch (err) {
         console.error('클립보드 복사 실패:', err);
         alert('링크 복사에 실패했습니다. 수동으로 복사해주세요.');
@@ -1950,20 +1925,6 @@ export default {
     // Kakao SDK 초기화
     if (typeof Kakao !== 'undefined' && !Kakao.isInitialized()) {
       Kakao.init("3a1a982f8ee6ddbc64171c2f80850243");
-    }
-  },
-  
-  beforeUnmount() {
-    // 컴포넌트가 언마운트될 때 스크롤 상태 복원
-    if (this.showShareModal) {
-      const scrollY = document.body.style.top;
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.width = '';
-      document.body.style.top = '';
-      if (scrollY) {
-        window.scrollTo(0, parseInt(scrollY || '0') * -1);
-      }
     }
   }
 };
@@ -2436,8 +2397,6 @@ export default {
   cursor: pointer;
 }
 
-
-
 .course-summary {
   background: white;
   border-radius: 12px;
@@ -2630,7 +2589,6 @@ export default {
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  overflow: hidden;
 }
 
 .share-modal {
@@ -2679,36 +2637,37 @@ export default {
 }
 
 .share-options {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
 }
 
 .share-option {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 16px 20px;
-  border: none;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid #eee;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
-  font-weight: 600;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .share-option:hover {
+  background: #f8f9fa;
+  border-color: #ff7a00;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .share-option .share-icon {
-  width: 24px;
-  height: 24px;
+  width: 48px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  border-radius: 50%;
+  background: #f8f9fa;
 }
 
 .share-option .share-icon img {
@@ -2717,56 +2676,33 @@ export default {
   object-fit: contain;
 }
 
-/* 페이스북 공유 버튼 */
-.facebook-share {
-  background: #1877F2;
-  color: #FFFFFF;
+.share-option .share-icon.facebook {
+  background: #1877f2;
 }
 
-.facebook-share:hover {
-  background: #166FE5;
+.share-option .share-icon.kakaotalk {
+  background: #fee500;
 }
 
-/* 카카오톡 공유 버튼 */
-.kakaotalk-share {
-  background: #FEE500;
-  color: #000000;
+.share-option .share-icon.instagram {
+  background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
 }
 
-.kakaotalk-share:hover {
-  background: #FDD835;
-}
-
-/* 인스타그램 공유 버튼 */
-.instagram-share {
-  background: #FFFFFF;
-  color: #333333;
-  border: 1px solid #e0e0e0;
-}
-
-.instagram-share:hover {
-  background: #f8f9fa;
-  border-color: #ff7a00;
-}
-
-/* 링크 복사 버튼 */
-.link-share {
-  background: #f8f9fa;
-  color: #666666;
-  border: 1px solid #e0e0e0;
-}
-
-.link-share:hover {
-  background: #e9ecef;
-  border-color: #ff7a00;
+.share-option .share-icon.link {
+  background: #28a745;
 }
 
 .share-option span {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
+  color: #333;
 }
 
 @media (max-width: 480px) {
+  .share-options {
+    grid-template-columns: 1fr;
+  }
+  
   .share-modal {
     width: 95%;
     margin: 20px;
