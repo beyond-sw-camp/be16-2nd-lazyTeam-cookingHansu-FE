@@ -1890,8 +1890,6 @@ export default {
   cursor: pointer;
 }
 
-
-
 .course-summary {
   background: white;
   border-radius: 12px;
@@ -2132,13 +2130,14 @@ export default {
 }
 
 .share-options {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
 }
 
 .share-option {
   display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 12px;
   padding: 16px 20px;
@@ -2155,8 +2154,8 @@ export default {
 }
 
 .share-option .share-icon {
-  width: 24px;
-  height: 24px;
+  width: 48px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;

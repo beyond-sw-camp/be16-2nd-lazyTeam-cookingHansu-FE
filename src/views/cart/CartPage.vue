@@ -404,7 +404,6 @@ export default {
   margin-right: 15px;
   flex-shrink: 0;
 }
-
 .cart-item:last-child {
   border-bottom: none;
 }
