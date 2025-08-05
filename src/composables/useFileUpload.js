@@ -1,4 +1,5 @@
 import { ref } from 'vue';
+import { validateFile, validateMessageAndFiles } from '@/utils/fileValidation';
 
 export function useFileUpload() {
   const selectedFiles = ref([]);
@@ -19,6 +20,19 @@ export function useFileUpload() {
       alert('최대 10개까지만 선택할 수 있습니다.');
       e.target.value = '';
       return;
+    }
+    
+    // 파일 유효성 검사
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const fileType = getFileTypeFromFile(file);
+      const validation = validateFile(file, fileType);
+      
+      if (!validation.isValid) {
+        alert(`파일 "${file.name}": ${validation.error}`);
+        e.target.value = '';
+        return;
+      }
     }
     
     files.forEach(file => {
@@ -51,6 +65,23 @@ export function useFileUpload() {
     // 텍스트가 입력되면 파일들 모두 제거
     if (messageRef.value.trim() && selectedFiles.value.length > 0) {
       removeAllFiles();
+    }
+  };
+
+  // 파일로부터 파일 타입 추정
+  const getFileTypeFromFile = (file) => {
+    const fileName = file.name;
+    const extension = fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase();
+    
+    const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+    const videoExtensions = ['mp4', 'avi', 'mov'];
+    
+    if (imageExtensions.includes(extension)) {
+      return 'IMAGE';
+    } else if (videoExtensions.includes(extension)) {
+      return 'VIDEO';
+    } else {
+      return 'UNKNOWN';
     }
   };
 

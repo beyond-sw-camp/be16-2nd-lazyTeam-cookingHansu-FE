@@ -309,6 +309,7 @@ import { useChatStore } from '@/store/chat/chat';
 import { formatRelativeTime } from '@/utils/timeUtils';
 import { useFileUpload } from '@/composables/useFileUpload';
 import { useDialog } from '@/composables/useDialog';
+import { validateMessageAndFiles } from '@/utils/fileValidation';
 
 const props = defineProps({
   chat: Object,
@@ -319,7 +320,10 @@ const { messages, currentRoomId, loading } = storeToRefs(chatStore);
 
 const chatContainer = ref(null);
 const myId = '00000000-0000-0000-0000-000000000000'; // current_user ID
-const chatMessages = computed(() => messages.value);
+const chatMessages = computed(() => {
+  if (!currentRoomId.value) return [];
+  return messages.value[currentRoomId.value] || [];
+});
 
 const message = ref("");
 const isSending = ref(false);
@@ -420,7 +424,13 @@ const sendMessage = async (event) => {
     event.stopPropagation();
   }
   if (isSending.value || loading.value) return;
-  if (!message.value.trim() && selectedFiles.value.length === 0) return;
+  
+  // 메시지와 파일 유효성 검사
+  const validation = validateMessageAndFiles(message.value, selectedFiles.value);
+  if (!validation.isValid) {
+    alert(validation.error);
+    return;
+  }
   
   isSending.value = true;
   

@@ -12,7 +12,7 @@ import {
 export const useChatStore = defineStore('chat', {
   state: () => ({
     rooms: [],
-    messages: [],
+    messages: {}, // roomId를 키로 하는 메시지 캐시
     currentRoomId: null,
     loading: false,
     // error: null, // 에러 상태 제거
@@ -55,7 +55,7 @@ export const useChatStore = defineStore('chat', {
       
       try {
         const messages = await getChatHistory(roomId);
-        this.messages = messages;
+        this.messages[roomId] = messages;
         
         // 메시지 읽음 처리
         await this.markAsRead(roomId);
@@ -91,7 +91,12 @@ export const useChatStore = defineStore('chat', {
       
       try {
         const message = await sendMessage(this.currentRoomId, content, file);
-        this.messages.push(message);
+        
+        // 현재 채팅방의 메시지에 추가
+        if (!this.messages[this.currentRoomId]) {
+          this.messages[this.currentRoomId] = [];
+        }
+        this.messages[this.currentRoomId].push(message);
         
         // 채팅방의 마지막 메시지 정보 업데이트
         const room = this.rooms.find(r => r.chatRoomId === this.currentRoomId);
@@ -178,9 +183,15 @@ export const useChatStore = defineStore('chat', {
     
     // 새 메시지 수신 (WebSocket 등에서 호출)
     receiveMessage(message) {
-      // 현재 채팅방의 메시지라면 messages에 추가
+      // 해당 채팅방의 메시지에 추가
+      if (!this.messages[message.roomId]) {
+        this.messages[message.roomId] = [];
+      }
+      this.messages[message.roomId].push(message);
+      
+      // 현재 채팅방의 메시지라면 즉시 반영
       if (message.roomId === this.currentRoomId) {
-        this.messages.push(message);
+        // 이미 추가했으므로 별도 처리 불필요
       }
       
       // 해당 채팅방의 정보 업데이트
@@ -199,6 +210,15 @@ export const useChatStore = defineStore('chat', {
     // 채팅방 선택
     selectRoom(roomId) {
       this.currentRoomId = roomId;
+      
+      // 이미 메시지가 캐시되어 있으면 API 호출하지 않음
+      if (this.messages[roomId] && this.messages[roomId].length > 0) {
+        // 메시지 읽음 처리만 수행
+        this.markAsRead(roomId);
+        return;
+      }
+      
+      // 메시지가 없으면 API 호출
       this.fetchChatHistory(roomId);
     },
     
@@ -210,7 +230,7 @@ export const useChatStore = defineStore('chat', {
     // 채팅 연결 해제
     disconnectChat() {
       this.currentRoomId = null;
-      this.messages = [];
+      this.messages = {};
       // WebSocket 연결 해제 로직 추가 예정
     },
     
