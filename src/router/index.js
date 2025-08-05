@@ -17,7 +17,7 @@ import AuthDetailUserPage from '@/views/login/AuthDetailUserPage.vue'
 import RegistrationCompletePage from '@/views/login/RegistrationCompletePage.vue'
 import RecipeMainPage from '@/views/home/RecipeMainPage.vue'
 import LectureList from '@/views/home/LectureList.vue'
-import LectureDetail from '@/views/home/LectureDetail.vue'
+import LectureDetail from '@/views/lecture/LectureDetail.vue'
 import CartPage from '@/views/CartPage.vue'
 
 import PaymentDetails from '@/views/payment/PaymentDetails.vue'

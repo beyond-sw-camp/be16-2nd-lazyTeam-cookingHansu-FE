@@ -184,10 +184,10 @@
           >
             {{ cartStore && cartStore.isInCart(lecture.id) ? '장바구니에 추가됨' : '지금 수강하기' }}
           </button>
-          <div class="share-section" @click="openShareModal">
-            <span class="share-icon">📤</span>
-            <span>공유하기</span>
-          </div>
+                      <div class="share-section" @click="openShareModal">
+              <span class="share-icon">📤</span>
+              <span>공유하기</span>
+            </div>
         </div>
 
         <!-- 강의 요약 -->
@@ -265,25 +265,25 @@
         <div class="share-options">
           <div class="share-option facebook-share" @click="shareToFacebook">
             <div class="share-icon">
-              <img src="/image/Facebook_Logo_Primary.png" alt="Facebook" />
+              <img src="@/assets/images/Facebook_Logo_Primary.png" alt="Facebook" />
             </div>
             <span>페이스북</span>
           </div>
           <div class="share-option kakaotalk-share" @click="shareToKakaoTalk">
             <div class="share-icon">
-              <img src="/image/kakaotalk_sharing_btn_small.png" alt="KakaoTalk" />
+              <img src="@/assets/images/kakaotalk_sharing_btn_small.png" alt="KakaoTalk" />
             </div>
             <span>카카오톡</span>
           </div>
           <div class="share-option instagram-share" @click="shareToInstagram">
             <div class="share-icon">
-              <img src="/image/Instagram_Glyph_Gradient.png" alt="Instagram" />
+              <img src="@/assets/images/Instagram_Glyph_Gradient.png" alt="Instagram" />
             </div>
             <span>인스타그램</span>
           </div>
           <div class="share-option link-share" @click="copyToClipboard">
             <div class="share-icon">
-              <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEwLjU5IDEzLjQxQzEyLjQ5MzcgMTUuMzEyNyAxNS41MDYzIDE1LjMxMjcgMTcuNDEgMTMuNDFMMjAuNTkgMTAuMjNDMjIuNDkzNyA4LjMyNzI3IDIyLjQ5MzcgNS4zMTQ3MyAyMC41OSAzLjQxTDE3LjQxIDAuMjNDMTUuNTA2MyAtMS42ODcyNyAxMi40OTM3IC0xLjY4NzI3IDEwLjU5IDAuMjNMNy40MSAzLjQxQzUuNTA2MyA1LjMxNDczIDUuNTA2MyA4LjMyNzI3IDcuNDEgMTAuMjNMMTAuNTkgMTMuNDFaIiBmaWxsPSIjNjY2Ii8+CjxwYXRoIGQ9Ik0xMy40MSAxMC41OUMxMS41MDYzIDguNjg3MjcgOC40OTM3IDguNjg3MjcgNi41OSAxMC41OUwzLjQxIDEzLjc3QzEuNTA2MyAxNS42NzMzIDEuNTA2MyAxOC42NzU4IDMuNDEgMjAuNTc1TDYuNTkgMjMuNzVDOC40OTM3IDI1LjY1MjcgMTEuNTA2MyAyNS42NTI3IDEzLjQxIDIzLjc1TDE2LjU5IDIwLjU3QzE4LjQ5MzcgMTguNjc1OCAxOC40OTM3IDE1LjY3MzMgMTYuNTkgMTMuNzdMMTMuNDEgMTAuNTlaIiBmaWxsPSIjNjY2Ii8+Cjwvc3ZnPgo=" alt="Link" />
+              <img src="@/assets/images/lecture_shared_icon.png" alt="Link" />
             </div>
             <span>링크 복사</span>
           </div>
@@ -2435,6 +2435,8 @@ export default {
   font-size: 14px;
   cursor: pointer;
 }
+
+
 
 .course-summary {
   background: white;
