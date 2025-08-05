@@ -64,11 +64,11 @@
                   <!-- 텍스트+시간+뱃지 영역 -->
                   <div class="flex-grow-1 min-width-0">
                     <div class="d-flex justify-space-between align-start">
-                      <div class="text-subtitle-1 font-weight-bold">
-                        {{ chat.otherUserName || chat.otherUserName }}
+                      <div class="text-subtitle-1 font-weight-bold" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 8px;">
+                        {{ chat.chatRoomName || chat.otherUserName }}
                       </div>
                       <!-- 시간+뱃지 묶음 -->
-                      <div class="d-flex align-center flex-shrink-0" style="min-width: 60px;">
+                      <div class="d-flex align-center flex-shrink-0">
                         <span class="text-caption text-grey mt-1 mr-1">
                           {{ formatChatTime(chat.lastMessageTime) }}
                         </span>

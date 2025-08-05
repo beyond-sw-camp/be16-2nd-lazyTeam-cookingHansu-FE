@@ -61,7 +61,7 @@ export async function createChatRoom(otherUserId) {
 // 채팅방 이름 수정 API
 export async function updateChatRoomName(roomId, roomName) {
   try {
-    const response = await apiPatch(`/chat/room/${roomId}/name`, { roomName });
+    const response = await apiPatch(`/chat/room/${roomId}/name`, { name: roomName });
     const apiResponse = await handleApiResponse(response);
     return apiResponse.getData();
   } catch (error) {
