@@ -9,23 +9,73 @@
         <span class="subtitle-1 font-weight-medium">{{ partnerName }}</span>
       </div>
       <div class="d-flex align-center">
-        <v-btn icon size="small" @click="showRoomOptions = !showRoomOptions">
-          <v-icon>mdi-dots-vertical</v-icon>
-        </v-btn>
+        <v-menu v-model="showRoomOptions" :close-on-content-click="false" offset-y>
+          <template v-slot:activator="{ props }">
+            <v-icon 
+              v-bind="props" 
+              size="small" 
+              class="cursor-pointer"
+              style="color: rgba(0, 0, 0, 0.6);"
+            >
+              mdi-dots-horizontal
+            </v-icon>
+          </template>
+          <v-list>
+            <v-list-item @click="editRoomName">
+              <v-list-item-title>채팅방 이름 변경</v-list-item-title>
+            </v-list-item>
+            <v-list-item @click="leaveRoom" class="text-error">
+              <v-list-item-title>채팅방 나가기</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
       </div>
     </div>
     
-    <!-- 채팅방 옵션 메뉴 -->
-    <v-menu v-model="showRoomOptions" :close-on-content-click="false">
-      <v-list>
-        <v-list-item @click="editRoomName">
-          <v-list-item-title>채팅방 이름 변경</v-list-item-title>
-        </v-list-item>
-        <v-list-item @click="leaveRoom" class="text-error">
-          <v-list-item-title>채팅방 나가기</v-list-item-title>
-        </v-list-item>
-      </v-list>
-    </v-menu>
+    <!-- 채팅방 이름 변경 다이얼로그 -->
+    <v-dialog v-model="showNameEditDialog" max-width="400" persistent>
+      <v-card>
+        <v-card-title class="text-center">
+          채팅방 이름 변경
+        </v-card-title>
+        <v-card-text>
+          <v-text-field
+            v-model="newRoomName"
+            label="새로운 채팅방 이름"
+            variant="outlined"
+            :placeholder="currentRoom?.chatRoomName || ''"
+            @keyup.enter="confirmRoomNameChange"
+            autofocus
+          ></v-text-field>
+        </v-card-text>
+        <v-card-actions class="justify-space-between">
+          <v-btn @click="cancelRoomNameChange">취소</v-btn>
+          <v-btn color="primary" @click="confirmRoomNameChange">확인</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+    
+    <!-- 채팅방 나가기 확인 다이얼로그 -->
+    <v-dialog v-model="showLeaveConfirmDialog" max-width="400" persistent>
+      <v-card>
+        <v-card-title class="text-center">
+          채팅방 나가기
+        </v-card-title>
+        <v-card-text>
+          <div class="text-center">
+            <v-icon size="48" color="warning" class="mb-3">mdi-alert-circle</v-icon>
+            <p class="text-body-1 mb-2">정말로 이 채팅방을 나가시겠습니까?</p>
+            <p class="text-caption text-grey-darken-1">
+              채팅방을 나가면 모든 메시지가 유실되며 복구할 수 없습니다.
+            </p>
+          </div>
+        </v-card-text>
+        <v-card-actions class="justify-space-between">
+          <v-btn @click="cancelLeaveRoom">취소</v-btn>
+          <v-btn color="error" @click="confirmLeaveRoom">나가기</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
     
     <!-- 이미지 확대 보기 다이얼로그 -->
     <v-dialog v-model="showImageDialog" max-width="90vw" max-height="90vh">
@@ -56,7 +106,7 @@
             <!-- 시간 (왼쪽) -->
             <div class="d-flex align-end mr-1" style="min-width: 50px;">
               <span class="text-caption text-grey-darken-1">
-                {{ formatTime(msg.createdAt) }}
+                {{ formatRelativeTime(msg.createdAt) }}
               </span>
             </div>
             
@@ -150,7 +200,7 @@
             <!-- 시간 (오른쪽) -->
             <div class="d-flex align-end ml-1" style="min-width: 50px;">
               <span class="text-caption text-grey-darken-1">
-                {{ formatTime(msg.createdAt) }}
+                {{ formatRelativeTime(msg.createdAt) }}
               </span>
             </div>
           </template>
@@ -173,13 +223,46 @@
     </div>
     
     <!-- 파일 미리보기 -->
-    <div v-if="selectedFile" class="px-4 pt-2 pb-0 d-flex align-center">
-      <div class="pa-3 rounded-lg border d-flex align-center" style="max-width: 70%">
-        <div class="text-caption text-grey-darken-1 font-weight-medium">
-          📎 {{ selectedFileName }}
+    <div v-if="selectedFiles.length > 0" class="px-4 pt-2 pb-0">
+      <div class="d-flex flex-wrap gap-2">
+        <div 
+          v-for="(file, index) in selectedFiles" 
+          :key="index"
+          class="pa-3 rounded-lg border d-flex align-center" 
+          style="max-width: 200px;"
+        >
+          <div class="text-caption text-grey-darken-1 font-weight-medium">
+            📎 {{ selectedFileNames[index] }}
+          </div>
+          <v-img 
+            v-if="selectedFileTypes[index] && selectedFileTypes[index].startsWith('image/')" 
+            :src="file" 
+            max-width="60" 
+            class="ml-2 rounded" 
+          />
+          <v-btn 
+            icon 
+            size="small" 
+            class="ml-2" 
+            @click="removeSelectedFile(index)"
+            color="error"
+          >
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
         </div>
-        <v-img v-if="selectedFileType && selectedFileType.startsWith('image/')" :src="selectedFile" max-width="100" class="ml-2 rounded" />
-        <v-btn icon size="small" class="ml-2" @click="removeSelectedFile"><v-icon>mdi-close</v-icon></v-btn>
+      </div>
+      <div class="d-flex justify-space-between align-center mt-2">
+        <span class="text-caption text-grey-darken-1">
+          선택된 파일: {{ selectedFiles.length }}/10
+        </span>
+        <v-btn 
+          variant="text" 
+          size="small" 
+          color="error" 
+          @click="removeAllFiles"
+        >
+          모두 제거
+        </v-btn>
       </div>
     </div>
     
@@ -194,12 +277,24 @@
         rounded
         density="compact"
         @keyup.enter="sendMessage"
-        :disabled="loading"
+        @input="onTextInputWrapper"
+        :disabled="loading || selectedFiles.length > 0"
       ></v-text-field>
-      <v-btn icon @click="triggerFileInput" :disabled="loading">
+      <v-btn 
+        icon 
+        @click="triggerFileInput" 
+        :disabled="loading"
+        color="primary"
+      >
         <v-icon>mdi-paperclip</v-icon>
       </v-btn>
-      <input ref="fileInput" type="file" class="d-none" @change="handleFileChange" />
+      <input 
+        ref="fileInput" 
+        type="file" 
+        multiple 
+        class="d-none" 
+        @change="handleFileChangeWrapper" 
+      />
       <v-btn color="orange" icon class="ml-2" :disabled="isSending || loading" @click="sendMessage">
         <v-icon>mdi-send</v-icon>
       </v-btn>
@@ -211,6 +306,9 @@
 import { ref, computed, watch, nextTick } from "vue";
 import { storeToRefs } from 'pinia';
 import { useChatStore } from '@/store/chat/chat';
+import { formatRelativeTime } from '@/utils/timeUtils';
+import { useFileUpload } from '@/composables/useFileUpload';
+import { useDialog } from '@/composables/useDialog';
 
 const props = defineProps({
   chat: Object,
@@ -224,14 +322,35 @@ const myId = '00000000-0000-0000-0000-000000000000'; // current_user ID
 const chatMessages = computed(() => messages.value);
 
 const message = ref("");
-const fileInput = ref(null);
-const selectedFile = ref(null);
-const selectedFileName = ref("");
-const selectedFileType = ref("");
 const isSending = ref(false);
+
+// 파일 업로드 관련 로직
+const {
+  selectedFiles,
+  selectedFileNames,
+  selectedFileTypes,
+  fileInput,
+  handleFileChange,
+  removeSelectedFile,
+  removeAllFiles,
+  triggerFileInput,
+  onTextInput
+} = useFileUpload();
+
+// 다이얼로그 관련 로직
+const {
+  showImageDialog,
+  selectedImageUrl,
+  showNameEditDialog,
+  showLeaveConfirmDialog,
+  newRoomName,
+  openImage,
+  closeImageDialog,
+  resetNameEditDialog,
+  resetLeaveConfirmDialog
+} = useDialog();
+
 const showRoomOptions = ref(false);
-const showImageDialog = ref(false);
-const selectedImageUrl = ref('');
 
 const currentRoom = computed(() => chatStore.currentRoom);
 const partnerName = computed(() => currentRoom.value?.otherUserNickname || currentRoom.value?.otherUserName || '상대방');
@@ -246,31 +365,53 @@ watch(chatMessages, () => {
   });
 }, { deep: true });
 
-const triggerFileInput = () => fileInput.value?.click();
+// 컴포저블의 함수들을 래핑하여 message ref를 전달
+const handleFileChangeWrapper = (e) => handleFileChange(e, message);
+const onTextInputWrapper = () => onTextInput(message);
 
-const handleFileChange = (e) => {
-  const file = e.target.files[0];
-  if (file) {
-    selectedFile.value = URL.createObjectURL(file);
-    selectedFileName.value = file.name;
-    selectedFileType.value = file.type;
+
+
+
+
+// 채팅방 이름 변경
+const editRoomName = () => {
+  newRoomName.value = currentRoom.value?.chatRoomName || '';
+  showNameEditDialog.value = true;
+  showRoomOptions.value = false;
+};
+
+const confirmRoomNameChange = async () => {
+  if (newRoomName.value.trim()) {
+    try {
+      await chatStore.updateRoomName(currentRoomId.value, newRoomName.value.trim());
+      resetNameEditDialog();
+    } catch (error) {
+      console.error('채팅방 이름 변경 실패:', error);
+    }
   }
 };
 
-const removeSelectedFile = () => {
-  selectedFile.value = null;
-  selectedFileName.value = "";
-  selectedFileType.value = "";
+const cancelRoomNameChange = () => {
+  resetNameEditDialog();
 };
 
-const openImage = (imageUrl) => {
-  selectedImageUrl.value = imageUrl;
-  showImageDialog.value = true;
+// 채팅방 나가기
+const leaveRoom = () => {
+  showLeaveConfirmDialog.value = true;
+  showRoomOptions.value = false;
 };
 
-const closeImageDialog = () => {
-  showImageDialog.value = false;
-  selectedImageUrl.value = '';
+const confirmLeaveRoom = async () => {
+  try {
+    await chatStore.leaveRoom(currentRoomId.value);
+    resetLeaveConfirmDialog();
+  } catch (error) {
+    console.error('채팅방 나가기 실패:', error);
+  }
+};
+
+const cancelLeaveRoom = () => {
+  resetLeaveConfirmDialog();
 };
 
 const sendMessage = async (event) => {
@@ -279,14 +420,27 @@ const sendMessage = async (event) => {
     event.stopPropagation();
   }
   if (isSending.value || loading.value) return;
-  if (!message.value.trim() && !selectedFile.value) return;
+  if (!message.value.trim() && selectedFiles.value.length === 0) return;
   
   isSending.value = true;
   
   try {
-    await chatStore.sendMessage(message.value, selectedFile.value);
+    const hasText = message.value.trim();
+    const hasFiles = selectedFiles.value.length > 0;
+    
+    if (hasText && !hasFiles) {
+      // 텍스트만 있는 경우
+      await chatStore.sendMessage(message.value, null);
+    } else if (!hasText && hasFiles) {
+      // 파일만 있는 경우
+      await chatStore.sendMessage("", selectedFiles.value);
+    } else if (hasText && hasFiles) {
+      // 텍스트와 파일 모두 있는 경우
+      await chatStore.sendMessage(message.value, selectedFiles.value);
+    }
+    
     message.value = "";
-    removeSelectedFile();
+    removeAllFiles();
   } catch (error) {
     console.error('메시지 전송 실패:', error);
   } finally {
@@ -294,56 +448,7 @@ const sendMessage = async (event) => {
   }
 };
 
-const editRoomName = async () => {
-  const newName = prompt('새로운 채팅방 이름을 입력하세요:', currentRoom.value?.chatRoomName || '');
-  if (newName && newName.trim()) {
-    try {
-      await chatStore.updateRoomName(currentRoomId.value, newName.trim());
-      showRoomOptions.value = false;
-    } catch (error) {
-      console.error('채팅방 이름 변경 실패:', error);
-    }
-  }
-};
 
-const leaveRoom = async () => {
-  if (confirm('정말로 이 채팅방을 나가시겠습니까?')) {
-    try {
-      await chatStore.leaveRoom(currentRoomId.value);
-      showRoomOptions.value = false;
-    } catch (error) {
-      console.error('채팅방 나가기 실패:', error);
-    }
-  }
-};
-
-function formatTime(isoString) {
-  if (!isoString) return '';
-  const date = new Date(isoString);
-  const now = new Date();
-  const diffMs = now - date;
-  const diffHours = diffMs / (1000 * 60 * 60);
-  
-  // 오늘인지 확인
-  const isToday = date.toDateString() === now.toDateString();
-  
-  if (diffHours < 24 && isToday) {
-    // 오늘: 시간만 표시
-    const hours = date.getHours();
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    const isPM = hours >= 12;
-    const hour12 = hours % 12 || 12;
-    return `${isPM ? '오후' : '오전'} ${hour12}:${minutes}`;
-  } else if (diffHours < 48 && isToday) {
-    // 어제
-    return '어제';
-  } else {
-    // 그 이전: 날짜 표시
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
-    return `${month}/${day}`;
-  }
-}
 
 </script>
 

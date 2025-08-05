@@ -70,7 +70,7 @@
                       <!-- 시간+뱃지 묶음 -->
                       <div class="d-flex align-center flex-shrink-0" style="min-width: 60px;">
                         <span class="text-caption text-grey mt-1 mr-1">
-                          {{ formatTime(chat.lastMessageTime) }}
+                          {{ formatChatTime(chat.lastMessageTime) }}
                         </span>
                         <div v-if="chat.unreadCount > 0"
                           class="rounded-circle text-white text-caption font-weight-bold d-flex align-center justify-center"
@@ -133,6 +133,7 @@ import { ref, computed, onMounted } from "vue";
 import { storeToRefs } from 'pinia';
 import { useChatStore } from '@/store/chat/chat';
 import ChatDetailView from "@/views/chat/chatDetailScreen.vue";
+import { formatChatTime } from '@/utils/timeUtils';
 
 const chatStore = useChatStore();
 const { rooms, currentRoomId, loading, totalUnreadCount } = storeToRefs(chatStore);
@@ -157,33 +158,7 @@ const onScroll = () => {
   }
 };
 
-function formatTime(isoString) {
-  if (!isoString) return '';
-  const date = new Date(isoString);
-  const now = new Date();
-  const diffMs = now - date;
-  const diffHours = diffMs / (1000 * 60 * 60);
-  
-  // 오늘인지 확인
-  const isToday = date.toDateString() === now.toDateString();
-  
-  if (diffHours < 24 && isToday) {
-    // 오늘: 시간만 표시
-    const hours = date.getHours();
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    const isPM = hours >= 12;
-    const hour12 = hours % 12 || 12;
-    return `${isPM ? '오후' : '오전'} ${hour12}:${minutes}`;
-  } else if (diffHours < 48 && isToday) {
-    // 어제
-    return '어제';
-  } else {
-    // 그 이전: 날짜 표시
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
-    return `${month}/${day}`;
-  }
-}
+
 
 onMounted(() => {
   chatStore.fetchMyChatRooms();
