@@ -21,6 +21,7 @@ onMounted(async () => {
     const urlParams = new URLSearchParams(window.location.search)
     const code = urlParams.get('code')
     const error = urlParams.get('error')
+    console.log(code)
 
     if (error) {
       console.error('OAuth error:', error)
