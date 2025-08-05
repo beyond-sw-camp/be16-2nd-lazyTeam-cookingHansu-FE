@@ -144,9 +144,19 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
   
-  // 인증 상태 확인
-  if (!authStore.isAuthenticated && authStore.token) {
-    await authStore.checkAuth();
+  // OAuth 리다이렉트 페이지는 인증 가드 건너뛰기
+  if (to.name === 'GoogleOAuthRedirect') {
+    next();
+    return;
+  }
+  
+  // 인증 상태 확인 (토큰이 있지만 사용자 정보가 없는 경우)
+  if (authStore.token && !authStore.user) {
+    try {
+      await authStore.checkAuth();
+    } catch (error) {
+      console.error('Auth check failed:', error);
+    }
   }
   
   // 로그인이 필요한 페이지

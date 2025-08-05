@@ -97,7 +97,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/auth'
 
@@ -139,6 +139,14 @@ const userNickname = computed(() => {
   return authStore.user?.nickname || authStore.user?.name || '사용자'
 })
 
+// 인증 상태 변화 감지
+watch(() => authStore.isAuthenticated, (newValue) => {
+  console.log('Authentication status changed:', newValue)
+  if (newValue) {
+    console.log('User logged in:', authStore.user)
+  }
+})
+
 function goHome() {
   router.push('/')
 }
@@ -176,7 +184,9 @@ onMounted(async () => {
   window.addEventListener('resize', handleResize)
   
   // 페이지 로드 시 인증 상태 확인
-  await authStore.checkAuth()
+  if (authStore.token && !authStore.user) {
+    await authStore.checkAuth()
+  }
 })
 
 onUnmounted(() => {

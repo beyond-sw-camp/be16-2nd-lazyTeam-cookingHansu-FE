@@ -21,7 +21,7 @@ onMounted(async () => {
     const urlParams = new URLSearchParams(window.location.search)
     const code = urlParams.get('code')
     const error = urlParams.get('error')
-    console.log(code)
+    console.log('Authorization code:', code)
 
     if (error) {
       console.error('OAuth error:', error)
@@ -39,12 +39,16 @@ onMounted(async () => {
 
     // 백엔드로 인가 코드 전송하여 로그인 처리
     const { isNewUser, userData } = await authStore.login(code)
+    console.log('Login result:', { isNewUser, userData })
 
+    // 로그인 성공 후 라우팅
     if (isNewUser) {
       // 새 사용자인 경우 추가 정보 입력 페이지로 이동
+      console.log('New user, redirecting to add-info page')
       router.push('/add-info')
     } else {
       // 기존 사용자인 경우 홈 화면으로 이동
+      console.log('Existing user, redirecting to home page')
       router.push('/')
     }
 

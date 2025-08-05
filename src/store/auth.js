@@ -13,8 +13,11 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = newToken
     if (newToken) {
       localStorage.setItem('token', newToken)
+      // axios 기본 헤더에 토큰 설정
+      axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`
     } else {
       localStorage.removeItem('token')
+      delete axios.defaults.headers.common['Authorization']
     }
   }
 
@@ -33,9 +36,6 @@ export const useAuthStore = defineStore('auth', () => {
       setToken(accessToken)
       setUser(userData)
       
-      // axios 기본 헤더에 토큰 설정
-      axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`
-      
       return { isNewUser, userData }
     } catch (error) {
       console.error('Google OAuth login error:', error)
@@ -46,7 +46,6 @@ export const useAuthStore = defineStore('auth', () => {
   const logout = () => {
     setToken(null)
     setUser(null)
-    delete axios.defaults.headers.common['Authorization']
   }
 
   const checkAuth = async () => {

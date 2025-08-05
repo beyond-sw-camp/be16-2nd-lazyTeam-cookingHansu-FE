@@ -15,7 +15,6 @@ export const API_CONFIG = {
   ENDPOINTS: {
     LOGIN: "/user/login",
     GOOGLE_LOGIN: "/user/google/login",
-    OAUTH_CALLBACK: "/oauth/callback",
     USER_INFO: "/user/me",
   },
 };
