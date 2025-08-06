@@ -76,7 +76,7 @@ export default {
         const cartItems = JSON.parse(localStorage.getItem('cartItems') || '[]')
         const lectureIds = cartItems.map(item => item.id)
 
-        const response = await fetch('/api/purchase/confirm', {
+        const response = await fetch('http://localhost:8080/purchase/confirm', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

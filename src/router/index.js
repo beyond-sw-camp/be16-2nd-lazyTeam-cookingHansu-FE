@@ -22,8 +22,8 @@ import CartPage from '@/views/cart/CartPage.vue'
 
 import PaymentDetails from '@/views/payment/PaymentDetails.vue'
 // toss sdk 결제 성공시 페이지 이동
-import PaymentSuccess from '@/views/payment/Success.vue'
-import PaymentFail from '@/views/payment/Fail.vue'
+import PaymentSuccess from '@/views/payment/PaymentSuccess.vue'
+import PaymentFail from '@/views/payment/PaymentFail.vue'
 
 import MyPage from '@/views/MyPage/MyPage.vue'
 
@@ -70,12 +70,12 @@ const routes = [
     component: AuthDetailUserPage, 
   },
   { 
-    path: 'payment/success', 
+    path: '/payment/PaymentSuccess', 
     name: 'PaymentSuccess', 
     component: PaymentSuccess 
   },
   {
-    path: 'payment/fail', 
+    path: '/payment/PaymentFail', 
     name: 'PaymentFail', 
     component: PaymentFail 
   },
