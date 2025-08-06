@@ -84,108 +84,107 @@ export default {
     }
   },
   methods: {
-    formatPrice(price) {
-      return price.toLocaleString()
-    },
+  // 가격 포맷 (예: 20000 → 20,000)
+  formatPrice(price) {
+    return price.toLocaleString()
+  },
 
-    removeFromCart(lectureId) {
-      if (this.cartStore.removeFromCart(lectureId)) {
-        // 성공적으로 제거됨
-        console.log('강의가 장바구니에서 제거되었습니다.')
+  // 장바구니에서 강의 제거
+  removeFromCart(lectureId) {
+    if (this.cartStore.removeFromCart(lectureId)) {
+      console.log('강의가 장바구니에서 제거되었습니다.')
+    }
+  },
+
+  // 강의 목록 페이지로 이동
+  goToLectures() {
+    this.$router.push('/lectures')
+  },
+
+  // 결제 버튼 눌렀을 때 실행되는 메인 함수
+  async proceedToPayment() {
+    if (this.cartStore.cartCount === 0) {
+      alert('장바구니가 비어있습니다.')
+      return
+    }
+
+    try {
+      const orderId = this.generateUUID()
+      const amount = this.cartStore.totalAmount
+      const lectureIds = this.cartStore.items.map(item => item.id)
+
+
+      // 1. 백엔드에 사전 주문 정보 저장
+      await this.saveOrderToBackend(orderId, amount, lectureIds)
+
+      // 2. Toss 결제창 열기 (결제수단은 Toss UI에서 선택)
+      await this.requestTossPayment(orderId, amount)
+
+    } catch (error) {
+      console.error('결제 처리 중 오류:', error)
+      alert('결제에 실패했습니다. 다시 시도해주세요.')
+    }
+  },
+
+  // UUID 생성기
+  generateUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+      const r = Math.random() * 16 | 0
+      const v = c === 'x' ? r : (r & 0x3 | 0x8)
+      return v.toString(16)
+    })
+  },
+
+  // prepay: 백엔드에 주문 정보 저장
+  async saveOrderToBackend(orderId, amount, lectureIds) {
+    try {
+      const response = await fetch('http://localhost:8080/purchase/prepay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId, amount, lectureIds })
+      })
+
+      if (!response.ok) {
+        throw new Error('백엔드 사전 저장 실패')
       }
-    },
 
-    goToLectures() {
-      this.$router.push('/lectures')
-    },
+      return await response.json()
+    } catch (error) {
+      console.error('Prepay 저장 오류:', error)
+      throw error
+    }
+  },
 
-    async proceedToPayment() {
-      if (this.cartStore.cartCount === 0) {
-        alert('장바구니가 비어있습니다.')
+  // Toss 결제창 열기 (결제수단 선택은 Toss UI 제공)
+  async requestTossPayment(orderId, amount) {
+    return new Promise((resolve, reject) => {
+      if (!window.TossPayments) {
+        reject(new Error('Toss Payments SDK가 로드되지 않았습니다.'))
         return
       }
 
-      try {
-        // UUID 생성
-        const orderId = this.generateUUID()
-        const amount = this.cartStore.totalAmount
-        const lectureIds = this.cartStore.items.map(item => item.id)
+      const tossPayments = window.TossPayments('test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq') // 테스트 키
 
-        // 결제 전 백엔드에 주문 정보 저장
-        await this.saveOrderToBackend(orderId, amount, lectureIds)
-
-        // Toss Payments SDK 호출
-        await this.requestTossPayment(orderId, amount)
-
-      } catch (error) {
-        console.error('결제 처리 중 오류 발생:', error)
-        alert('결제 처리 중 오류가 발생했습니다. 다시 시도해주세요.')
-      }
-    },
-
-    generateUUID() {
-      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        const r = Math.random() * 16 | 0
-        const v = c == 'x' ? r : (r & 0x3 | 0x8)
-        return v.toString(16)
+      tossPayments.requestPayment({
+        amount: amount,
+        orderId: orderId,
+        orderName: '요리한수 강의 결제',
+        customerName: '익명',
+        customerEmail: 'anonymous@example.com',
+        customerMobilePhone: '01012345678',
+        successUrl: `${window.location.origin}/payment/PaymentSuccess`,
+        failUrl: `${window.location.origin}/payment/PaymentFail`,
+      }).then((result) => {
+        console.log('결제 성공:', result)
+        resolve(result)
+      }).catch((error) => {
+        console.error('결제창 호출 실패:', error)
+        reject(error)
       })
-    },
-
-    async saveOrderToBackend(orderId, amount, lectureIds) {
-      try {
-        const response = await fetch('http://localhost:8080/purchase/confirm', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            orderId,
-            amount,
-            lectureIds
-          })
-        })
-
-        if (!response.ok) {
-          throw new Error('주문 정보 저장 실패')
-        }
-
-        return await response.json()
-      } catch (error) {
-        console.error('백엔드 주문 저장 실패:', error)
-        // 실제 환경에서는 에러 처리 필요
-        // 현재는 테스트를 위해 성공으로 처리
-        return { success: true }
-      }
-    },
-
-    async requestTossPayment(orderId, amount) {
-      return new Promise((resolve, reject) => {
-        if (!window.TossPayments) {
-          reject(new Error('Toss Payments SDK가 로드되지 않았습니다.'))
-          return
-        }
-
-        const tossPayments = window.TossPayments('test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq')
-        
-        tossPayments.requestPayment('CARD', {
-          amount: amount,
-          orderId: orderId,
-          orderName: '요리한수 강의 결제',
-          customerName: '익명',
-          successUrl: `${window.location.origin}/payment/success`,
-          failUrl: `${window.location.origin}/payment/fail`,
-        }).then((result) => {
-          console.log('결제 성공:', result)
-          // 결제 성공 시 장바구니 비우기
-          this.cartStore.clearCart()
-          resolve(result)
-        }).catch((error) => {
-          console.error('결제 실패:', error)
-          reject(error)
-        })
-      })
-    }
+    })
   }
+}
+
 }
 </script>
 
