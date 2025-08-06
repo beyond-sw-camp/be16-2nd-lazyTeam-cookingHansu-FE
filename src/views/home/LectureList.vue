@@ -894,10 +894,38 @@ export default {
     pagedLectures() {
       const start = (this.currentPage - 1) * this.lecturesPerPage;
       const end = start + this.lecturesPerPage;
-      return this.filteredLectures.slice(start, end);
+      
+      // 첫 페이지는 원본 데이터 사용
+      if (this.currentPage === 1) {
+        return this.filteredLectures.slice(start, end);
+      }
+      
+      // 두 번째 페이지부터는 첫 8개 강의를 반복
+      const baseLectures = this.filteredLectures.slice(0, 8);
+      const repeatedLectures = [];
+      
+      for (let i = 0; i < this.lecturesPerPage; i++) {
+        const baseIndex = i % 8;
+        const baseLecture = baseLectures[baseIndex];
+        if (baseLecture) {
+          // ID를 현재 페이지에 맞게 수정
+          const newId = `550e8400-e29b-41d4-a716-44665544000${String(baseIndex + 1).padStart(2, '0')}`;
+          repeatedLectures.push({
+            ...baseLecture,
+            id: newId
+          });
+        }
+      }
+      
+      return repeatedLectures;
     },
     totalPages() {
-      return Math.max(1, Math.ceil(this.filteredLectures.length / this.lecturesPerPage));
+      // 첫 페이지는 실제 데이터 기반, 나머지는 무한 페이지네이션
+      if (this.currentPage === 1) {
+        return Math.max(1, Math.ceil(this.filteredLectures.length / this.lecturesPerPage));
+      }
+      // 무한 페이지네이션을 위해 충분히 큰 값 반환
+      return 999;
     },
   },
   watch: {
@@ -914,11 +942,9 @@ export default {
   methods: {
     goToRecipe() { this.$router.push({ name: 'RecipeMainPage' }); },
     changePage(page) {
-      if (page >= 1 && page <= this.totalPages) {
+      if (page >= 1) {
         this.currentPage = page;
-      } else if (page > this.totalPages) {
-        this.currentPage = this.totalPages;
-      } else if (page < 1) {
+      } else {
         this.currentPage = 1;
       }
     },
@@ -935,7 +961,7 @@ export default {
     handleCardClick(lecture) {
       console.log('강의 클릭:', lecture.id, lecture.title);
       
-      // 강의 상세 페이지로 이동
+      // 모든 강의 상세보기 가능
       this.$router.push({ name: 'LectureDetail', params: { id: lecture.id } });
     },
   },
