@@ -116,7 +116,8 @@
 - **STOMP/WebSocket**
 - **AWS S3**
 - **Lombok**, **Gradle**
-
+- **REDIS**
+- 
 ---
 
 ## 📄 Commit Convention
