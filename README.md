@@ -1,77 +1,135 @@
 # 🍳 요리한수 (Cooking Hansu)
 
-> 누구나 요리를 배우고, 나누고, 소통하는 All-in-One 요리 플랫폼  
+> **누구나 요리를 배우고, 나누고, 소통하는 All-in-One 요리 플랫폼**  
 > 레시피 공유부터 요리 전문가 강의까지, 한 수 배워보세요!
 
 ---
 
-## 👨‍💻 Team Members
+## 👨‍👩‍👧‍👦 Team Members
 
 <table>
   <tr>
-    <td align="center"> 김건동</td>
-    <td align="center"> 이승지</td>
-    <td align="center"> 최재혁</td>
-    <td align="center"> 조민형</td>
-    <td align="center"> 김상환</td>
+    <!-- 1행: 사진(클릭 가능) + 이름 -->
+    <td align="center">
+      <a href="https://github.com/astraglus03" target="_blank">
+        <img src="https://avatars.githubusercontent.com/astraglus03" width="100px;" alt="김건동"/>
+      </a><br />
+      <b>김건동</b>
+    </td>
+    <td align="center">
+      <a href="https://github.com/SeungJi20" target="_blank">
+        <img src="https://avatars.githubusercontent.com/SeungJi20" width="100px;" alt="이승지"/>
+      </a><br />
+      <b>이승지</b>
+    </td>
+    <td align="center">
+      <a href="https://github.com/chaserChoi" target="_blank">
+        <img src="https://avatars.githubusercontent.com/chaserChoi" width="100px;" alt="최재혁"/>
+      </a><br />
+      <b>최재혁</b>
+    </td>
+    <td align="center">
+      <a href="https://github.com/jominhyeong97" target="_blank">
+        <img src="https://avatars.githubusercontent.com/jominhyeong97" width="100px;" alt="조민형"/>
+      </a><br />
+      <b>조민형</b>
+    </td>
+    <td align="center">
+      <a href="https://github.com/pure-wa" target="_blank">
+        <img src="https://avatars.githubusercontent.com/pure-wa" width="100px;" alt="김상환"/>
+      </a><br />
+      <b>김상환</b>
+    </td>
   </tr>
   <tr>
-    <td align="center"><a href="#" target="_blank"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white"/></a></td>
-    <td align="center"><a href="#" target="_blank"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white"/></a></td>
-    <td align="center"><a href="#" target="_blank"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white"/></a></td>
-    <td align="center"><a href="#" target="_blank"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white"/></a></td>
-    <td align="center"><a href="#" target="_blank"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white"/></a></td>
+    <!-- 2행: GitHub 배지 -->
+    <td align="center">
+      <a href="https://github.com/astraglus03" target="_blank">
+        <img src="https://img.shields.io/badge/GitHub_Profile-181717?style=flat-square&logo=github&logoColor=white"/>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/SeungJi20" target="_blank">
+        <img src="https://img.shields.io/badge/GitHub_Profile-181717?style=flat-square&logo=github&logoColor=white"/>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/chaserChoi" target="_blank">
+        <img src="https://img.shields.io/badge/GitHub_Profile-181717?style=flat-square&logo=github&logoColor=white"/>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/jominhyeong97" target="_blank">
+        <img src="https://img.shields.io/badge/GitHub_Profile-181717?style=flat-square&logo=github&logoColor=white"/>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/pure-wa" target="_blank">
+        <img src="https://img.shields.io/badge/GitHub_Profile-181717?style=flat-square&logo=github&logoColor=white"/>
+      </a>
+    </td>
   </tr>
 </table>
 
 ---
 
-## 🎨 디자인 & 설계 자료
+## 🖌️ 프로젝트 소개
 
-| 구분 | 링크 |
+**요리한수**는 요리에 관심 있는 누구나  
+레시피를 공유하고, 전문가의 강의를 수강하고,  
+실시간으로 질문과 소통이 가능한 올인원 플랫폼입니다.
+
+> 📚 초보자도, 전문가도 한 수 배워보는 요리 커뮤니티
+
+---
+
+## 🔗 주요 자료
+
+| 항목 | 링크 |
 |------|------|
-| 🧩 **Figma 디자인** | [👉 피그마 보기](https://www.figma.com/design/0r1vmACeBTegtlH9OHZaMn/%EC%9A%94%EB%A6%AC%ED%95%9C%EC%88%98?node-id=0-1&p=f&t=NJOrncqdhdRnxdh6-0) |
-| 🗂️ **ERD (DB 설계도)** | [👉 ERDCloud 보기](https://www.erdcloud.com/d/25tEnmWT48D4MufsZ) |
-| 📝 **WBS & 요구사항 정의서** | [👉 Google Sheet 보기](https://docs.google.com/spreadsheets/d/1UsaqCAM9-1V2rr0dIufYZtAmWtn-mnH4Uthqad71YM8/edit?gid=2045131748#gid=2045131748) |
+| 📝 **프로젝트 기획서** | [바로가기 ▶](https://www.notion.so/2297cd1f5ed98003aaa9e1ac5ed8f705?source=copy_link) |
+| 🎨 **Figma 디자인** | [바로가기 ▶](https://www.figma.com/design/0r1vmACeBTegtlH9OHZaMn/%EC%9A%94%EB%A6%AC%ED%95%9C%EC%88%98?node-id=0-1&p=f&t=NJOrncqdhdRnxdh6-0) |
+| 📊 **ERD (DB 설계)** | [바로가기 ▶](https://www.erdcloud.com/d/25tEnmWT48D4MufsZ) |
+| 📝 **WBS & 요구사항 정의서** | [바로가기 ▶](https://docs.google.com/spreadsheets/d/1UsaqCAM9-1V2rr0dIufYZtAmWtn-mnH4Uthqad71YM8/edit?gid=2045131748#gid=2045131748) |
+
 
 ---
 
 ## 🛠️ 기술 스택
 
-### 📦 Frontend
+### 🎯 Frontend
 
-- **Vue 3**
-- **Vite**
-- **Vuetify 3**
+- **Vue 3**, **Vite**
+- **Vuetify 3** – UI 컴포넌트
 - **Pinia** – 상태 관리
 - **Vue Router 4** – SPA 라우팅
 - **Axios** – API 통신
 - **SCSS** – 스타일링
 - **JavaScript (ES6+)**
 
-### 🧰 Backend
+### 🚀 Backend
 
 - **Spring Boot**
 - **Spring Data JPA**
 - **MySQL**
-- **Spring Security + JWT**
-- **Lombok**
-- **Gradle**
+- **Spring Security + JWT 인증**
+- **STOMP/WebSocket**
+- **AWS S3**
+- **Lombok**, **Gradle**
 
 ---
 
 ## 📄 Commit Convention
 
-| 태그         | 설명                   |
-|--------------|------------------------|
-| `feat`       | 기능 추가              |
-| `fix`        | 버그 수정              |
-| `refactor`   | 리팩토링 (기능 변경 없음) |
-| `style`      | 코드 스타일 수정 (공백, 포맷 등) |
-| `docs`       | 문서 작성/수정         |
-| `test`       | 테스트 코드 작성       |
-| `chore`      | 빌드, 패키지, 설정 등 기타 변경 |
-| `ci`         | CI/CD 설정 관련       |
+| 태그       | 설명 |
+|------------|------|
+| `feat`     | 새로운 기능 추가 |
+| `fix`      | 버그 수정 |
+| `refactor` | 리팩토링 (기능 변경 없음) |
+| `style`    | 코드 포맷, 공백, 세미콜론 등 비즈니스 로직 변화 없는 수정 |
+| `docs`     | 문서 작성/수정 |
+| `test`     | 테스트 코드 작성 |
+| `chore`    | 빌드 업무, 패키지 매니저 설정 등 |
+| `ci`       | CI/CD 설정 관련 변경 |
 
 ---
-
