@@ -2,9 +2,9 @@
 
 // 채팅방 목록 응답 모델
 export class ChatRoomResponse {
-  constructor(chatRoomId, chatRoomName, otherUserName, otherUserNickname, otherUserProfileImage, lastMessage, lastMessageTime, unreadCount) {
+  constructor(chatRoomId, customRoomName, otherUserName, otherUserNickname, otherUserProfileImage, lastMessage, lastMessageTime, unreadCount) {
     this.chatRoomId = chatRoomId;
-    this.chatRoomName = chatRoomName;
+    this.customRoomName = customRoomName;
     this.otherUserName = otherUserName;
     this.otherUserNickname = otherUserNickname;
     this.otherUserProfileImage = otherUserProfileImage;
@@ -16,7 +16,7 @@ export class ChatRoomResponse {
   static fromJson(json) {
     return new ChatRoomResponse(
       json.chatRoomId,
-      json.chatRoomName,
+      json.customRoomName,
       json.otherUserName,
       json.otherUserNickname,
       json.otherUserProfileImage,

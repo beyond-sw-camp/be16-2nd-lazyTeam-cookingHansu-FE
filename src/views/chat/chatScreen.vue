@@ -46,7 +46,7 @@
                     <!-- 상단: 채팅방 이름 + 시간 + 읽지 않은 메시지 수 -->
                     <div class="d-flex justify-space-between align-start mb-1">
                       <div class="text-subtitle-1 font-weight-bold text-truncate" style="flex: 1; margin-right: 8px;">
-                        {{ chat.chatRoomName || chat.otherUserName }}
+                        {{ chat.customRoomName || chat.otherUserName }}
                       </div>
                       <!-- 시간+뱃지 묶음 -->
                       <div class="d-flex align-center flex-shrink-0">

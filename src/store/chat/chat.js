@@ -293,10 +293,15 @@ export const useChatStore = defineStore('chat', {
       try {
         await updateChatRoomName(roomId, roomName);
         
-        // 로컬 상태 업데이트
-        const room = this.rooms.find(r => r.chatRoomId === roomId);
-        if (room) {
-          room.chatRoomName = roomName;
+        // 로컬 상태 업데이트 (반응성을 위해 새 배열 생성)
+        const roomIndex = this.rooms.findIndex(r => r.chatRoomId === roomId);
+        if (roomIndex !== -1) {
+          const updatedRooms = [...this.rooms];
+          updatedRooms[roomIndex] = {
+            ...updatedRooms[roomIndex],
+            customRoomName: roomName
+          };
+          this.rooms = updatedRooms;
         }
       } catch (error) {
         console.error('채팅방 이름 수정 실패:', error);

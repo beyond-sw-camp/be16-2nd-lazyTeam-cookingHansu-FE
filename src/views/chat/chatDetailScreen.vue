@@ -493,7 +493,7 @@ const getImageContainerStyle = (imageCount) => {
 
 // 채팅방 이름 변경
 const editRoomName = () => {
-  newRoomName.value = currentRoom.value?.chatRoomName || '';
+  newRoomName.value = currentRoom.value?.customRoomName || '';
   showNameEditDialog.value = true;
   showRoomOptions.value = false;
 };
