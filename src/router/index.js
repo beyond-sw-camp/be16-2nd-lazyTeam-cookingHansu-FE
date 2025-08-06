@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from "vue-router";
-import { useAuthStore } from "@/store/auth";
+import { useAuthStore } from "@/store/auth/auth";
 import AdminLayout from "@/layouts/admin/AdminLayout.vue";
 import Dashboard from "@/views/admin/Dashboard.vue";
 import LectureApproval from "@/views/admin/LectureApproval.vue";
@@ -150,8 +150,8 @@ router.beforeEach(async (to, from, next) => {
     return;
   }
   
-  // 인증 상태 확인 (토큰이 있지만 사용자 정보가 없는 경우)
-  if (authStore.token && !authStore.user) {
+  // 인증 상태 확인 (access token이 있지만 사용자 정보가 없는 경우)
+  if (authStore.isAuthenticated && !authStore.user) {
     try {
       await authStore.checkAuth();
     } catch (error) {

@@ -53,7 +53,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/store/auth'
+import { useAuthStore } from '@/store/auth/auth'
 import ProgressStep from '@/components/ProgressStep.vue'
 
 const router = useRouter()

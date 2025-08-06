@@ -99,7 +99,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/store/auth'
+import { useAuthStore } from '@/store/auth/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -156,8 +156,8 @@ function login() {
   closeMobileMenu()
 }
 
-function logout() {
-  authStore.logout()
+async function logout() {
+  await authStore.logout()
   closeMobileMenu()
   router.push('/')
 }
