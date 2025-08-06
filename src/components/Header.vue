@@ -116,10 +116,10 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useCartStore } from '@/store/cart.js'
+// import { useCartStore } from '@/store/cart.js'
 
 const router = useRouter()
-const cartStore = useCartStore()
+// const cartStore = useCartStore()
 const isLoggedIn = ref(false) // 임시: 실제 로그인 상태와 연동 필요
 const nickname = ref('김요리') // 임시: 실제 닉네임 연동 필요
 const hoverMenu = ref('')

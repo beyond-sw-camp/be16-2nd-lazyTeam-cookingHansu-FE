@@ -18,7 +18,7 @@ import RegistrationCompletePage from '@/views/login/RegistrationCompletePage.vue
 import RecipeMainPage from '@/views/home/RecipeMainPage.vue'
 import LectureList from '@/views/home/LectureList.vue'
 import LectureDetail from '@/views/lecture/LectureDetail.vue'
-import CartPage from '@/views/CartPage.vue'
+// import CartPage from '@/views/CartPage.vue'
 
 import PaymentDetails from '@/views/payment/PaymentDetails.vue'
 
@@ -91,7 +91,7 @@ const routes = [
       { path: 'recipes', name: 'RecipeMainPage', component: RecipeMainPage },
       { path: 'lectures', name: 'LectureList', component: LectureList },
       { path: 'lectures/:id', name: 'LectureDetail', component: LectureDetail },
-      { path: 'cart', name: 'CartPage', component: CartPage },
+      // { path: 'cart', name: 'CartPage', component: CartPage },
       {
         path: 'chat',
         name: 'Chat',

@@ -355,7 +355,7 @@
 
 <script>
 import Header from '@/components/Header.vue';
-import { useCartStore } from '@/store/cart.js';
+// import { useCartStore } from '@/store/cart.js';
 
 export default {
   name: 'LectureDetail',
