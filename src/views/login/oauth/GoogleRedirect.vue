@@ -1,112 +1,233 @@
 <template>
-  <div class="oauth-redirect">
-    <div class="loading-container">
-      <div class="loading-spinner"></div>
-      <div class="loading-text">로그인 처리 중...</div>
-    </div>
-  </div>
+  <v-container fluid class="fill-height">
+    <v-row align="center" justify="center">
+      <v-col cols="12" sm="8" md="6" lg="4">
+        <v-card class="elevation-12 pa-8">
+          <v-card-text class="text-center">
+            <!-- 로딩 스피너 -->
+            <v-progress-circular
+              v-if="isLoading"
+              indeterminate
+              color="primary"
+              size="64"
+              width="6"
+              class="mb-6"
+            ></v-progress-circular>
+            
+            <!-- 성공 아이콘 -->
+            <v-icon
+              v-else-if="isSuccess"
+              color="success"
+              size="64"
+              class="mb-6"
+            >
+              mdi-check-circle
+            </v-icon>
+            
+            <!-- 에러 아이콘 -->
+            <v-icon
+              v-else-if="error"
+              color="error"
+              size="64"
+              class="mb-6"
+            >
+              mdi-alert-circle
+            </v-icon>
+            
+            <!-- 로딩 메시지 -->
+            <h2 class="text-h5 font-weight-bold mb-4">
+              {{ getStatusMessage }}
+            </h2>
+            
+            <!-- 상세 메시지 -->
+            <p class="text-body-1 text-medium-emphasis mb-6">
+              {{ getDetailMessage }}
+            </p>
+            
+            <!-- 에러 메시지 -->
+            <v-alert
+              v-if="error"
+              type="error"
+              variant="tonal"
+              class="mb-6"
+            >
+              {{ error }}
+            </v-alert>
+            
+            <!-- 재시도 버튼 -->
+            <v-btn
+              v-if="error"
+              color="primary"
+              variant="elevated"
+              size="large"
+              @click="retryLogin"
+              :loading="isLoading"
+              class="mb-4"
+            >
+              다시 시도
+            </v-btn>
+            
+            <!-- 홈으로 이동 버튼 -->
+            <v-btn
+              v-if="error"
+              color="secondary"
+              variant="outlined"
+              size="large"
+              @click="goHome"
+            >
+              홈으로 이동
+            </v-btn>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+  </v-container>
 </template>
 
-<script setup>
-import { onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/store/auth/auth'
+<script>
+import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import { useAuthStore } from '@/store/auth/auth';
 
-const router = useRouter()
-const authStore = useAuthStore()
-
-onMounted(async () => {
-  try {
-    // URL에서 인가 코드 추출
-    const urlParams = new URLSearchParams(window.location.search)
-    const code = urlParams.get('code')
-    const error = urlParams.get('error')
-    console.log('Authorization code:', code)
-
-    if (error) {
-      console.error('OAuth error:', error)
-      alert('로그인 중 오류가 발생했습니다. 다시 시도해주세요.')
-      router.push('/login')
-      return
-    }
-
-    if (!code) {
-      console.error('No authorization code received')
-      alert('인증 코드를 받지 못했습니다. 다시 시도해주세요.')
-      router.push('/login')
-      return
-    }
-
-    // 백엔드로 인가 코드 전송하여 로그인 처리
-    console.log('Calling authStore.login with code:', code)
-    const result = await authStore.login(code)
-    console.log('Login result:', result)
-=    console.log('Result type:', typeof result)
-    console.log('Result keys:', result ? Object.keys(result) : 'NO_RESULT')
+export default {
+  name: 'GoogleRedirect',
+  
+  setup() {
+    const router = useRouter();
+    const authStore = useAuthStore();
     
-    // result가 undefined인 경우를 대비한 안전한 구조 분해 할당
-    const { isNewUser, userData } = result || {}
-    console.log('Extracted isNewUser:', isNewUser)
-    console.log('Extracted userData:', userData)
-    console.log('isNewUser type:', typeof isNewUser)
-    console.log('userData type:', typeof userData)
-
-    // 로그인 성공 후 라우팅
-    if (isNewUser === true) {
-      // 새 사용자인 경우 추가 정보 입력 페이지로 이동
-      console.log('New user, redirecting to add-info page')
-      router.push('/add-info')
-    } else if (isNewUser === false) {
-      // 기존 사용자인 경우 홈 화면으로 이동
-      console.log('Existing user, redirecting to home page')
-      router.push('/')
-    } else {
-      // isNewUser가 undefined인 경우 에러 처리
-      console.error('isNewUser is undefined, cannot determine routing')
-      alert('로그인 처리 중 오류가 발생했습니다. 다시 시도해주세요.')
-      router.push('/login')
-    }
-
-  } catch (error) {
-    console.error('Google OAuth redirect error:', error)
-    alert('로그인 처리 중 오류가 발생했습니다. 다시 시도해주세요.')
-    router.push('/login')
-  }
-})
+    // 반응형 상태
+    const isLoading = ref(true);
+    const isSuccess = ref(false);
+    const error = ref(null);
+    const authorizationCode = ref(null);
+    
+    // 상태에 따른 메시지 계산
+    const getStatusMessage = computed(() => {
+      if (error.value) return '로그인 실패';
+      if (isSuccess.value) return '로그인 성공';
+      return '로그인 처리 중...';
+    });
+    
+    const getDetailMessage = computed(() => {
+      if (error.value) return 'Google 로그인 처리 중 오류가 발생했습니다.';
+      if (isSuccess.value) return '잠시 후 자동으로 이동합니다.';
+      return 'Google에서 받은 정보를 처리하고 있습니다.';
+    });
+    
+    // URL에서 인가 코드 추출
+    const extractAuthorizationCode = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+      const error = urlParams.get('error');
+      
+      if (error) {
+        throw new Error(`Google OAuth Error: ${error}`);
+      }
+      
+      if (!code) {
+        throw new Error('인가 코드를 찾을 수 없습니다.');
+      }
+      
+      return code;
+    };
+    
+    // Google 로그인 처리
+    const handleGoogleLogin = async () => {
+      try {
+        isLoading.value = true;
+        error.value = null;
+        
+        // 인가 코드 추출
+        authorizationCode.value = extractAuthorizationCode();
+        
+        // 서버에 인가 코드 전송하여 로그인 처리
+        const user = await authStore.handleGoogleLogin(authorizationCode.value);
+        console.log('user: ' + user)
+        
+        // 성공 상태 설정
+        isSuccess.value = true;
+        
+        // 사용자 상태에 따른 리다이렉트
+        setTimeout(() => {
+          console.log('User object:', user);
+          console.log('newUser from user object:', user?.newUser);
+          console.log('newUser from auth store:', authStore.isNewUser);
+          
+          // 인증 스토어의 isNewUser getter를 우선 사용
+          if (authStore.isNewUser) {
+            // 신규 사용자: 추가 정보 입력 페이지로 이동
+            console.log('Redirecting to /add-info for new user');
+            router.push('/add-info');
+          } else {
+            // 기존 사용자: 홈페이지로 이동
+            console.log('Redirecting to / for existing user');
+            router.push('/');
+          }
+        }, 2000); // 2초 후 자동 이동
+        
+      } catch (err) {
+        console.error('Google login error:', err);
+        error.value = err.message || 'Google 로그인에 실패했습니다.';
+        isLoading.value = false;
+      }
+    };
+    
+    // 재시도 로그인
+    const retryLogin = async () => {
+      if (authorizationCode.value) {
+        await handleGoogleLogin();
+      } else {
+        // 인가 코드가 없는 경우 Google 로그인 페이지로 다시 이동
+        window.location.href = '/login';
+      }
+    };
+    
+    // 홈으로 이동
+    const goHome = () => {
+      router.push('/');
+    };
+    
+    // 컴포넌트 마운트 시 로그인 처리 시작
+    onMounted(() => {
+      handleGoogleLogin();
+    });
+    
+    return {
+      isLoading,
+      isSuccess,
+      error,
+      getStatusMessage,
+      getDetailMessage,
+      retryLogin,
+      goHome,
+    };
+  },
+};
 </script>
 
 <style scoped>
-.oauth-redirect {
+.fill-height {
   min-height: 100vh;
-  background: #f5f1e8;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: "NotoSansKR", "Noto Sans", sans-serif;
 }
 
-.loading-container {
-  text-align: center;
+.v-card {
+  border-radius: 16px;
 }
 
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid #e9ecef;
-  border-top: 4px solid var(--color-primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 16px auto;
+.v-progress-circular {
+  animation: pulse 2s infinite;
 }
 
-.loading-text {
-  color: var(--color-text);
-  font-size: 1.1rem;
-  font-weight: 500;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 </style>

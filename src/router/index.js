@@ -84,7 +84,7 @@ const routes = [
     path: "/add-info",
     name: "AddInfo",
     component: AddInfoPage,
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, requiresNewUser: true }
   },
   {
     path: "/auth-detail-user",
@@ -153,7 +153,9 @@ router.beforeEach(async (to, from, next) => {
   // 인증 상태 확인 (access token이 있지만 사용자 정보가 없는 경우)
   if (authStore.isAuthenticated && !authStore.user) {
     try {
-      await authStore.checkAuth();
+      // 사용자 정보가 없는 경우 로그아웃 처리
+      console.log('User info missing, clearing auth');
+      authStore.clearAuth();
     } catch (error) {
       console.error('Auth check failed:', error);
     }
@@ -168,6 +170,13 @@ router.beforeEach(async (to, from, next) => {
   // 관리자 권한이 필요한 페이지
   if (to.meta.requiresAdmin && (!authStore.isAuthenticated || authStore.user?.role !== 'admin')) {
     next('/admin-login');
+    return;
+  }
+  
+  // 신규 사용자만 접근 가능한 페이지 (추가 정보 입력 페이지)
+  if (to.meta.requiresNewUser && (!authStore.isAuthenticated || !authStore.isNewUser)) {
+    console.log('Non-new user trying to access add-info page, redirecting to home');
+    next('/');
     return;
   }
   

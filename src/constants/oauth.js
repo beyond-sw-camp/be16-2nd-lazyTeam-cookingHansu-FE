@@ -15,7 +15,8 @@ export const API_CONFIG = {
   ENDPOINTS: {
     LOGIN: "/user/login",
     GOOGLE_LOGIN: "/user/google/login",
-    USER_INFO: "/user/me",
+    GOOGLE_REFRESH: "/user/google/refresh",
+    LOGOUT: "/user/logout",
   },
 };
 

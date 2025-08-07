@@ -1,341 +1,295 @@
+import { defineStore } from 'pinia';
+import axios from 'axios';
+import { API_CONFIG } from '@/constants/oauth';
+
 // Auth 관련 상태 관리 스토어
 // OAuth2 소셜 로그인 기반의 토큰 관리, 로그인 상태 관리, 사용자 정보 관리
 // 토큰 만료 시간 체크, 토큰 갱신, 로그아웃 처리
 // 페이지 새로고침 시 로그인 상태 복원
 // Axios 인터셉터 설정 - 401 에러 시 자동 refresh
 
-import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import axios from 'axios'
-
-export const useAuthStore = defineStore('auth', () => {
-  // State - Access token은 메모리에만 저장 (private 변수 역할)
-  const user = ref(null)
-  const _accessToken = ref(null) // private 변수로 메모리에만 저장
-  const _tokenExpiry = ref(null) // 토큰 만료 시간
-  const isAuthenticated = computed(() => !!_accessToken.value)
-
-  // Refresh token 관리 함수들
-  const getRefreshToken = () => {
-    return sessionStorage.getItem('refreshToken')
-  }
-
-  const setRefreshToken = (token) => {
-    if (token) {
-      sessionStorage.setItem('refreshToken', token)
-    } else {
-      sessionStorage.removeItem('refreshToken')
-    }
-  }
-
-  // JWT 토큰 디코딩 함수
-  const decodeJWT = (token) => {
-    try {
-      const base64Url = token.split('.')[1]
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
-      const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-      }).join(''))
-      return JSON.parse(jsonPayload)
-    } catch (error) {
-      console.error('JWT decode error:', error)
-      return null
-    }
-  }
-
-  // 토큰 만료 시간 체크
-  const isTokenExpired = () => {
-    if (!_accessToken.value || !_tokenExpiry.value) return true
+export const useAuthStore = defineStore('auth', {
+  state: () => ({
+    // 사용자 정보
+    user: null,
     
-    // 만료 5분 전에 refresh
-    const bufferTime = 5 * 60 * 1000 // 5분
-    return Date.now() >= (_tokenExpiry.value - bufferTime)
-  }
-
-  // Actions
-  const setAccessToken = (newToken) => {
-    _accessToken.value = newToken
+    // JWT 토큰 (메모리에 저장)
+    accessToken: null,
     
-    if (newToken) {
-      // JWT 토큰에서 만료 시간 추출
-      const decoded = decodeJWT(newToken)
-      if (decoded && decoded.exp) {
-        _tokenExpiry.value = decoded.exp * 1000 // 밀리초로 변환
-      }
-      
-      // axios 기본 헤더에 토큰 설정
-      axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`
-    } else {
-      _tokenExpiry.value = null
-      delete axios.defaults.headers.common['Authorization']
-    }
-  }
-
-  const setUser = (userData) => {
-    user.value = userData
-  }
-
-  // Google OAuth 로그인 처리
-  const login = async (authCode) => {
-    try {
-      console.log('Starting Google OAuth login with code:', authCode)
-      
-      // 환경 변수가 설정되지 않은 경우 기본값 사용
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
-      console.log('API Base URL:', apiBaseUrl)
-      
-      const response = await axios.post(`${apiBaseUrl}/user/google/login`, {
-        code: authCode
-      })
-      
-      console.log('Login response:', response.data)
-      console.log('Response data type:', typeof response.data)
-      console.log('Response data keys:', Object.keys(response.data || {}))
-      
-      // 응답 데이터 구조 확인 및 안전한 구조 분해 할당
-      const responseData = response.data || {}
-      console.log('Full response data structure:', JSON.stringify(responseData, null, 2))
-      
-      // 다양한 가능한 속성명으로 시도 (백엔드 응답 구조에 따라 조정)
-      const accessToken = responseData.accessToken || responseData.access_token || responseData.token
-      const refreshToken = responseData.refreshToken || responseData.refresh_token
-      const userData = responseData.user || responseData.userData || responseData.userInfo
-      const isNewUser = responseData.isNewUser || responseData.is_new_user || responseData.newUser
-      
-      console.log('Extracted data:', { 
-        accessToken: accessToken ? 'EXISTS' : 'MISSING', 
-        refreshToken: refreshToken ? 'EXISTS' : 'MISSING', 
-        userData: userData ? 'EXISTS' : 'MISSING', 
-        isNewUser: isNewUser,
-        accessTokenValue: accessToken,
-        refreshTokenValue: refreshToken ? '***' : null,
-        userDataValue: userData,
-        isNewUserValue: isNewUser
-      })
-      
-      // 각 속성별로 개별 확인
-      console.log('Checking individual properties:')
-      console.log('- accessToken:', responseData.accessToken ? 'FOUND' : 'NOT FOUND')
-      console.log('- access_token:', responseData.access_token ? 'FOUND' : 'NOT FOUND')
-      console.log('- token:', responseData.token ? 'FOUND' : 'NOT FOUND')
-      console.log('- refreshToken:', responseData.refreshToken ? 'FOUND' : 'NOT FOUND')
-      console.log('- refresh_token:', responseData.refresh_token ? 'FOUND' : 'NOT FOUND')
-      console.log('- user:', responseData.user ? 'FOUND' : 'NOT FOUND')
-      console.log('- userData:', responseData.userData ? 'FOUND' : 'NOT FOUND')
-      console.log('- userInfo:', responseData.userInfo ? 'FOUND' : 'NOT FOUND')
-      console.log('- isNewUser:', responseData.isNewUser ? 'FOUND' : 'NOT FOUND')
-      console.log('- is_new_user:', responseData.is_new_user ? 'FOUND' : 'NOT FOUND')
-      console.log('- newUser:', responseData.newUser ? 'FOUND' : 'NOT FOUND')
-      
-      // Access token은 메모리에만 저장
-      console.log('Setting access token:', accessToken ? 'TOKEN_EXISTS' : 'NO_TOKEN')
-      setAccessToken(accessToken)
-      
-      console.log('Setting user data:', userData ? 'USER_EXISTS' : 'NO_USER')
-      setUser(userData)
-      
-      // Refresh token은 sessionStorage에 저장
-      console.log('Setting refresh token:', refreshToken ? 'TOKEN_EXISTS' : 'NO_TOKEN')
-      setRefreshToken(refreshToken)
-      
-      console.log('Login successful, tokens stored')
-      console.log('Final auth state - isAuthenticated:', !!_accessToken.value)
-      console.log('Final auth state - user:', user.value)
-      
-      return { isNewUser, userData }
-    } catch (error) {
-      console.error('Google OAuth login error:', error)
-      console.error('Error response:', error.response?.data)
-      console.error('Error status:', error.response?.status)
-      throw error
-    }
-  }
-
-  // 로그아웃 처리
-  const logout = async () => {
-    try {
-      // 서버에 로그아웃 요청 (refresh token 무효화)
-      if (_accessToken.value) {
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
-        await axios.post(`${apiBaseUrl}/user/logout`, {}, {
-          headers: { Authorization: `Bearer ${_accessToken.value}` }
-        })
-      }
-    } catch (error) {
-      console.error('Logout error:', error)
-    } finally {
-      // 클라이언트 상태 초기화
-      setAccessToken(null)
-      setUser(null)
-      setRefreshToken(null)
-    }
-  }
-
-  // Access token 갱신
-  const refreshAccessToken = async () => {
-    try {
-      const refreshToken = getRefreshToken()
-      
-      if (!refreshToken) {
-        console.error('No refresh token available')
-        return false
-      }
-
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
-      const response = await axios.post(`${apiBaseUrl}/user/google/refresh`, {
-        refreshToken: refreshToken
-      })
-      
-      const { accessToken, refreshToken: newRefreshToken, user: userData } = response.data
-      
-      // 새로운 access token으로 업데이트
-      setAccessToken(accessToken)
-      setUser(userData)
-      
-      // 새로운 refresh token이 있다면 업데이트
-      if (newRefreshToken) {
-        setRefreshToken(newRefreshToken)
-      }
-      
-      return true
-    } catch (error) {
-      console.error('Token refresh error:', error)
-      // Refresh 실패 시 로그아웃 처리
-      setAccessToken(null)
-      setUser(null)
-      setRefreshToken(null)
-      return false
-    }
-  }
-
-  // 인증 상태 확인
-  const checkAuth = async () => {
-    if (!_accessToken.value) return false
+    // 로그인 상태
+    isAuthenticated: false,
     
-    // 토큰이 만료되었거나 곧 만료될 예정인 경우 refresh
-    if (isTokenExpired()) {
-      console.log('Token expired or expiring soon, attempting refresh')
-      const refreshSuccess = await refreshAccessToken()
-      if (!refreshSuccess) {
-        return false
-      }
-    }
+    // 로딩 상태
+    isLoading: false,
     
-    try {
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
-      const response = await axios.get(`${apiBaseUrl}/user/me`, {
-        headers: { Authorization: `Bearer ${_accessToken.value}` }
-      })
-      setUser(response.data)
-      return true
-    } catch (error) {
-      console.error('Auth check error:', error)
-      
-      // 401 에러인 경우 refresh token으로 재시도
-      if (error.response?.status === 401) {
-        const refreshSuccess = await refreshAccessToken()
-        if (refreshSuccess) {
-          return true
-        }
-      }
-      
-      // Refresh 실패 또는 다른 에러인 경우 로그아웃
-      setAccessToken(null)
-      setUser(null)
-      setRefreshToken(null)
-      return false
-    }
-  }
+    // 에러 상태
+    error: null,
+    
+    // 토큰 갱신 중인지 여부
+    isRefreshing: false,
+    
+    // 토큰 만료 시간 (밀리초)
+    tokenExpiry: null,
+  }),
 
-  // 페이지 새로고침 시 로그인 상태 복원
-  const restoreAuthState = async () => {
-    try {
-      const refreshToken = getRefreshToken()
-      
-      if (!refreshToken) {
-        console.log('No refresh token found, skipping auth restoration')
-        return false
-      }
+  getters: {
+    // 사용자 정보 getter
+    getUser: (state) => state.user,
+    
+    // 로그인 상태 getter
+    getIsAuthenticated: (state) => state.isAuthenticated,
+    
+    // 로딩 상태 getter
+    getIsLoading: (state) => state.isLoading,
+    
+    // 에러 상태 getter
+    getError: (state) => state.error,
+    
+    // 토큰이 유효한지 확인
+    isTokenValid: (state) => {
+      if (!state.accessToken || !state.tokenExpiry) return false;
+      return Date.now() < state.tokenExpiry;
+    },
+    
+    // 사용자 역할 확인
+    getUserRole: (state) => state.user?.role || null,
+    
+    // 신규 사용자 여부
+    isNewUser: (state) => {
+      console.log('Checking newUser - user:', state.user);
+      console.log('Checking newUser - user.newUser:', state.user?.newUser);
+      return state.user?.newUser === true;
+    },
+  },
 
-      // Refresh token을 사용하여 새로운 access token 발급 시도
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
-      const response = await axios.post(`${apiBaseUrl}/user/google/refresh`, {
-        refreshToken: refreshToken
-      })
-      
-      const { accessToken, refreshToken: newRefreshToken, user: userData } = response.data
-      
-      // 새로운 access token으로 상태 복원
-      setAccessToken(accessToken)
-      setUser(userData)
-      
-      // 새로운 refresh token이 있다면 업데이트
-      if (newRefreshToken) {
-        setRefreshToken(newRefreshToken)
-      }
-      
-      console.log('Auth state restored successfully')
-      return true
-    } catch (error) {
-      console.error('Failed to restore auth state:', error)
-      // 실패 시 refresh token 제거
-      setRefreshToken(null)
-      return false
-    }
-  }
-
-  // 주기적으로 토큰 만료 시간 체크
-  const startTokenExpiryCheck = () => {
-    // 1분마다 토큰 만료 시간 체크
-    setInterval(async () => {
-      if (_accessToken.value && isTokenExpired()) {
-        console.log('Token expiring soon, refreshing...')
-        await refreshAccessToken()
-      }
-    }, 60 * 1000) // 1분
-  }
-
-  // Axios 인터셉터 설정 - 401 에러 시 자동 refresh
-  const setupAxiosInterceptors = () => {
-    // Response interceptor
-    axios.interceptors.response.use(
-      (response) => response,
-      async (error) => {
-        const originalRequest = error.config
+  actions: {
+    // 초기화 - 페이지 새로고침 시 로그인 상태 복원
+    async initialize() {
+      try {
+        // 로컬 스토리지에서 토큰 정보 복원
+        const savedToken = localStorage.getItem('accessToken');
+        const savedExpiry = localStorage.getItem('tokenExpiry');
+        const savedUser = localStorage.getItem('user');
         
-        // 401 에러이고 아직 retry하지 않은 요청인 경우
-        if (error.response?.status === 401 && !originalRequest._retry) {
-          originalRequest._retry = true
+        if (savedToken && savedExpiry && savedUser) {
+          const expiry = parseInt(savedExpiry);
           
-          // Refresh token으로 새로운 access token 발급
-          const refreshSuccess = await refreshAccessToken()
-          
-          if (refreshSuccess) {
-            // 새로운 token으로 원래 요청 재시도
-            originalRequest.headers['Authorization'] = `Bearer ${_accessToken.value}`
-            return axios(originalRequest)
+          // 토큰이 아직 유효한 경우
+          if (Date.now() < expiry) {
+            this.accessToken = savedToken;
+            this.tokenExpiry = expiry;
+            this.user = JSON.parse(savedUser);
+            this.isAuthenticated = true;
+            
+            // Axios 기본 헤더 설정
+            this.setupAxiosHeaders();
+          } else {
+            // 토큰이 만료된 경우 자동 갱신 시도
+            await this.refreshToken();
           }
         }
-        
-        return Promise.reject(error)
+      } catch (error) {
+        console.error('Auth initialization failed:', error);
+        this.clearAuth();
       }
-    )
-  }
+    },
 
-  // 초기화 시 인터셉터 설정 및 토큰 만료 체크 시작
-  setupAxiosInterceptors()
-  startTokenExpiryCheck()
+    // Google OAuth 로그인 처리
+    async handleGoogleLogin(authorizationCode) {
+      try {
+        this.isLoading = true;
+        this.error = null;
+        
+        const response = await axios.post(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.GOOGLE_LOGIN}`, {
+          code: authorizationCode
+        });
+        
+        const { data: { accessToken, user, expiresIn } } = response.data;
 
-  return {
-    user,
-    isAuthenticated,
-    setAccessToken,
-    setUser,
-    login,
-    logout,
-    checkAuth,
-    refreshAccessToken,
-    restoreAuthState,
-    isTokenExpired
-  }
-})
+        // 토큰 및 사용자 정보 확인
+        console.log('accessToken:', accessToken);
+        console.log('user object:', user);
+        console.log('user.newUser:', user?.newUser);
+        
+        // 토큰 및 사용자 정보 저장
+        this.setAuthData(accessToken, user, expiresIn);
+        
+        return user;
+      } catch (error) {
+        console.error('Google login failed:', error);
+        this.error = error.response?.data?.message || 'Google 로그인에 실패했습니다.';
+        throw error;
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    // 인증 데이터 설정
+    setAuthData(accessToken, user, expiresIn) {
+      this.accessToken = accessToken;
+      this.user = user;
+      this.isAuthenticated = true;
+      
+      // 토큰 만료 시간 설정 (현재 시간 + 만료 시간)
+      this.tokenExpiry = Date.now() + (expiresIn * 1000);
+      
+      // 로컬 스토리지에 저장 (페이지 새로고침 시 복원용)
+      localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('tokenExpiry', this.tokenExpiry.toString());
+      localStorage.setItem('user', JSON.stringify(user));
+
+      console.log('Setting auth data - accessToken:', accessToken);
+      console.log('Setting auth data - user:', user);
+      console.log('Setting auth data - user.newUser:', user?.newUser);
+      
+      // Axios 기본 헤더 설정
+      this.setupAxiosHeaders();
+    },
+
+    // Axios 헤더 설정
+    setupAxiosHeaders() {
+      if (this.accessToken) {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${this.accessToken}`;
+      }
+    },
+
+    // 토큰 갱신
+    async refreshToken() {
+      if (this.isRefreshing) {
+        // 이미 갱신 중인 경우 대기
+        return new Promise((resolve) => {
+          const checkRefreshing = setInterval(() => {
+            if (!this.isRefreshing) {
+              clearInterval(checkRefreshing);
+              resolve();
+            }
+          }, 100);
+        });
+      }
+      
+      try {
+        this.isRefreshing = true;
+        
+        const response = await axios.post(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.GOOGLE_REFRESH}`, {}, {
+          withCredentials: true // 쿠키 포함
+        });
+        
+        const { accessToken, expiresIn } = response.data;
+        
+        // 새로운 토큰으로 업데이트
+        this.accessToken = accessToken;
+        this.tokenExpiry = Date.now() + (expiresIn * 1000);
+        
+        // 로컬 스토리지 업데이트
+        localStorage.setItem('accessToken', accessToken);
+        localStorage.setItem('tokenExpiry', this.tokenExpiry.toString());
+        
+        // Axios 헤더 업데이트
+        this.setupAxiosHeaders();
+        
+      } catch (error) {
+        console.error('Token refresh failed:', error);
+        // 토큰 갱신 실패 시 로그아웃
+        await this.logout();
+        throw error;
+      } finally {
+        this.isRefreshing = false;
+      }
+    },
+
+    // 로그아웃
+    async logout() {
+      try {
+        // 서버에 로그아웃 요청
+        if (this.accessToken) {
+          await axios.post(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.LOGOUT}`, {}, {
+            withCredentials: true
+          });
+        }
+      } catch (error) {
+        console.error('Logout request failed:', error);
+      } finally {
+        // 클라이언트 상태 정리
+        this.clearAuth();
+      }
+    },
+
+    // 인증 상태 정리
+    clearAuth() {
+      this.user = null;
+      this.accessToken = null;
+      this.isAuthenticated = false;
+      this.tokenExpiry = null;
+      this.error = null;
+      
+      // 로컬 스토리지 정리
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('tokenExpiry');
+      localStorage.removeItem('user');
+      
+      // Axios 헤더 정리
+      delete axios.defaults.headers.common['Authorization'];
+    },
+
+    // 에러 설정
+    setError(error) {
+      this.error = error;
+    },
+
+    // 에러 초기화
+    clearError() {
+      this.error = null;
+    },
+
+    // 사용자 정보 업데이트 (추가 정보 입력 후)
+    updateUserInfo(userInfo) {
+      this.user = { ...this.user, ...userInfo };
+      localStorage.setItem('user', JSON.stringify(this.user));
+    },
+  },
+});
+
+// Axios 인터셉터 설정
+export const setupAuthInterceptors = (authStore) => {
+  // 요청 인터셉터
+  axios.interceptors.request.use(
+    (config) => {
+      // 토큰이 유효하지 않으면 갱신 시도
+      if (authStore.isAuthenticated && !authStore.isTokenValid && !authStore.isRefreshing) {
+        authStore.refreshToken();
+      }
+      return config;
+    },
+    (error) => {
+      return Promise.reject(error);
+    }
+  );
+
+  // 응답 인터셉터
+  axios.interceptors.response.use(
+    (response) => {
+      return response;
+    },
+    async (error) => {
+      const originalRequest = error.config;
+      
+      // 401 에러이고 토큰 갱신을 시도하지 않은 경우
+      if (error.response?.status === 401 && !originalRequest._retry) {
+        originalRequest._retry = true;
+        
+        try {
+          await authStore.refreshToken();
+          // 토큰 갱신 후 원래 요청 재시도
+          originalRequest.headers['Authorization'] = `Bearer ${authStore.accessToken}`;
+          return axios(originalRequest);
+        } catch (refreshError) {
+          // 토큰 갱신 실패 시 로그아웃
+          await authStore.logout();
+          return Promise.reject(refreshError);
+        }
+      }
+      
+      return Promise.reject(error);
+    }
+  );
+};
