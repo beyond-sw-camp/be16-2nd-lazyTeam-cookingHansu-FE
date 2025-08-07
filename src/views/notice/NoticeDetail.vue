@@ -100,26 +100,16 @@
       <v-btn color="primary" @click="goBack">목록으로 돌아가기</v-btn>
     </div>
 
-    <!-- 삭제 확인 다이얼로그 -->
-    <v-dialog v-model="deleteDialog" max-width="400">
-      <v-card>
-        <v-card-title class="text-h6">공지사항 삭제</v-card-title>
-        <v-card-text>
-          정말로 이 공지사항을 삭제하시겠습니까?
-          <br />
-          이 작업은 되돌릴 수 없습니다.
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="grey" variant="text" @click="deleteDialog = false">
-            취소
-          </v-btn>
-          <v-btn color="error" @click="deleteNotice" :loading="deleting">
-            삭제
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <!-- 공용 삭제 확인 모달 -->
+    <DeleteConfirmModal
+      v-model="deleteDialog"
+      title="공지사항을 삭제하시겠습니까?"
+      message="삭제된 공지사항은 복구할 수 없습니다."
+      :item-info="deleteItemInfo"
+      :loading="deleting"
+      @confirm="deleteNotice"
+      @cancel="cancelDelete"
+    />
   </div>
 </template>
 
@@ -128,6 +118,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useNoticeStore } from '../../store/notice/notice';
 import { formatDateTime } from '../../utils/timeUtils';
+import DeleteConfirmModal from '../../components/common/DeleteConfirmModal.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -172,6 +163,18 @@ const deleteNotice = async () => {
     deleting.value = false;
   }
 };
+
+// 삭제 취소
+const cancelDelete = () => {
+  deleteDialog.value = false;
+};
+
+// 삭제 아이템 정보 (DeleteConfirmModal에 전달)
+const deleteItemInfo = computed(() => {
+  return {
+    title: noticeStore.getCurrentNotice?.title || '공지사항'
+  };
+});
 
 // 날짜 포맷팅은 timeUtils의 formatDateTime 사용
 

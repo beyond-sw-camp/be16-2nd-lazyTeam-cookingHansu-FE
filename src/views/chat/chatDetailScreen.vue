@@ -56,26 +56,15 @@
     </v-dialog>
     
     <!-- 채팅방 나가기 확인 다이얼로그 -->
-    <v-dialog v-model="showLeaveConfirmDialog" max-width="400" persistent>
-      <v-card>
-        <v-card-title class="text-center">
-          채팅방 나가기
-        </v-card-title>
-        <v-card-text>
-          <div class="text-center">
-            <v-icon size="48" color="warning" class="mb-3">mdi-alert-circle</v-icon>
-            <p class="text-body-1 mb-2">정말로 이 채팅방을 나가시겠습니까?</p>
-            <p class="text-caption text-grey-darken-1">
-              채팅방을 나가면 모든 메시지가 유실되며 복구할 수 없습니다.
-            </p>
-          </div>
-        </v-card-text>
-        <v-card-actions class="justify-space-between">
-          <v-btn @click="cancelLeaveRoom">취소</v-btn>
-          <v-btn color="error" @click="confirmLeaveRoom">나가기</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <DeleteConfirmModal
+      v-model="showLeaveConfirmDialog"
+      title="채팅방을 나가시겠습니까?"
+      message="채팅방을 나가면 모든 메시지가 유실되며 복구할 수 없습니다."
+      :item-info="leaveRoomInfo"
+      :loading="leaving"
+      @confirm="confirmLeaveRoom"
+      @cancel="cancelLeaveRoom"
+    />
     
     <!-- 이미지 확대 보기 다이얼로그 -->
     <v-dialog v-model="showImageDialog" max-width="90vw" max-height="90vh">
@@ -338,6 +327,7 @@ import { formatRelativeTime } from '@/utils/timeUtils';
 import { useFileUpload } from '@/composables/useFileUpload';
 import { useDialog } from '@/composables/useDialog';
 import { validateMessageAndFiles } from '@/utils/fileValidation';
+import DeleteConfirmModal from '@/components/common/DeleteConfirmModal.vue';
 
 const props = defineProps({
   chat: Object,
@@ -375,7 +365,6 @@ const {
   showImageDialog,
   selectedImageUrl,
   showNameEditDialog,
-  showLeaveConfirmDialog,
   newRoomName,
   openImage,
   closeImageDialog,
@@ -521,10 +510,13 @@ const leaveRoom = () => {
 
 const confirmLeaveRoom = async () => {
   try {
+    leaving.value = true;
     await chatStore.leaveRoom(currentRoomId.value);
     resetLeaveConfirmDialog();
   } catch (error) {
     console.error('채팅방 나가기 실패:', error);
+  } finally {
+    leaving.value = false;
   }
 };
 
@@ -572,6 +564,16 @@ const sendMessage = async (event) => {
     isSending.value = false;
   }
 };
+
+const showLeaveConfirmDialog = ref(false);
+const leaving = ref(false);
+
+// 채팅방 나가기 정보 (DeleteConfirmModal에 전달)
+const leaveRoomInfo = computed(() => {
+  return {
+    title: currentRoom.value?.customRoomName || '채팅방'
+  };
+});
 
 </script>
 

@@ -9,7 +9,7 @@
       <v-btn color="orange" @click="openForm">+ 새 공지사항 작성</v-btn>
     </v-row>
 
-    <!-- 공지사항 작성 폼 -->
+    <!-- 공지사항 작성/수정 폼 -->
     <v-card
       v-if="formVisible"
       class="pa-4 mb-6"
@@ -22,73 +22,150 @@
         {{ isEdit ? "공지사항 수정" : "공지사항 작성" }}
       </h3>
 
-      <v-text-field
-        v-model="form.title"
-        label="제목"
-        placeholder="공지사항 제목을 입력하세요"
-        density="comfortable"
-      />
+      <v-form ref="form" v-model="valid" @submit.prevent="submitForm">
+        <v-text-field
+          v-model="formData.title"
+          label="제목"
+          placeholder="공지사항 제목을 입력하세요"
+          density="comfortable"
+          :rules="titleRules"
+          required
+        />
 
-      <v-select
-        v-model="form.category"
-        label="카테고리"
-        :items="categories"
-        density="comfortable"
-      />
+        <v-textarea
+          v-model="formData.content"
+          label="내용"
+          rows="5"
+          auto-grow
+          placeholder="공지사항 내용을 입력해주세요"
+          :rules="contentRules"
+          required
+        />
 
-      <v-textarea
-        v-model="form.content"
-        label="내용"
-        rows="5"
-        auto-grow
-        placeholder="공지사항 내용을 입력해주세요"
-      />
+        <!-- 이미지 업로드 -->
+        <div class="image-upload-section">
+          <div class="file-input-container">
+            <v-btn
+              color="primary"
+              variant="outlined"
+              prepend-icon="mdi-camera"
+              @click="triggerFileInput"
+              class="file-select-btn"
+            >
+              이미지 첨부 (선택사항)
+            </v-btn>
+            <input
+              ref="fileInput"
+              type="file"
+              accept="image/*"
+              class="d-none"
+              @change="handleFileChange"
+            />
+          </div>
 
-      <v-row class="justify-end mt-4">
-        <v-col cols="auto">
-          <v-btn color="primary" @click="submitForm">{{
-            isEdit ? "수정하기" : "작성하기"
-          }}</v-btn>
-        </v-col>
-        <v-col cols="auto">
-          <v-btn text @click="cancelForm">취소</v-btn>
-        </v-col>
-      </v-row>
+          <!-- 선택된 파일 표시 -->
+          <div v-if="selectedFile" class="selected-file">
+            <v-chip
+              size="small"
+              label
+              class="me-2"
+              closable
+              @click:close="removeFile"
+            >
+              {{ selectedFile.name }}
+            </v-chip>
+          </div>
+
+          <!-- 기존 이미지 -->
+          <div v-if="isEdit && editingNotice && editingNotice.imageUrl" class="existing-image">
+            <p class="existing-image-label">현재 이미지:</p>
+            <img
+              :src="editingNotice.imageUrl"
+              alt="현재 이미지"
+              class="existing-image-content"
+            />
+          </div>
+
+          <!-- 이미지 미리보기 -->
+          <div v-if="imagePreview" class="image-preview">
+            <p class="preview-label">이미지 변경하기:</p>
+            <img
+              :src="imagePreview"
+              alt="이미지 미리보기"
+              class="preview-image"
+            />
+            <v-btn
+              icon
+              size="small"
+              color="error"
+              class="remove-image-btn"
+              @click="removeFile"
+            >
+              <v-icon>mdi-close</v-icon>
+            </v-btn>
+          </div>
+        </div>
+
+        <v-row class="justify-end mt-4">
+          <v-col cols="auto">
+            <v-btn 
+              color="primary" 
+              type="submit"
+              :loading="submitting"
+              :disabled="!valid"
+            >
+              {{ isEdit ? "수정하기" : "작성하기" }}
+            </v-btn>
+          </v-col>
+          <v-col cols="auto">
+            <v-btn text @click="cancelForm">취소</v-btn>
+          </v-col>
+        </v-row>
+      </v-form>
     </v-card>
 
-    <!-- 공지사항 목록 or 빈 상태 안내 -->
-    <template v-if="notices.length > 0">
+    <!-- 로딩 상태 -->
+    <div v-if="noticeStore.isLoading" class="text-center pa-8">
+      <v-progress-circular indeterminate color="orange"></v-progress-circular>
+      <p class="mt-4">공지사항을 불러오는 중...</p>
+    </div>
+
+    <!-- 에러 상태 -->
+    <div v-else-if="noticeStore.getError" class="text-center pa-8">
+      <v-alert type="error" :text="noticeStore.getError" closable @click:close="noticeStore.clearError"></v-alert>
+    </div>
+
+    <!-- 공지사항 목록 -->
+    <template v-else-if="noticeStore.hasNotices">
       <v-card>
         <v-table>
           <thead>
             <tr>
               <th>제목</th>
               <th>작성일</th>
-              <th>조회수</th>
               <th>관리</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(notice, idx) in paginatedNotices" :key="idx">
+            <tr v-for="notice in noticeStore.getNotices" :key="notice.id">
               <td>{{ notice.title }}</td>
-              <td>{{ notice.date }}</td>
-              <td>{{ notice.views }}</td>
+              <td>{{ formatDate(notice.createdAt) }}</td>
               <td>
                 <v-btn
                   icon
-                  variant="plain"
-                  density="compact"
-                  class="pa-0 ma-0"
-                  @click="editNotice(getOriginalIndex(idx))"
+                  variant="text"
+                  size="small"
+                  @click.stop="editNotice(notice)"
+                  color="orange"
                 >
-                  <v-icon color="orange">mdi-pencil-outline</v-icon>
+                  <v-icon>mdi-pencil</v-icon>
                 </v-btn>
                 <v-btn
                   icon
                   variant="plain"
                   density="compact"
                   class="pa-0 ma-0"
-                  @click="deleteNotice(getOriginalIndex(idx))"
+                  @click="confirmDelete(notice)"
                 >
                   <v-icon color="red">mdi-delete-outline</v-icon>
                 </v-btn>
@@ -98,16 +175,18 @@
         </v-table>
       </v-card>
 
+      <!-- 페이지네이션 -->
       <v-row justify="center" class="mt-6">
         <v-pagination
           v-model="currentPage"
-          :length="totalPages"
+          :length="noticeStore.getPaginationInfo.totalPages"
           :total-visible="10"
           color="orange"
           size="small"
           class="pagination"
           prev-icon="mdi-chevron-left"
           next-icon="mdi-chevron-right"
+          @update:model-value="handlePageChange"
         />
       </v-row>
     </template>
@@ -122,173 +201,296 @@
         </v-col>
       </v-row>
     </template>
+
+    <!-- 성공 스낵바 -->
+    <v-snackbar
+      v-model="successSnackbar"
+      color="success"
+      timeout="3000"
+    >
+      {{ successMessage }}
+    </v-snackbar>
+
+    <!-- 에러 스낵바 -->
+    <v-snackbar
+      v-model="errorSnackbar"
+      color="error"
+      timeout="5000"
+    >
+      {{ errorMessage }}
+    </v-snackbar>
+
+    <!-- 공용 삭제 확인 모달 -->
+    <DeleteConfirmModal
+      v-model="deleteDialog"
+      title="공지사항을 삭제하시겠습니까?"
+      message="삭제된 공지사항은 복구할 수 없습니다."
+      :item-info="deleteItemInfo"
+      :loading="deleting"
+      @confirm="deleteNotice"
+      @cancel="cancelDelete"
+    />
   </v-container>
 </template>
 
 <script setup>
-import { ref } from "vue";
-import { computed } from "vue";
-import { icons } from "@/assets/icons/icons.js";
+import { ref, reactive, computed, onMounted } from 'vue';
+import { useNoticeStore } from '../../store/notice/notice';
+import { validateFile } from '../../utils/fileValidation';
+import DeleteConfirmModal from '../../components/common/DeleteConfirmModal.vue';
 
-const notices = ref([
-    {
-      title: "📌 새로운 기능 업데이트",
-      date: "2025. 7. 13.",
-      views: 23,
-      category: "서비스 업데이트",
-      content:
-        "새로운 기능이 추가되었습니다. 자세한 내용은 공지사항을 확인해주세요.",
-    },
-    {
-      title: "🔔 강의 일정 변경 안내",
-      date: "2025. 7. 13.",
-      views: 56,
-      category: "일반 공지",
-      content: "강의 일정이 변경되었습니다. 확인 후 수강 신청 부탁드립니다.",
-    },
-    {
-      title: "📅 요리사 인증 절차 안내",
-      date: "2025. 7. 13.",
-      views: 78,
-      category: "서비스 업데이트",
-      content:
-        "요리사 인증 절차가 변경되었습니다. 자세한 내용은 공지사항을 확인해주세요.",
-    },
-    {
-      title: "🎉 여름 이벤트 안내",
-      date: "2025. 7. 13.",
-      views: 45,
-      category: "이벤트",
-      content: "여름 이벤트가 시작되었습니다! 많은 참여 부탁드립니다.",
-    },
-    {
-      title: "🔧 시스템 점검 안내",
-      date: "2025. 7. 13.",
-      views: 12,
-      category: "시스템",
-      content: "시스템 점검이 예정되어 있습니다. 서비스 이용에 참고해주세요.",
-    },
-    {
-      title: "📢 공지사항 작성 가이드",
-      date: "2025. 7. 13.",
-      views: 30,
-      category: "일반 공지",
-      content: "공지사항 작성 시 참고할 수 있는 가이드를 제공합니다.",
-    },
-    {
-      title: "🛠️ 서비스 개선 안내",
-      date: "2025. 7. 13.",
-      views: 18,
-      category: "서비스 업데이트",
-      content:
-        "서비스 개선 작업이 완료되었습니다. 자세한 내용은 공지사항을 확인해주세요.",
-    },
-    {
-      title: "🎊 새해 이벤트 안내",
-      date: "2025. 7. 13.",
-      views: 60,
-      category: "이벤트",
-      content: "새해를 맞아 특별 이벤트가 진행됩니다! 많은 참여 부탁드립니다.",
-    },
-    {
-      title: "🔒 보안 업데이트 안내",
-      date: "2025. 7. 13.",
-      views: 25,
-      category: "시스템",
-      content: "보안 업데이트가 완료되었습니다. 서비스 이용에 참고해주세요.",
-    },
-    {
-      title: "📚 강의 자료 업데이트",
-      date: "2025. 7. 13.",
-      views: 40,
-      category: "일반 공지",
-      content: "강의 자료가 업데이트되었습니다. 확인 후 다운로드 부탁드립니다.",
-    },
-    {
-      title: "🌐 웹사이트 리뉴얼 안내",
-      date: "2025. 7. 13.",
-      views: 35,
-      category: "서비스 업데이트",
-      content: "웹사이트가 새롭게 리뉴얼되었습니다. 많은 이용 부탁드립니다.",
-    },
-    {
-      title: "🎁 추첨 이벤트 당첨자 발표",
-      date: "2025. 7. 13.",
-      views: 50,
-      category: "이벤트",
-      content:
-        "추첨 이벤트 당첨자를 발표합니다! 확인 후 경품 수령 방법을 확인해주세요.",
-    },
-]);
+const noticeStore = useNoticeStore();
 
+// 폼 관련
+const form = ref(null);
+const valid = ref(false);
+const submitting = ref(false);
 const formVisible = ref(false);
 const isEdit = ref(false);
-const editIndex = ref(null);
-const form = ref({ title: "", category: "", content: "" });
-const categories = ["일반 공지", "서비스 업데이트", "이벤트", "시스템"];
+const editingNotice = ref(null);
 
-function openForm() {
-  formVisible.value = true;
-  isEdit.value = false;
-  form.value = { title: "", category: "", content: "" };
-}
+// 파일 관련
+const fileInput = ref(null);
+const selectedFile = ref(null);
+const imagePreview = ref(null);
 
-function cancelForm() {
-  formVisible.value = false;
-  isEdit.value = false;
-  editIndex.value = null;
-}
+// 스낵바 상태
+const successSnackbar = ref(false);
+const errorSnackbar = ref(false);
+const successMessage = ref('');
+const errorMessage = ref('');
 
-function submitForm() {
-  const today = "2025. 7. 20.";
-  if (isEdit.value && editIndex.value !== null) {
-    notices.value[editIndex.value] = {
-      ...notices.value[editIndex.value],
-      title: form.value.title,
-      category: form.value.category,
-      content: form.value.content,
-    };
-  } else {
-    notices.value.unshift({
-      title: form.value.title,
-      category: form.value.category,
-      content: form.value.content,
-      date: today,
-      views: 0,
-    });
-  }
-  cancelForm();
-}
-
-function editNotice(idx) {
-  const notice = notices.value[idx];
-  form.value = {
-    title: notice.title,
-    category: notice.category || "",
-    content: notice.content || "",
-  };
-  isEdit.value = true;
-  formVisible.value = true;
-  editIndex.value = idx;
-}
-
-function deleteNotice(idx) {
-  notices.value.splice(idx, 1);
-}
-
-function getOriginalIndex(paginatedIdx) {
-  return (currentPage.value - 1) * perPage + paginatedIdx;
-}
-
+// 페이지네이션
 const currentPage = ref(1);
-const perPage = 10;
 
-const paginatedNotices = computed(() => {
-  const start = (currentPage.value - 1) * perPage;
-  return notices.value.slice(start, start + perPage);
+// 폼 데이터
+const formData = reactive({
+  title: '',
+  content: '',
+  noticeImage: null,
 });
 
-const totalPages = computed(() => Math.ceil(notices.value.length / perPage));
+// 유효성 검사 규칙
+const titleRules = [
+  v => !!v || '제목은 필수입니다.',
+  v => v.length <= 100 || '제목은 100자 이하여야 합니다.',
+];
+
+const contentRules = [
+  v => !!v || '내용은 필수입니다.',
+  v => v.length <= 2000 || '내용은 2000자 이하여야 합니다.',
+];
+
+// 폼 열기
+const openForm = () => {
+  formVisible.value = true;
+  isEdit.value = false;
+  editingNotice.value = null;
+  resetForm();
+};
+
+// 폼 취소
+const cancelForm = () => {
+  formVisible.value = false;
+  isEdit.value = false;
+  editingNotice.value = null;
+  resetForm();
+};
+
+// 폼 초기화
+const resetForm = () => {
+  formData.title = '';
+  formData.content = '';
+  formData.noticeImage = null;
+  selectedFile.value = null;
+  imagePreview.value = null;
+  valid.value = false;
+};
+
+// 파일 입력 트리거
+const triggerFileInput = () => {
+  fileInput.value.click();
+};
+
+// 파일 변경 핸들러
+const handleFileChange = (event) => {
+  const file = event.target.files[0];
+  if (file) {
+    console.log('파일 정보:', {
+      name: file.name,
+      size: file.size,
+      sizeMB: (file.size / (1024 * 1024)).toFixed(2),
+      type: file.type
+    });
+    
+    // 파일 검증
+    const validation = validateFile(file, 'IMAGE');
+    console.log('파일 검증 결과:', validation);
+    
+    if (!validation.isValid) {
+      errorMessage.value = validation.error;
+      errorSnackbar.value = true;
+      selectedFile.value = null;
+      imagePreview.value = null;
+      return;
+    }
+
+    // 파일 미리보기 생성
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      imagePreview.value = e.target.result;
+    };
+    reader.onerror = () => {
+      errorMessage.value = '이미지 파일을 읽을 수 없습니다.';
+      errorSnackbar.value = true;
+      selectedFile.value = null;
+      imagePreview.value = null;
+    };
+    reader.readAsDataURL(file);
+    selectedFile.value = file;
+  } else {
+    imagePreview.value = null;
+    selectedFile.value = null;
+  }
+};
+
+// 파일 제거
+const removeFile = () => {
+  selectedFile.value = null;
+  imagePreview.value = null;
+};
+
+// 공지사항 수정
+const editNotice = async (notice) => {
+  // 먼저 폼을 열고 기본 데이터 설정
+  editingNotice.value = notice;
+  formData.title = notice.title;
+  formData.content = notice.content;
+  formData.noticeImage = null;
+  selectedFile.value = null;
+  imagePreview.value = null;
+  
+  isEdit.value = true;
+  formVisible.value = true;
+  
+  // 백그라운드에서 상세 정보 로드
+  try {
+    await noticeStore.fetchNoticeDetail(notice.id);
+    const currentNotice = noticeStore.getCurrentNotice;
+    
+    if (currentNotice) {
+      // 상세 정보로 업데이트
+      formData.title = currentNotice.title;
+      formData.content = currentNotice.content;
+      
+      // 기존 이미지가 있으면 미리보기에 표시
+      if (currentNotice.imageUrl) {
+        imagePreview.value = currentNotice.imageUrl;
+      }
+    }
+  } catch (error) {
+    console.error('상세 정보 로드 실패:', error);
+    // 에러가 발생해도 기본 데이터는 유지
+  }
+};
+
+// 삭제 확인
+const confirmDelete = (notice) => {
+  noticeToDelete.value = notice;
+  deleteDialog.value = true;
+};
+
+// 삭제 취소
+const cancelDelete = () => {
+  deleteDialog.value = false;
+  noticeToDelete.value = null;
+};
+
+// 공지사항 삭제
+const deleteNotice = async () => {
+  if (!noticeToDelete.value) return;
+
+  try {
+    deleting.value = true;
+    await noticeStore.deleteNotice(noticeToDelete.value.id);
+    deleteDialog.value = false;
+    noticeToDelete.value = null;
+    successMessage.value = '공지사항이 삭제되었습니다.';
+    successSnackbar.value = true;
+  } catch (error) {
+    errorMessage.value = error.message || '공지사항 삭제에 실패했습니다.';
+    errorSnackbar.value = true;
+  } finally {
+    deleting.value = false;
+  }
+};
+
+// 폼 제출
+const submitForm = async () => {
+  if (!form.value.validate()) {
+    return;
+  }
+
+  // 선택된 파일을 formData에 할당
+  if (selectedFile.value) {
+    formData.noticeImage = selectedFile.value;
+  }
+
+  try {
+    submitting.value = true;
+    
+    if (isEdit.value && editingNotice.value) {
+      await noticeStore.updateNotice(editingNotice.value.id, formData);
+      successMessage.value = '공지사항이 수정되었습니다.';
+    } else {
+      await noticeStore.createNotice(formData);
+      successMessage.value = '공지사항이 작성되었습니다.';
+    }
+    
+    successSnackbar.value = true;
+    cancelForm();
+  } catch (error) {
+    errorMessage.value = error.message || '공지사항 저장에 실패했습니다.';
+    errorSnackbar.value = true;
+  } finally {
+    submitting.value = false;
+  }
+};
+
+// 페이지 변경
+const handlePageChange = (page) => {
+  currentPage.value = page;
+  noticeStore.fetchNotices(page - 1, noticeStore.getPaginationInfo.pageSize);
+};
+
+// 날짜 포맷팅
+const formatDate = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('ko-KR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+};
+
+// 컴포넌트 마운트 시 공지사항 목록 로드
+onMounted(async () => {
+  await noticeStore.fetchNotices(0, 10);
+});
+
+// 삭제 관련
+const deleteDialog = ref(false);
+const deleting = ref(false);
+const noticeToDelete = ref(null);
+
+// 삭제할 항목 정보 (공용 모달용)
+const deleteItemInfo = computed(() => {
+  if (!noticeToDelete.value) return null;
+  return {
+    title: noticeToDelete.value.title
+  };
+});
 </script>
 
 <style scoped>
@@ -297,4 +499,97 @@ td {
   padding: 14px;
   text-align: left;
 }
+
+.image-upload-section {
+  position: relative;
+  margin-top: 20px;
+}
+
+.file-input-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.file-select-btn {
+  min-width: 200px;
+  border-radius: 12px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.5px;
+}
+
+.selected-file {
+  margin-top: 10px;
+}
+
+.existing-image {
+  margin-top: 10px;
+  margin-bottom: 15px;
+}
+
+.existing-image-label {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.existing-image-content {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.image-preview {
+  position: relative;
+  display: block;
+  margin-top: 15px;
+}
+
+.preview-label {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.preview-image {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.remove-image-btn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background-color: white;
+  border: 1px solid #ddd;
+}
+
+.image-preview {
+  position: relative;
+  display: inline-block;
+  margin-top: 10px;
+}
+
+.preview-image {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.remove-image-btn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background-color: white;
+  border: 1px solid #ddd;
+}
+
+
+
 </style>
