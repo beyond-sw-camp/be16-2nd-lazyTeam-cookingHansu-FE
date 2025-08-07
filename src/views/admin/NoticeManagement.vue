@@ -176,19 +176,11 @@
       </v-card>
 
       <!-- 페이지네이션 -->
-      <v-row justify="center" class="mt-6">
-        <v-pagination
-          v-model="currentPage"
-          :length="noticeStore.getPaginationInfo.totalPages"
-          :total-visible="10"
-          color="orange"
-          size="small"
-          class="pagination"
-          prev-icon="mdi-chevron-left"
-          next-icon="mdi-chevron-right"
-          @update:model-value="handlePageChange"
-        />
-      </v-row>
+      <Pagination
+        :current-page="currentPage"
+        :total-pages="noticeStore.getPaginationInfo.totalPages"
+        @page-change="handlePageChange"
+      />
     </template>
 
     <!-- 공지사항이 없을 경우 -->
@@ -238,6 +230,7 @@ import { ref, reactive, computed, onMounted } from 'vue';
 import { useNoticeStore } from '../../store/notice/notice';
 import { validateFile } from '../../utils/fileValidation';
 import DeleteConfirmModal from '../../components/common/DeleteConfirmModal.vue';
+import Pagination from '../../components/common/Pagination.vue';
 
 const noticeStore = useNoticeStore();
 
@@ -491,6 +484,8 @@ const deleteItemInfo = computed(() => {
     title: noticeToDelete.value.title
   };
 });
+
+
 </script>
 
 <style scoped>

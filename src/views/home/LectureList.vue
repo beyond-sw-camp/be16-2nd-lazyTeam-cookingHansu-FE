@@ -78,27 +78,21 @@
     </div>
     
     <!-- 페이지네이션 -->
-    <div class="pagination">
-      <button @click="changePage(currentPage - 1)" :disabled="currentPage <= 1"> &lt; </button>
-      <button
-        v-for="page in totalPages"
-        :key="page"
-        :class="{ active: page === currentPage }"
-        @click="changePage(page)"
-      >
-        {{ page }}
-      </button>
-      <button @click="changePage(currentPage + 1)" :disabled="currentPage >= totalPages"> &gt; </button>
-    </div>
+    <Pagination
+      :current-page="currentPage"
+      :total-pages="totalPages"
+      @page-change="changePage"
+    />
   </div>
 </template>
 
 <script>
 import Header from '@/components/Header.vue';
+import Pagination from '@/components/common/Pagination.vue';
 
 export default {
   name: 'LectureList',
-  components: { Header },
+  components: { Header, Pagination },
   data() {
     return {
       currentTab: 'lecture',
@@ -1074,36 +1068,7 @@ export default {
 }
 
 
-.pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 24px;
-  margin-top: 0;
-}
-.pagination button {
-  border: none;
-  background: #fff;
-  color: #ff7a00;
-  border-radius: 4px;
-  padding: 4px 8px;
-  cursor: pointer;
-  font-weight: 600;
-  min-width: 26px;
-  min-height: 26px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-  font-size: 15px;
-  transition: background 0.15s, color 0.15s;
-}
-.pagination button.active {
-  background: #ff7a00;
-  color: #fff;
-}
-.pagination button:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
+
 .meta {
   display: flex;
   gap: 8px;

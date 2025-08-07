@@ -66,14 +66,12 @@
       </div>
 
       <!-- 페이지네이션 -->
-      <div v-if="paginationInfo.totalPages > 1" class="pagination-container">
-        <v-pagination
-          v-model="currentPage"
-          :length="paginationInfo.totalPages"
-          :total-visible="7"
-          @update:model-value="handlePageChange"
-        ></v-pagination>
-      </div>
+      <Pagination
+        v-if="paginationInfo.totalPages > 1"
+        :current-page="currentPage"
+        :total-pages="paginationInfo.totalPages"
+        @page-change="handlePageChange"
+      />
     </div>
   </div>
 </template>
@@ -83,6 +81,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useNoticeStore } from '../../store/notice/notice';
 import { formatDateTime } from '../../utils/timeUtils';
+import Pagination from '../../components/common/Pagination.vue';
 
 const router = useRouter();
 const noticeStore = useNoticeStore();
@@ -335,15 +334,7 @@ onMounted(() => {
   transform: translateX(5px);
 }
 
-.pagination-container {
-  display: flex;
-  justify-content: center;
-  margin-top: 25px;
-  padding: 20px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-}
+
 
 @media (max-width: 768px) {
   .notice-list-container {
