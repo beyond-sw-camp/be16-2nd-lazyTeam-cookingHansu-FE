@@ -369,6 +369,84 @@
         </div>
       </div>
     </div>
+
+    <!-- 알림 모달 -->
+    <div v-if="showNotificationModal" class="modal-overlay" @click="showNotificationModal = false">
+      <div class="cart-modal" @click.stop>
+        <div class="modal-header">
+          <h3>{{ notificationData.title }}</h3>
+          <button class="close-btn" @click="showNotificationModal = false">×</button>
+        </div>
+        <div class="modal-content">
+          <div class="modal-icon">{{ notificationData.icon }}</div>
+          <p class="modal-message">{{ notificationData.message }}</p>
+          <p v-if="notificationData.submessage" class="modal-submessage">{{ notificationData.submessage }}</p>
+        </div>
+        <div class="modal-actions">
+          <button 
+            v-if="notificationData.primaryAction" 
+            class="btn-primary" 
+            @click="handlePrimaryAction"
+          >
+            {{ notificationData.primaryAction.text }}
+          </button>
+          <button class="btn-secondary" @click="showNotificationModal = false">확인</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 에러 모달 -->
+    <div v-if="showErrorModal" class="modal-overlay" @click="showErrorModal = false">
+      <div class="cart-modal" @click.stop>
+        <div class="modal-header">
+          <h3>오류</h3>
+          <button class="close-btn" @click="showErrorModal = false">×</button>
+        </div>
+        <div class="modal-content">
+          <div class="modal-icon">⚠️</div>
+          <p class="modal-message">{{ errorMessage }}</p>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-secondary" @click="showErrorModal = false">확인</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 성공 모달 -->
+    <div v-if="showSuccessModal" class="modal-overlay" @click="showSuccessModal = false">
+      <div class="cart-modal" @click.stop>
+        <div class="modal-header">
+          <h3>완료</h3>
+          <button class="close-btn" @click="showSuccessModal = false">×</button>
+        </div>
+        <div class="modal-content">
+          <div class="modal-icon">✅</div>
+          <p class="modal-message">{{ successMessage }}</p>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-primary" @click="showSuccessModal = false">확인</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 확인 모달 -->
+    <div v-if="showConfirmModal" class="modal-overlay" @click="showConfirmModal = false">
+      <div class="cart-modal" @click.stop>
+        <div class="modal-header">
+          <h3>{{ confirmData.title }}</h3>
+          <button class="close-btn" @click="showConfirmModal = false">×</button>
+        </div>
+        <div class="modal-content">
+          <div class="modal-icon">{{ confirmData.icon }}</div>
+          <p class="modal-message">{{ confirmData.message }}</p>
+          <p v-if="confirmData.submessage" class="modal-submessage">{{ confirmData.submessage }}</p>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-primary" @click="handleConfirmAction">{{ confirmData.confirmText }}</button>
+          <button class="btn-secondary" @click="showConfirmModal = false">취소</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -387,6 +465,14 @@ export default {
       showReviewModal: false,
       showQAModal: false,
       showCartModal: false,
+      showNotificationModal: false,
+      showErrorModal: false,
+      showSuccessModal: false,
+      showConfirmModal: false,
+      notificationData: {},
+      errorMessage: '',
+      successMessage: '',
+      confirmData: {},
       newReview: {
         rating: 0,
         content: ''
@@ -592,8 +678,10 @@ export default {
         };
       } else {
         console.error('강의를 찾을 수 없습니다. ID:', lectureId);
-        alert('강의를 찾을 수 없습니다.');
-        this.$router.push({ name: 'LectureList' });
+        this.showError('강의를 찾을 수 없습니다.');
+        setTimeout(() => {
+          this.$router.push({ name: 'LectureList' });
+        }, 2000);
       }
     },
     
@@ -1130,23 +1218,27 @@ export default {
       try {
         const shareText = `${this.getShareText()}\n\n${this.getShareUrl()}`;
         await navigator.clipboard.writeText(shareText);
-        alert('링크가 클립보드에 복사되었습니다!');
+        this.showNotification({
+          title: '링크 복사',
+          icon: '🔗',
+          message: '링크가 클립보드에 복사되었습니다!'
+        });
         this.showShareModal = false;
       } catch (err) {
         console.error('클립보드 복사 실패:', err);
-        alert('링크 복사에 실패했습니다. 수동으로 복사해주세요.');
+        this.showError('링크 복사에 실패했습니다. 수동으로 복사해주세요.');
       }
     },
 
     // 리뷰 제출
     submitReview() {
       if (this.newReview.rating === 0) {
-        alert('평점을 선택해주세요.');
+        this.showError('평점을 선택해주세요.');
         return;
       }
       
       if (!this.newReview.content.trim()) {
-        alert('리뷰 내용을 작성해주세요.');
+        this.showError('리뷰 내용을 작성해주세요.');
         return;
       }
 
@@ -1169,13 +1261,13 @@ export default {
       this.showReviewModal = false;
       this.newReview = { rating: 0, content: '' };
 
-      alert('리뷰가 등록되었습니다!');
+      this.showSuccess('리뷰가 등록되었습니다!');
     },
 
     // Q&A 제출
     submitQuestion() {
       if (!this.newQuestion.content.trim()) {
-        alert('질문 내용을 작성해주세요.');
+        this.showError('질문 내용을 작성해주세요.');
         return;
       }
 
@@ -1197,7 +1289,7 @@ export default {
       this.showQAModal = false;
       this.newQuestion = { content: '' };
 
-      alert('질문이 등록되었습니다!');
+      this.showSuccess('질문이 등록되었습니다!');
     },
 
     // 강의 평점 업데이트
@@ -1217,24 +1309,37 @@ export default {
     purchaseLecture() {
       // 실제로는 결제 API 호출
       this.isPurchased = true;
-      alert('강의가 구매되었습니다! 이제 리뷰를 작성할 수 있습니다.');
+      this.showNotification({
+        title: '구매 완료',
+        icon: '🎉',
+        message: '강의가 구매되었습니다!',
+        submessage: '이제 리뷰를 작성할 수 있습니다.'
+      });
     },
 
     // 장바구니에 강의 추가/제거 (토글 기능)
     enrollLecture() {
       if (!this.lecture) {
-        alert('강의 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+        this.showError('강의 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
         return;
       }
 
       // 이미 장바구니에 있는 경우 - 제거
       if (this.cartStore.isInCart(this.lecture.id)) {
-        const result = this.cartStore.removeFromCart(this.lecture.id);
-        if (result) {
-          alert('장바구니에서 강의가 제거되었습니다.');
-        } else {
-          alert('장바구니에서 제거에 실패했습니다. 다시 시도해주세요.');
-        }
+        this.showConfirm({
+          title: '장바구니 제거',
+          icon: '🗑️',
+          message: '장바구니에서 강의를 제거하시겠습니까?',
+          confirmText: '제거하기',
+          callback: () => {
+            const result = this.cartStore.removeFromCart(this.lecture.id);
+            if (result) {
+              this.showSuccess('장바구니에서 강의가 제거되었습니다.');
+            } else {
+              this.showError('장바구니에서 제거에 실패했습니다. 다시 시도해주세요.');
+            }
+          }
+        });
         return;
       }
 
@@ -1245,7 +1350,7 @@ export default {
       if (result) {
         this.showCartModal = true;
       } else {
-        alert('장바구니 추가에 실패했습니다. 다시 시도해주세요.');
+        this.showError('장바구니 추가에 실패했습니다. 다시 시도해주세요.');
       }
     },
 
@@ -1263,6 +1368,41 @@ export default {
     // Q&A 더 보기 버튼 클릭
     loadMoreQA() {
       this.currentQAPage++;
+    },
+
+    // 모달 관련 헬퍼 메서드들
+    showError(message) {
+      this.errorMessage = message;
+      this.showErrorModal = true;
+    },
+
+    showSuccess(message) {
+      this.successMessage = message;
+      this.showSuccessModal = true;
+    },
+
+    showNotification(data) {
+      this.notificationData = data;
+      this.showNotificationModal = true;
+    },
+
+    showConfirm(data) {
+      this.confirmData = data;
+      this.showConfirmModal = true;
+    },
+
+    handlePrimaryAction() {
+      if (this.notificationData.primaryAction && this.notificationData.primaryAction.callback) {
+        this.notificationData.primaryAction.callback();
+      }
+      this.showNotificationModal = false;
+    },
+
+    handleConfirmAction() {
+      if (this.confirmData.callback) {
+        this.confirmData.callback();
+      }
+      this.showConfirmModal = false;
     }
   },
   mounted() {
