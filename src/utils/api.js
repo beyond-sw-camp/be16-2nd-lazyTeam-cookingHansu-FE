@@ -63,6 +63,37 @@ export const apiDelete = async (endpoint) => {
   return response;
 };
 
+// PUT 요청
+export const apiPut = async (endpoint, data = null) => {
+  console.log('API PUT 요청 URL:', `${API_BASE_URL}${endpoint}`);
+  console.log('API 요청 데이터:', data);
+  
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: data ? JSON.stringify(data) : null,
+  });
+  
+  return response;
+};
+
+// FormData를 사용한 PUT 요청 (파일 업로드용)
+export const apiPutFormData = async (endpoint, formData) => {
+  console.log('API PUT FormData 요청 URL:', `${API_BASE_URL}${endpoint}`);
+  console.log('API 요청 FormData:', formData);
+  
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    method: 'PUT',
+    headers: {
+      // 'Content-Type': 'multipart/form-data', // FormData 사용 시 자동 설정
+      // 'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+    body: formData,
+  });
+  
+  return response;
+};
+
 // FormData를 사용한 POST 요청 (파일 업로드용)
 export const apiPostFormData = async (endpoint, formData) => {
   console.log('API POST FormData 요청 URL:', `${API_BASE_URL}${endpoint}`);

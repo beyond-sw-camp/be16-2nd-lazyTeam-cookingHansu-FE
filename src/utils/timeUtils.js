@@ -45,4 +45,22 @@ export function formatChatTime(isoString) {
     const day = date.getDate().toString().padStart(2, '0');
     return `${month}/${day}`;
   }
+}
+
+/**
+ * 공지사항용 날짜시간 포맷팅 함수
+ * @param {string} isoString - ISO 형식의 시간 문자열
+ * @returns {string} - 포맷된 날짜시간 문자열
+ */
+export function formatDateTime(isoString) {
+  if (!isoString) return '';
+  
+  const date = new Date(isoString);
+  return date.toLocaleDateString('ko-KR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 } 
