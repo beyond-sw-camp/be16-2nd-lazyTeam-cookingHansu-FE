@@ -1,8 +1,18 @@
 <template>
   <div class="notice-detail-container">
 
+    <!-- 로딩 상태 -->
+    <div v-if="noticeStore.isLoading" class="loading-container">
+      <v-progress-circular
+        indeterminate
+        color="primary"
+        size="64"
+      ></v-progress-circular>
+      <p class="loading-text">상세페이지 불러오는 중...</p>
+    </div>
+
     <!-- 에러 상태 -->
-    <div v-if="noticeStore.getError" class="error-container">
+    <div v-else-if="noticeStore.getError" class="error-container">
       <v-alert
         type="error"
         title="오류"
@@ -137,7 +147,6 @@ const isAdmin = computed(() => {
 // 뒤로가기
 const goBack = () => {
   router.push('/notice');
-  // 뒤로가기 시 스크롤 위치 유지 (스크롤하지 않음)
 };
 
 // 수정 페이지로 이동

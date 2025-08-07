@@ -25,7 +25,7 @@
     </div>
 
     <!-- 에러 상태 -->
-    <div v-if="noticeStore.getError" class="error-container">
+    <div v-else-if="noticeStore.getError" class="error-container">
       <v-alert
         type="error"
         title="오류"

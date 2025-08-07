@@ -40,28 +40,37 @@
           ></v-textarea>
 
           <div class="image-upload-section">
-            <v-file-input
-              v-model="noticeData.noticeImage"
-              label="이미지 첨부 (선택사항)"
-              accept="image/*"
-              prepend-icon="mdi-camera"
-              variant="outlined"
-              class="form-field"
-              :rules="imageRules"
-              @change="handleImageChange"
-            >
-              <template v-slot:selection="{ fileNames }">
-                <template v-for="fileName in fileNames" :key="fileName">
-                  <v-chip
-                    size="small"
-                    label
-                    class="me-2"
-                  >
-                    {{ fileName }}
-                  </v-chip>
-                </template>
-              </template>
-            </v-file-input>
+            <div class="file-input-container">
+              <v-btn
+                color="primary"
+                variant="outlined"
+                prepend-icon="mdi-camera"
+                @click="triggerFileInput"
+                class="file-select-btn"
+              >
+                이미지 첨부 (선택사항)
+              </v-btn>
+              <input
+                ref="fileInput"
+                type="file"
+                accept="image/*"
+                class="d-none"
+                @change="handleFileChange"
+              />
+            </div>
+
+            <!-- 선택된 파일 표시 -->
+            <div v-if="selectedFile" class="selected-file">
+              <v-chip
+                size="small"
+                label
+                class="me-2"
+                closable
+                @click:close="removeFile"
+              >
+                {{ selectedFile.name }}
+              </v-chip>
+            </div>
 
             <!-- 이미지 미리보기 -->
             <div v-if="imagePreview" class="image-preview">
@@ -75,7 +84,7 @@
                 size="small"
                 color="error"
                 class="remove-image-btn"
-                @click="removeImage"
+                @click="removeFile"
               >
                 <v-icon>mdi-close</v-icon>
               </v-btn>
@@ -129,6 +138,7 @@
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useNoticeStore } from '../../store/notice/notice';
+import { validateFile } from '../../utils/fileValidation';
 
 const router = useRouter();
 const noticeStore = useNoticeStore();
@@ -165,7 +175,11 @@ const contentRules = [
 ];
 
 const imageRules = [
-  v => !v || v.size <= 5 * 1024 * 1024 || '이미지 크기는 5MB 이하여야 합니다.',
+  v => {
+    if (!v) return true;
+    const validation = validateFile(v, 'IMAGE');
+    return validation.isValid || validation.error;
+  },
 ];
 
 // 관리자 권한 확인 (테스팅용)
@@ -180,22 +194,49 @@ const goBack = () => {
   router.push('/notice');
 };
 
-// 이미지 변경 핸들러
-const handleImageChange = (file) => {
+// 파일 입력 트리거
+const fileInput = ref(null);
+const selectedFile = ref(null);
+
+const triggerFileInput = () => {
+  fileInput.value.click();
+};
+
+const handleFileChange = (event) => {
+  const file = event.target.files[0];
   if (file) {
+    // 파일 검증
+    const validation = validateFile(file, 'IMAGE');
+    if (!validation.isValid) {
+      errorMessage.value = validation.error;
+      errorSnackbar.value = true;
+      // 파일 입력 초기화
+      selectedFile.value = null;
+      imagePreview.value = null;
+      return;
+    }
+
+    // 파일 미리보기 생성
     const reader = new FileReader();
     reader.onload = (e) => {
       imagePreview.value = e.target.result;
     };
+    reader.onerror = () => {
+      errorMessage.value = '이미지 파일을 읽을 수 없습니다.';
+      errorSnackbar.value = true;
+      selectedFile.value = null;
+      imagePreview.value = null;
+    };
     reader.readAsDataURL(file);
+    selectedFile.value = file;
   } else {
     imagePreview.value = null;
+    selectedFile.value = null;
   }
 };
 
-// 이미지 제거
-const removeImage = () => {
-  noticeData.noticeImage = null;
+const removeFile = () => {
+  selectedFile.value = null;
   imagePreview.value = null;
 };
 
@@ -209,6 +250,11 @@ const submitNotice = async () => {
     errorMessage.value = '관리자만 공지사항을 작성할 수 있습니다.';
     errorSnackbar.value = true;
     return;
+  }
+
+  // 선택된 파일을 noticeData에 할당
+  if (selectedFile.value) {
+    noticeData.noticeImage = selectedFile.value;
   }
 
   try {
@@ -303,6 +349,25 @@ onMounted(() => {
 
 .image-upload-section {
   position: relative;
+}
+
+.file-input-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.file-select-btn {
+  min-width: 200px;
+  border-radius: 12px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.5px;
+}
+
+.selected-file {
+  margin-top: 10px;
 }
 
 .image-preview {
