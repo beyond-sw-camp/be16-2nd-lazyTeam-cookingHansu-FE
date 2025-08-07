@@ -1217,7 +1217,11 @@ export default {
       const result = this.cartStore.addToCart(this.lecture);
       
       // 결과 메시지 표시
-      alert(result.message);
+      if (result) {
+        alert('장바구니에 강의가 추가되었습니다!');
+      } else {
+        alert('장바구니 추가에 실패했습니다. 다시 시도해주세요.');
+      }
     },
     
     // 리뷰 더 보기 버튼 클릭
