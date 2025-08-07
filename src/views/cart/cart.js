@@ -49,6 +49,17 @@ export const useCartStore = defineStore('cart', {
       return false
     },
 
+    // 여러 아이템을 한 번에 제거
+    removeMultipleFromCart(lectureIds) {
+      let removedCount = 0
+      lectureIds.forEach(id => {
+        if (this.removeFromCart(id)) {
+          removedCount++
+        }
+      })
+      return removedCount
+    },
+
     clearCart() {
       this.items = []
       // localStorage에서 삭제
