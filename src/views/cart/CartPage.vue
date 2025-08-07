@@ -19,11 +19,35 @@
       <!-- 장바구니 아이템 목록 -->
       <div v-else class="cart-content">
         <div class="cart-items">
+          <!-- 전체 선택 체크박스 -->
+          <div class="select-all-section">
+            <label class="select-all-checkbox">
+              <input 
+                type="checkbox" 
+                :checked="isAllSelected" 
+                @change="toggleSelectAll"
+              />
+              <span class="checkmark"></span>
+              전체 선택 ({{ selectedItems.length }}/{{ cartStore.items.length }})
+            </label>
+          </div>
+          
           <div 
             v-for="item in cartStore.items" 
             :key="item.id" 
             class="cart-item"
           >
+            <div class="item-checkbox">
+              <label class="checkbox">
+                <input 
+                  type="checkbox" 
+                  :value="item.id"
+                  v-model="selectedItems"
+                  @change="updateSelectAll"
+                />
+                <span class="checkmark"></span>
+              </label>
+            </div>
             <div class="item-thumbnail">
               <img :src="item.thumbnailUrl" :alt="item.title" />
             </div>
@@ -53,19 +77,19 @@
           <div class="summary-content">
             <div class="summary-row">
               <span>선택된 강의</span>
-              <span>{{ cartStore.cartCount }}개</span>
+              <span>{{ selectedItems.length }}개</span>
             </div>
             <div class="summary-row total">
               <span>총 결제 금액</span>
-              <span class="total-amount">{{ formatPrice(cartStore.totalAmount) }}원</span>
+              <span class="total-amount">{{ formatPrice(selectedTotalAmount) }}원</span>
             </div>
           </div>
           <button 
             class="payment-btn" 
             @click="proceedToPayment"
-            :disabled="cartStore.cartCount === 0"
+            :disabled="selectedItems.length === 0"
           >
-            결제하기
+            선택한 강의 결제하기
           </button>
         </div>
       </div>
@@ -80,7 +104,21 @@ export default {
   name: 'CartPage',
   data() {
     return {
-      cartStore: useCartStore()
+      cartStore: useCartStore(),
+      selectedItems: [] // 선택된 아이템들의 ID 배열
+    }
+  },
+  computed: {
+    // 선택된 아이템들의 총 금액
+    selectedTotalAmount() {
+      return this.cartStore.items
+        .filter(item => this.selectedItems.includes(item.id))
+        .reduce((total, item) => total + item.price, 0)
+    },
+    // 전체 선택 여부
+    isAllSelected() {
+      return this.cartStore.items.length > 0 && 
+             this.selectedItems.length === this.cartStore.items.length
     }
   },
   methods: {
@@ -89,9 +127,25 @@ export default {
     return price.toLocaleString()
   },
 
+  // 전체 선택/해제 토글
+  toggleSelectAll() {
+    if (this.isAllSelected) {
+      this.selectedItems = []
+    } else {
+      this.selectedItems = this.cartStore.items.map(item => item.id)
+    }
+  },
+
+  // 개별 체크박스 변경 시 전체 선택 상태 업데이트
+  updateSelectAll() {
+    // 별도 처리 필요 없음 (computed에서 자동 계산)
+  },
+
   // 장바구니에서 강의 제거
   removeFromCart(lectureId) {
     if (this.cartStore.removeFromCart(lectureId)) {
+      // 선택된 아이템에서도 제거
+      this.selectedItems = this.selectedItems.filter(id => id !== lectureId)
       console.log('강의가 장바구니에서 제거되었습니다.')
     }
   },
@@ -103,27 +157,37 @@ export default {
 
   // 결제 버튼 눌렀을 때 실행되는 메인 함수
   async proceedToPayment() {
-    if (this.cartStore.cartCount === 0) {
-      alert('장바구니가 비어있습니다.')
+    if (this.selectedItems.length === 0) {
+      alert('결제할 강의를 선택해주세요.')
       return
     }
 
     try {
       const orderId = this.generateUUID()
-      const amount = this.cartStore.totalAmount
-      const lectureIds = this.cartStore.items.map(item => item.id)
-
+      const amount = this.selectedTotalAmount
+      const lectureIds = this.selectedItems
 
       // 1. 백엔드에 사전 주문 정보 저장
       await this.saveOrderToBackend(orderId, amount, lectureIds)
 
-      // 2. Toss 결제창 열기 (결제수단은 Toss UI에서 선택)
+      // 2. 선택된 아이템 정보를 localStorage에 저장 (결제 성공 후 제거용)
+      localStorage.setItem('selectedItemsForPayment', JSON.stringify(this.selectedItems))
+
+      // 3. Toss 결제창 열기 (결제수단은 Toss UI에서 선택)
       await this.requestTossPayment(orderId, amount)
 
     } catch (error) {
       console.error('결제 처리 중 오류:', error)
       alert('결제에 실패했습니다. 다시 시도해주세요.')
     }
+  },
+
+  // 결제 성공 후 선택된 아이템들을 장바구니에서 제거
+  removeSelectedItemsFromCart() {
+    this.selectedItems.forEach(itemId => {
+      this.cartStore.removeFromCart(itemId)
+    })
+    this.selectedItems = []
   },
 
   // UUID 생성기
@@ -268,12 +332,76 @@ export default {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
+.select-all-section {
+  padding: 15px 0;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 20px;
+}
+
+.select-all-checkbox {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 600;
+  color: #333;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.checkbox input[type="checkbox"],
+.select-all-checkbox input[type="checkbox"] {
+  display: none;
+}
+
+.checkmark {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+  margin-right: 10px;
+  position: relative;
+  background: white;
+  transition: all 0.3s;
+}
+
+.checkbox input[type="checkbox"]:checked + .checkmark,
+.select-all-checkbox input[type="checkbox"]:checked + .checkmark {
+  background: #FF6B35;
+  border-color: #FF6B35;
+}
+
+.checkbox input[type="checkbox"]:checked + .checkmark::after,
+.select-all-checkbox input[type="checkbox"]:checked + .checkmark::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.checkbox:hover .checkmark,
+.select-all-checkbox:hover .checkmark {
+  border-color: #FF6B35;
+}
+
 .cart-item {
   display: flex;
   align-items: center;
   padding: 20px 0;
   border-bottom: 1px solid #eee;
   position: relative;
+}
+
+.item-checkbox {
+  margin-right: 15px;
+  flex-shrink: 0;
 }
 
 .cart-item:last-child {

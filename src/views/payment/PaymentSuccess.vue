@@ -39,6 +39,7 @@
 
 <script>
 import Header from '@/components/Header.vue'
+import { useCartStore } from '@/views/cart/cart.js'
 
 export default {
   name: 'PaymentSuccess',
@@ -49,7 +50,8 @@ export default {
     return {
       orderId: '',
       amount: 0,
-      paymentDate: ''
+      paymentDate: '',
+      cartStore: useCartStore()
     }
   },
   mounted() {
@@ -72,9 +74,10 @@ export default {
 
     async approvePayment(paymentKey) {
       try {
-        // 장바구니에서 강의 ID 목록 가져오기
+        // 선택된 강의 ID 목록 가져오기
+        const selectedItems = JSON.parse(localStorage.getItem('selectedItemsForPayment') || '[]')
         const cartItems = JSON.parse(localStorage.getItem('cartItems') || '[]')
-        const lectureIds = cartItems.map(item => item.id)
+        const lectureIds = selectedItems.length > 0 ? selectedItems : cartItems.map(item => item.id)
 
         const response = await fetch('http://localhost:8080/purchase/confirm', {
           method: 'POST',
@@ -94,13 +97,31 @@ export default {
           throw new Error('결제 승인 처리 실패')
         } else {
           console.log('결제 승인 처리 완료')
-          // 결제 성공 시 장바구니 비우기
-          localStorage.removeItem('cartItems')
+          // 결제 성공 시 선택된 아이템만 장바구니에서 제거
+          this.removeSelectedItemsFromCart()
         }
       } catch (error) {
         console.error('결제 승인 요청 중 오류:', error)
         // 에러가 발생해도 사용자에게는 성공 페이지를 보여줌
         // 실제 환경에서는 에러 처리 로직 추가 필요
+      }
+    },
+
+    // 선택된 아이템들을 장바구니에서 제거
+    removeSelectedItemsFromCart() {
+      try {
+        const selectedItems = JSON.parse(localStorage.getItem('selectedItemsForPayment') || '[]')
+        
+        if (selectedItems.length > 0) {
+          // 장바구니 스토어를 사용하여 선택된 아이템들 제거
+          this.cartStore.removeMultipleFromCart(selectedItems)
+          console.log('선택된 강의들이 장바구니에서 제거되었습니다.')
+        }
+        
+        // 선택된 아이템 정보 삭제
+        localStorage.removeItem('selectedItemsForPayment')
+      } catch (error) {
+        console.error('장바구니에서 아이템 제거 중 오류:', error)
       }
     },
 
