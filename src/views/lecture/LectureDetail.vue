@@ -182,7 +182,7 @@
             :class="{ 'in-cart': cartStore && cartStore.isInCart(lecture.id) }"
             @click="enrollLecture"
           >
-            {{ cartStore && cartStore.isInCart(lecture.id) ? '장바구니에 추가됨' : '지금 수강하기' }}
+            {{ cartStore && cartStore.isInCart(lecture.id) ? '장바구니에 추가됨' : '장바구니에 담기' }}
           </button>
           <div class="share-section" @click="showShareModal = true">
             <span class="share-icon">📤</span>
@@ -253,6 +253,25 @@
     <div v-else class="loading-container">
       <div class="loading-spinner"></div>
       <p>강의 정보를 불러오는 중...</p>
+    </div>
+
+    <!-- 장바구니 추가 확인 모달 -->
+    <div v-if="showCartModal" class="modal-overlay" @click="showCartModal = false">
+      <div class="cart-modal" @click.stop>
+        <div class="modal-header">
+          <h3>장바구니 추가</h3>
+          <button class="close-btn" @click="showCartModal = false">×</button>
+        </div>
+        <div class="modal-content">
+          <div class="modal-icon">🛒</div>
+          <p class="modal-message">장바구니에 추가하였습니다.</p>
+          <p class="modal-submessage">장바구니로 이동하겠습니까?</p>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-primary" @click="goToCart">이동하기</button>
+          <button class="btn-secondary" @click="showCartModal = false">취소</button>
+        </div>
+      </div>
     </div>
 
     <!-- 공유 모달 -->
@@ -367,6 +386,7 @@ export default {
       showShareModal: false,
       showReviewModal: false,
       showQAModal: false,
+      showCartModal: false,
       newReview: {
         rating: 0,
         content: ''
@@ -1200,28 +1220,39 @@ export default {
       alert('강의가 구매되었습니다! 이제 리뷰를 작성할 수 있습니다.');
     },
 
-    // 장바구니에 강의 추가
+    // 장바구니에 강의 추가/제거 (토글 기능)
     enrollLecture() {
       if (!this.lecture) {
         alert('강의 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
         return;
       }
 
-      // 이미 장바구니에 있는 경우
+      // 이미 장바구니에 있는 경우 - 제거
       if (this.cartStore.isInCart(this.lecture.id)) {
-        alert('이미 장바구니에 있는 강의입니다.');
+        const result = this.cartStore.removeFromCart(this.lecture.id);
+        if (result) {
+          alert('장바구니에서 강의가 제거되었습니다.');
+        } else {
+          alert('장바구니에서 제거에 실패했습니다. 다시 시도해주세요.');
+        }
         return;
       }
 
       // 장바구니에 강의 추가
       const result = this.cartStore.addToCart(this.lecture);
       
-      // 결과 메시지 표시
+      // 결과 메시지 표시 - 모달로 변경
       if (result) {
-        alert('장바구니에 강의가 추가되었습니다!');
+        this.showCartModal = true;
       } else {
         alert('장바구니 추가에 실패했습니다. 다시 시도해주세요.');
       }
+    },
+
+    // 장바구니로 이동
+    goToCart() {
+      this.showCartModal = false;
+      this.$router.push('/cart');
     },
     
     // 리뷰 더 보기 버튼 클릭
@@ -2091,6 +2122,114 @@ export default {
   width: 90%;
   max-width: 500px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* 장바구니 모달 스타일 */
+.cart-modal {
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  text-align: center;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #eee;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #222;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #999;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.modal-content {
+  margin-bottom: 32px;
+}
+
+.modal-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.modal-message {
+  font-size: 18px;
+  font-weight: 600;
+  color: #222;
+  margin-bottom: 8px;
+}
+
+.modal-submessage {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 0;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.btn-primary, .btn-secondary {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  min-width: 100px;
+}
+
+.btn-primary {
+  background: #FF6B35;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #e55a2b;
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: #f8f9fa;
+  color: #495057;
+  border: 1px solid #dee2e6;
+}
+
+.btn-secondary:hover {
+  background: #e9ecef;
+  transform: translateY(-1px);
 }
 
 .modal-header {
