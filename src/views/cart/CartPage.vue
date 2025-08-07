@@ -256,6 +256,7 @@ export default {
 .cart-page {
   min-height: 100vh;
   background-color: #f8f9fa;
+  padding-top: 80px; /* 헤더 높이만큼 상단 여백 추가 */
 }
 
 .cart-container {
