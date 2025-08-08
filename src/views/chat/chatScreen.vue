@@ -1,5 +1,5 @@
 <template>
-  <v-container fluid class="pa-6" style="margin-top: 80px;">
+  <v-container fluid class="pa-4" style="margin-top: 80px; height: 80vh;">
     <!-- 로딩 상태 -->
     <LoadingScreen 
       v-if="loading"
@@ -17,12 +17,12 @@
     </div>
 
     <!-- 정상 채팅 화면 -->
-    <v-row v-else no-gutters class="chat-wrapper" style="min-height: 300px">
+    <v-row v-else no-gutters class="chat-wrapper" style="height: 100%;">
       <!-- 채팅 목록 -->
       <v-col md="1.5" />
       <v-col cols="12" md="3" class="chat-list">
-        <v-sheet class="h-100 pa-4" elevation="2">
-          <div class="d-flex justify-space-between align-center mb-4">
+        <v-sheet class="h-100 pa-3" elevation="2">
+          <div class="d-flex justify-space-between align-center mb-3">
             <h3 class="text-h6 font-weight-bold">채팅 목록</h3>
             <v-chip 
               v-if="totalUnreadCount > 0" 
@@ -39,7 +39,7 @@
             ref="chatScroll"
             class="chat-scroll-wrapper"
             @scroll.passive="onScroll"
-            style="max-height: calc(100vh - 200px); overflow-y: auto"
+            style="height: calc(100% - 60px); overflow-y: auto"
           >
             <v-list dense nav>
               <v-list-item
@@ -218,50 +218,50 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 400px;
-  padding: 40px 20px;
+  min-height: 300px;
+  padding: 30px 20px;
 }
 
 .empty-chat-content {
   text-align: center;
-  max-width: 300px;
+  max-width: 280px;
 }
 
 .empty-chat-icon {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .empty-chat-title {
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   font-weight: 600;
   color: #2c3e50;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .empty-chat-description {
   color: #7f8c8d;
-  font-size: 0.95rem;
-  line-height: 1.5;
-  margin-bottom: 24px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  margin-bottom: 20px;
 }
 
 .empty-chat-features {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
-  margin-top: 20px;
+  margin-top: 16px;
 }
 
 .feature-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   color: #34495e;
-  font-size: 0.9rem;
-  padding: 8px 16px;
+  font-size: 0.85rem;
+  padding: 6px 12px;
   background: rgba(255, 152, 0, 0.1);
-  border-radius: 20px;
+  border-radius: 16px;
   border: 1px solid rgba(255, 152, 0, 0.2);
 }
 
@@ -271,65 +271,67 @@ onMounted(() => {
   align-items: flex-start;
   justify-content: center;
   height: 100%;
-  padding: 40px;
-  padding-top: 80px;
+  padding: 30px;
+  padding-top: 60px;
 }
 
 .empty-chat-detail-content {
   text-align: center;
-  max-width: 400px;
+  max-width: 350px;
 }
 
 .empty-chat-detail-icon {
-  margin-bottom: 32px;
+  margin-bottom: 24px;
 }
 
 .empty-chat-detail-title {
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   font-weight: 600;
   color: #2c3e50;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .empty-chat-detail-description {
   color: #7f8c8d;
-  font-size: 1rem;
-  line-height: 1.6;
-  margin-bottom: 32px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin-bottom: 24px;
 }
 
 .empty-chat-detail-features {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
 }
 
 .feature-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   color: #34495e;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
 /* 채팅 목록 스타일 */
 .chat-list {
-  height: calc(100vh - 120px);
+  height: 100%;
 }
 
 .chat-scroll-wrapper {
-  height: calc(100vh - 200px);
+  height: calc(100% - 60px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* 반응형 디자인 */
 @media (max-width: 768px) {
   .empty-chat-title {
-    font-size: 1.25rem;
+    font-size: 1.1rem;
   }
   
   .empty-chat-detail-title {
-    font-size: 1.5rem;
+    font-size: 1.3rem;
   }
   
   .empty-chat-detail {
