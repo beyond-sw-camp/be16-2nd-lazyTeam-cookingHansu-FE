@@ -22,7 +22,8 @@ export const useChatStore = defineStore('chat', {
     currentRoomId: null,
     loading: false,
     stompClient: null,
-    // error: null, // 에러 상태 제거
+    error: null, // 네트워크 연결 오류
+    loadError: null, // 데이터 로딩 API 오류
   }),
   
   getters: {
@@ -35,9 +36,40 @@ export const useChatStore = defineStore('chat', {
     totalUnreadCount: (state) => {
       return state.rooms.reduce((total, room) => total + (room.unreadCount || 0), 0);
     },
+    
+    // UI 상태
+    isLoading: (state) => state.loading,
+    getError: (state) => state.error,
+    getLoadError: (state) => state.loadError,
+    
+    // 유틸리티 getters
+    hasRooms: (state) => state.rooms.length > 0,
   },
   
   actions: {
+    // 에러 처리 헬퍼 - 네트워크 에러는 전체 UI 에러로, API 에러는 throw만
+    _handleError(error, defaultMessage) {
+      console.error(defaultMessage, error);
+      
+      // 네트워크 연결 오류인지 확인 (api.js에서 처리된 메시지)
+      if (error.message && (error.message.includes('서버와의 연결') || error.message.includes('네트워크 연결'))) {
+        this.error = error.message;
+      }
+      
+      throw error;
+    },
+
+    // 로딩 상태 관리
+    _setLoading(loading) {
+      this.loading = loading;
+    },
+
+    // 에러 초기화
+    clearError() {
+      this.error = null;
+      this.loadError = null;
+    },
+
     // WebSocket 연결
     connectWebSocket(roomId) {
       // 기존 연결이 있으면 해제
@@ -166,17 +198,26 @@ export const useChatStore = defineStore('chat', {
 
     // 내 채팅방 목록 조회
     async fetchMyChatRooms() {
-      this.loading = true;
-      // this.error = null; // 에러 상태 제거
+      this._setLoading(true);
+      this.error = null;
+      this.loadError = null;
       
       try {
         const rooms = await getMyChatRooms();
         this.rooms = rooms;
       } catch (error) {
         console.error('채팅방 목록 조회 실패:', error);
-        // this.error = error.message; // 에러 상태 제거
+        
+        // 네트워크 연결 오류인지 확인 (api.js에서 처리된 메시지)
+        if (error.message && (error.message.includes('서버와의 연결') || error.message.includes('네트워크 연결'))) {
+          this.error = error.message;
+        } else {
+          // API 에러는 loadError에 저장하고 빈 목록 표시
+          this.loadError = error.message || '채팅방 목록을 불러오는데 실패했습니다.';
+          this.rooms = [];
+        }
       } finally {
-        this.loading = false;
+        this._setLoading(false);
       }
     },
     
