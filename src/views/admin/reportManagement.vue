@@ -319,11 +319,12 @@ const getReportTypeLabel = (reportType) => {
 // 신고 사유별 라벨
 const getReportReasonLabel = (reasonType) => {
   const labels = {
-    'SPAM': '스팸',
-    'INAPPROPRIATE': '부적절한 내용',
-    'HARASSMENT': '괴롭힘',
-    'COPYRIGHT': '저작권 침해',
-    'OTHER': '기타',
+    'SPAM_OR_ADS': ' 스팸 또는 광고',
+    'INCORRECT_CONTENTS': '잘못된 내용',
+    'BOTHER_OR_SPIT': ' 불쾌감 또는 혐오',
+    'FRAUD_INFORMATION': '사기 정보',
+    'AUTHORIZATION': '권한 침해',
+    'ETC': '기타',
   };
   return labels[reasonType] || '기타';
 };

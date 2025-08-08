@@ -142,37 +142,41 @@
     <!-- 공지사항 목록 -->
     <template v-else-if="noticeStore.hasNotices">
       <v-card>
-        <v-table>
+        <v-table fixed-header>
           <thead>
             <tr>
-              <th>제목</th>
-              <th>작성일</th>
-              <th>관리</th>
+              <th class="title-column">제목</th>
+              <th class="date-column">작성일</th>
+              <th class="action-column" style="text-align: center;">관리</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="notice in noticeStore.getNotices" :key="notice.id">
-              <td>{{ notice.title }}</td>
-              <td>{{ formatDate(notice.createdAt) }}</td>
-              <td>
-                <v-btn
-                  icon
-                  variant="text"
-                  size="small"
-                  @click.stop="editNotice(notice)"
-                  color="orange"
-                >
-                  <v-icon>mdi-pencil</v-icon>
-                </v-btn>
-                <v-btn
-                  icon
-                  variant="plain"
-                  density="compact"
-                  class="pa-0 ma-0"
-                  @click="confirmDelete(notice)"
-                >
-                  <v-icon color="red">mdi-delete-outline</v-icon>
-                </v-btn>
+            <tr v-for="notice in paginatedNotices" :key="notice.id">
+              <td class="title-cell">
+                <div class="title-text" :title="notice.title">{{ notice.title }}</div>
+              </td>
+              <td class="date-cell">{{ formatDate(notice.createdAt) }}</td>
+              <td class="action-cell" style="text-align: center;">
+                <div class="action-buttons">
+                  <v-btn
+                    icon
+                    variant="text"
+                    size="small"
+                    @click.stop="editNotice(notice)"
+                    color="orange"
+                  >
+                    <v-icon>mdi-pencil</v-icon>
+                  </v-btn>
+                  <v-btn
+                    icon
+                    variant="plain"
+                    density="compact"
+                    class="pa-0 ma-0"
+                    @click="confirmDelete(notice)"
+                  >
+                    <v-icon color="red">mdi-delete-outline</v-icon>
+                  </v-btn>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -182,7 +186,7 @@
       <!-- 페이지네이션 -->
       <Pagination
         :current-page="currentPage"
-        :total-pages="noticeStore.getPaginationInfo.totalPages"
+        :total-pages="totalPages"
         @page-change="handlePageChange"
       />
     </template>
@@ -252,6 +256,15 @@ const snackbarMessage = ref('');
 
 // 페이지네이션
 const currentPage = ref(1);
+const perPage = 10;
+
+// 페이지네이션된 공지사항 목록
+const paginatedNotices = computed(() => {
+  const start = (currentPage.value - 1) * perPage;
+  return noticeStore.getNotices.slice(start, start + perPage);
+});
+
+const totalPages = computed(() => Math.ceil(noticeStore.getNotices.length / perPage));
 
 // 폼 데이터
 const formData = reactive({
@@ -464,7 +477,8 @@ const submitForm = async () => {
 // 페이지 변경
 const handlePageChange = (page) => {
   currentPage.value = page;
-  noticeStore.fetchNotices(page - 1, noticeStore.getPaginationInfo.pageSize);
+  // 상단으로 스크롤
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
 // 날짜 포맷팅
@@ -485,7 +499,7 @@ const closeSnackbar = () => {
 
 // 컴포넌트 마운트 시 공지사항 목록 로드
 onMounted(async () => {
-  await noticeStore.fetchNotices(0, 10);
+  await noticeStore.fetchNotices(0, 100); // 충분히 큰 수로 모든 공지사항 로드
 });
 
 // 삭제 관련
@@ -507,7 +521,7 @@ const deleteItemInfo = computed(() => {
 <style scoped>
 th,
 td {
-  padding: 14px;
+  padding: 8px;
   text-align: left;
 }
 
@@ -601,6 +615,70 @@ td {
   border: 1px solid #ddd;
 }
 
+/* 테이블 스타일 */
+.notice-list-card .v-table {
+  border-radius: 12px;
+  overflow: hidden;
+}
 
+/* 헤더 고정 */
+.notice-list-card .v-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: #f8f9fa;
+}
+
+/* 컬럼 너비 설정 */
+.title-column {
+  width: 60%;
+  min-width: 300px;
+}
+
+.date-column {
+  width: 25%;
+  min-width: 150px;
+}
+
+.action-column {
+  width: 15%;
+  min-width: 100px;
+  text-align: center !important;
+}
+
+/* 제목 셀 스타일 */
+.title-cell {
+  max-width: 0;
+  overflow: hidden;
+}
+
+.title-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  display: block;
+}
+
+/* 날짜 셀 스타일 */
+.date-cell {
+  white-space: nowrap;
+}
+
+/* 액션 셀 스타일 */
+.action-cell {
+  text-align: center !important;
+  white-space: nowrap;
+  padding: 8px !important;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin: 0 auto;
+}
 
 </style>
