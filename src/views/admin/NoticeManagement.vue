@@ -132,7 +132,11 @@
 
     <!-- 에러 상태 -->
     <div v-else-if="noticeStore.getError" class="text-center pa-8">
-      <v-alert type="error" :text="noticeStore.getError" closable @click:close="noticeStore.clearError"></v-alert>
+      <ErrorAlert
+        title="연결 오류"
+        :message="noticeStore.getError"
+        @close="noticeStore.clearError"
+      />
     </div>
 
     <!-- 공지사항 목록 -->
@@ -231,6 +235,7 @@ import { useNoticeStore } from '../../store/notice/notice';
 import { validateFile } from '../../utils/fileValidation';
 import DeleteConfirmModal from '../../components/common/DeleteConfirmModal.vue';
 import Pagination from '../../components/common/Pagination.vue';
+import ErrorAlert from '../../components/common/ErrorAlert.vue';
 
 const noticeStore = useNoticeStore();
 

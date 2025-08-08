@@ -26,13 +26,11 @@
 
     <!-- 에러 상태 -->
     <div v-else-if="noticeStore.getError" class="error-container">
-      <v-alert
-        type="error"
-        title="오류"
-        :text="noticeStore.getError"
-        closable
-        @click:close="noticeStore.clearError"
-      ></v-alert>
+      <ErrorAlert
+        title="연결 오류"
+        :message="noticeStore.getError"
+        @close="noticeStore.clearError"
+      />
     </div>
 
     <!-- 공지사항 목록 -->
@@ -82,6 +80,7 @@ import { useRouter } from 'vue-router';
 import { useNoticeStore } from '../../store/notice/notice';
 import { formatDateTime } from '../../utils/timeUtils';
 import Pagination from '../../components/common/Pagination.vue';
+import ErrorAlert from '../../components/common/ErrorAlert.vue';
 
 const router = useRouter();
 const noticeStore = useNoticeStore();

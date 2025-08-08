@@ -13,13 +13,11 @@
 
     <!-- 에러 상태 -->
     <div v-else-if="noticeStore.getError" class="error-container">
-      <v-alert
-        type="error"
-        title="오류"
-        :text="noticeStore.getError"
-        closable
-        @click:close="noticeStore.clearError"
-      ></v-alert>
+      <ErrorAlert
+        title="연결 오류"
+        :message="noticeStore.getError"
+        @close="noticeStore.clearError"
+      />
       <div class="error-actions">
         <v-btn color="primary" @click="goBack">목록으로 돌아가기</v-btn>
       </div>
@@ -118,6 +116,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useNoticeStore } from '../../store/notice/notice';
 import { formatDateTime } from '../../utils/timeUtils';
+import ErrorAlert from '../../components/common/ErrorAlert.vue';
 import DeleteConfirmModal from '../../components/common/DeleteConfirmModal.vue';
 
 const router = useRouter();
@@ -282,6 +281,7 @@ onMounted(() => {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  padding-left: 12px;
 }
 
 .notice-meta {
