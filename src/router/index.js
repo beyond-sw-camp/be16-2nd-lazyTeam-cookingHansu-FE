@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import AdminLayout from '@/layouts/admin/AdminLayout.vue' 
 import Dashboard from '@/views/admin/Dashboard.vue'
 import LectureApproval from '@/views/admin/LectureApproval.vue'
-import ChefApproval from '@/views/admin/ChefApproval.vue'
+import UserApproval from '@/views/admin/UserApproval.vue'
 import NoticeManagement from '@/views/admin/NoticeManagement.vue'
 import UserManagement from '@/views/admin/UserManagement.vue'
 import ReportManagement from '@/views/admin/reportManagement.vue'
@@ -49,7 +49,7 @@ const routes = [
       { path: '', redirect: '/admin/dashboard' }, // 기본 경로 → 대시보드로 리디렉트
       { path: 'dashboard', name: 'Dashboard', component: Dashboard },
       { path: 'lecture-approval', name: '/LectureApproval', component: LectureApproval },
-      { path: 'chef-approval', name: 'ChefApproval', component: ChefApproval },
+      { path: 'user-approval', name: 'UserApproval', component: UserApproval },
       { path: 'notice-management', name: 'NoticeManagement', component: NoticeManagement },
       { path: 'user-management', name: 'UserManagement', component: UserManagement },
       { path: "report-management", name: "ReportManagement", component: ReportManagement },

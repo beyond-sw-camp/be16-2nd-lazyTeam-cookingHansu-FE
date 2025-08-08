@@ -52,7 +52,7 @@ const statCards = computed(() => [
     color: 'orange lighten-5',
   },
   {
-    icon: new URL('@/assets/icons/chef_approval.ico', import.meta.url).href,
+    icon: new URL('@/assets/icons/user_approval.ico', import.meta.url).href,
     label: '승인 대기 중 요리사',
     count: dashboardStore.getWaitingApprovalUsers,
     color: 'red lighten-5',
