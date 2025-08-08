@@ -41,7 +41,7 @@
 </template>
 
 <script>
-import Pagination from './common/Pagination.vue';
+import Pagination from '../common/Pagination.vue';
 
 export default {
   name: 'MyRecipes',
