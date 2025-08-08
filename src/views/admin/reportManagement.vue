@@ -25,7 +25,7 @@
       <v-card class="mb-6" elevation="0">
         <v-tabs v-model="activeTab" color="primary" align-tabs="start" class="custom-tabs">
           <v-tab value="all" class="tab-item">
-            <v-icon start>mdi-flag-multiple</v-icon>
+            <v-icon start>mdi-view-list</v-icon>
             전체 ({{ allReports.length }})
           </v-tab>
           <v-tab value="user" class="tab-item">
@@ -33,7 +33,7 @@
             사용자 ({{ userReports.length }})
           </v-tab>
           <v-tab value="recipe" class="tab-item">
-            <v-icon start>mdi-food</v-icon>
+            <v-icon start>mdi-silverware-fork-knife</v-icon>
             레시피 ({{ recipeReports.length }})
           </v-tab>
           <v-tab value="comment" class="tab-item">
@@ -57,16 +57,13 @@
         <v-row>
           <v-col cols="12" v-for="report in paginatedReports" :key="report.id">
             <v-card 
-              class="pa-4 report-card" 
+              class="pa-6 report-card" 
               elevation="2"
               :class="{ 'processing': reportManagementStore.isReportProcessing(report.id) }"
             >
               <v-row align="center" justify="space-between">
                 <v-col cols="auto" class="d-flex align-center">
-                  <v-avatar size="48" class="mr-4" color="orange lighten-4">
-                    <v-icon color="orange">mdi-flag</v-icon>
-                  </v-avatar>
-                  <div>
+                                    <div>
                     <v-chip
                       :color="getReportTypeColor(report.reportType)"
                       text-color="white"
@@ -440,10 +437,18 @@ onMounted(async () => {
   position: relative;
 }
 
+/* 탭 정렬 수정 */
+.custom-tabs .v-tab {
+  justify-content: flex-start !important;
+  text-align: left !important;
+}
+
 .report-card {
   margin-bottom: 16px;
   transition: all 0.3s ease;
   border: 1px solid rgba(0, 0, 0, 0.05);
+border-radius: 12px;
+  overflow: hidden;
 }
 
 .report-card:hover {
@@ -489,7 +494,7 @@ onMounted(async () => {
 /* 상세 정보 스타일 */
 .detail-section {
   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 16px;
   margin-top: 8px;
 }
@@ -500,6 +505,7 @@ onMounted(async () => {
   margin-bottom: 12px;
   font-size: 1rem;
   color: #2c3e50;
+font-weight: 600;
 }
 
 .detail-content {
