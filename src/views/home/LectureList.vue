@@ -1,6 +1,5 @@
 <template>
   <div class="lecture-list-page">
-    <Header />
     <!-- 상단 탭 -->
     <div class="nav-tabs">
       <button :class="{ active: currentTab === 'recipe' }" @click="goToRecipe">
