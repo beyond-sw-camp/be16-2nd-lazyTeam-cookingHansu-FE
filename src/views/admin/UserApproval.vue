@@ -74,7 +74,11 @@
       <v-row>
         <v-col cols="12" v-for="user in paginatedUsers" :key="user.id">
           <!-- 카드 내부 구조 -->
-          <v-card class="pa-4 user-card" elevation="2">
+          <v-card 
+            class="pa-4 user-card" 
+            elevation="2"
+            :class="{ 'processing': userApprovalStore.isUserProcessing(user.id) }"
+          >
             <v-row align="center" justify="space-between">
               <v-col cols="auto" class="d-flex align-center">
                 <v-avatar size="56" class="mr-4 user-avatar">
@@ -111,7 +115,8 @@
                   variant="elevated"
                   class="mr-2 action-btn" 
                   @click="approveUser(user)"
-                  :loading="userApprovalStore.isLoading"
+                  :loading="userApprovalStore.isUserProcessing(user.id)"
+                  :disabled="userApprovalStore.isUserProcessing(user.id)"
                 >
                   <v-icon start>mdi-check</v-icon>
                   승인
@@ -121,7 +126,8 @@
                   variant="outlined"
                   class="action-btn"
                   @click="showRejectDialog(user)"
-                  :loading="userApprovalStore.isLoading"
+                  :loading="userApprovalStore.isUserProcessing(user.id)"
+                  :disabled="userApprovalStore.isUserProcessing(user.id)"
                 >
                   <v-icon start>mdi-close</v-icon>
                   거절
@@ -490,6 +496,31 @@ onMounted(async () => {
   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
   border-radius: 12px;
   overflow: hidden;
+}
+
+/* 사용자 카드 애니메이션 */
+.user-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.user-card.processing {
+  opacity: 0.6;
+  transform: scale(0.98);
+  pointer-events: none;
+}
+
+/* 부드러운 제거 애니메이션 */
+.user-card-enter-active,
+.user-card-leave-active {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.user-card-leave-to {
+  opacity: 0;
+  transform: translateX(-100%);
+  height: 0;
+  margin: 0;
+  padding: 0;
 }
 
 .tab-item {

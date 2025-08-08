@@ -13,6 +13,9 @@ export const useUserApprovalStore = defineStore('userApproval', {
     successMessage: null,
     loadError: null, // 데이터 로딩 API 오류
     
+    // 개별 사용자 로딩 상태
+    processingUsers: new Set(),
+    
     // 페이지네이션
     chefPagination: {
       totalPages: 0,
@@ -38,6 +41,9 @@ export const useUserApprovalStore = defineStore('userApproval', {
     getError: (state) => state.error,
     getSuccessMessage: (state) => state.successMessage,
     getLoadError: (state) => state.loadError,
+    
+    // 개별 사용자 로딩 상태
+    isUserProcessing: (state) => (userId) => state.processingUsers.has(userId),
     
     // 페이지네이션 정보
     getChefPaginationInfo: (state) => state.chefPagination,
@@ -163,7 +169,7 @@ export const useUserApprovalStore = defineStore('userApproval', {
 
     // 사용자 승인
     async approveUser(userId) {
-      this._setLoading(true);
+      this.processingUsers.add(userId);
       
       try {
         await userApprovalService.approveUser(userId);
@@ -181,13 +187,13 @@ export const useUserApprovalStore = defineStore('userApproval', {
       } catch (error) {
         this._handleError(error, '사용자 승인에 실패했습니다.');
       } finally {
-        this._setLoading(false);
+        this.processingUsers.delete(userId);
       }
     },
 
     // 사용자 거절
     async rejectUser(userId, rejectReason) {
-      this._setLoading(true);
+      this.processingUsers.add(userId);
       
       try {
         await userApprovalService.rejectUser(userId, rejectReason);
@@ -205,7 +211,7 @@ export const useUserApprovalStore = defineStore('userApproval', {
       } catch (error) {
         this._handleError(error, '사용자 거절에 실패했습니다.');
       } finally {
-        this._setLoading(false);
+        this.processingUsers.delete(userId);
       }
     },
 
@@ -222,6 +228,7 @@ export const useUserApprovalStore = defineStore('userApproval', {
       this.error = null;
       this.successMessage = null;
       this.loadError = null;
+      this.processingUsers.clear();
       this.chefPagination = {
         totalPages: 0,
         currentPage: 0,
