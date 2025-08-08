@@ -5,10 +5,11 @@
     <p class="mb-6">플랫폼 내 신고 사항을 관리하세요</p>
 
     <!-- 로딩 상태 -->
-    <div v-if="reportManagementStore.isLoading" class="loading-container">
-      <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
-      <p class="loading-text">신고 목록을 불러오는 중...</p>
-    </div>
+    <LoadingScreen 
+      v-if="reportManagementStore.isLoading"
+      title="신고 목록을 불러오는 중"
+      description="플랫폼 내 신고 사항들을 확인하고 있어요..."
+    />
 
     <!-- 에러 상태 (네트워크 연결 오류만) -->
     <div v-else-if="reportManagementStore.getError" class="error-container">
@@ -190,6 +191,7 @@ import Pagination from '../../components/common/Pagination.vue';
 import CommonSnackbar from '../../components/common/CommonSnackbar.vue';
 import ApprovalConfirmModal from '../../components/common/ApprovalConfirmModal.vue';
 import RejectConfirmModal from '../../components/common/RejectConfirmModal.vue';
+import LoadingScreen from '../../components/common/LoadingScreen.vue';
 import { formatDateTime } from '@/utils/timeUtils';
 
 const reportManagementStore = useReportManagementStore();
@@ -405,20 +407,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-}
-
-.loading-text {
-  margin-top: 20px;
-  color: #666;
-  font-size: 1.1rem;
-}
-
 .error-container {
   margin: 20px 0;
 }
