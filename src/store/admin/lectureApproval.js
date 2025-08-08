@@ -12,6 +12,9 @@ export const useLectureApprovalStore = defineStore('lectureApproval', {
     successMessage: null,
     loadError: null, // 데이터 로딩 API 오류
     
+    // 개별 강의 로딩 상태
+    processingLectures: new Set(),
+    
     // 페이지네이션
     pagination: {
       totalPages: 0,
@@ -30,6 +33,9 @@ export const useLectureApprovalStore = defineStore('lectureApproval', {
     getError: (state) => state.error,
     getSuccessMessage: (state) => state.successMessage,
     getLoadError: (state) => state.loadError,
+    
+    // 개별 강의 로딩 상태
+    isLectureProcessing: (state) => (lectureId) => state.processingLectures.has(lectureId),
     
     // 페이지네이션 정보
     getPaginationInfo: (state) => state.pagination,
@@ -114,7 +120,7 @@ export const useLectureApprovalStore = defineStore('lectureApproval', {
 
     // 강의 승인
     async approveLecture(lectureId) {
-      this._setLoading(true);
+      this.processingLectures.add(lectureId);
       
       try {
         await lectureApprovalService.approveLecture(lectureId);
@@ -128,13 +134,13 @@ export const useLectureApprovalStore = defineStore('lectureApproval', {
       } catch (error) {
         this._handleError(error, '강의 승인에 실패했습니다.');
       } finally {
-        this._setLoading(false);
+        this.processingLectures.delete(lectureId);
       }
     },
 
     // 강의 거절
     async rejectLecture(lectureId, rejectReason) {
-      this._setLoading(true);
+      this.processingLectures.add(lectureId);
       
       try {
         await lectureApprovalService.rejectLecture(lectureId, rejectReason);
@@ -148,7 +154,7 @@ export const useLectureApprovalStore = defineStore('lectureApproval', {
       } catch (error) {
         this._handleError(error, '강의 거절에 실패했습니다.');
       } finally {
-        this._setLoading(false);
+        this.processingLectures.delete(lectureId);
       }
     },
 
@@ -164,6 +170,7 @@ export const useLectureApprovalStore = defineStore('lectureApproval', {
       this.error = null;
       this.successMessage = null;
       this.loadError = null;
+      this.processingLectures.clear();
       this.pagination = {
         totalPages: 0,
         currentPage: 0,

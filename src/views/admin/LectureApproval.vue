@@ -38,7 +38,11 @@
       <template v-else>
         <v-row>
           <v-col cols="12" v-for="lecture in paginatedLectures" :key="lecture.id">
-            <v-card class="pa-4 lecture-card" elevation="2">
+            <v-card 
+              class="pa-4 lecture-card" 
+              elevation="2"
+              :class="{ 'processing': lectureApprovalStore.isLectureProcessing(lecture.id) }"
+            >
               <v-row align="center" justify="space-between">
                 <v-col cols="auto" class="d-flex align-center">
                   <v-img
@@ -77,7 +81,8 @@
                     variant="elevated"
                     class="mr-2 action-btn" 
                     @click="approveLecture(lecture)"
-                    :loading="lectureApprovalStore.isLoading"
+                    :loading="lectureApprovalStore.isLectureProcessing(lecture.id)"
+                    :disabled="lectureApprovalStore.isLectureProcessing(lecture.id)"
                   >
                     <v-icon start>mdi-check</v-icon>
                     승인
@@ -87,7 +92,8 @@
                     variant="outlined"
                     class="action-btn"
                     @click="showRejectDialog(lecture)"
-                    :loading="lectureApprovalStore.isLoading"
+                    :loading="lectureApprovalStore.isLectureProcessing(lecture.id)"
+                    :disabled="lectureApprovalStore.isLectureProcessing(lecture.id)"
                   >
                     <v-icon start>mdi-close</v-icon>
                     거절
@@ -333,6 +339,26 @@ onMounted(async () => {
 .lecture-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+}
+
+.lecture-card.processing {
+  opacity: 0.6;
+  transform: scale(0.98);
+  pointer-events: none;
+}
+
+/* 부드러운 제거 애니메이션 */
+.lecture-card-enter-active,
+.lecture-card-leave-active {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.lecture-card-leave-to {
+  opacity: 0;
+  transform: translateX(-100%);
+  height: 0;
+  margin: 0;
+  padding: 0;
 }
 
 .lecture-title {
