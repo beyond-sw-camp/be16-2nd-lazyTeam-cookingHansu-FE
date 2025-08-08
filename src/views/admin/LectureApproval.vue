@@ -80,7 +80,7 @@
                     color="success" 
                     variant="elevated"
                     class="mr-2 action-btn" 
-                    @click="approveLecture(lecture)"
+                    @click="showApprovalDialog(lecture)"
                     :loading="lectureApprovalStore.isLectureProcessing(lecture.id)"
                     :disabled="lectureApprovalStore.isLectureProcessing(lecture.id)"
                   >
@@ -147,35 +147,23 @@
       </template>
     </template>
 
-    <!-- 거절 다이얼로그 -->
-    <v-dialog v-model="rejectDialog" max-width="500">
-      <v-card>
-        <v-card-title>강의 거절</v-card-title>
-        <v-card-text>
-          <p class="mb-4">{{ selectedLectureTitle }}을(를) 거절하시겠습니까?</p>
-          <v-text-field
-            v-model="reason"
-            label="거절 사유"
-            placeholder="거절 사유를 입력해주세요"
-            variant="outlined"
-            rows="3"
-            auto-grow
-          />
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn @click="rejectDialog = false">취소</v-btn>
-          <v-btn 
-            color="error" 
-            @click="rejectLecture"
-            :loading="lectureApprovalStore.isLoading"
-            :disabled="!reason.trim()"
-          >
-            거절
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <!-- 승인 확인 모달 -->
+    <ApprovalConfirmModal
+      v-model="approvalDialog"
+      :item-name="selectedLectureTitle"
+      item-type="강의"
+      :loading="lectureApprovalStore.isLectureProcessing(selectedLecture?.id)"
+      @confirm="approveLecture"
+    />
+
+    <!-- 거절 확인 모달 -->
+    <RejectConfirmModal
+      v-model="rejectDialog"
+      :item-name="selectedLectureTitle"
+      item-type="강의"
+      :loading="lectureApprovalStore.isLectureProcessing(selectedLecture?.id)"
+      @confirm="rejectLecture"
+    />
 
     <!-- 공용 스낵바 -->
     <CommonSnackbar
@@ -195,6 +183,8 @@ import { useLectureApprovalStore } from '@/store/admin/lectureApproval'
 import ErrorAlert from '@/components/common/ErrorAlert.vue'
 import Pagination from "../../components/common/Pagination.vue";
 import CommonSnackbar from "../../components/common/CommonSnackbar.vue";
+import ApprovalConfirmModal from "../../components/common/ApprovalConfirmModal.vue";
+import RejectConfirmModal from "../../components/common/RejectConfirmModal.vue";
 
 const lectureApprovalStore = useLectureApprovalStore()
 
@@ -202,11 +192,11 @@ const lectureApprovalStore = useLectureApprovalStore()
 const currentPage = ref(1);
 const perPage = 5;
 
-// 거절 다이얼로그 관련
+// 승인/거절 다이얼로그 관련
+const approvalDialog = ref(false)
 const rejectDialog = ref(false)
 const selectedLecture = ref(null)
 const selectedLectureTitle = ref('')
-const reason = ref('')
 
 // 스낵바 관련
 const showSnackbar = ref(false);
@@ -233,10 +223,18 @@ const formatDuration = (minutes) => {
   return `${mins}분`;
 };
 
+// 승인 다이얼로그 표시
+const showApprovalDialog = (lecture) => {
+  selectedLecture.value = lecture;
+  selectedLectureTitle.value = lecture.title;
+  approvalDialog.value = true;
+};
+
 // 강의 승인
-const approveLecture = async (lecture) => {
+const approveLecture = async () => {
   try {
-    await lectureApprovalStore.approveLecture(lecture.id);
+    await lectureApprovalStore.approveLecture(selectedLecture.value.id);
+    approvalDialog.value = false;
   } catch (error) {
     console.error('강의 승인 실패:', error);
     // 네트워크 오류가 아닌 경우에만 스낵바 메시지 표시
@@ -253,16 +251,13 @@ const approveLecture = async (lecture) => {
 const showRejectDialog = (lecture) => {
   selectedLecture.value = lecture;
   selectedLectureTitle.value = lecture.title;
-  reason.value = '';
   rejectDialog.value = true;
 };
 
 // 강의 거절
-const rejectLecture = async () => {
-  if (!reason.value.trim()) return;
-  
+const rejectLecture = async (reason) => {
   try {
-    await lectureApprovalStore.rejectLecture(selectedLecture.value.id, reason.value);
+    await lectureApprovalStore.rejectLecture(selectedLecture.value.id, reason);
     rejectDialog.value = false;
   } catch (error) {
     console.error('강의 거절 실패:', error);

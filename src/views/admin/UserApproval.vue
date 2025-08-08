@@ -114,7 +114,7 @@
                   color="success" 
                   variant="elevated"
                   class="mr-2 action-btn" 
-                  @click="approveUser(user)"
+                  @click="showApprovalDialog(user)"
                   :loading="userApprovalStore.isUserProcessing(user.id)"
                   :disabled="userApprovalStore.isUserProcessing(user.id)"
                 >
@@ -223,35 +223,23 @@
       </template>
     </template>
 
-    <!-- 거절 다이얼로그 -->
-    <v-dialog v-model="rejectDialog" max-width="500">
-      <v-card>
-        <v-card-title>사용자 거절</v-card-title>
-        <v-card-text>
-          <p class="mb-4">{{ selectedUserName }}님을 거절하시겠습니까?</p>
-          <v-text-field
-            v-model="rejectReason"
-            label="거절 사유"
-            placeholder="거절 사유를 입력해주세요"
-            variant="outlined"
-            rows="3"
-            auto-grow
-          />
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn @click="rejectDialog = false">취소</v-btn>
-          <v-btn 
-            color="error" 
-            @click="rejectUser"
-            :loading="userApprovalStore.isLoading"
-            :disabled="!rejectReason.trim()"
-          >
-            거절
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <!-- 승인 확인 모달 -->
+    <ApprovalConfirmModal
+      v-model="approvalDialog"
+      :item-name="selectedUserName"
+      item-type="사용자"
+      :loading="userApprovalStore.isUserProcessing(selectedUser?.id)"
+      @confirm="approveUser"
+    />
+
+    <!-- 거절 확인 모달 -->
+    <RejectConfirmModal
+      v-model="rejectDialog"
+      :item-name="selectedUserName"
+      item-type="사용자"
+      :loading="userApprovalStore.isUserProcessing(selectedUser?.id)"
+      @confirm="rejectUser"
+    />
 
     <!-- 공용 스낵바 -->
     <CommonSnackbar
@@ -270,6 +258,8 @@ import { useUserApprovalStore } from '@/store/admin/userApproval'
 import ErrorAlert from '@/components/common/ErrorAlert.vue'
 import Pagination from "../../components/common/Pagination.vue";
 import CommonSnackbar from "../../components/common/CommonSnackbar.vue";
+import ApprovalConfirmModal from "../../components/common/ApprovalConfirmModal.vue";
+import RejectConfirmModal from "../../components/common/RejectConfirmModal.vue";
 import { formatDateTime } from '@/utils/timeUtils'
 
 const userApprovalStore = useUserApprovalStore()
@@ -281,11 +271,11 @@ const activeTab = ref('all');
 const currentPage = ref(1);
 const perPage = 4;
 
-// 거절 다이얼로그 관련
+// 승인/거절 다이얼로그 관련
+const approvalDialog = ref(false)
 const rejectDialog = ref(false)
 const selectedUser = ref(null)
 const selectedUserName = ref('')
-const rejectReason = ref('')
 
 // 이미지 모달
 const dialog = ref(false);
@@ -380,10 +370,18 @@ const getUserAvatar = (user) => {
   }
 };
 
+// 승인 다이얼로그 표시
+const showApprovalDialog = (user) => {
+  selectedUser.value = user;
+  selectedUserName.value = user.name;
+  approvalDialog.value = true;
+};
+
 // 사용자 승인
-const approveUser = async (user) => {
+const approveUser = async () => {
   try {
-    await userApprovalStore.approveUser(user.id);
+    await userApprovalStore.approveUser(selectedUser.value.id);
+    approvalDialog.value = false;
   } catch (error) {
     console.error('사용자 승인 실패:', error);
     // 네트워크 오류가 아닌 경우에만 스낵바 메시지 표시
@@ -405,16 +403,13 @@ const approveUser = async (user) => {
 const showRejectDialog = (user) => {
   selectedUser.value = user;
   selectedUserName.value = user.name;
-  rejectReason.value = '';
   rejectDialog.value = true;
 };
 
 // 사용자 거절
-const rejectUser = async () => {
-  if (!rejectReason.value.trim()) return;
-  
+const rejectUser = async (reason) => {
   try {
-    await userApprovalStore.rejectUser(selectedUser.value.id, rejectReason.value);
+    await userApprovalStore.rejectUser(selectedUser.value.id, reason);
     rejectDialog.value = false;
   } catch (error) {
     console.error('사용자 거절 실패:', error);
