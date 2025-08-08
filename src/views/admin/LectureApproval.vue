@@ -1,267 +1,447 @@
 <template>
-    <v-container>
-      <!-- 강의 승인 제목 -->
-      <h2 class="text-h5 font-weight-bold mb-1">강의 승인 관리</h2>
-      <p class="mb-6">강의 승인 요청 현황</p>
-  
-      <!-- 강의가 없을 경우 -->
-      <v-row v-if="lectures.length === 0" justify="center" class="mt-10 mb-10">
+  <v-container>
+    <!-- 제목 -->
+    <v-row>
+      <v-col cols="12">
+        <h2 class="text-h5 font-weight-bold mb-4">강의 승인 관리</h2>
+        <p>승인 대기 중인 강의를 관리합니다</p>
+      </v-col>
+    </v-row>
+
+    <!-- 로딩 상태 -->
+    <div v-if="lectureApprovalStore.isLoading" class="loading-container">
+      <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
+      <p class="loading-text">강의 목록을 불러오는 중...</p>
+    </div>
+
+    <!-- 에러 상태 (네트워크 연결 오류만) -->
+    <div v-else-if="lectureApprovalStore.getError" class="error-container">
+      <ErrorAlert
+        title="연결 오류"
+        :message="lectureApprovalStore.getError"
+        @close="lectureApprovalStore.clearError"
+      />
+    </div>
+
+    <!-- 강의 목록 -->
+    <template v-else>
+      <!-- 승인할 강의가 없을 경우 -->
+      <v-row v-if="lectureApprovalStore.getWaitingLectures.length === 0" justify="center" class="mt-10 mb-10">
         <v-col cols="12" md="6" class="text-center">
           <v-icon size="64" color="grey lighten-2">mdi-teach</v-icon>
-          <h3 class="mt-4">승인 요청 강의가 없습니다</h3>
-          <p class="mt-2">강의가 등록되면 이곳에서 확인할 수 있습니다.</p>
+          <h3 class="mt-4">승인 대기 중인 강의가 없습니다</h3>
+          <p class="mt-2">강의 승인 요청이 도착하면 이곳에 표시됩니다.</p>
         </v-col>
       </v-row>
-  
-      <!-- 강의가 있을 경우 -->
+
+      <!-- 강의 목록 -->
       <template v-else>
-        <v-card
-          v-for="lecture in paginatedLectures"
-          :key="lecture.id"
-          class="mb-4 pa-4"
-        >
-          <v-row align="center" justify="space-between">
-            <v-col cols="auto">
-              <v-img
-                :src="lecture.image"
-                width="120"
-                height="90"
-                class="rounded thumbnail"
-              />
-            </v-col>
-            <v-col>
-              <div class="font-weight-bold mb-1">{{ lecture.title }}</div>
-              <div class="text-caption text-grey">강사: {{ lecture.chef }}</div>
-              <div class="text-caption text-grey">{{ lecture.description }}</div>
-              <div class="text-caption mt-2">
-                ⏱ {{ lecture.duration }} &nbsp;&nbsp;
-                💰 {{ lecture.price.toLocaleString() }}원 &nbsp;&nbsp;
-                📅 {{ lecture.date }}
-              </div>
-            </v-col>
-            <v-col cols="auto" class="text-right">
-              <v-chip
-                :color="
-                  lecture.status === '승인 대기'
-                    ? 'orange'
-                    : lecture.status === '승인 완료'
-                    ? 'green'
-                    : 'red'
-                "
-                text-color="white"
-                class="mb-2"
-                size="small"
-              >
-                {{ lecture.status }}
-              </v-chip>
-              <div class="d-flex flex-column align-end gap-2">
-                <v-btn
-                  v-if="lecture.status === '승인 대기'"
-                  color="success"
-                  size="small"
-                  @click="approve(lecture.id)"
-                >
-                  ✔ 승인
-                </v-btn>
-                <v-btn
-                  v-if="lecture.status === '승인 대기'"
-                  color="error"
-                  size="small"
-                  @click="reject(lecture.id)"
-                >
-                  ✘ 거부
-                </v-btn>
-                <v-btn variant="outlined" color="orange" size="small">
-                  👁 상세보기
-                </v-btn>
-              </div>
-            </v-col>
-          </v-row>
-        </v-card>
-  
-        <!-- Pagination -->
-        <Pagination
-          :current-page="page"
-          :total-pages="pageCount"
-          @page-change="page = $event"
-        />
+        <v-row>
+          <v-col cols="12" v-for="lecture in paginatedLectures" :key="lecture.id">
+            <v-card class="pa-4 lecture-card" elevation="2">
+              <v-row align="center" justify="space-between">
+                <v-col cols="auto" class="d-flex align-center">
+                  <v-img
+                    :src="lecture.imageUrl || '/default-lecture.png'"
+                    width="120"
+                    height="90"
+                    class="rounded thumbnail mr-4"
+                    cover
+                  />
+                  <div>
+                    <h3 class="text-subtitle-1 font-weight-bold lecture-title">
+                      {{ lecture.title }}
+                    </h3>
+                    <div class="text-caption text-grey-darken-1">
+                      강사: {{ lecture.instructorName }}
+                    </div>
+                  </div>
+                </v-col>
+
+                <v-col cols="auto" class="d-flex align-center">
+                  <v-chip color="orange-darken-1" class="mr-3 status-chip" size="small">
+                    <v-icon start size="14">mdi-clock-outline</v-icon>
+                    승인 대기
+                  </v-chip>
+                  <v-btn 
+                    variant="outlined" 
+                    color="info"
+                    class="mr-2 action-btn"
+                    @click="viewLectureDetail(lecture)"
+                  >
+                    <v-icon start>mdi-eye</v-icon>
+                    상세보기
+                  </v-btn>
+                  <v-btn 
+                    color="success" 
+                    variant="elevated"
+                    class="mr-2 action-btn" 
+                    @click="approveLecture(lecture)"
+                    :loading="lectureApprovalStore.isLoading"
+                  >
+                    <v-icon start>mdi-check</v-icon>
+                    승인
+                  </v-btn>
+                  <v-btn 
+                    color="error" 
+                    variant="outlined"
+                    class="action-btn"
+                    @click="showRejectDialog(lecture)"
+                    :loading="lectureApprovalStore.isLoading"
+                  >
+                    <v-icon start>mdi-close</v-icon>
+                    거절
+                  </v-btn>
+                </v-col>
+              </v-row>
+
+              <v-divider class="my-4" />
+
+              <!-- 강의 상세 정보 -->
+              <v-row>
+                <v-col cols="12">
+                  <div class="detail-section">
+                    <div class="detail-header">
+                      <v-icon color="primary">mdi-teach</v-icon>
+                      <strong>강의 상세 정보</strong>
+                    </div>
+                    <div class="detail-content">
+                      <div class="detail-item">
+                        <span class="detail-label">설명:</span>
+                        <span class="detail-value">{{ lecture.description }}</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="detail-label">카테고리:</span>
+                        <span class="detail-value">{{ lecture.category }}</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="detail-label">강의 시간:</span>
+                        <span class="detail-value">{{ formatDuration(lecture.duration) }}</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="detail-label">가격:</span>
+                        <span class="detail-value">{{ lecture.price?.toLocaleString() }}원</span>
+                      </div>
+                    </div>
+                  </div>
+                </v-col>
+              </v-row>
+            </v-card>
+          </v-col>
+        </v-row>
+
+        <!-- 페이지네이션 -->
+        <div class="d-flex justify-center mt-6">
+          <Pagination
+            :current-page="currentPage"
+            :total-pages="totalPages"
+            @page-change="currentPage = $event"
+          />
+        </div>
       </template>
-    </v-container>
-  </template>
+    </template>
+
+    <!-- 거절 다이얼로그 -->
+    <v-dialog v-model="rejectDialog" max-width="500">
+      <v-card>
+        <v-card-title>강의 거절</v-card-title>
+        <v-card-text>
+          <p class="mb-4">{{ selectedLectureTitle }}을(를) 거절하시겠습니까?</p>
+          <v-text-field
+            v-model="reason"
+            label="거절 사유"
+            placeholder="거절 사유를 입력해주세요"
+            variant="outlined"
+            rows="3"
+            auto-grow
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn @click="rejectDialog = false">취소</v-btn>
+          <v-btn 
+            color="error" 
+            @click="rejectLecture"
+            :loading="lectureApprovalStore.isLoading"
+            :disabled="!reason.trim()"
+          >
+            거절
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- 성공 스낵바 -->
+    <v-snackbar
+      v-model="showSuccessSnackbar"
+      :timeout="1000"
+      color="success"
+      location="top"
+    >
+      <v-icon start>mdi-check-circle</v-icon>
+      {{ lectureApprovalStore.getSuccessMessage }}
+    </v-snackbar>
+
+    <!-- 에러 스낵바 -->
+    <v-snackbar
+      v-model="showErrorSnackbar"
+      :timeout="1000"
+      color="error"
+      location="top"
+    >
+      <v-icon start>mdi-alert-circle</v-icon>
+      {{ errorMessage }}
+    </v-snackbar>
+  </v-container>
+</template>
   
   
-  <script setup>
-  import { ref, computed } from 'vue'
-import Pagination from '../../components/common/Pagination.vue'
+<script setup>
+import { ref, computed, onMounted, watch } from "vue";
+import { useLectureApprovalStore } from '@/store/admin/lectureApproval'
+import ErrorAlert from '@/components/common/ErrorAlert.vue'
+import Pagination from "../../components/common/Pagination.vue";
+
+const lectureApprovalStore = useLectureApprovalStore()
+
+// 페이지네이션
+const currentPage = ref(1);
+const perPage = 5;
+
+// 거절 다이얼로그 관련
+const rejectDialog = ref(false)
+const selectedLecture = ref(null)
+const selectedLectureTitle = ref('')
+const reason = ref('')
+
+// 스낵바 관련
+const showSuccessSnackbar = ref(false);
+const showErrorSnackbar = ref(false);
+const errorMessage = ref('');
+
+// 페이지네이션된 강의 목록
+const paginatedLectures = computed(() => {
+  const start = (currentPage.value - 1) * perPage;
+  return lectureApprovalStore.getWaitingLectures.slice(start, start + perPage);
+});
+
+const totalPages = computed(() => Math.ceil(lectureApprovalStore.getWaitingLectures.length / perPage));
+
+// 시간 포맷팅 함수
+const formatDuration = (minutes) => {
+  if (!minutes) return '0분';
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours > 0) {
+    return mins > 0 ? `${hours}시간 ${mins}분` : `${hours}시간`;
+  }
+  return `${mins}분`;
+};
+
+// 강의 승인
+const approveLecture = async (lecture) => {
+  try {
+    await lectureApprovalStore.approveLecture(lecture.id);
+  } catch (error) {
+    console.error('강의 승인 실패:', error);
+    // 네트워크 오류가 아닌 경우에만 토스트 메시지 표시
+    if (!error.message || (!error.message.includes('서버와의 연결') && !error.message.includes('네트워크 연결'))) {
+      errorMessage.value = error.message || '강의 승인에 실패했습니다.';
+      showErrorSnackbar.value = true;
+    }
+  }
+};
+
+// 거절 다이얼로그 표시
+const showRejectDialog = (lecture) => {
+  selectedLecture.value = lecture;
+  selectedLectureTitle.value = lecture.title;
+  reason.value = '';
+  rejectDialog.value = true;
+};
+
+// 강의 거절
+const rejectLecture = async () => {
+  if (!reason.value.trim()) return;
   
-  const page = ref(1)
-  const perPage = 5
+  try {
+    await lectureApprovalStore.rejectLecture(selectedLecture.value.id, reason.value);
+    rejectDialog.value = false;
+  } catch (error) {
+    console.error('강의 거절 실패:', error);
+    // 네트워크 오류가 아닌 경우에만 토스트 메시지 표시
+    if (!error.message || (!error.message.includes('서버와의 연결') && !error.message.includes('네트워크 연결'))) {
+      errorMessage.value = error.message || '강의 거절에 실패했습니다.';
+      showErrorSnackbar.value = true;
+    }
+  }
+};
+
+// 강의 상세보기
+const viewLectureDetail = (lecture) => {
+  // TODO: 강의 상세 페이지 라우팅 구현
+  // 강의 상세 페이지가 완성되면 아래 주석을 해제하고 라우팅 구현
+  // router.push(`/admin/lecture/${lecture.id}`);
   
-  const lectures = ref([
-    {
-      id: 1,
-      title: '초보자를 위한 요리 강의',
-      chef: '홍길동',
-      description: '기본적인 요리 기술을 배우는 강의입니다.',
-      duration: '2시간',
-      price: 30000,
-      date: '2025-07-13',
-      image: new URL('@/assets/images/smu_mascort2.jpg', import.meta.url).href,
-      status: '승인 대기'
-    },
-    {
-      id: 2,
-      title: '이탈리안 요리 마스터 클래스',
-      chef: '김철수',
-      description: '이탈리안 요리를 전문적으로 배우는 강의입니다.',
-      duration: '3시간',
-      price: 50000,
-      date: '2025-07-14',
-      image: new URL('@/assets/images/smu_mascort2.jpg', import.meta.url).href,
-      status: '승인 대기'
-    },
-    {
-      id: 3,
-      title: '프랑스 요리 기초',
-      chef: '이영희',
-      description: '프랑스 요리의 기본을 배우는 강의입니다.',
-      duration: '1시간 30분',
-      price: 40000,
-      date: '2025-07-15',
-      image: new URL('@/assets/images/smu_mascort2.jpg', import.meta.url).href,
-      status: '승인 대기'
-    },
-    {
-      id: 4,
-      title: '일식 요리의 정석',
-      chef: '박준호',
-      description: '일식 요리를 전문적으로 배우는 강의입니다.',
-      duration: '2시간 30분',
-      price: 45000,
-      date: '2025-07-16',
-      image: new URL('@/assets/images/smu_mascort2.jpg', import.meta.url).href,
-      status: '승인 대기'
-    },
-    {
-      id: 5,
-      title: '베이킹 기초부터 고급까지',
-      chef: '최지우',
-      description: '베이킹의 기초부터 고급 기술까지 배우는 강의입니다.',
-      duration: '3시간',
-      price: 60000,
-      date: '2025-07-17',
-      image: new URL('@/assets/images/smu_mascort2.jpg', import.meta.url).href,
-      status: '승인 대기'
-    },
-    {
-      id: 6,
-      title: '채식 요리의 모든 것',
-      chef: '정수현',
-      description: '채식 요리를 전문적으로 배우는 강의입니다.',
-      duration: '2시간',
-      price: 35000,
-      date: '2025-07-18',
-      image: new URL('@/assets/images/smu_mascort2.jpg', import.meta.url).href,
-      status: '승인 대기'
-    },
-    {
-      id: 7,
-      title: '디저트 만들기 기초',
-      chef: '이수진',
-      description: '디저트 만드는 법을 배우는 강의입니다.',
-      duration: '1시간 45분',
-      price: 32000,
-      date: '2025-07-19',
-      image: new URL('@/assets/images/smu_mascort2.jpg', import.meta.url).href,
-      status: '승인 대기'
-    },
-    {
-      id: 8,
-      title: '세계 각국의 요리 탐방',
-      chef: '김민수',
-      description: '세계 각국의 요리를 배우는 강의입니다.',
-      duration: '4시간',
-      price: 70000,
-      date: '2025-07-20',
-      image: new URL('@/assets/images/smu_mascort2.jpg', import.meta.url).href,
-      status: '승인 대기'
-    },
-    {
-      id: 9,
-      title: '건강한 요리 레시피',
-      chef: '박지영',
-      description: '건강한 요리 레시피를 배우는 강의입니다.',
-      duration: '2시간 15분',
-      price: 38000,
-      date: '2025-07-21',
-      image: new URL('@/assets/images/smu_mascort2.jpg', import.meta.url).href,
-      status: '승인 대기'
-    },
-    {
-      id: 10,
-      title: '요리사 자격증 취득 준비반',
-      chef: '최영수',
-      description:
-        '요리사 자격증 취득을 위한 준비반 강의입니다.',
-      duration: '3시간 30분',
-      price: 55000,
-      date: '2025-07-22',
-      image: new URL('@/assets/images/smu_mascort2.jpg', import.meta.url).href,
-      status: '승인 대기'
-    },
-    {
-      id: 11,
-      title: '퓨전 요리의 매력',
-      chef: '이하늘',
-      description: '퓨전 요리의 다양한 레시피를 배우는 강의입니다.',
-      duration: '2시간 30분',
-      price: 48000,
-      date: '2025-07-23',
-      image: new URL('@/assets/images/smu_mascort2.jpg', import.meta.url).href,
-      status: '승인 대기'
-    },
-    {
-      id: 12,
-      title: '요리의 과학',
-      chef: '김하늘',
-      description: '요리의 과학적 원리를 배우는 강의입니다.',
-      duration: '1시간 30분',
-      price: 36000,
-      date: '2025-07-24',
-      image: new URL('@/assets/images/smu_mascort2.jpg', import.meta.url).href,
-      status: '승인 대기'
-    },
-  ])
+  console.log('강의 상세보기:', lecture);
+  // 임시로 콘솔에 강의 정보 출력
+  alert(`강의 상세보기 기능은 준비 중입니다.\n강의 ID: ${lecture.id}\n강의명: ${lecture.title}`);
+};
+
+// 성공 메시지 감시
+watch(() => lectureApprovalStore.getSuccessMessage, (newMessage) => {
+  if (newMessage) {
+    showSuccessSnackbar.value = true;
+  }
+});
+
+// 성공 스낵바 닫힐 때 메시지 초기화
+watch(showSuccessSnackbar, (newValue) => {
+  if (!newValue && lectureApprovalStore.getSuccessMessage) {
+    lectureApprovalStore.clearMessages();
+  }
+});
+
+// 로딩 에러 감시 (API 오류 시 토스트 표시)
+watch(() => lectureApprovalStore.getLoadError, (newError) => {
+  if (newError) {
+    errorMessage.value = newError;
+    showErrorSnackbar.value = true;
+  }
+});
+
+// 에러 스낵바 닫힐 때 로드 에러 초기화
+watch(showErrorSnackbar, (newValue) => {
+  if (!newValue && lectureApprovalStore.getLoadError) {
+    lectureApprovalStore.clearMessages();
+  }
+});
+
+// 컴포넌트 마운트 시 데이터 로드
+onMounted(async () => {
+  await lectureApprovalStore.fetchWaitingLectures();
+});
+</script>
   
-  const pageCount = computed(() => Math.ceil(lectures.value.length / perPage))
-  
-  const paginatedLectures = computed(() => {
-    const start = (page.value - 1) * perPage
-    return lectures.value.slice(start, start + perPage)
-  })
-  
-  function approve(id) {
-    const target = lectures.value.find(l => l.id === id)
-    if (target) target.status = '승인 완료'
+<style scoped>
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+}
+
+.loading-text {
+  margin-top: 20px;
+  color: #666;
+  font-size: 1.1rem;
+}
+
+.error-container {
+  margin: 20px 0;
+}
+
+/* 강의 카드 스타일 */
+.lecture-card {
+  border-radius: 16px;
+  margin-bottom: 16px;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.lecture-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+}
+
+.lecture-title {
+  color: #2c3e50;
+  margin: 8px 0 4px 0;
+}
+
+.status-chip {
+  font-weight: 500;
+}
+
+.action-btn {
+  font-weight: 600;
+  min-width: 80px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.thumbnail {
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 상세 정보 스타일 */
+.detail-section {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 8px;
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: 1rem;
+  color: #2c3e50;
+}
+
+.detail-content {
+  margin-left: 24px;
+}
+
+.detail-item {
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detail-label {
+  font-weight: 600;
+  color: #495057;
+  min-width: 120px;
+}
+
+.detail-value {
+  color: #2c3e50;
+  flex: 1;
+}
+
+/* 반응형 스타일 */
+@media (max-width: 768px) {
+  .lecture-card {
+    margin-bottom: 12px;
   }
   
-  function reject(id) {
-    const target = lectures.value.find(l => l.id === id)
-    if (target) target.status = '거절'
+  .detail-section {
+    padding: 12px;
   }
-  </script>
   
-  <style scoped>
-  .gap-2 {
-    gap: 8px;
+  .detail-content {
+    margin-left: 0;
   }
-  th,
-  td {
-    padding: 14px;
-    text-align: left;
+  
+  .detail-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
   }
-  .thumbnail {
-    object-fit: cover;
-    border-radius: 8px;
+  
+  .detail-label {
+    min-width: auto;
+    font-size: 0.9rem;
   }
-  </style>
+  
+  .action-btn {
+    min-width: 70px;
+    font-size: 0.9rem;
+  }
+}
+</style>

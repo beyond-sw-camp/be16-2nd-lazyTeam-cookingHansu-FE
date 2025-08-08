@@ -53,7 +53,7 @@ const statCards = computed(() => [
   },
   {
     icon: new URL('@/assets/icons/user_approval.ico', import.meta.url).href,
-    label: '승인 대기 중 요리사',
+    label: '승인 대기 중 사용자',
     count: dashboardStore.getWaitingApprovalUsers,
     color: 'red lighten-5',
   },
