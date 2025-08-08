@@ -171,27 +171,14 @@
       </v-card>
     </v-dialog>
 
-    <!-- 성공 스낵바 -->
-    <v-snackbar
-      v-model="showSuccessSnackbar"
-      :timeout="1000"
-      color="success"
-      location="top"
-    >
-      <v-icon start>mdi-check-circle</v-icon>
-      {{ lectureApprovalStore.getSuccessMessage }}
-    </v-snackbar>
-
-    <!-- 에러 스낵바 -->
-    <v-snackbar
-      v-model="showErrorSnackbar"
-      :timeout="1000"
-      color="error"
-      location="top"
-    >
-      <v-icon start>mdi-alert-circle</v-icon>
-      {{ errorMessage }}
-    </v-snackbar>
+    <!-- 공용 스낵바 -->
+    <CommonSnackbar
+      v-if="showSnackbar"
+      :type="snackbarType"
+      :title="snackbarTitle"
+      :message="snackbarMessage"
+      @close="closeSnackbar"
+    />
   </v-container>
 </template>
   
@@ -201,6 +188,7 @@ import { ref, computed, onMounted, watch } from "vue";
 import { useLectureApprovalStore } from '@/store/admin/lectureApproval'
 import ErrorAlert from '@/components/common/ErrorAlert.vue'
 import Pagination from "../../components/common/Pagination.vue";
+import CommonSnackbar from "../../components/common/CommonSnackbar.vue";
 
 const lectureApprovalStore = useLectureApprovalStore()
 
@@ -215,9 +203,10 @@ const selectedLectureTitle = ref('')
 const reason = ref('')
 
 // 스낵바 관련
-const showSuccessSnackbar = ref(false);
-const showErrorSnackbar = ref(false);
-const errorMessage = ref('');
+const showSnackbar = ref(false);
+const snackbarType = ref('success');
+const snackbarTitle = ref('');
+const snackbarMessage = ref('');
 
 // 페이지네이션된 강의 목록
 const paginatedLectures = computed(() => {
@@ -244,10 +233,12 @@ const approveLecture = async (lecture) => {
     await lectureApprovalStore.approveLecture(lecture.id);
   } catch (error) {
     console.error('강의 승인 실패:', error);
-    // 네트워크 오류가 아닌 경우에만 토스트 메시지 표시
+    // 네트워크 오류가 아닌 경우에만 스낵바 메시지 표시
     if (!error.message || (!error.message.includes('서버와의 연결') && !error.message.includes('네트워크 연결'))) {
-      errorMessage.value = error.message || '강의 승인에 실패했습니다.';
-      showErrorSnackbar.value = true;
+      snackbarType.value = 'error';
+      snackbarTitle.value = '오류';
+      snackbarMessage.value = error.message || '강의 승인에 실패했습니다.';
+      showSnackbar.value = true;
     }
   }
 };
@@ -269,10 +260,12 @@ const rejectLecture = async () => {
     rejectDialog.value = false;
   } catch (error) {
     console.error('강의 거절 실패:', error);
-    // 네트워크 오류가 아닌 경우에만 토스트 메시지 표시
+    // 네트워크 오류가 아닌 경우에만 스낵바 메시지 표시
     if (!error.message || (!error.message.includes('서버와의 연결') && !error.message.includes('네트워크 연결'))) {
-      errorMessage.value = error.message || '강의 거절에 실패했습니다.';
-      showErrorSnackbar.value = true;
+      snackbarType.value = 'error';
+      snackbarTitle.value = '오류';
+      snackbarMessage.value = error.message || '강의 거절에 실패했습니다.';
+      showSnackbar.value = true;
     }
   }
 };
@@ -291,31 +284,18 @@ const viewLectureDetail = (lecture) => {
 // 성공 메시지 감시
 watch(() => lectureApprovalStore.getSuccessMessage, (newMessage) => {
   if (newMessage) {
-    showSuccessSnackbar.value = true;
+    snackbarType.value = 'success';
+    snackbarTitle.value = '성공';
+    snackbarMessage.value = newMessage;
+    showSnackbar.value = true;
   }
 });
 
-// 성공 스낵바 닫힐 때 메시지 초기화
-watch(showSuccessSnackbar, (newValue) => {
-  if (!newValue && lectureApprovalStore.getSuccessMessage) {
-    lectureApprovalStore.clearMessages();
-  }
-});
-
-// 로딩 에러 감시 (API 오류 시 토스트 표시)
-watch(() => lectureApprovalStore.getLoadError, (newError) => {
-  if (newError) {
-    errorMessage.value = newError;
-    showErrorSnackbar.value = true;
-  }
-});
-
-// 에러 스낵바 닫힐 때 로드 에러 초기화
-watch(showErrorSnackbar, (newValue) => {
-  if (!newValue && lectureApprovalStore.getLoadError) {
-    lectureApprovalStore.clearMessages();
-  }
-});
+// 스낵바 닫기
+const closeSnackbar = () => {
+  showSnackbar.value = false;
+  lectureApprovalStore.clearMessages();
+};
 
 // 컴포넌트 마운트 시 데이터 로드
 onMounted(async () => {

@@ -168,9 +168,16 @@ export const useUserApprovalStore = defineStore('userApproval', {
       try {
         await userApprovalService.approveUser(userId);
         this.setSuccessMessage('사용자 승인이 완료되었습니다.');
-        // 승인 후 목록 새로고침
-        await this.fetchWaitingChefs(this.chefPagination.currentPage, this.chefPagination.pageSize);
-        await this.fetchWaitingBusinesses(this.businessPagination.currentPage, this.businessPagination.pageSize);
+        
+        // 로컬 상태만 업데이트 (API 재호출 없음)
+        // 요리사 목록에서 제거
+        this.waitingChefs = this.waitingChefs.filter(chef => chef.userId !== userId);
+        // 자영업자 목록에서 제거
+        this.waitingBusinesses = this.waitingBusinesses.filter(business => business.id !== userId);
+        
+        // 페이지네이션 정보 업데이트
+        this.chefPagination.totalElements = Math.max(0, this.chefPagination.totalElements - 1);
+        this.businessPagination.totalElements = Math.max(0, this.businessPagination.totalElements - 1);
       } catch (error) {
         this._handleError(error, '사용자 승인에 실패했습니다.');
       } finally {
@@ -185,9 +192,16 @@ export const useUserApprovalStore = defineStore('userApproval', {
       try {
         await userApprovalService.rejectUser(userId, rejectReason);
         this.setSuccessMessage('사용자 거절이 완료되었습니다.');
-        // 거절 후 목록 새로고침
-        await this.fetchWaitingChefs(this.chefPagination.currentPage, this.chefPagination.pageSize);
-        await this.fetchWaitingBusinesses(this.businessPagination.currentPage, this.businessPagination.pageSize);
+        
+        // 로컬 상태만 업데이트 (API 재호출 없음)
+        // 요리사 목록에서 제거
+        this.waitingChefs = this.waitingChefs.filter(chef => chef.userId !== userId);
+        // 자영업자 목록에서 제거
+        this.waitingBusinesses = this.waitingBusinesses.filter(business => business.id !== userId);
+        
+        // 페이지네이션 정보 업데이트
+        this.chefPagination.totalElements = Math.max(0, this.chefPagination.totalElements - 1);
+        this.businessPagination.totalElements = Math.max(0, this.businessPagination.totalElements - 1);
       } catch (error) {
         this._handleError(error, '사용자 거절에 실패했습니다.');
       } finally {

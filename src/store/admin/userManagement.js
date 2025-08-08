@@ -12,6 +12,9 @@ export const useUserManagementStore = defineStore('userManagement', {
     successMessage: null,
     loadError: null, // 데이터 로딩 API 오류
     
+    // 개별 사용자 로딩 상태
+    loadingUsers: new Set(),
+    
     // 페이지네이션
     pagination: {
       totalPages: 0,
@@ -37,6 +40,9 @@ export const useUserManagementStore = defineStore('userManagement', {
     // 유틸리티 getters
     hasUsers: (state) => state.userList.length > 0,
     getTotalUserCount: (state) => state.pagination.totalElements,
+    
+    // 특정 사용자의 로딩 상태 확인
+    isUserLoading: (state) => (userId) => state.loadingUsers.has(userId),
   },
 
   actions: {
@@ -60,10 +66,6 @@ export const useUserManagementStore = defineStore('userManagement', {
     // 성공 메시지 설정
     setSuccessMessage(message) {
       this.successMessage = message;
-      // 1초 후 자동으로 메시지 제거
-      setTimeout(() => {
-        this.successMessage = null;
-      }, 1000);
     },
 
     // 메시지 초기화
@@ -114,33 +116,45 @@ export const useUserManagementStore = defineStore('userManagement', {
 
     // 사용자 활성화
     async activateUser(userId) {
-      this._setLoading(true);
+      // 개별 사용자 로딩 상태 설정
+      this.loadingUsers.add(userId);
       
       try {
         await userManagementService.activateUser(userId);
         this.setSuccessMessage('사용자가 활성화되었습니다.');
-        // 활성화 후 목록 새로고침
-        await this.fetchUserList(this.pagination.currentPage, this.pagination.pageSize);
+        
+        // 로컬 상태만 업데이트 (API 재호출 없음)
+        const userIndex = this.userList.findIndex(user => user.userId === userId);
+        if (userIndex !== -1) {
+          this.userList[userIndex].loginStatus = 'ACTIVE';
+        }
       } catch (error) {
         this._handleError(error, '사용자 활성화에 실패했습니다.');
       } finally {
-        this._setLoading(false);
+        // 개별 사용자 로딩 상태 해제
+        this.loadingUsers.delete(userId);
       }
     },
 
     // 사용자 비활성화
     async inactiveUser(userId) {
-      this._setLoading(true);
+      // 개별 사용자 로딩 상태 설정
+      this.loadingUsers.add(userId);
       
       try {
         await userManagementService.inactiveUser(userId);
         this.setSuccessMessage('사용자가 비활성화되었습니다.');
-        // 비활성화 후 목록 새로고침
-        await this.fetchUserList(this.pagination.currentPage, this.pagination.pageSize);
+        
+        // 로컬 상태만 업데이트 (API 재호출 없음)
+        const userIndex = this.userList.findIndex(user => user.userId === userId);
+        if (userIndex !== -1) {
+          this.userList[userIndex].loginStatus = 'INACTIVE';
+        }
       } catch (error) {
         this._handleError(error, '사용자 비활성화에 실패했습니다.');
       } finally {
-        this._setLoading(false);
+        // 개별 사용자 로딩 상태 해제
+        this.loadingUsers.delete(userId);
       }
     },
 
@@ -156,6 +170,7 @@ export const useUserManagementStore = defineStore('userManagement', {
       this.error = null;
       this.successMessage = null;
       this.loadError = null;
+      this.loadingUsers.clear();
       this.pagination = {
         totalPages: 0,
         currentPage: 0,

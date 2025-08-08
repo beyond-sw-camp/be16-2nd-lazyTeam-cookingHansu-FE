@@ -119,8 +119,12 @@ export const useLectureApprovalStore = defineStore('lectureApproval', {
       try {
         await lectureApprovalService.approveLecture(lectureId);
         this.setSuccessMessage('강의 승인이 완료되었습니다.');
-        // 승인 후 목록 새로고침
-        await this.fetchWaitingLectures(this.pagination.currentPage, this.pagination.pageSize);
+        
+        // 로컬 상태만 업데이트 (API 재호출 없음)
+        this.waitingLectures = this.waitingLectures.filter(lecture => lecture.id !== lectureId);
+        
+        // 페이지네이션 정보 업데이트
+        this.pagination.totalElements = Math.max(0, this.pagination.totalElements - 1);
       } catch (error) {
         this._handleError(error, '강의 승인에 실패했습니다.');
       } finally {
@@ -135,8 +139,12 @@ export const useLectureApprovalStore = defineStore('lectureApproval', {
       try {
         await lectureApprovalService.rejectLecture(lectureId, rejectReason);
         this.setSuccessMessage('강의 거절이 완료되었습니다.');
-        // 거절 후 목록 새로고침
-        await this.fetchWaitingLectures(this.pagination.currentPage, this.pagination.pageSize);
+        
+        // 로컬 상태만 업데이트 (API 재호출 없음)
+        this.waitingLectures = this.waitingLectures.filter(lecture => lecture.id !== lectureId);
+        
+        // 페이지네이션 정보 업데이트
+        this.pagination.totalElements = Math.max(0, this.pagination.totalElements - 1);
       } catch (error) {
         this._handleError(error, '강의 거절에 실패했습니다.');
       } finally {

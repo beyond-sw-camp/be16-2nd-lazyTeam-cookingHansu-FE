@@ -66,7 +66,7 @@
                 size="small" 
                 color="green"
                 @click="activateUser(user.userId)"
-                :loading="userManagementStore.isLoading"
+                :loading="userManagementStore.isUserLoading(user.userId)"
               >
                 <v-icon>mdi-check-circle-outline</v-icon>
               </v-btn>
@@ -77,7 +77,7 @@
                 size="small" 
                 color="red"
                 @click="inactiveUser(user.userId)"
-                :loading="userManagementStore.isLoading"
+                :loading="userManagementStore.isUserLoading(user.userId)"
               >
                 <v-icon>mdi-close-circle-outline</v-icon>
               </v-btn>

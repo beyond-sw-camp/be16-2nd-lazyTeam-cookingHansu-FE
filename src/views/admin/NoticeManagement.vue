@@ -198,23 +198,14 @@
       </v-row>
     </template>
 
-    <!-- 성공 스낵바 -->
-    <v-snackbar
-      v-model="successSnackbar"
-      color="success"
-      timeout="3000"
-    >
-      {{ successMessage }}
-    </v-snackbar>
-
-    <!-- 에러 스낵바 -->
-    <v-snackbar
-      v-model="errorSnackbar"
-      color="error"
-      timeout="5000"
-    >
-      {{ errorMessage }}
-    </v-snackbar>
+    <!-- 공용 스낵바 -->
+    <CommonSnackbar
+      v-if="showSnackbar"
+      :type="snackbarType"
+      :title="snackbarTitle"
+      :message="snackbarMessage"
+      @close="closeSnackbar"
+    />
 
     <!-- 공용 삭제 확인 모달 -->
     <DeleteConfirmModal
@@ -236,6 +227,7 @@ import { validateFile } from '../../utils/fileValidation';
 import DeleteConfirmModal from '../../components/common/DeleteConfirmModal.vue';
 import Pagination from '../../components/common/Pagination.vue';
 import ErrorAlert from '../../components/common/ErrorAlert.vue';
+import CommonSnackbar from '../../components/common/CommonSnackbar.vue';
 
 const noticeStore = useNoticeStore();
 
@@ -253,10 +245,10 @@ const selectedFile = ref(null);
 const imagePreview = ref(null);
 
 // 스낵바 상태
-const successSnackbar = ref(false);
-const errorSnackbar = ref(false);
-const successMessage = ref('');
-const errorMessage = ref('');
+const showSnackbar = ref(false);
+const snackbarType = ref('success');
+const snackbarTitle = ref('');
+const snackbarMessage = ref('');
 
 // 페이지네이션
 const currentPage = ref(1);
@@ -326,8 +318,10 @@ const handleFileChange = (event) => {
     console.log('파일 검증 결과:', validation);
     
     if (!validation.isValid) {
-      errorMessage.value = validation.error;
-      errorSnackbar.value = true;
+      snackbarType.value = 'error';
+      snackbarTitle.value = '오류';
+      snackbarMessage.value = validation.error;
+      showSnackbar.value = true;
       selectedFile.value = null;
       imagePreview.value = null;
       return;
@@ -339,8 +333,10 @@ const handleFileChange = (event) => {
       imagePreview.value = e.target.result;
     };
     reader.onerror = () => {
-      errorMessage.value = '이미지 파일을 읽을 수 없습니다.';
-      errorSnackbar.value = true;
+      snackbarType.value = 'error';
+      snackbarTitle.value = '오류';
+      snackbarMessage.value = '이미지 파일을 읽을 수 없습니다.';
+      showSnackbar.value = true;
       selectedFile.value = null;
       imagePreview.value = null;
     };
@@ -413,11 +409,15 @@ const deleteNotice = async () => {
     await noticeStore.deleteNotice(noticeToDelete.value.id);
     deleteDialog.value = false;
     noticeToDelete.value = null;
-    successMessage.value = '공지사항이 삭제되었습니다.';
-    successSnackbar.value = true;
+    snackbarType.value = 'success';
+    snackbarTitle.value = '성공';
+    snackbarMessage.value = '공지사항이 삭제되었습니다.';
+    showSnackbar.value = true;
   } catch (error) {
-    errorMessage.value = error.message || '공지사항 삭제에 실패했습니다.';
-    errorSnackbar.value = true;
+    snackbarType.value = 'error';
+    snackbarTitle.value = '오류';
+    snackbarMessage.value = error.message || '공지사항 삭제에 실패했습니다.';
+    showSnackbar.value = true;
   } finally {
     deleting.value = false;
   }
@@ -439,17 +439,23 @@ const submitForm = async () => {
     
     if (isEdit.value && editingNotice.value) {
       await noticeStore.updateNotice(editingNotice.value.id, formData);
-      successMessage.value = '공지사항이 수정되었습니다.';
+      snackbarType.value = 'success';
+      snackbarTitle.value = '성공';
+      snackbarMessage.value = '공지사항이 수정되었습니다.';
     } else {
       await noticeStore.createNotice(formData);
-      successMessage.value = '공지사항이 작성되었습니다.';
+      snackbarType.value = 'success';
+      snackbarTitle.value = '성공';
+      snackbarMessage.value = '공지사항이 작성되었습니다.';
     }
     
-    successSnackbar.value = true;
+    showSnackbar.value = true;
     cancelForm();
   } catch (error) {
-    errorMessage.value = error.message || '공지사항 저장에 실패했습니다.';
-    errorSnackbar.value = true;
+    snackbarType.value = 'error';
+    snackbarTitle.value = '오류';
+    snackbarMessage.value = error.message || '공지사항 저장에 실패했습니다.';
+    showSnackbar.value = true;
   } finally {
     submitting.value = false;
   }
@@ -470,6 +476,11 @@ const formatDate = (dateString) => {
     month: 'long',
     day: 'numeric'
   });
+};
+
+// 스낵바 닫기
+const closeSnackbar = () => {
+  showSnackbar.value = false;
 };
 
 // 컴포넌트 마운트 시 공지사항 목록 로드
