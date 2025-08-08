@@ -36,7 +36,6 @@ export const useNoticeStore = defineStore('notice', {
     
     // 유틸리티 getters
     hasNotices: (state) => state.notices.length > 0,
-    isCurrentPage: (state) => (page) => state.pagination.currentPage === page,
   },
 
   actions: {
@@ -96,8 +95,10 @@ export const useNoticeStore = defineStore('notice', {
       this.error = null;
       
       try {
-        await noticeService.createNotice(noticeData);
-        // 생성 후 목록 새로고침 (첫 페이지로)
+        const response = await noticeService.createNotice(noticeData);
+        const newNotice = response.getData();
+        
+        // 서버에서 반환된 완전한 데이터로 목록 새로고침
         await this.fetchNotices(0, this.pagination.pageSize);
       } catch (error) {
         this._handleError(error, '공지사항 생성에 실패했습니다.');
@@ -113,8 +114,8 @@ export const useNoticeStore = defineStore('notice', {
       
       try {
         await noticeService.updateNotice(id, noticeData);
-        // 수정 후 현재 공지사항 정보 업데이트 (API 호출 없이)
-        this._updateCurrentNotice(id, noticeData);
+        // 수정 후 목록 새로고침으로 최신 데이터 확보
+        await this.fetchNotices(this.pagination.currentPage, this.pagination.pageSize);
       } catch (error) {
         this._handleError(error, '공지사항 수정에 실패했습니다.');
       } finally {
@@ -138,17 +139,7 @@ export const useNoticeStore = defineStore('notice', {
       }
     },
 
-    // 현재 공지사항 업데이트 (로컬)
-    _updateCurrentNotice(id, noticeData) {
-      if (this.currentNotice && this.currentNotice.id === id) {
-        this.currentNotice = {
-          ...this.currentNotice,
-          title: noticeData.title,
-          content: noticeData.content,
-          // 이미지는 백엔드에서 처리되므로 기존 이미지 유지
-        };
-      }
-    },
+
 
     // 상태 초기화
     clearCurrentNotice() {

@@ -1,201 +1,565 @@
 <template>
-    <v-container>
-      <h2 class="text-h5 font-weight-bold mb-1">신고 관리</h2>
-      <p class="mb-6">신고한 게시글, 댓글, 사용자를 관리하세요</p>
-  
-      <!-- 신고가 있는 경우 -->
-      <template v-if="visibleReports.length > 0">
-        <v-card
-          v-for="(report, idx) in visibleReports"
-          :key="idx"
-          class="mb-4 report-card"
-          elevation="1"
-        >
-          <!-- 카드 상단 분홍 헤더 -->
-          <div class="report-header d-flex justify-space-between align-center pa-5">
-            <div class="d-flex align-center">
-              <v-icon color="red" class="mr-2">mdi-alert-circle</v-icon>
-              <span class="font-weight-bold">{{ report.type }} 신고</span>
-            </div>
-            <span class="text-caption font-weight-bold text-red">대기 중</span>
-          </div>
-  
-          <!-- 카드 본문 (흰 배경) -->
-          <div class="pa-4 white-area">
-            <v-row class="mb-2">
-              <v-col cols="12" class="text-caption text-grey">
-                <span class="font-weight-bold">{{ report.type }}</span> -
-                {{ report.date }}
-              </v-col>
-            </v-row>
-  
-            <v-row class="mb-2">
-              <v-col cols="12">
-                <div class="text-caption font-weight-bold mb-1">신고 사유</div>
-                <v-chip class="custom-chip" variant="outlined" size="small" label>
-                  {{ report.reason }}
-                </v-chip>
-              </v-col>
-            </v-row>
-  
-            <v-row class="mb-4">
-              <v-col cols="12">
-                <div class="text-caption font-weight-bold mb-1">상세 설명</div>
-                <v-sheet class="pa-2" color="#f9fafc">
-                  {{ report.detail }}
-                </v-sheet>
-              </v-col>
-            </v-row>
-  
-            <!-- 버튼 그룹 -->
-            <v-row class="justify-end mt-4 pr-3 pb-3">
-              <div class="d-flex" style="gap: 8px">
-                <v-btn variant="outlined" size="small" color="grey">
-                  해당 {{ report.type }}로 이동
-                </v-btn>
-                <v-btn
-                  variant="outlined"
-                  size="small"
-                  color="orange"
-                  @click="dismissReport(idx)"
-                >
-                  ✖ 기각
-                </v-btn>
-                <v-btn size="small" color="success" @click="resolveReport(idx)">
-                  ✔ 해결됨으로 처리
-                </v-btn>
-              </div>
-            </v-row>
-          </div>
-        </v-card>
-  
-        <Pagination
-          :current-page="page"
-          :total-pages="pageCount"
-          @page-change="page = $event"
-        />
-      </template>
-  
-      <!-- 신고가 없는 경우 -->
+  <v-container>
+    <!-- 제목 -->
+    <h2 class="text-h5 font-weight-bold mb-1">신고 관리</h2>
+    <p class="mb-6">플랫폼 내 신고 사항을 관리하세요</p>
+
+    <!-- 로딩 상태 -->
+    <div v-if="reportManagementStore.isLoading" class="loading-container">
+      <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
+      <p class="loading-text">신고 목록을 불러오는 중...</p>
+    </div>
+
+    <!-- 에러 상태 (네트워크 연결 오류만) -->
+    <div v-else-if="reportManagementStore.getError" class="error-container">
+      <ErrorAlert
+        title="연결 오류"
+        :message="reportManagementStore.getError"
+        @close="reportManagementStore.clearError"
+      />
+    </div>
+
+    <!-- 탭과 신고 목록 -->
+    <template v-else>
+      <!-- 탭 네비게이션 -->
+      <v-card class="mb-6" elevation="0">
+        <v-tabs v-model="activeTab" color="primary" align-tabs="start" class="custom-tabs">
+          <v-tab value="all" class="tab-item">
+            <v-icon start>mdi-view-list</v-icon>
+            전체 ({{ allReports.length }})
+          </v-tab>
+          <v-tab value="user" class="tab-item">
+            <v-icon start>mdi-account-alert</v-icon>
+            사용자 ({{ userReports.length }})
+          </v-tab>
+          <v-tab value="recipe" class="tab-item">
+            <v-icon start>mdi-silverware-fork-knife</v-icon>
+            레시피 ({{ recipeReports.length }})
+          </v-tab>
+          <v-tab value="comment" class="tab-item">
+            <v-icon start>mdi-comment-alert</v-icon>
+            댓글 ({{ commentReports.length }})
+          </v-tab>
+        </v-tabs>
+      </v-card>
+
+      <!-- 처리할 신고가 없을 경우 -->
+      <v-row v-if="filteredReports.length === 0" justify="center" class="mt-10 mb-10">
+        <v-col cols="12" md="6" class="text-center">
+          <v-icon size="64" color="grey lighten-2">mdi-flag-outline</v-icon>
+          <h3 class="mt-4">{{ getEmptyMessage() }}</h3>
+          <p class="mt-2">{{ getEmptyDescription() }}</p>
+        </v-col>
+      </v-row>
+
+      <!-- 신고 목록 -->
       <template v-else>
-        <v-row justify="center" class="mt-16 mb-16">
-          <v-col cols="12" md="6" class="text-center">
-            <v-icon color="grey" size="40" class="mb-3">mdi-alert-circle-outline</v-icon>
-            <div class="text-subtitle-1 font-weight-medium mb-1">
-              처리할 신고가 없습니다
-            </div>
-            <div class="text-body-2 text-grey">
-              현재 접수된 신고가 존재하지 않습니다.
-            </div>
+        <v-row>
+          <v-col cols="12" v-for="report in paginatedReports" :key="report.id">
+            <v-card 
+              class="pa-6 report-card" 
+              elevation="2"
+              :class="{ 'processing': reportManagementStore.isReportProcessing(report.id) }"
+            >
+              <v-row align="center" justify="space-between">
+                <v-col cols="auto" class="d-flex align-center">
+                                    <div>
+                    <v-chip
+                      :color="getReportTypeColor(report.reportType)"
+                      text-color="white"
+                      class="mb-2"
+                      size="small"
+                    >
+                      {{ getReportTypeLabel(report.reportType) }}
+                    </v-chip>
+                    <h3 class="text-subtitle-1 font-weight-bold report-title">
+                      {{ getReportReasonLabel(report.reportReasonType) }}
+                    </h3>
+                    <div class="text-caption text-grey-darken-1">
+                      신고일: {{ formatDateTime(report.createdAt) }}
+                    </div>
+                  </div>
+                </v-col>
+
+                <v-col cols="auto" class="d-flex align-center">
+                  <v-chip color="orange-darken-1" class="mr-3 status-chip" size="small">
+                    <v-icon start size="14">mdi-clock-outline</v-icon>
+                    처리 대기
+                  </v-chip>
+                  <v-btn 
+                    color="success" 
+                    variant="elevated"
+                    class="mr-2 action-btn" 
+                    @click="showApprovalDialog(report)"
+                    :loading="reportManagementStore.isReportProcessing(report.id)"
+                    :disabled="reportManagementStore.isReportProcessing(report.id)"
+                  >
+                    <v-icon start>mdi-check</v-icon>
+                    승인
+                  </v-btn>
+                  <v-btn 
+                    color="error" 
+                    variant="outlined"
+                    class="action-btn"
+                    @click="showRejectDialog(report)"
+                    :loading="reportManagementStore.isReportProcessing(report.id)"
+                    :disabled="reportManagementStore.isReportProcessing(report.id)"
+                  >
+                    <v-icon start>mdi-close</v-icon>
+                    거절
+                  </v-btn>
+                </v-col>
+              </v-row>
+
+              <v-divider class="my-4" />
+
+              <!-- 신고 상세 정보 -->
+              <v-row>
+                <v-col cols="12">
+                  <div class="detail-section">
+                    <div class="detail-header">
+                      <v-icon class="mr-1" color="orange">mdi-information-outline</v-icon>
+                      <strong>신고 상세 정보</strong>
+                    </div>
+                    <div class="detail-content">
+                      <div class="detail-item">
+                        <span class="detail-label">신고자 닉네임:</span>
+                        <span class="detail-value">{{ report.reporterNickName }}</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="detail-label">신고 대상 ID:</span>
+                        <span class="detail-value">{{ report.targetId }}</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="detail-label">신고 내용:</span>
+                        <span class="detail-value">{{ report.content }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </v-col>
+              </v-row>
+            </v-card>
           </v-col>
         </v-row>
+
+        <!-- 페이지네이션 -->
+        <div class="d-flex justify-center mt-6">
+          <Pagination
+            :current-page="currentPage"
+            :total-pages="totalPages"
+            @page-change="handlePageChange"
+          />
+        </div>
       </template>
-    </v-container>
-  </template>
-  
-  <script setup>
-  import { ref, computed } from "vue";
-import Pagination from "../../components/common/Pagination.vue";
-  
-  const page = ref(1);
-  const perPage = 2;
-  
-  const reports = ref([
-    {
-      type: "사용자",
-      date: "2025년 7월 13일 오후 01:54",
-      reason: "스팸/광고",
-      detail: "계속해서 광고성 댓글을 남깁니다.",
-    },
-    {
-      type: "강의",
-      date: "2025년 7월 12일 오후 03:54",
-      reason: "부적절한 내용",
-      detail: "강의 내용이 제목과 다릅니다.",
-    },
-    {
-      type: "게시글",
-      date: "2025년 7월 10일 오후 10:30",
-      reason: "욕설/비방",
-      detail: "댓글에 욕설이 포함되어 있습니다.",
-    },
-    {
-      type: "댓글",
-      date: "2025년 7월 9일 오전 11:20",
-      reason: "스팸/광고",
-      detail: "이 댓글은 광고성 내용입니다. 사용자가 부적절한 언어를 사용했습니다.",
-    },
-    {
-      type: "사용자",
-      date: "2025년 7월 8일 오후 02:15",
-      reason: "부적절한 언어 사용",
-      detail: "사용자가 부적절한 언어를 사용했습니다.",
-    },
-    {
-      type: "강의",
-      date: "2025년 7월 7일 오전 09:45",
-      reason: "저작권 침해",
-      detail: "강의 내용이 저작권을 침해하고 있습니다.",
-    },
-    {
-      type: "게시글",
-      date: "2025년 7월 6일 오후 04:30",
-      reason: "허위 정보",
-      detail: "게시글에 허위 정보가 포함되어 있습니다.",
-    },
-  ]);
-  
-  const visibleReports = computed(() => {
-    const start = (page.value - 1) * perPage;
-    return reports.value.slice(start, start + perPage);
-  });
-  
-  const pageCount = computed(() => Math.ceil(reports.value.length / perPage));
-  
-  function dismissReport(index) {
-    const globalIndex = (page.value - 1) * perPage + index;
-    reports.value.splice(globalIndex, 1);
+    </template>
+
+    <!-- 승인 확인 모달 -->
+    <ApprovalConfirmModal
+      v-model="approvalDialog"
+      :item-name="selectedReportTitle"
+      item-type="신고"
+      :loading="reportManagementStore.isReportProcessing(selectedReport?.id)"
+      @confirm="approveReport"
+    />
+
+    <!-- 거절 확인 모달 -->
+    <RejectConfirmModal
+      v-model="rejectDialog"
+      :item-name="selectedReportTitle"
+      item-type="신고"
+      :loading="reportManagementStore.isReportProcessing(selectedReport?.id)"
+      @confirm="rejectReport"
+    />
+
+    <!-- 공용 스낵바 -->
+    <CommonSnackbar
+      v-if="showSnackbar"
+      :type="snackbarType"
+      :title="snackbarTitle"
+      :message="snackbarMessage"
+      @close="closeSnackbar"
+    />
+  </v-container>
+</template>
+
+<script setup>
+import { ref, computed, onMounted, watch } from 'vue';
+import { useReportManagementStore } from '@/store/admin/reportManagement';
+import ErrorAlert from '@/components/common/ErrorAlert.vue';
+import Pagination from '../../components/common/Pagination.vue';
+import CommonSnackbar from '../../components/common/CommonSnackbar.vue';
+import ApprovalConfirmModal from '../../components/common/ApprovalConfirmModal.vue';
+import RejectConfirmModal from '../../components/common/RejectConfirmModal.vue';
+import { formatDateTime } from '@/utils/timeUtils';
+
+const reportManagementStore = useReportManagementStore();
+
+// 탭 상태
+const activeTab = ref('all');
+
+// 페이지네이션
+const currentPage = ref(1);
+const perPage = 5;
+
+// 승인/거절 다이얼로그 관련
+const approvalDialog = ref(false);
+const rejectDialog = ref(false);
+const selectedReport = ref(null);
+const selectedReportTitle = ref('');
+
+// 스낵바 관련
+const showSnackbar = ref(false);
+const snackbarType = ref('success');
+const snackbarTitle = ref('');
+const snackbarMessage = ref('');
+
+// 모든 신고 목록
+const allReports = computed(() => {
+  return reportManagementStore.getReports;
+});
+
+// 사용자 신고만 필터링
+const userReports = computed(() => {
+  return allReports.value.filter(report => report.reportType === 'USER');
+});
+
+// 레시피 신고만 필터링
+const recipeReports = computed(() => {
+  return allReports.value.filter(report => report.reportType === 'RECIPE');
+});
+
+// 댓글 신고만 필터링
+const commentReports = computed(() => {
+  return allReports.value.filter(report => report.reportType === 'COMMENT');
+});
+
+// 탭에 따른 필터링된 신고 목록
+const filteredReports = computed(() => {
+  switch (activeTab.value) {
+    case 'user':
+      return userReports.value;
+    case 'recipe':
+      return recipeReports.value;
+    case 'comment':
+      return commentReports.value;
+    default:
+      return allReports.value;
   }
-  
-  function resolveReport(index) {
-    const globalIndex = (page.value - 1) * perPage + index;
-    reports.value.splice(globalIndex, 1);
+});
+
+// 페이지네이션된 신고 목록
+const paginatedReports = computed(() => {
+  const start = (currentPage.value - 1) * perPage;
+  return filteredReports.value.slice(start, start + perPage);
+});
+
+const totalPages = computed(() => Math.ceil(filteredReports.value.length / perPage));
+
+// 탭이 변경될 때 첫 페이지로 이동
+watch(activeTab, () => {
+  currentPage.value = 1;
+});
+
+// 페이지 변경 시 상단으로 스크롤
+const handlePageChange = (page) => {
+  currentPage.value = page;
+  // 상단으로 스크롤
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+// 빈 상태 메시지
+const getEmptyMessage = () => {
+  switch (activeTab.value) {
+    case 'user':
+      return '사용자 신고가 없습니다';
+    case 'recipe':
+      return '레시피 신고가 없습니다';
+    case 'comment':
+      return '댓글 신고가 없습니다';
+    default:
+      return '처리할 신고가 없습니다';
   }
-  </script>
-  
-  <style scoped>
+};
+
+const getEmptyDescription = () => {
+  switch (activeTab.value) {
+    case 'user':
+      return '사용자 신고가 접수되면 이곳에 표시됩니다.';
+    case 'recipe':
+      return '레시피 신고가 접수되면 이곳에 표시됩니다.';
+    case 'comment':
+      return '댓글 신고가 접수되면 이곳에 표시됩니다.';
+    default:
+      return '새로운 신고가 접수되면 이곳에 표시됩니다.';
+  }
+};
+
+// 신고 유형별 색상
+const getReportTypeColor = (reportType) => {
+  const colors = {
+    'USER': 'red',
+    'LECTURE': 'blue',
+    'RECIPE': 'green',
+    'COMMENT': 'orange',
+  };
+  return colors[reportType] || 'grey';
+};
+
+// 신고 유형별 라벨
+const getReportTypeLabel = (reportType) => {
+  const labels = {
+    'USER': '사용자',
+    'LECTURE': '강의',
+    'RECIPE': '레시피',
+    'COMMENT': '댓글',
+  };
+  return labels[reportType] || '기타';
+};
+
+// 신고 사유별 라벨
+const getReportReasonLabel = (reasonType) => {
+  const labels = {
+    'SPAM_OR_ADS': ' 스팸 또는 광고',
+    'INCORRECT_CONTENTS': '잘못된 내용',
+    'BOTHER_OR_SPIT': ' 불쾌감 또는 혐오',
+    'FRAUD_INFORMATION': '사기 정보',
+    'AUTHORIZATION': '권한 침해',
+    'ETC': '기타',
+  };
+  return labels[reasonType] || '기타';
+};
+
+// 승인 다이얼로그 표시
+const showApprovalDialog = (report) => {
+  selectedReport.value = report;
+  selectedReportTitle.value = `${getReportTypeLabel(report.reportType)} 신고`;
+  approvalDialog.value = true;
+};
+
+// 신고 승인
+const approveReport = async () => {
+  try {
+    await reportManagementStore.approveReport(selectedReport.value.id);
+    approvalDialog.value = false;
+  } catch (error) {
+    console.error('신고 승인 실패:', error);
+    // 네트워크 오류가 아닌 경우에만 스낵바 메시지 표시
+    if (!error.message || (!error.message.includes('서버와의 연결') && !error.message.includes('네트워크 연결'))) {
+      snackbarType.value = 'error';
+      snackbarTitle.value = '오류';
+      snackbarMessage.value = error.message || '신고 승인에 실패했습니다.';
+      showSnackbar.value = true;
+    }
+  }
+};
+
+// 거절 다이얼로그 표시
+const showRejectDialog = (report) => {
+  selectedReport.value = report;
+  selectedReportTitle.value = `${getReportTypeLabel(report.reportType)} 신고`;
+  rejectDialog.value = true;
+};
+
+// 신고 거절
+const rejectReport = async (reason) => {
+  try {
+    await reportManagementStore.rejectReport(selectedReport.value.id, reason);
+    rejectDialog.value = false;
+  } catch (error) {
+    console.error('신고 거절 실패:', error);
+    // 네트워크 오류가 아닌 경우에만 스낵바 메시지 표시
+    if (!error.message || (!error.message.includes('서버와의 연결') && !error.message.includes('네트워크 연결'))) {
+      snackbarType.value = 'error';
+      snackbarTitle.value = '오류';
+      snackbarMessage.value = error.message || '신고 거절에 실패했습니다.';
+      showSnackbar.value = true;
+    }
+  }
+};
+
+// 성공 메시지 감시
+watch(() => reportManagementStore.getSuccessMessage, (newMessage) => {
+  if (newMessage) {
+    snackbarType.value = 'success';
+    snackbarTitle.value = '성공';
+    snackbarMessage.value = newMessage;
+    showSnackbar.value = true;
+    
+    // 1초 후 자동으로 닫기
+    setTimeout(() => {
+      closeSnackbar();
+    }, 1000);
+  }
+});
+
+// 스낵바 닫기
+const closeSnackbar = () => {
+  showSnackbar.value = false;
+  reportManagementStore.clearMessages();
+};
+
+// 컴포넌트 마운트 시 데이터 로드
+onMounted(async () => {
+  await reportManagementStore.fetchReports(0, 50);
+});
+</script>
+
+<style scoped>
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+}
+
+.loading-text {
+  margin-top: 20px;
+  color: #666;
+  font-size: 1.1rem;
+}
+
+.error-container {
+  margin: 20px 0;
+}
+
+/* 탭 스타일 */
+.custom-tabs {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.tab-item {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: 600;
+  border-radius: 10px !important;
+  margin: 4px;
+  position: relative;
+}
+
+/* 탭 정렬 수정 */
+.custom-tabs .v-tab {
+  justify-content: flex-start !important;
+  text-align: left !important;
+}
+
+.report-card {
+  margin-bottom: 16px;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+border-radius: 12px;
+  overflow: hidden;
+}
+
+.report-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+}
+
+.report-card.processing {
+  opacity: 0.6;
+  transform: scale(0.98);
+  pointer-events: none;
+}
+
+/* 부드러운 제거 애니메이션 */
+.report-card-enter-active,
+.report-card-leave-active {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.report-card-leave-to {
+  opacity: 0;
+  transform: translateX(-100%);
+  height: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.report-title {
+  color: #2c3e50;
+  margin: 8px 0 4px 0;
+}
+
+.status-chip {
+  font-weight: 500;
+}
+
+.action-btn {
+  font-weight: 600;
+  min-width: 80px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 상세 정보 스타일 */
+.detail-section {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 8px;
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: 1rem;
+  color: #2c3e50;
+font-weight: 600;
+}
+
+.detail-content {
+  margin-left: 24px;
+}
+
+.detail-item {
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detail-label {
+  font-weight: 600;
+  color: #495057;
+  min-width: 120px;
+}
+
+.detail-value {
+  color: #2c3e50;
+  flex: 1;
+}
+
+/* 반응형 스타일 */
+@media (max-width: 768px) {
   .report-card {
-    border-radius: 12px;
-    overflow: hidden;
-    background-color: #ffffff;
-    padding: 0;
+    margin-bottom: 12px;
   }
   
-  .report-header {
-    background-color: #ffe5e5;
-    border-bottom: 1px solid #ffd6d6;
-    border-top-left-radius: 12px;
-    border-top-right-radius: 12px;
+  .detail-section {
+    padding: 12px;
   }
   
-  .white-area {
-    background-color: #ffffff;
+  .detail-content {
+    margin-left: 0;
   }
   
-  .v-sheet {
-    background-color: #f9fafc !important;
-    white-space: pre-wrap;
-    border-radius: 8px;
+  .detail-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
   }
   
-  .custom-chip {
-    border-color: #f4caca;
-    color: #444;
-    font-weight: 500;
-    font-size: 13px;
-    background-color: transparent;
-    border-radius: 16px;
-    padding: 2px 10px;
+  .detail-label {
+    min-width: auto;
+    font-size: 0.9rem;
   }
-  </style>
+  
+  .action-btn {
+    min-width: 70px;
+    font-size: 0.9rem;
+  }
+}
+</style>
   

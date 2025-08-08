@@ -454,7 +454,6 @@
 import Header from '@/components/Header.vue';
 import { useCartStore } from '@/views/cart/cart.js';
 
-
 export default {
   name: 'LectureDetail',
   components: { Header },

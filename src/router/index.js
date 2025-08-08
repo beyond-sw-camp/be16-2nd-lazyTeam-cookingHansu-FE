@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import AdminLayout from '@/layouts/admin/AdminLayout.vue' 
 import Dashboard from '@/views/admin/Dashboard.vue'
 import LectureApproval from '@/views/admin/LectureApproval.vue'
-import ChefApproval from '@/views/admin/ChefApproval.vue'
+import UserApproval from '@/views/admin/UserApproval.vue'
 import NoticeManagement from '@/views/admin/NoticeManagement.vue'
 import UserManagement from '@/views/admin/UserManagement.vue'
 import ReportManagement from '@/views/admin/reportManagement.vue'
@@ -19,7 +19,6 @@ import RecipeMainPage from '@/views/home/RecipeMainPage.vue'
 import LectureList from '@/views/home/LectureList.vue'
 import LectureDetail from '@/views/lecture/LectureDetail.vue'
 import CartPage from '@/views/cart/CartPage.vue'
-
 
 import PaymentDetails from '@/views/payment/PaymentDetails.vue'
 // toss sdk 결제 성공시 페이지 이동
@@ -53,7 +52,7 @@ const routes = [
       { path: '', redirect: '/admin/dashboard' }, // 기본 경로 → 대시보드로 리디렉트
       { path: 'dashboard', name: 'Dashboard', component: Dashboard },
       { path: 'lecture-approval', name: '/LectureApproval', component: LectureApproval },
-      { path: 'chef-approval', name: 'ChefApproval', component: ChefApproval },
+      { path: 'user-approval', name: 'UserApproval', component: UserApproval },
       { path: 'notice-management', name: 'NoticeManagement', component: NoticeManagement },
       { path: 'user-management', name: 'UserManagement', component: UserManagement },
       { path: "report-management", name: "ReportManagement", component: ReportManagement },
@@ -109,7 +108,7 @@ const routes = [
       { path: 'recipes', name: 'RecipeMainPage', component: RecipeMainPage },
       { path: 'lectures', name: 'LectureList', component: LectureList },
       { path: 'lectures/:id', name: 'LectureDetail', component: LectureDetail },
-      // { path: 'cart', name: 'CartPage', component: CartPage },
+      { path: 'cart', name: 'CartPage', component: CartPage },
       {
         path: 'chat',
         name: 'Chat',

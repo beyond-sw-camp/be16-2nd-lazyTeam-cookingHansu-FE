@@ -43,9 +43,9 @@ export default {
         route: "/admin/lecture-approval",
       },
       {
-        text: "요리사 승인",
-        icon: new URL("@/assets/icons/chef_approval.ico", import.meta.url).href,
-        route: "/admin/chef-approval",
+        text: "사용자 승인 관리",
+        icon: new URL("@/assets/icons/user_approval.ico", import.meta.url).href,
+        route: "/admin/user-approval",
       },
       {
         text: "공지사항 관리",
