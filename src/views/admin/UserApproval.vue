@@ -29,7 +29,7 @@
       <p class="loading-text">사용자 목록을 불러오는 중...</p>
     </div>
 
-    <!-- 에러 상태 -->
+    <!-- 에러 상태 (네트워크 연결 오류만) -->
     <div v-else-if="userApprovalStore.getError" class="error-container">
       <ErrorAlert
         title="연결 오류"
@@ -246,6 +246,28 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- 성공 스낵바 -->
+    <v-snackbar
+      v-model="showSuccessSnackbar"
+      :timeout="1000"
+      color="success"
+      location="top"
+    >
+      <v-icon start>mdi-check-circle</v-icon>
+      {{ userApprovalStore.getSuccessMessage }}
+    </v-snackbar>
+
+    <!-- 에러 스낵바 -->
+    <v-snackbar
+      v-model="showErrorSnackbar"
+      :timeout="1000"
+      color="error"
+      location="top"
+    >
+      <v-icon start>mdi-alert-circle</v-icon>
+      {{ errorMessage }}
+    </v-snackbar>
   </v-container>
 </template>
 
@@ -274,6 +296,11 @@ const rejectReason = ref('')
 // 이미지 모달
 const dialog = ref(false);
 const dialogImageUrl = ref("");
+
+// 스낵바 관련
+const showSuccessSnackbar = ref(false);
+const showErrorSnackbar = ref(false);
+const errorMessage = ref('');
 
 // 모든 사용자 목록 (요리사 + 자영업자)
 const allUsers = computed(() => {
@@ -328,6 +355,35 @@ watch(activeTab, () => {
   currentPage.value = 1;
 });
 
+// 성공 메시지 감시
+watch(() => userApprovalStore.getSuccessMessage, (newMessage) => {
+  if (newMessage) {
+    showSuccessSnackbar.value = true;
+  }
+});
+
+// 성공 스낵바 닫힐 때 메시지 초기화
+watch(showSuccessSnackbar, (newValue) => {
+  if (!newValue && userApprovalStore.getSuccessMessage) {
+    userApprovalStore.clearMessages();
+  }
+});
+
+// 로딩 에러 감시 (API 오류 시 토스트 표시)
+watch(() => userApprovalStore.getLoadError, (newError) => {
+  if (newError) {
+    errorMessage.value = newError;
+    showErrorSnackbar.value = true;
+  }
+});
+
+// 에러 스낵바 닫힐 때 로드 에러 초기화
+watch(showErrorSnackbar, (newValue) => {
+  if (!newValue && userApprovalStore.getLoadError) {
+    userApprovalStore.clearMessages();
+  }
+});
+
 // 사용자 정보 헬퍼 함수들
 const getUserAvatar = (user) => {
   if (user.roleType === 'chef') {
@@ -341,9 +397,13 @@ const getUserAvatar = (user) => {
 const approveUser = async (user) => {
   try {
     await userApprovalStore.approveUser(user.id);
-    // 성공 메시지 표시
   } catch (error) {
     console.error('사용자 승인 실패:', error);
+    // 네트워크 오류가 아닌 경우에만 토스트 메시지 표시
+    if (!error.message || (!error.message.includes('서버와의 연결') && !error.message.includes('네트워크 연결'))) {
+      errorMessage.value = error.message || '사용자 승인에 실패했습니다.';
+      showErrorSnackbar.value = true;
+    }
   }
 };
 
@@ -362,9 +422,13 @@ const rejectUser = async () => {
   try {
     await userApprovalStore.rejectUser(selectedUser.value.id, rejectReason.value);
     rejectDialog.value = false;
-    // 성공 메시지 표시
   } catch (error) {
     console.error('사용자 거절 실패:', error);
+    // 네트워크 오류가 아닌 경우에만 토스트 메시지 표시
+    if (!error.message || (!error.message.includes('서버와의 연결') && !error.message.includes('네트워크 연결'))) {
+      errorMessage.value = error.message || '사용자 거절에 실패했습니다.';
+      showErrorSnackbar.value = true;
+    }
   }
 };
 
@@ -400,14 +464,10 @@ const getEmptyDescription = () => {
 
 // 컴포넌트 마운트 시 데이터 로드
 onMounted(async () => {
-  try {
-    await Promise.all([
-      userApprovalStore.fetchWaitingChefs(),
-      userApprovalStore.fetchWaitingBusinesses()
-    ]);
-  } catch (error) {
-    console.error('사용자 승인 목록 로드 실패:', error);
-  }
+  await Promise.all([
+    userApprovalStore.fetchWaitingChefs(),
+    userApprovalStore.fetchWaitingBusinesses()
+  ]);
 });
 </script>
 

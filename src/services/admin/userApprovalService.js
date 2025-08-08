@@ -34,7 +34,7 @@ export const userApprovalService = {
   // 사용자 거절
   async rejectUser(userId, rejectReason) {
     const response = await apiPatch(`${API_ENDPOINTS.REJECT_USER}/${userId}`, {
-      rejectReason: rejectReason
+      reason: rejectReason
     });
     return handleApiResponse(response);
   },

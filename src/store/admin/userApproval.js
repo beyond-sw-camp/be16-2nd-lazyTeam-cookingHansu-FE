@@ -9,7 +9,9 @@ export const useUserApprovalStore = defineStore('userApproval', {
     
     // UI 상태
     loading: false,
-    error: null,
+    error: null, // 네트워크 연결 오류
+    successMessage: null,
+    loadError: null, // 데이터 로딩 API 오류
     
     // 페이지네이션
     chefPagination: {
@@ -34,6 +36,8 @@ export const useUserApprovalStore = defineStore('userApproval', {
     // UI 상태
     isLoading: (state) => state.loading,
     getError: (state) => state.error,
+    getSuccessMessage: (state) => state.successMessage,
+    getLoadError: (state) => state.loadError,
     
     // 페이지네이션 정보
     getChefPaginationInfo: (state) => state.chefPagination,
@@ -46,10 +50,15 @@ export const useUserApprovalStore = defineStore('userApproval', {
   },
 
   actions: {
-    // 에러 처리 헬퍼
+    // 에러 처리 헬퍼 - 네트워크 에러는 전체 UI 에러로, API 에러는 throw만
     _handleError(error, defaultMessage) {
       console.error(defaultMessage, error);
-      this.error = error.message || defaultMessage;
+      
+      // 네트워크 연결 오류인지 확인 (api.js에서 처리된 메시지)
+      if (error.message && (error.message.includes('서버와의 연결') || error.message.includes('네트워크 연결'))) {
+        this.error = error.message || defaultMessage;
+      }
+      
       throw error;
     },
 
@@ -58,10 +67,27 @@ export const useUserApprovalStore = defineStore('userApproval', {
       this.loading = loading;
     },
 
+    // 성공 메시지 설정
+    setSuccessMessage(message) {
+      this.successMessage = message;
+      // 1초 후 자동으로 메시지 제거
+      setTimeout(() => {
+        this.successMessage = null;
+      }, 1000);
+    },
+
+    // 메시지 초기화
+    clearMessages() {
+      this.successMessage = null;
+      this.error = null;
+      this.loadError = null;
+    },
+
     // 요리사 승인 대기 목록 조회
     async fetchWaitingChefs(page = 0, size = 10) {
       this._setLoading(true);
       this.error = null;
+      this.loadError = null;
       
       try {
         const apiResponse = await userApprovalService.getWaitingChefs(page, size);
@@ -75,7 +101,22 @@ export const useUserApprovalStore = defineStore('userApproval', {
           pageSize: size,
         };
       } catch (error) {
-        this._handleError(error, '요리사 승인 대기 목록을 불러오는데 실패했습니다.');
+        console.error('요리사 승인 대기 목록을 불러오는데 실패했습니다.', error);
+        
+        // 네트워크 연결 오류인지 확인 (api.js에서 처리된 메시지)
+        if (error.message && (error.message.includes('서버와의 연결') || error.message.includes('네트워크 연결'))) {
+          this.error = error.message;
+        } else {
+          // API 에러는 loadError에 저장하고 빈 목록 표시
+          this.loadError = error.message || '요리사 승인 대기 목록을 불러오는데 실패했습니다.';
+          this.waitingChefs = [];
+          this.chefPagination = {
+            totalPages: 0,
+            currentPage: 0,
+            totalElements: 0,
+            pageSize: size,
+          };
+        }
       } finally {
         this._setLoading(false);
       }
@@ -85,6 +126,7 @@ export const useUserApprovalStore = defineStore('userApproval', {
     async fetchWaitingBusinesses(page = 0, size = 10) {
       this._setLoading(true);
       this.error = null;
+      this.loadError = null;
       
       try {
         const apiResponse = await userApprovalService.getWaitingBusinesses(page, size);
@@ -98,7 +140,22 @@ export const useUserApprovalStore = defineStore('userApproval', {
           pageSize: size,
         };
       } catch (error) {
-        this._handleError(error, '자영업자 승인 대기 목록을 불러오는데 실패했습니다.');
+        console.error('자영업자 승인 대기 목록을 불러오는데 실패했습니다.', error);
+        
+        // 네트워크 연결 오류인지 확인 (api.js에서 처리된 메시지)
+        if (error.message && (error.message.includes('서버와의 연결') || error.message.includes('네트워크 연결'))) {
+          this.error = error.message;
+        } else {
+          // API 에러는 loadError에 저장하고 빈 목록 표시
+          this.loadError = error.message || '자영업자 승인 대기 목록을 불러오는데 실패했습니다.';
+          this.waitingBusinesses = [];
+          this.businessPagination = {
+            totalPages: 0,
+            currentPage: 0,
+            totalElements: 0,
+            pageSize: size,
+          };
+        }
       } finally {
         this._setLoading(false);
       }
@@ -107,10 +164,10 @@ export const useUserApprovalStore = defineStore('userApproval', {
     // 사용자 승인
     async approveUser(userId) {
       this._setLoading(true);
-      this.error = null;
       
       try {
         await userApprovalService.approveUser(userId);
+        this.setSuccessMessage('사용자 승인이 완료되었습니다.');
         // 승인 후 목록 새로고침
         await this.fetchWaitingChefs(this.chefPagination.currentPage, this.chefPagination.pageSize);
         await this.fetchWaitingBusinesses(this.businessPagination.currentPage, this.businessPagination.pageSize);
@@ -124,10 +181,10 @@ export const useUserApprovalStore = defineStore('userApproval', {
     // 사용자 거절
     async rejectUser(userId, rejectReason) {
       this._setLoading(true);
-      this.error = null;
       
       try {
         await userApprovalService.rejectUser(userId, rejectReason);
+        this.setSuccessMessage('사용자 거절이 완료되었습니다.');
         // 거절 후 목록 새로고침
         await this.fetchWaitingChefs(this.chefPagination.currentPage, this.chefPagination.pageSize);
         await this.fetchWaitingBusinesses(this.businessPagination.currentPage, this.businessPagination.pageSize);
@@ -149,6 +206,8 @@ export const useUserApprovalStore = defineStore('userApproval', {
       this.waitingBusinesses = [];
       this.loading = false;
       this.error = null;
+      this.successMessage = null;
+      this.loadError = null;
       this.chefPagination = {
         totalPages: 0,
         currentPage: 0,
