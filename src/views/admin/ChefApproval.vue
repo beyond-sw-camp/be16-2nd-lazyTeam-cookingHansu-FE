@@ -117,24 +117,17 @@
       </v-row>
 
       <!-- 페이지네이션 -->
-      <v-row justify="center" class="mt-6">
-        <v-pagination
-          :key="totalPages"
-          v-model="currentPage"
-          :length="totalPages"
-          :total-visible="10"
-          color="orange"
-          size="small"
-          class="pagination"
-          prev-icon="mdi-chevron-left"
-          next-icon="mdi-chevron-right"
-        />
-      </v-row>
+      <Pagination
+        :current-page="currentPage"
+        :total-pages="totalPages"
+        @page-change="currentPage = $event"
+      />
     </template>
   </v-container>
 </template>
 <script setup>
 import { ref, computed } from "vue";
+import Pagination from "../../components/common/Pagination.vue";
 
 const users = ref([
   {

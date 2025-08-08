@@ -25,6 +25,10 @@ import PaymentDetails from '@/views/payment/PaymentDetails.vue'
 import MyPage from '@/views/MyPage/MyPage.vue'
 
 import chat from '@/views/chat/chatScreen.vue'
+import NoticeList from '@/views/notice/NoticeList.vue'
+import NoticeDetail from '@/views/notice/NoticeDetail.vue'
+import NoticeCreate from '@/views/notice/NoticeCreate.vue'
+import NoticeEdit from '@/views/notice/NoticeEdit.vue'
 
 const routes = [
   {
@@ -98,6 +102,10 @@ const routes = [
         component: chat,
       },
       { path: 'mypage', name: 'MyPage', component: MyPage },
+      { path: 'notice', name: 'NoticeList', component: NoticeList },
+      { path: 'notice/:id', name: 'NoticeDetail', component: NoticeDetail },
+      { path: 'notice/create', name: 'NoticeCreate', component: NoticeCreate },
+      { path: 'notice/edit/:id', name: 'NoticeEdit', component: NoticeEdit },
     ],
   },
 ]
