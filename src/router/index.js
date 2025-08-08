@@ -20,6 +20,7 @@ import LectureList from '@/views/home/LectureList.vue'
 import LectureDetail from '@/views/lecture/LectureDetail.vue'
 import CartPage from '@/views/cart/CartPage.vue'
 
+
 import PaymentDetails from '@/views/payment/PaymentDetails.vue'
 // toss sdk 결제 성공시 페이지 이동
 import PaymentSuccess from '@/views/payment/PaymentSuccess.vue'
@@ -28,6 +29,10 @@ import PaymentFail from '@/views/payment/PaymentFail.vue'
 import MyPage from '@/views/MyPage/MyPage.vue'
 
 import chat from '@/views/chat/chatScreen.vue'
+import NoticeList from '@/views/notice/NoticeList.vue'
+import NoticeDetail from '@/views/notice/NoticeDetail.vue'
+import NoticeCreate from '@/views/notice/NoticeCreate.vue'
+import NoticeEdit from '@/views/notice/NoticeEdit.vue'
 
 const routes = [
   {
@@ -104,13 +109,17 @@ const routes = [
       { path: 'recipes', name: 'RecipeMainPage', component: RecipeMainPage },
       { path: 'lectures', name: 'LectureList', component: LectureList },
       { path: 'lectures/:id', name: 'LectureDetail', component: LectureDetail },
-      { path: 'cart', name: 'CartPage', component: CartPage },
+      // { path: 'cart', name: 'CartPage', component: CartPage },
       {
         path: 'chat',
         name: 'Chat',
         component: chat,
       },
       { path: 'mypage', name: 'MyPage', component: MyPage },
+      { path: 'notice', name: 'NoticeList', component: NoticeList },
+      { path: 'notice/:id', name: 'NoticeDetail', component: NoticeDetail },
+      { path: 'notice/create', name: 'NoticeCreate', component: NoticeCreate },
+      { path: 'notice/edit/:id', name: 'NoticeEdit', component: NoticeEdit },
     ],
   },
 ]

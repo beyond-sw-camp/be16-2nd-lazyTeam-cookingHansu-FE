@@ -80,17 +80,11 @@
         </v-card>
   
         <!-- Pagination -->
-        <v-row justify="center" class="mt-6">
-          <v-pagination
-            v-model="page"
-            :length="pageCount"
-            :total-visible="7"
-            color="orange"
-            size="small"
-            prev-icon="mdi-chevron-left"
-            next-icon="mdi-chevron-right"
-          />
-        </v-row>
+        <Pagination
+          :current-page="page"
+          :total-pages="pageCount"
+          @page-change="page = $event"
+        />
       </template>
     </v-container>
   </template>
@@ -98,6 +92,7 @@
   
   <script setup>
   import { ref, computed } from 'vue'
+import Pagination from '../../components/common/Pagination.vue'
   
   const page = ref(1)
   const perPage = 5
