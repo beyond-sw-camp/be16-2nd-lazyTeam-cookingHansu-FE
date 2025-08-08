@@ -1,28 +1,11 @@
 <template>
-  <v-container fluid class="pa-4" style="margin-top: 80px; height: 80vh;">
-    <!-- 로딩 상태 -->
-    <LoadingScreen 
-      v-if="loading"
-      title="채팅방을 준비하고 있어요"
-      description="잠시만 기다려주세요..."
-    />
-
-    <!-- 네트워크 연결 오류 -->
-    <div v-else-if="error" class="error-container">
-      <ErrorAlert
-        title="연결 오류"
-        :message="error"
-        @close="chatStore.clearError"
-      />
-    </div>
-
-    <!-- 정상 채팅 화면 -->
-    <v-row v-else no-gutters class="chat-wrapper" style="height: 100%;">
+  <v-container fluid class="pa-6" style="margin-top: 80px;">
+    <v-row no-gutters class="chat-wrapper" style="min-height: 600px">
       <!-- 채팅 목록 -->
       <v-col md="1.5" />
       <v-col cols="12" md="3" class="chat-list">
-        <v-sheet class="h-100 pa-3" elevation="2">
-          <div class="d-flex justify-space-between align-center mb-3">
+        <v-sheet class="h-100 pa-4" elevation="2">
+          <div class="d-flex justify-space-between align-center mb-4">
             <h3 class="text-h6 font-weight-bold">채팅 목록</h3>
             <v-chip 
               v-if="totalUnreadCount > 0" 
@@ -34,12 +17,11 @@
             </v-chip>
           </div>
         
-          <!-- 채팅방 목록 -->
           <div
             ref="chatScroll"
             class="chat-scroll-wrapper"
             @scroll.passive="onScroll"
-            style="height: calc(100% - 60px); overflow-y: auto"
+            style="max-height: calc(100vh - 200px); overflow-y: auto"
           >
             <v-list dense nav>
               <v-list-item
@@ -89,33 +71,15 @@
                 </div>
               </v-list-item>
               
-              <!-- 개선된 빈 상태 -->
-              <div v-if="rooms.length === 0" class="empty-chat-state">
-                <div class="empty-chat-content">
-                  <div class="empty-chat-icon">
-                    <v-icon size="64" color="orange lighten-3">mdi-chat-outline</v-icon>
-                  </div>
-                  <h3 class="empty-chat-title">아직 대화가 없어요</h3>
-                  <p class="empty-chat-description">
-                    게시글이나 강의에서 상대방 프로필을 클릭하여<br>
-                    1:1 대화를 시작해보세요
-                  </p>
-                  <div class="empty-chat-features">
-                    <div class="feature-item">
-                      <v-icon size="20" color="orange">mdi-account-circle</v-icon>
-                      <span>레시피 게시글에서 요리사 프로필 클릭</span>
-                    </div>
-                    <div class="feature-item">
-                      <v-icon size="20" color="orange">mdi-play-circle</v-icon>
-                      <span>강의에서 강사 프로필 클릭</span>
-                    </div>
-                    <div class="feature-item">
-                      <v-icon size="20" color="orange">mdi-message-text</v-icon>
-                      <span>1:1 대화하기 버튼으로 채팅 시작</span>
-                    </div>
+              <!-- 빈 상태 -->
+              <v-list-item v-if="!loading && rooms.length === 0" class="text-center">
+                <div class="d-flex flex-column align-center justify-center py-8">
+                  <v-icon size="48" color="grey">mdi-chat-outline</v-icon>
+                  <div class="mt-2 text-subtitle-1 text-grey">
+                    아직 채팅방이 없습니다
                   </div>
                 </div>
-              </div>
+              </v-list-item>
             </v-list>
           </div>
         </v-sheet>
@@ -128,29 +92,12 @@
           elevation="2"
         >
           <template v-if="selectedChatId === null">
-            <div class="empty-chat-detail">
-              <div class="empty-chat-detail-content">
-                <div class="empty-chat-detail-icon">
-                  <v-icon size="80" color="orange lighten-4">mdi-chat-bubble-outline</v-icon>
-                </div>
-                <h3 class="empty-chat-detail-title">채팅방을 선택해보세요</h3>
-                <p class="empty-chat-detail-description">
-                  왼쪽에서 채팅방을 선택하면 여기에 대화가 표시됩니다
-                </p>
-                <div class="empty-chat-detail-features">
-                  <div class="feature-item">
-                    <v-icon size="20" color="orange">mdi-check-circle</v-icon>
-                    <span>실시간 메시지 전송</span>
-                  </div>
-                  <div class="feature-item">
-                    <v-icon size="20" color="orange">mdi-check-circle</v-icon>
-                    <span>파일 및 이미지 공유</span>
-                  </div>
-                  <div class="feature-item">
-                    <v-icon size="20" color="orange">mdi-check-circle</v-icon>
-                    <span>읽음 확인 기능</span>
-                  </div>
-                </div>
+            <div
+              class="fill-height d-flex flex-column align-center justify-center text-grey"
+            >
+              <v-icon size="48">mdi-chat-outline</v-icon>
+              <div class="mt-2 text-subtitle-1">
+                채팅을 선택하여 대화를 시작하세요
               </div>
             </div>
           </template>
@@ -168,25 +115,17 @@ import { ref, computed, onMounted } from "vue";
 import { storeToRefs } from 'pinia';
 import { useChatStore } from '@/store/chat/chat';
 import ChatDetailView from "@/views/chat/chatDetailScreen.vue";
-import ErrorAlert from "@/components/common/ErrorAlert.vue";
-import LoadingScreen from "@/components/common/LoadingScreen.vue";
 import { formatChatTime } from '@/utils/timeUtils';
 
 const chatStore = useChatStore();
-const { 
-  getRooms: rooms, 
-  getCurrentRoomId: currentRoomId, 
-  isLoading: loading, 
-  getTotalUnreadCount: totalUnreadCount, 
-  getError: error 
-} = storeToRefs(chatStore);
+const { rooms, currentRoomId, loading, totalUnreadCount } = storeToRefs(chatStore);
 
 const selectChat = (roomId) => {
   chatStore.selectRoom(roomId);
 };
 
-const selectedChatId = computed(() => chatStore.getCurrentRoomId);
-const selectedChat = computed(() => chatStore.getCurrentRoom);
+const selectedChatId = computed(() => chatStore.currentRoomId);
+const selectedChat = computed(() => chatStore.currentRoom);
 
 const chatScroll = ref(null);
 const visibleCount = ref(10);
@@ -201,141 +140,9 @@ const onScroll = () => {
   }
 };
 
+
+
 onMounted(() => {
   chatStore.fetchMyChatRooms();
 });
 </script>
-
-<style scoped>
-/* 에러 컨테이너 스타일 */
-.error-container {
-  max-width: 1400px;
-  margin: 0 auto 20px auto;
-}
-
-/* 빈 채팅 상태 스타일 */
-.empty-chat-state {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 300px;
-  padding: 30px 20px;
-}
-
-.empty-chat-content {
-  text-align: center;
-  max-width: 280px;
-}
-
-.empty-chat-icon {
-  margin-bottom: 20px;
-}
-
-.empty-chat-title {
-  font-size: 1.3rem;
-  font-weight: 600;
-  color: #2c3e50;
-  margin-bottom: 10px;
-}
-
-.empty-chat-description {
-  color: #7f8c8d;
-  font-size: 0.9rem;
-  line-height: 1.4;
-  margin-bottom: 20px;
-}
-
-.empty-chat-features {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  align-items: center;
-  margin-top: 16px;
-}
-
-.feature-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: #34495e;
-  font-size: 0.85rem;
-  padding: 6px 12px;
-  background: rgba(255, 152, 0, 0.1);
-  border-radius: 16px;
-  border: 1px solid rgba(255, 152, 0, 0.2);
-}
-
-/* 빈 채팅 상세 상태 스타일 */
-.empty-chat-detail {
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  height: 100%;
-  padding: 30px;
-  padding-top: 60px;
-}
-
-.empty-chat-detail-content {
-  text-align: center;
-  max-width: 350px;
-}
-
-.empty-chat-detail-icon {
-  margin-bottom: 24px;
-}
-
-.empty-chat-detail-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #2c3e50;
-  margin-bottom: 12px;
-}
-
-.empty-chat-detail-description {
-  color: #7f8c8d;
-  font-size: 0.95rem;
-  line-height: 1.5;
-  margin-bottom: 24px;
-}
-
-.empty-chat-detail-features {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  align-items: center;
-}
-
-.feature-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: #34495e;
-  font-size: 0.85rem;
-}
-
-/* 채팅 목록 스타일 */
-.chat-list {
-  height: 100%;
-}
-
-.chat-scroll-wrapper {
-  height: calc(100% - 60px);
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-/* 반응형 디자인 */
-@media (max-width: 768px) {
-  .empty-chat-title {
-    font-size: 1.1rem;
-  }
-  
-  .empty-chat-detail-title {
-    font-size: 1.3rem;
-  }
-  
-  .empty-chat-detail {
-    padding: 20px;
-  }
-}
-</style>

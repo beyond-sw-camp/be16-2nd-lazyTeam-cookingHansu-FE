@@ -1,84 +1,68 @@
 import { defineStore } from 'pinia';
 import Stomp from "webstomp-client";
 import SockJs from "sockjs-client";
-import { chatService } from '../../services/chat/chatService';
+import { 
+  getMyChatRooms, 
+  getChatHistory, 
+  sendMessage, 
+  uploadFiles,
+  markMessageAsRead,
+  createChatRoom,
+  updateChatRoomName,
+  leaveChatRoom
+} from '../../services/chat/chatService';
 import { ChatMessageResponse } from '../../models/chat/ChatResponse';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export const useChatStore = defineStore('chat', {
   state: () => ({
-    // 채팅 데이터
     rooms: [],
     messages: {}, // roomId를 키로 하는 메시지 캐시
     currentRoomId: null,
-    
-    // WebSocket 관련
-    stompClient: null,
-    
-    // UI 상태
     loading: false,
-    error: null,
+    stompClient: null,
+    // error: null, // 에러 상태 제거
   }),
   
   getters: {
-    // 채팅방 관련
-    getRooms: (state) => state.rooms,
-    getCurrentRoom: (state) => state.rooms.find(room => room.chatRoomId === state.currentRoomId),
-    getCurrentRoomId: (state) => state.currentRoomId,
-    
-    // 메시지 관련
-    getMessages: (state) => (roomId) => state.messages[roomId] || [],
-    getCurrentMessages: (state) => state.messages[state.currentRoomId] || [],
-    
-    // 읽지 않은 메시지
-    getTotalUnreadCount: (state) => {
-      return state.rooms.reduce((total, room) => total + (room.unreadCount || 0), 0);
+    // 현재 선택된 채팅방 정보
+    currentRoom: (state) => {
+      return state.rooms.find(room => room.chatRoomId === state.currentRoomId);
     },
     
-    // UI 상태
-    isLoading: (state) => state.loading,
-    getError: (state) => state.error,
-    
-    // 유틸리티
-    hasRooms: (state) => state.rooms.length > 0,
-    hasCurrentRoom: (state) => !!state.currentRoomId,
-    isWebSocketConnected: (state) => state.stompClient && state.stompClient.connected,
+    // 읽지 않은 메시지 총 개수
+    totalUnreadCount: (state) => {
+      return state.rooms.reduce((total, room) => total + (room.unreadCount || 0), 0);
+    },
   },
   
   actions: {
-    // 에러 처리 헬퍼
-    _handleError(error, defaultMessage) {
-      console.error(defaultMessage, error);
-      this.error = error.message || defaultMessage;
-      throw error;
-    },
-
-    // 로딩 상태 관리
-    _setLoading(loading) {
-      this.loading = loading;
-    },
-
-    // 에러 초기화
-    clearError() {
-      this.error = null;
-    },
-
     // WebSocket 연결
     connectWebSocket(roomId) {
+      // 기존 연결이 있으면 해제
       this.disconnectWebSocket();
       
       if (!roomId) return;
       
+      // const token = localStorage.getItem("token"); // 테스트용: 토큰 없이 연결
+      // if (!token) {
+      //   console.error('토큰이 없습니다.');
+      //   return;
+      // }
+
       try {
         const sockJs = new SockJs(`${API_BASE_URL}/connect`);
         this.stompClient = Stomp.over(sockJs);
 
         this.stompClient.connect(
-          {},
+          {
+            // Authorization: `Bearer ${token}`, // 테스트용: 토큰 없이 연결
+          },
           () => {
             console.log('WebSocket 연결 성공');
             
+            // 채팅방 구독
             this.stompClient.subscribe(
               `/topic/${roomId}`,
               (message) => {
@@ -88,11 +72,15 @@ export const useChatStore = defineStore('chat', {
                 } catch (error) {
                   console.error('메시지 파싱 실패:', error);
                 }
+              },
+              {
+                // Authorization: `Bearer ${token}`, // 테스트용: 토큰 없이 구독
               }
             );
           },
           (error) => {
             console.error('WebSocket 연결 실패:', error);
+            // 연결 실패 시 HTTP API 사용
             this.stompClient = null;
           }
         );
@@ -119,23 +107,26 @@ export const useChatStore = defineStore('chat', {
       }
     },
 
-    // 메시지 전송 (WebSocket)
+    // 메시지 전송 (WebSocket 사용)
     async sendMessageViaWebSocket(content, uploadedFiles = null) {
       if (!this.currentRoomId || !this.stompClient || !this.stompClient.connected) {
-        throw new Error('WebSocket이 연결되지 않았습니다.');
+        console.error('WebSocket이 연결되지 않았습니다.');
+        return;
       }
 
+      // 백엔드 ChatMessageReqDto 형식에 맞춤
       const message = {
         roomId: this.currentRoomId,
-        senderId: '00000000-0000-0000-0000-000000000000', // 테스트용 고정 ID
+        senderId: '550e8400-e29b-41d4-a716-446655440001', // 테스트용 고정 ID
         message: content,
-        files: uploadedFiles ? uploadedFiles.files : null
+        files: uploadedFiles ? uploadedFiles.files : null // 업로드된 파일 정보들
       };
 
       try {
         this.stompClient.send(
           `/publish/${this.currentRoomId}`,
           JSON.stringify(message)
+          // , { Authorization: `Bearer ${token}` } // 테스트용: 토큰 없이 전송
         );
       } catch (error) {
         console.error('WebSocket 메시지 전송 실패:', error);
@@ -143,28 +134,60 @@ export const useChatStore = defineStore('chat', {
       }
     },
 
+    // 파일로부터 파일 타입 추정 (백엔드 FileType enum에 맞춤)
+    getFileTypeFromFile(file) {
+      if (!file || !file.name) {
+        console.error('파일 또는 파일 이름이 없습니다:', file);
+        return 'UNKNOWN';
+      }
+      
+      const fileName = file.name;
+      const lastDotIndex = fileName.lastIndexOf(".");
+      
+      if (lastDotIndex === -1) {
+        console.error('파일 확장자가 없습니다:', fileName);
+        return 'UNKNOWN';
+      }
+      
+      const extension = fileName.substring(lastDotIndex + 1).toLowerCase();
+      
+      const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+      const videoExtensions = ['mp4', 'avi', 'mov'];
+      
+      if (imageExtensions.includes(extension)) {
+        return 'IMAGE';
+      } else if (videoExtensions.includes(extension)) {
+        return 'VIDEO';
+      } else {
+        console.error('지원하지 않는 파일 형식입니다:', extension);
+        return 'UNKNOWN';
+      }
+    },
+
     // 내 채팅방 목록 조회
     async fetchMyChatRooms() {
-      this._setLoading(true);
-      this.error = null;
+      this.loading = true;
+      // this.error = null; // 에러 상태 제거
       
       try {
-        const rooms = await chatService.getMyChatRooms();
+        const rooms = await getMyChatRooms();
         this.rooms = rooms;
       } catch (error) {
-        this._handleError(error, '채팅방 목록을 불러오는데 실패했습니다.');
+        console.error('채팅방 목록 조회 실패:', error);
+        // this.error = error.message; // 에러 상태 제거
       } finally {
-        this._setLoading(false);
+        this.loading = false;
       }
     },
     
     // 채팅방 메시지 조회
     async fetchChatHistory(roomId) {
-      this._setLoading(true);
+      this.loading = true;
+      // this.error = null; // 에러 상태 제거
       this.currentRoomId = roomId;
       
       try {
-        const messages = await chatService.getChatHistory(roomId);
+        const messages = await getChatHistory(roomId);
         this.messages[roomId] = messages;
         
         // 메시지 읽음 처리
@@ -173,16 +196,17 @@ export const useChatStore = defineStore('chat', {
         // WebSocket 연결
         this.connectWebSocket(roomId);
       } catch (error) {
-        this._handleError(error, '메시지를 불러오는데 실패했습니다.');
+        console.error('메시지 조회 실패:', error);
+        // this.error = error.message; // 에러 상태 제거
       } finally {
-        this._setLoading(false);
+        this.loading = false;
       }
     },
     
     // 메시지 읽음 처리
     async markAsRead(roomId) {
       try {
-        await chatService.markMessageAsRead(roomId);
+        await markMessageAsRead(roomId);
         
         // 로컬 상태에서 읽지 않은 메시지 수 초기화
         const room = this.rooms.find(r => r.chatRoomId === roomId);
@@ -196,11 +220,10 @@ export const useChatStore = defineStore('chat', {
     
     // 메시지 전송
     async sendMessage(content, files = null) {
-      if (!this.currentRoomId || this.loading) {
-        throw new Error('채팅방이 선택되지 않았거나 로딩 중입니다.');
-      }
+      if (!this.currentRoomId || this.loading) return;
       
-      this._setLoading(true);
+      this.loading = true;
+      // this.error = null; // 에러 상태 제거
       
       try {
         const now = new Date().toISOString();
@@ -208,16 +231,17 @@ export const useChatStore = defineStore('chat', {
         // 파일이 있는 경우 먼저 업로드
         let uploadedFiles = null;
         if (files && files.length > 0) {
-          const fileTypes = files.map(file => chatService.getFileTypeFromFile(file));
-          uploadedFiles = await chatService.uploadFiles(this.currentRoomId, files, fileTypes);
+          const fileTypes = files.map(file => this.getFileTypeFromFile(file));
+          uploadedFiles = await uploadFiles(this.currentRoomId, files, fileTypes);
         }
         
         // WebSocket을 통해 메시지 전송
         if (this.stompClient && this.stompClient.connected) {
           await this.sendMessageViaWebSocket(content, uploadedFiles);
+          // WebSocket 연결이 있으면 백엔드에서 받은 메시지를 사용하므로 로컬 추가하지 않음
         } else {
           // WebSocket이 연결되지 않은 경우 HTTP API 사용
-          const message = await chatService.sendMessage(this.currentRoomId, content, uploadedFiles);
+          const message = await sendMessage(this.currentRoomId, content, uploadedFiles);
           if (!this.messages[this.currentRoomId]) {
             this.messages[this.currentRoomId] = [];
           }
@@ -232,38 +256,44 @@ export const useChatStore = defineStore('chat', {
           room.unreadCount = 0;
         }
       } catch (error) {
-        this._handleError(error, '메시지 전송에 실패했습니다.');
+        console.error('메시지 전송 실패:', error);
+        // this.error = error.message; // 에러 상태 제거
+        throw error;
       } finally {
-        this._setLoading(false);
+        this.loading = false;
       }
     },
     
     // 채팅방 생성
     async createRoom(otherUserId) {
-      this._setLoading(true);
+      this.loading = true;
+      // this.error = null; // 에러 상태 제거
       
       try {
-        const roomId = await chatService.createChatRoom(otherUserId);
+        const roomId = await createChatRoom(otherUserId);
         
-        // 새 채팅방 정보를 목록에 추가
+        // 새 채팅방 정보를 목록에 추가 (실제로는 서버에서 전체 목록을 다시 가져와야 함)
         await this.fetchMyChatRooms();
         
         return roomId;
       } catch (error) {
-        this._handleError(error, '채팅방 생성에 실패했습니다.');
+        console.error('채팅방 생성 실패:', error);
+        // this.error = error.message; // 에러 상태 제거
+        throw error;
       } finally {
-        this._setLoading(false);
+        this.loading = false;
       }
     },
     
     // 채팅방 이름 수정
     async updateRoomName(roomId, roomName) {
-      this._setLoading(true);
+      this.loading = true;
+      // this.error = null; // 에러 상태 제거
       
       try {
-        await chatService.updateChatRoomName(roomId, roomName);
+        await updateChatRoomName(roomId, roomName);
         
-        // 로컬 상태 업데이트
+        // 로컬 상태 업데이트 (반응성을 위해 새 배열 생성)
         const roomIndex = this.rooms.findIndex(r => r.chatRoomId === roomId);
         if (roomIndex !== -1) {
           const updatedRooms = [...this.rooms];
@@ -274,9 +304,11 @@ export const useChatStore = defineStore('chat', {
           this.rooms = updatedRooms;
         }
       } catch (error) {
-        this._handleError(error, '채팅방 이름 수정에 실패했습니다.');
+        console.error('채팅방 이름 수정 실패:', error);
+        // this.error = error.message; // 에러 상태 제거
+        throw error;
       } finally {
-        this._setLoading(false);
+        this.loading = false;
       }
     },
     
@@ -284,10 +316,11 @@ export const useChatStore = defineStore('chat', {
     async leaveRoom(roomId) {
       if (!roomId) return;
       
-      this._setLoading(true);
+      this.loading = true;
+      // this.error = null; // 에러 상태 제거
       
       try {
-        await chatService.leaveChatRoom(roomId);
+        await leaveChatRoom(roomId);
         
         // WebSocket 연결 해제
         if (this.currentRoomId === roomId) {
@@ -303,24 +336,34 @@ export const useChatStore = defineStore('chat', {
           delete this.messages[roomId];
         }
       } catch (error) {
-        this._handleError(error, '채팅방 나가기에 실패했습니다.');
+        console.error('채팅방 나가기 실패:', error);
+        // this.error = error.message; // 에러 상태 제거
+        throw error;
       } finally {
-        this._setLoading(false);
+        this.loading = false;
       }
     },
     
     // 새 메시지 수신 (WebSocket 등에서 호출)
     receiveMessage(message) {
-      console.log('받은 메시지:', message);
+      console.log('받은 메시지:', message); // 디버깅용
+      console.log('받은 메시지 createdAt:', message.createdAt); // 시간 확인
       
       // 백엔드에서 받은 메시지를 ChatMessageResponse 객체로 변환
       const chatMessageResponse = ChatMessageResponse.fromJson(message);
+      console.log('변환된 메시지:', chatMessageResponse);
+      console.log('변환된 메시지 createdAt:', chatMessageResponse.createdAt);
       
       // 해당 채팅방의 메시지에 추가
       if (!this.messages[chatMessageResponse.roomId]) {
         this.messages[chatMessageResponse.roomId] = [];
       }
       this.messages[chatMessageResponse.roomId].push(chatMessageResponse);
+      
+      // 현재 채팅방의 메시지라면 즉시 반영
+      if (chatMessageResponse.roomId === this.currentRoomId) {
+        // 이미 추가했으므로 별도 처리 불필요
+      }
       
       // 해당 채팅방의 정보 업데이트
       const room = this.rooms.find(r => r.chatRoomId === chatMessageResponse.roomId);
@@ -359,21 +402,16 @@ export const useChatStore = defineStore('chat', {
       this.fetchChatHistory(roomId);
     },
     
+    // 에러 초기화
+    clearError() {
+      // this.error = null; // 에러 상태 제거
+    },
+    
     // 채팅 연결 해제
     disconnectChat() {
       this.disconnectWebSocket();
       this.currentRoomId = null;
       this.messages = {};
-    },
-
-    // 전체 상태 초기화
-    reset() {
-      this.rooms = [];
-      this.messages = {};
-      this.currentRoomId = null;
-      this.stompClient = null;
-      this.loading = false;
-      this.error = null;
     },
     
     // 기존 호환성 함수들
