@@ -63,4 +63,20 @@ export function formatDateTime(isoString) {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+/**
+ * 날짜만 포맷팅하는 함수
+ * @param {string} isoString - ISO 형식의 시간 문자열
+ * @returns {string} - 포맷된 날짜 문자열
+ */
+export function formatDate(isoString) {
+  if (!isoString) return '';
+  
+  const date = new Date(isoString);
+  return date.toLocaleDateString('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
 } 
