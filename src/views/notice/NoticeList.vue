@@ -151,7 +151,7 @@ onMounted(() => {
 
 <style scoped>
 .notice-list-container {
-  max-width: 800px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 20px;
   margin-top: 60px;
