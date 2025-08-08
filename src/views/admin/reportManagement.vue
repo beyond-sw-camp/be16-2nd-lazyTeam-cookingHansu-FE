@@ -123,16 +123,16 @@
                     </div>
                     <div class="detail-content">
                       <div class="detail-item">
-                        <span class="detail-label">신고 내용:</span>
-                        <span class="detail-value">{{ report.content }}</span>
+                        <span class="detail-label">신고자 닉네임:</span>
+                        <span class="detail-value">{{ report.reporterNickName }}</span>
                       </div>
                       <div class="detail-item">
                         <span class="detail-label">신고 대상 ID:</span>
                         <span class="detail-value">{{ report.targetId }}</span>
                       </div>
                       <div class="detail-item">
-                        <span class="detail-label">신고자 ID:</span>
-                        <span class="detail-value">{{ report.reporterId }}</span>
+                        <span class="detail-label">신고 내용:</span>
+                        <span class="detail-value">{{ report.content }}</span>
                       </div>
                     </div>
                   </div>
