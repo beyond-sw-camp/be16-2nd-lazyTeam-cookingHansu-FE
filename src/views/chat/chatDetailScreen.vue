@@ -335,13 +335,17 @@ const props = defineProps({
 
 const router = useRouter();
 const chatStore = useChatStore();
-const { messages, currentRoomId, loading } = storeToRefs(chatStore);
+const { 
+  getMessages: messages, 
+  getCurrentRoomId: currentRoomId, 
+  isLoading: loading 
+} = storeToRefs(chatStore);
 
 const chatContainer = ref(null);
 const myId = '00000000-0000-0000-0000-000000000000'; // current_user ID
 const chatMessages = computed(() => {
   if (!currentRoomId.value) return [];
-  return messages.value[currentRoomId.value] || [];
+  return messages.value(currentRoomId.value) || [];
 });
 
 const message = ref("");
@@ -374,7 +378,7 @@ const {
 
 const showRoomOptions = ref(false);
 
-const currentRoom = computed(() => chatStore.currentRoom);
+const currentRoom = computed(() => chatStore.getCurrentRoom);
 const partnerName = computed(() => currentRoom.value?.otherUserNickname || currentRoom.value?.otherUserName || '상대방');
 const partnerAvatar = computed(() => currentRoom.value?.otherUserProfileImage || '');
 

@@ -1,156 +1,136 @@
 // 채팅 API 서비스
 
+import { apiGet, apiPost, apiPatch, apiDelete, apiPostFormData } from '../../utils/api';
 import { handleApiResponse } from '../../models/common/ApiResponse';
 import { ChatRoomResponse, ChatMessageResponse } from '../../models/chat/ChatResponse';
-import { apiGet, apiPost, apiPatch, apiDelete, apiPostFormData } from '../../utils/api';
 
-// 내 채팅방 목록 조회 API
-export async function getMyChatRooms() {
-  try {
-    const response = await apiGet('/chat/my/rooms');
+// API 엔드포인트 상수
+const API_ENDPOINTS = {
+  MY_CHAT_ROOMS: '/chat/my/rooms',
+  CHAT_HISTORY: (roomId) => `/chat/room/${roomId}/history`,
+  MARK_AS_READ: (roomId) => `/chat/room/${roomId}/read`,
+  CREATE_ROOM: (otherUserId) => `/chat/room/create/${otherUserId}`,
+  UPDATE_ROOM_NAME: (roomId) => `/chat/room/${roomId}/name`,
+  LEAVE_ROOM: (roomId) => `/chat/room/${roomId}/leave`,
+  UPLOAD_FILES: (roomId) => `/chat/room/${roomId}/upload`,
+  SEND_MESSAGE: (roomId) => `/chat/room/${roomId}/message`,
+};
+
+export const chatService = {
+  // 내 채팅방 목록 조회
+  async getMyChatRooms() {
+    const response = await apiGet(API_ENDPOINTS.MY_CHAT_ROOMS);
     const apiResponse = await handleApiResponse(response);
     const roomsData = apiResponse.getData() || [];
     
-    // 응답 데이터를 ChatRoomResponse 객체로 변환
     return roomsData.map(roomData => ChatRoomResponse.fromJson(roomData));
-  } catch (error) {
-    console.error('채팅방 목록 조회 실패:', error);
-    throw error;
-  }
-}
+  },
 
-// 채팅방 메시지 조회 API
-export async function getChatHistory(roomId) {
-  try {
-    const response = await apiGet(`/chat/room/${roomId}/history`);
+  // 채팅방 메시지 조회
+  async getChatHistory(roomId) {
+    const response = await apiGet(API_ENDPOINTS.CHAT_HISTORY(roomId));
     const apiResponse = await handleApiResponse(response);
     const messagesData = apiResponse.getData() || [];
     
-    // 응답 데이터를 ChatMessageResponse 객체로 변환
     return messagesData.map(messageData => ChatMessageResponse.fromJson(messageData));
-  } catch (error) {
-    console.error('메시지 조회 실패:', error);
-    throw error;
-  }
-}
+  },
 
-// 메시지 읽음 처리 API
-export async function markMessageAsRead(roomId) {
-  try {
-    const response = await apiPost(`/chat/room/${roomId}/read`);
+  // 메시지 읽음 처리
+  async markMessageAsRead(roomId) {
+    const response = await apiPost(API_ENDPOINTS.MARK_AS_READ(roomId));
     const apiResponse = await handleApiResponse(response);
     return apiResponse.getData();
-  } catch (error) {
-    console.error('메시지 읽음 처리 실패:', error);
-    throw error;
-  }
-}
+  },
 
-// 채팅방 생성 API
-export async function createChatRoom(otherUserId) {
-  try {
-    const response = await apiGet(`/chat/room/create/${otherUserId}`);
+  // 채팅방 생성
+  async createChatRoom(otherUserId) {
+    const response = await apiGet(API_ENDPOINTS.CREATE_ROOM(otherUserId));
     const apiResponse = await handleApiResponse(response);
     return apiResponse.getData();
-  } catch (error) {
-    console.error('채팅방 생성 실패:', error);
-    throw error;
-  }
-}
+  },
 
-// 채팅방 이름 수정 API
-export async function updateChatRoomName(roomId, roomName) {
-  try {
-    const response = await apiPatch(`/chat/room/${roomId}/name`, { name: roomName });
+  // 채팅방 이름 수정
+  async updateChatRoomName(roomId, roomName) {
+    const response = await apiPatch(API_ENDPOINTS.UPDATE_ROOM_NAME(roomId), { name: roomName });
     const apiResponse = await handleApiResponse(response);
     return apiResponse.getData();
-  } catch (error) {
-    console.error('채팅방 이름 수정 실패:', error);
-    throw error;
-  }
-}
+  },
 
-// 채팅방 나가기 API
-export async function leaveChatRoom(roomId) {
-  try {
-    const response = await apiDelete(`/chat/room/${roomId}/leave`);
+  // 채팅방 나가기
+  async leaveChatRoom(roomId) {
+    const response = await apiDelete(API_ENDPOINTS.LEAVE_ROOM(roomId));
     const apiResponse = await handleApiResponse(response);
     return apiResponse.getData();
-  } catch (error) {
-    console.error('채팅방 나가기 실패:', error);
-    throw error;
-  }
-}
+  },
 
-// 파일 업로드 API
-export async function uploadFiles(roomId, files, fileTypes) {
-  try {
+  // 파일 업로드
+  async uploadFiles(roomId, files, fileTypes) {
     const formData = new FormData();
     
     files.forEach((file, index) => {
       formData.append('files', file);
       formData.append('fileTypes', fileTypes[index]);
-      console.log(`파일크기: ${file.size}`)
     });
 
-    const response = await apiPostFormData(`/chat/room/${roomId}/upload`, formData);
+    const response = await apiPostFormData(API_ENDPOINTS.UPLOAD_FILES(roomId), formData);
     const apiResponse = await handleApiResponse(response);
     return apiResponse.getData();
-  } catch (error) {
-    console.error('파일 업로드 실패:', error);
-    throw error;
-  }
-}
+  },
 
-// 메시지 전송 API (WebSocket 사용 권장)
-export async function sendMessage(roomId, content, uploadedFiles = null) {
-  try {
+  // 메시지 전송
+  async sendMessage(roomId, content, uploadedFiles = null) {
     const formData = new FormData();
     formData.append('content', content);
     
     if (uploadedFiles && uploadedFiles.files && uploadedFiles.files.length > 0) {
-      // 업로드된 파일 정보들을 JSON으로 전송
       formData.append('files', JSON.stringify(uploadedFiles.files));
     }
 
-    const response = await apiPostFormData(`/chat/room/${roomId}/message`, formData);
+    const response = await apiPostFormData(API_ENDPOINTS.SEND_MESSAGE(roomId), formData);
     const apiResponse = await handleApiResponse(response);
     const messageData = apiResponse.getData();
     
-    // 응답 데이터를 ChatMessageResponse 객체로 변환
     return ChatMessageResponse.fromJson(messageData);
-  } catch (error) {
-    console.error('메시지 전송 실패:', error);
-    throw error;
-  }
-}
+  },
 
-// 파일로부터 파일 타입 추정
-function getFileTypeFromFile(file) {
-  if (!file || !file.name) {
-    return 'UNKNOWN';
-  }
-  
-  const fileName = file.name;
-  const lastDotIndex = fileName.lastIndexOf(".");
-  
-  if (lastDotIndex === -1) {
-    return 'UNKNOWN';
-  }
-  
-  const extension = fileName.substring(lastDotIndex + 1).toLowerCase();
-  
-  const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-  const videoExtensions = ['mp4', 'avi', 'mov'];
-  
-  if (imageExtensions.includes(extension)) {
-    return 'IMAGE';
-  } else if (videoExtensions.includes(extension)) {
-    return 'VIDEO';
-  } else {
-    return 'UNKNOWN';
-  }
-}
+  // 파일 타입 추정 유틸리티
+  getFileTypeFromFile(file) {
+    if (!file || !file.name) {
+      return 'UNKNOWN';
+    }
+    
+    const fileName = file.name;
+    const lastDotIndex = fileName.lastIndexOf(".");
+    
+    if (lastDotIndex === -1) {
+      return 'UNKNOWN';
+    }
+    
+    const extension = fileName.substring(lastDotIndex + 1).toLowerCase();
+    
+    const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+    const videoExtensions = ['mp4', 'avi', 'mov'];
+    
+    if (imageExtensions.includes(extension)) {
+      return 'IMAGE';
+    } else if (videoExtensions.includes(extension)) {
+      return 'VIDEO';
+    } else {
+      return 'UNKNOWN';
+    }
+  },
+};
+
+// 기존 호환성 함수들 (점진적 마이그레이션을 위해 유지)
+export const getMyChatRooms = () => chatService.getMyChatRooms();
+export const getChatHistory = (roomId) => chatService.getChatHistory(roomId);
+export const markMessageAsRead = (roomId) => chatService.markMessageAsRead(roomId);
+export const createChatRoom = (otherUserId) => chatService.createChatRoom(otherUserId);
+export const updateChatRoomName = (roomId, roomName) => chatService.updateChatRoomName(roomId, roomName);
+export const leaveChatRoom = (roomId) => chatService.leaveChatRoom(roomId);
+export const uploadFiles = (roomId, files, fileTypes) => chatService.uploadFiles(roomId, files, fileTypes);
+export const sendMessage = (roomId, content, uploadedFiles) => chatService.sendMessage(roomId, content, uploadedFiles);
+export const getFileTypeFromFile = (file) => chatService.getFileTypeFromFile(file);
 
 // 기존 호환성 함수들
 export function getChatRooms() {

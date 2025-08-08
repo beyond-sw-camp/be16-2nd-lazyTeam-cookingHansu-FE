@@ -17,7 +17,7 @@
     </div>
 
     <!-- 정상 채팅 화면 -->
-    <v-row v-else no-gutters class="chat-wrapper" style="min-height: 600px">
+    <v-row v-else no-gutters class="chat-wrapper" style="min-height: 300px">
       <!-- 채팅 목록 -->
       <v-col md="1.5" />
       <v-col cols="12" md="3" class="chat-list">
@@ -34,18 +34,8 @@
             </v-chip>
           </div>
         
-          <!-- 에러 상태 -->
-          <div v-if="loadError" class="text-center pa-8">
-            <ErrorAlert
-              title="로딩 오류"
-              :message="loadError"
-              @close="chatStore.clearError"
-            />
-          </div>
-
           <!-- 채팅방 목록 -->
           <div
-            v-else
             ref="chatScroll"
             class="chat-scroll-wrapper"
             @scroll.passive="onScroll"
@@ -100,7 +90,7 @@
               </v-list-item>
               
               <!-- 개선된 빈 상태 -->
-              <div v-if="!loadError && rooms.length === 0" class="empty-chat-state">
+              <div v-if="rooms.length === 0" class="empty-chat-state">
                 <div class="empty-chat-content">
                   <div class="empty-chat-icon">
                     <v-icon size="64" color="orange lighten-3">mdi-chat-outline</v-icon>
@@ -183,14 +173,20 @@ import LoadingScreen from "@/components/common/LoadingScreen.vue";
 import { formatChatTime } from '@/utils/timeUtils';
 
 const chatStore = useChatStore();
-const { rooms, currentRoomId, loading, totalUnreadCount, error, loadError } = storeToRefs(chatStore);
+const { 
+  getRooms: rooms, 
+  getCurrentRoomId: currentRoomId, 
+  isLoading: loading, 
+  getTotalUnreadCount: totalUnreadCount, 
+  getError: error 
+} = storeToRefs(chatStore);
 
 const selectChat = (roomId) => {
   chatStore.selectRoom(roomId);
 };
 
-const selectedChatId = computed(() => chatStore.currentRoomId);
-const selectedChat = computed(() => chatStore.currentRoom);
+const selectedChatId = computed(() => chatStore.getCurrentRoomId);
+const selectedChat = computed(() => chatStore.getCurrentRoom);
 
 const chatScroll = ref(null);
 const visibleCount = ref(10);
@@ -204,8 +200,6 @@ const onScroll = () => {
     visibleCount.value += 5;
   }
 };
-
-
 
 onMounted(() => {
   chatStore.fetchMyChatRooms();
