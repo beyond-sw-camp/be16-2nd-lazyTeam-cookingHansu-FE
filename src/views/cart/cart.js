@@ -59,6 +59,7 @@ export const useCartStore = defineStore('cart', {
       })
       return removedCount
     },
+
     clearCart() {
       this.items = []
       // localStorage에서 삭제
