@@ -14,15 +14,12 @@
       </div>
     </div>
 
-    <!-- 로딩 상태 -->
-    <div v-if="noticeStore.isLoading" class="loading-container">
-      <v-progress-circular
-        indeterminate
-        color="primary"
-        size="64"
-      ></v-progress-circular>
-      <p class="loading-text">공지사항을 불러오는 중...</p>
-    </div>
+    <!-- 로딩 상태 (데이터가 없을 때만) -->
+    <LoadingScreen 
+      v-if="noticeStore.isLoading && noticeStore.getNotices.length === 0"
+      title="공지사항을 준비하고 있어요"
+      description="잠시만 기다려주세요..."
+    />
 
     <!-- 에러 상태 -->
     <div v-else-if="noticeStore.getError" class="error-container">
@@ -81,6 +78,7 @@ import { useNoticeStore } from '../../store/notice/notice';
 import { formatDateTime } from '../../utils/timeUtils';
 import Pagination from '../../components/common/Pagination.vue';
 import ErrorAlert from '../../components/common/ErrorAlert.vue';
+import LoadingScreen from '../../components/common/LoadingScreen.vue';
 
 const router = useRouter();
 const noticeStore = useNoticeStore();
@@ -185,20 +183,6 @@ onMounted(() => {
 .notice-actions {
   display: flex;
   gap: 10px;
-}
-
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-}
-
-.loading-text {
-  margin-top: 20px;
-  color: #666;
-  font-size: 1.1rem;
 }
 
 .error-container {

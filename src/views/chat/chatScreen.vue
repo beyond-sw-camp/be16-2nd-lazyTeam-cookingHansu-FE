@@ -1,20 +1,11 @@
 <template>
   <v-container fluid class="pa-6" style="margin-top: 80px;">
     <!-- 로딩 상태 -->
-    <div v-if="loading" class="loading-container">
-      <div class="loading-content">
-        <div class="loading-icon">
-          <v-icon size="80" color="orange" class="loading-animation">mdi-food-fork-drink</v-icon>
-        </div>
-        <h3 class="loading-title">채팅방을 준비하고 있어요</h3>
-        <p class="loading-description">잠시만 기다려주세요...</p>
-        <div class="loading-dots">
-          <span class="dot"></span>
-          <span class="dot"></span>
-          <span class="dot"></span>
-        </div>
-      </div>
-    </div>
+    <LoadingScreen 
+      v-if="loading"
+      title="채팅방을 준비하고 있어요"
+      description="잠시만 기다려주세요..."
+    />
 
     <!-- 네트워크 연결 오류 -->
     <div v-else-if="error" class="error-container">
@@ -112,21 +103,27 @@
               <div v-if="!loadError && rooms.length === 0" class="empty-chat-state">
                 <div class="empty-chat-content">
                   <div class="empty-chat-icon">
-                    <v-icon size="64" color="orange lighten-3">mdi-chat-plus-outline</v-icon>
+                    <v-icon size="64" color="orange lighten-3">mdi-chat-outline</v-icon>
                   </div>
-                  <h3 class="empty-chat-title">첫 번째 대화를 시작해보세요</h3>
+                  <h3 class="empty-chat-title">아직 대화가 없어요</h3>
                   <p class="empty-chat-description">
-                    새로운 채팅방을 만들어 친구들과 대화를 나누어보세요
+                    게시글이나 강의에서 상대방 프로필을 클릭하여<br>
+                    1:1 대화를 시작해보세요
                   </p>
-                  <v-btn
-                    color="orange"
-                    variant="elevated"
-                    class="mt-4"
-                    prepend-icon="mdi-plus"
-                    @click="startNewChat"
-                  >
-                    새 채팅 시작
-                  </v-btn>
+                  <div class="empty-chat-features">
+                    <div class="feature-item">
+                      <v-icon size="20" color="orange">mdi-account-circle</v-icon>
+                      <span>레시피 게시글에서 요리사 프로필 클릭</span>
+                    </div>
+                    <div class="feature-item">
+                      <v-icon size="20" color="orange">mdi-play-circle</v-icon>
+                      <span>강의에서 강사 프로필 클릭</span>
+                    </div>
+                    <div class="feature-item">
+                      <v-icon size="20" color="orange">mdi-message-text</v-icon>
+                      <span>1:1 대화하기 버튼으로 채팅 시작</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </v-list>
@@ -146,7 +143,7 @@
                 <div class="empty-chat-detail-icon">
                   <v-icon size="80" color="orange lighten-4">mdi-chat-bubble-outline</v-icon>
                 </div>
-                <h3 class="empty-chat-detail-title">대화를 시작해보세요</h3>
+                <h3 class="empty-chat-detail-title">채팅방을 선택해보세요</h3>
                 <p class="empty-chat-detail-description">
                   왼쪽에서 채팅방을 선택하면 여기에 대화가 표시됩니다
                 </p>
@@ -182,6 +179,7 @@ import { storeToRefs } from 'pinia';
 import { useChatStore } from '@/store/chat/chat';
 import ChatDetailView from "@/views/chat/chatDetailScreen.vue";
 import ErrorAlert from "@/components/common/ErrorAlert.vue";
+import LoadingScreen from "@/components/common/LoadingScreen.vue";
 import { formatChatTime } from '@/utils/timeUtils';
 
 const chatStore = useChatStore();
@@ -207,11 +205,7 @@ const onScroll = () => {
   }
 };
 
-// 새 채팅 시작
-const startNewChat = () => {
-  // TODO: 새 채팅 시작 로직 구현
-  console.log('새 채팅 시작');
-};
+
 
 onMounted(() => {
   chatStore.fetchMyChatRooms();
@@ -219,88 +213,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* 로딩 컨테이너 스타일 */
-.loading-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 70vh;
-  padding: 40px;
-  margin-top: -200px;
-}
-
-.loading-content {
-  text-align: center;
-  max-width: 400px;
-}
-
-.loading-icon {
-  margin-bottom: 32px;
-}
-
-.loading-animation {
-  animation: bounce 2s infinite;
-}
-
-.loading-title {
-  font-size: 1.75rem;
-  font-weight: 600;
-  color: #2c3e50;
-  margin-bottom: 16px;
-}
-
-.loading-description {
-  color: #7f8c8d;
-  font-size: 1rem;
-  line-height: 1.6;
-  margin-bottom: 24px;
-}
-
-.loading-dots {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-}
-
-.dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background-color: #ff9800;
-  animation: pulse 1.5s infinite;
-}
-
-.dot:nth-child(2) {
-  animation-delay: 0.2s;
-}
-
-.dot:nth-child(3) {
-  animation-delay: 0.4s;
-}
-
-@keyframes bounce {
-  0%, 20%, 50%, 80%, 100% {
-    transform: translateY(0);
-  }
-  40% {
-    transform: translateY(-10px);
-  }
-  60% {
-    transform: translateY(-5px);
-  }
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 0.3;
-    transform: scale(0.8);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.2);
-  }
-}
-
 /* 에러 컨테이너 스타일 */
 .error-container {
   max-width: 1400px;
@@ -339,13 +251,34 @@ onMounted(() => {
   margin-bottom: 24px;
 }
 
+.empty-chat-features {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #34495e;
+  font-size: 0.9rem;
+  padding: 8px 16px;
+  background: rgba(255, 152, 0, 0.1);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 152, 0, 0.2);
+}
+
 /* 빈 채팅 상세 상태 스타일 */
 .empty-chat-detail {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   height: 100%;
   padding: 40px;
+  padding-top: 80px;
 }
 
 .empty-chat-detail-content {
