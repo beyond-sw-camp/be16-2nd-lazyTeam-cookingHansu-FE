@@ -1,6 +1,6 @@
 <template>
   <v-container fluid class="pa-6" style="margin-top: 80px;">
-    <v-row no-gutters class="chat-wrapper" style="min-height: 600px">
+    <v-row no-gutters class="chat-wrapper" style="height: calc(100vh - 270px);">
       <!-- 채팅 목록 -->
       <v-col md="1.5" />
       <v-col cols="12" md="3" class="chat-list">
@@ -21,7 +21,7 @@
             ref="chatScroll"
             class="chat-scroll-wrapper"
             @scroll.passive="onScroll"
-            style="max-height: calc(100vh - 200px); overflow-y: auto"
+            style="height: calc(100vh - 280px); overflow-y: auto; direction: ltr;"
           >
             <v-list dense nav>
               <v-list-item
@@ -146,3 +146,38 @@ onMounted(() => {
   chatStore.fetchMyChatRooms();
 });
 </script>
+
+<style scoped>
+.chat-scroll-wrapper {
+  scrollbar-width: thin;
+}
+
+.chat-scroll-wrapper::-webkit-scrollbar {
+  width: 4px;
+}
+
+.chat-scroll-wrapper::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.chat-scroll-wrapper::-webkit-scrollbar-track {
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+}
+
+/* 채팅 컨테이너 전체 높이 고정 */
+.chat-wrapper {
+  height: calc(100vh - 200px);
+}
+
+/* 채팅 목록 영역 고정 높이 */
+.chat-list {
+  height: 100%;
+}
+
+/* 채팅 상세 영역 고정 높이 */
+.chat-detail {
+  height: 100%;
+}
+</style>

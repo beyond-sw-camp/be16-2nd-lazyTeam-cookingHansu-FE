@@ -86,154 +86,156 @@
     </v-dialog>
     
     <!-- 메시지 영역 -->
-    <div class="flex-grow-1 pa-4 overflow-y-auto chat-scroll" ref="chatContainer">
-      <div v-for="(msg, index) in chatMessages" :key="msg.id || index" class="mb-1">
-        <!-- 날짜 구분선 -->
-        <div v-if="shouldShowDateSeparator(index)" class="text-center my-4">
-          <div class="d-flex align-center">
-            <div class="flex-grow-1" style="height: 1px; background-color: #e0e0e0;"></div>
-            <v-chip 
-              size="small" 
-              color="grey-darken-1" 
-              variant="tonal"
-              class="text-caption mx-3"
-              style="background-color: #f5f5f5;"
-            >
-              {{ formatDateSeparator(msg.createdAt) }}
-            </v-chip>
-            <div class="flex-grow-1" style="height: 1px; background-color: #e0e0e0;"></div>
+    <div class="flex-grow-1 pa-4 overflow-y-auto chat-scroll" ref="chatContainer" style="height: calc(100vh - 380px);">
+      <div>
+        <div v-for="(msg, index) in chatMessages" :key="msg.id || index" class="mb-1">
+          <!-- 날짜 구분선 -->
+          <div v-if="shouldShowDateSeparator(index)" class="text-center my-4">
+            <div class="d-flex align-center">
+              <div class="flex-grow-1" style="height: 1px; background-color: #e0e0e0;"></div>
+              <v-chip 
+                size="small" 
+                color="grey-darken-1" 
+                variant="tonal"
+                class="text-caption mx-3"
+                style="background-color: #f5f5f5;"
+              >
+                {{ formatDateSeparator(msg.createdAt) }}
+              </v-chip>
+              <div class="flex-grow-1" style="height: 1px; background-color: #e0e0e0;"></div>
+            </div>
+          </div>
+          
+          <div :class="['d-flex', msg.senderId === myId ? 'justify-end' : 'justify-start']">
+            
+            <!-- 내 메시지 (오른쪽) -->
+            <template v-if="msg.senderId === myId">
+              <!-- 시간 (왼쪽) - 연속된 메시지에서 마지막에만 표시 -->
+              <div v-if="shouldShowTime(index, true)" class="d-flex align-end mr-1" style="min-width: 50px;">
+                <span class="text-caption text-grey-darken-1">
+                  {{ formatRelativeTime(msg.createdAt) }}
+                </span>
+              </div>
+              
+              <!-- 메시지 내용 (오른쪽) -->
+              <div class="d-inline-flex flex-column pa-2 rounded-lg bg-orange-lighten-5 align-end" style="max-width: 70%; word-break: break-word">
+                
+                <!-- 텍스트 메시지 -->
+                <span v-if="msg.hasMessage()" class="text-body-2">{{ msg.message }}</span>
+                
+                <!-- 이미지 파일들 -->
+                <div v-if="msg.getImageFiles().length > 0" class="mt-1">
+                  <div class="d-flex flex-wrap gap-1" style="max-width: 300px;">
+                    <div 
+                      v-for="file in msg.getImageFiles()" 
+                      :key="file.id" 
+                      class="position-relative"
+                      :style="getImageContainerStyle(msg.getImageFiles().length)"
+                    >
+                      <v-img 
+                        :src="file.fileUrl" 
+                        :width="getImageSize(msg.getImageFiles().length)" 
+                        :height="getImageSize(msg.getImageFiles().length)"
+                        class="rounded" 
+                        :alt="file.fileName"
+                        @click="openImage(file.fileUrl)"
+                        style="cursor: pointer; object-fit: cover;"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- 일반 파일들 -->
+                <div v-if="msg.getNonImageFiles().length > 0" class="mt-1">
+                  <div v-for="file in msg.getNonImageFiles()" :key="file.id" class="mb-1">
+                    <v-btn 
+                      variant="text" 
+                      color="primary" 
+                      :href="file.fileUrl" 
+                      download 
+                      :title="file.fileName"
+                      class="pa-0 text-left"
+                      style="min-width: auto; text-transform: none;"
+                    >
+                      <v-icon size="small" class="mr-1">mdi-file</v-icon>
+                      {{ file.fileName }}
+                    </v-btn>
+                  </div>
+                </div>
+              </div>
+            </template>
+            
+            <!-- 상대방 메시지 (왼쪽) -->
+            <template v-else>
+              <!-- 메시지 내용 (왼쪽) -->
+              <div class="d-inline-flex flex-column pa-2 rounded-lg bg-grey-lighten-4 align-start" style="max-width: 70%; word-break: break-word">
+                
+                <!-- 텍스트 메시지 -->
+                <span v-if="msg.hasMessage()" class="text-body-2">{{ msg.message }}</span>
+                
+                <!-- 이미지 파일들 -->
+                <div v-if="msg.getImageFiles().length > 0" class="mt-1">
+                  <div class="d-flex flex-wrap gap-1" style="max-width: 300px;">
+                    <div 
+                      v-for="file in msg.getImageFiles()" 
+                      :key="file.id" 
+                      class="position-relative"
+                      :style="getImageContainerStyle(msg.getImageFiles().length)"
+                    >
+                      <v-img 
+                        :src="file.fileUrl" 
+                        :width="getImageSize(msg.getImageFiles().length)" 
+                        :height="getImageSize(msg.getImageFiles().length)"
+                        class="rounded" 
+                        :alt="file.fileName"
+                        @click="openImage(file.fileUrl)"
+                        style="cursor: pointer; object-fit: cover;"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- 일반 파일들 -->
+                <div v-if="msg.getNonImageFiles().length > 0" class="mt-1">
+                  <div v-for="file in msg.getNonImageFiles()" :key="file.id" class="mb-1">
+                    <v-btn 
+                      variant="text" 
+                      color="primary" 
+                      :href="file.fileUrl" 
+                      download 
+                      :title="file.fileName"
+                      class="pa-0 text-left"
+                      style="min-width: auto; text-transform: none;"
+                    >
+                      <v-icon size="small" class="mr-1">mdi-file</v-icon>
+                      {{ file.fileName }}
+                    </v-btn>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- 시간 (오른쪽) - 연속된 메시지에서 마지막에만 표시 -->
+              <div v-if="shouldShowTime(index, false)" class="d-flex align-end ml-1" style="min-width: 50px;">
+                <span class="text-caption text-grey-darken-1">
+                  {{ formatRelativeTime(msg.createdAt) }}
+                </span>
+              </div>
+            </template>
+            
           </div>
         </div>
         
-        <div :class="['d-flex', msg.senderId === myId ? 'justify-end' : 'justify-start']">
-          
-          <!-- 내 메시지 (오른쪽) -->
-          <template v-if="msg.senderId === myId">
-            <!-- 시간 (왼쪽) - 연속된 메시지에서 마지막에만 표시 -->
-            <div v-if="shouldShowTime(index, true)" class="d-flex align-end mr-1" style="min-width: 50px;">
-              <span class="text-caption text-grey-darken-1">
-                {{ formatRelativeTime(msg.createdAt) }}
-              </span>
-            </div>
-            
-            <!-- 메시지 내용 (오른쪽) -->
-            <div class="d-inline-flex flex-column pa-2 rounded-lg bg-orange-lighten-5 align-end" style="max-width: 70%; word-break: break-word">
-              
-              <!-- 텍스트 메시지 -->
-              <span v-if="msg.hasMessage()" class="text-body-2">{{ msg.message }}</span>
-              
-              <!-- 이미지 파일들 -->
-              <div v-if="msg.getImageFiles().length > 0" class="mt-1">
-                <div class="d-flex flex-wrap gap-1" style="max-width: 300px;">
-                  <div 
-                    v-for="file in msg.getImageFiles()" 
-                    :key="file.id" 
-                    class="position-relative"
-                    :style="getImageContainerStyle(msg.getImageFiles().length)"
-                  >
-                    <v-img 
-                      :src="file.fileUrl" 
-                      :width="getImageSize(msg.getImageFiles().length)" 
-                      :height="getImageSize(msg.getImageFiles().length)"
-                      class="rounded" 
-                      :alt="file.fileName"
-                      @click="openImage(file.fileUrl)"
-                      style="cursor: pointer; object-fit: cover;"
-                    />
-                  </div>
-                </div>
-              </div>
-              
-              <!-- 일반 파일들 -->
-              <div v-if="msg.getNonImageFiles().length > 0" class="mt-1">
-                <div v-for="file in msg.getNonImageFiles()" :key="file.id" class="mb-1">
-                  <v-btn 
-                    variant="text" 
-                    color="primary" 
-                    :href="file.fileUrl" 
-                    download 
-                    :title="file.fileName"
-                    class="pa-0 text-left"
-                    style="min-width: auto; text-transform: none;"
-                  >
-                    <v-icon size="small" class="mr-1">mdi-file</v-icon>
-                    {{ file.fileName }}
-                  </v-btn>
-                </div>
-              </div>
-            </div>
-          </template>
-          
-          <!-- 상대방 메시지 (왼쪽) -->
-          <template v-else>
-            <!-- 메시지 내용 (왼쪽) -->
-            <div class="d-inline-flex flex-column pa-2 rounded-lg bg-grey-lighten-4 align-start" style="max-width: 70%; word-break: break-word">
-              
-              <!-- 텍스트 메시지 -->
-              <span v-if="msg.hasMessage()" class="text-body-2">{{ msg.message }}</span>
-              
-              <!-- 이미지 파일들 -->
-              <div v-if="msg.getImageFiles().length > 0" class="mt-1">
-                <div class="d-flex flex-wrap gap-1" style="max-width: 300px;">
-                  <div 
-                    v-for="file in msg.getImageFiles()" 
-                    :key="file.id" 
-                    class="position-relative"
-                    :style="getImageContainerStyle(msg.getImageFiles().length)"
-                  >
-                    <v-img 
-                      :src="file.fileUrl" 
-                      :width="getImageSize(msg.getImageFiles().length)" 
-                      :height="getImageSize(msg.getImageFiles().length)"
-                      class="rounded" 
-                      :alt="file.fileName"
-                      @click="openImage(file.fileUrl)"
-                      style="cursor: pointer; object-fit: cover;"
-                    />
-                  </div>
-                </div>
-              </div>
-              
-              <!-- 일반 파일들 -->
-              <div v-if="msg.getNonImageFiles().length > 0" class="mt-1">
-                <div v-for="file in msg.getNonImageFiles()" :key="file.id" class="mb-1">
-                  <v-btn 
-                    variant="text" 
-                    color="primary" 
-                    :href="file.fileUrl" 
-                    download 
-                    :title="file.fileName"
-                    class="pa-0 text-left"
-                    style="min-width: auto; text-transform: none;"
-                  >
-                    <v-icon size="small" class="mr-1">mdi-file</v-icon>
-                    {{ file.fileName }}
-                  </v-btn>
-                </div>
-              </div>
-            </div>
-            
-            <!-- 시간 (오른쪽) - 연속된 메시지에서 마지막에만 표시 -->
-            <div v-if="shouldShowTime(index, false)" class="d-flex align-end ml-1" style="min-width: 50px;">
-              <span class="text-caption text-grey-darken-1">
-                {{ formatRelativeTime(msg.createdAt) }}
-              </span>
-            </div>
-          </template>
-          
+        <!-- 로딩 상태 -->
+        <div v-if="loading" class="text-center py-4">
+          <v-progress-circular indeterminate color="primary" />
         </div>
-      </div>
-      
-      <!-- 로딩 상태 -->
-      <div v-if="loading" class="text-center py-4">
-        <v-progress-circular indeterminate color="primary" />
-      </div>
-      
-      <!-- 빈 상태 -->
-      <div v-if="!loading && chatMessages.length === 0" class="text-center py-8">
-        <v-icon size="48" color="grey">mdi-chat-outline</v-icon>
-        <div class="mt-2 text-subtitle-1 text-grey">
-          아직 메시지가 없습니다
+        
+        <!-- 빈 상태 -->
+        <div v-if="!loading && chatMessages.length === 0" class="text-center py-8">
+          <v-icon size="48" color="grey">mdi-chat-outline</v-icon>
+          <div class="mt-2 text-subtitle-1 text-grey">
+            아직 메시지가 없습니다
+          </div>
         </div>
       </div>
     </div>
@@ -285,6 +287,7 @@
     <!-- 입력창 -->
     <div class="pa-2 border-t d-flex align-center">
       <v-text-field
+        ref="messageInput"
         v-model="message"
         placeholder="메시지를 입력하세요..."
         hide-details
@@ -382,6 +385,7 @@ const partnerAvatar = computed(() => currentRoom.value?.otherUserProfileImage ||
 watch(chatMessages, () => {
   nextTick(() => {
     if (chatContainer.value) {
+      // 일반적인 스크롤 방향으로 맨 아래로 이동
       chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
     }
   });
@@ -590,5 +594,27 @@ const leaveRoomInfo = computed(() => {
 .chat-scroll::-webkit-scrollbar-thumb {
   background-color: rgba(0, 0, 0, 0.2);
   border-radius: 4px;
+}
+
+.chat-scroll::-webkit-scrollbar-track {
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+}
+
+/* 채팅 컨테이너 전체 높이 고정 */
+.chat-container {
+  height: calc(100vh - 120px);
+  display: flex;
+  flex-direction: column;
+}
+
+/* 메시지 영역 고정 높이 */
+.message-container {
+  height: calc(100vh - 380px);
+  overflow-y: auto;
+}
+
+.message-content {
+  /* direction 속성 제거 */
 }
 </style>
