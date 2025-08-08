@@ -182,12 +182,12 @@
             :class="{ 'in-cart': cartStore && cartStore.isInCart(lecture.id) }"
             @click="enrollLecture"
           >
-            {{ cartStore && cartStore.isInCart(lecture.id) ? '장바구니에 추가됨' : '지금 수강하기' }}
+            {{ cartStore && cartStore.isInCart(lecture.id) ? '장바구니에 추가됨' : '장바구니에 담기' }}
           </button>
-                      <div class="share-section" @click="openShareModal">
-              <span class="share-icon">📤</span>
-              <span>공유하기</span>
-            </div>
+          <div class="share-section" @click="showShareModal = true">
+            <span class="share-icon">📤</span>
+            <span>공유하기</span>
+          </div>
         </div>
 
         <!-- 강의 요약 -->
@@ -255,35 +255,54 @@
       <p>강의 정보를 불러오는 중...</p>
     </div>
 
+    <!-- 장바구니 추가 확인 모달 -->
+    <div v-if="showCartModal" class="modal-overlay" @click="showCartModal = false">
+      <div class="cart-modal" @click.stop>
+        <div class="modal-header">
+          <h3>장바구니 추가</h3>
+          <button class="close-btn" @click="showCartModal = false">×</button>
+        </div>
+        <div class="modal-content">
+          <div class="modal-icon">🛒</div>
+          <p class="modal-message">장바구니에 추가하였습니다.</p>
+          <p class="modal-submessage">장바구니로 이동하겠습니까?</p>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-primary" @click="goToCart">이동하기</button>
+          <button class="btn-secondary" @click="showCartModal = false">취소</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 공유 모달 -->
-    <div v-if="showShareModal" class="share-modal-overlay" @click="closeShareModal">
+    <div v-if="showShareModal" class="share-modal-overlay" @click="showShareModal = false">
       <div class="share-modal" @click.stop>
         <div class="share-modal-header">
           <h3>공유하기</h3>
-          <button class="close-btn" @click="closeShareModal">×</button>
+          <button class="close-btn" @click="showShareModal = false">×</button>
         </div>
         <div class="share-options">
-          <div class="share-option facebook-share" @click="shareToFacebook">
+          <div class="share-option facebook-option" @click="shareToFacebook">
             <div class="share-icon">
-              <img src="@/assets/images/Facebook_Logo_Primary.png" alt="Facebook" />
+              <img src="/src/assets/images/Facebook_Logo_Primary.png" alt="Facebook" />
             </div>
             <span>페이스북</span>
           </div>
-          <div class="share-option kakaotalk-share" @click="shareToKakaoTalk">
+          <div class="share-option kakaotalk-option" @click="shareToKakaoTalk">
             <div class="share-icon">
-              <img src="@/assets/images/kakaotalk_sharing_btn_small.png" alt="KakaoTalk" />
+              <img src="/src/assets/images/kakaotalk_sharing_btn_small.png" alt="KakaoTalk" />
             </div>
             <span>카카오톡</span>
           </div>
-          <div class="share-option instagram-share" @click="shareToInstagram">
+          <div class="share-option instagram-option" @click="shareToInstagram">
             <div class="share-icon">
-              <img src="@/assets/images/Instagram_Glyph_Gradient.png" alt="Instagram" />
+              <img src="/src/assets/images/Instagram_Glyph_Gradient.png" alt="Instagram" />
             </div>
             <span>인스타그램</span>
           </div>
-          <div class="share-option link-share" @click="copyToClipboard">
+          <div class="share-option link-option" @click="copyToClipboard">
             <div class="share-icon">
-              <img src="@/assets/images/lecture_shared_icon.png" alt="Link" />
+              <img src="/src/assets/images/lecture_shared_icon.png" alt="Link" />
             </div>
             <span>링크 복사</span>
           </div>
@@ -350,12 +369,91 @@
         </div>
       </div>
     </div>
+
+    <!-- 알림 모달 -->
+    <div v-if="showNotificationModal" class="modal-overlay" @click="showNotificationModal = false">
+      <div class="cart-modal" @click.stop>
+        <div class="modal-header">
+          <h3>{{ notificationData.title }}</h3>
+          <button class="close-btn" @click="showNotificationModal = false">×</button>
+        </div>
+        <div class="modal-content">
+          <div class="modal-icon">{{ notificationData.icon }}</div>
+          <p class="modal-message">{{ notificationData.message }}</p>
+          <p v-if="notificationData.submessage" class="modal-submessage">{{ notificationData.submessage }}</p>
+        </div>
+        <div class="modal-actions">
+          <button 
+            v-if="notificationData.primaryAction" 
+            class="btn-primary" 
+            @click="handlePrimaryAction"
+          >
+            {{ notificationData.primaryAction.text }}
+          </button>
+          <button class="btn-secondary" @click="showNotificationModal = false">확인</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 에러 모달 -->
+    <div v-if="showErrorModal" class="modal-overlay" @click="showErrorModal = false">
+      <div class="cart-modal" @click.stop>
+        <div class="modal-header">
+          <h3>오류</h3>
+          <button class="close-btn" @click="showErrorModal = false">×</button>
+        </div>
+        <div class="modal-content">
+          <div class="modal-icon">⚠️</div>
+          <p class="modal-message">{{ errorMessage }}</p>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-secondary" @click="showErrorModal = false">확인</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 성공 모달 -->
+    <div v-if="showSuccessModal" class="modal-overlay" @click="showSuccessModal = false">
+      <div class="cart-modal" @click.stop>
+        <div class="modal-header">
+          <h3>완료</h3>
+          <button class="close-btn" @click="showSuccessModal = false">×</button>
+        </div>
+        <div class="modal-content">
+          <div class="modal-icon">✅</div>
+          <p class="modal-message">{{ successMessage }}</p>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-primary" @click="showSuccessModal = false">확인</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 확인 모달 -->
+    <div v-if="showConfirmModal" class="modal-overlay" @click="showConfirmModal = false">
+      <div class="cart-modal" @click.stop>
+        <div class="modal-header">
+          <h3>{{ confirmData.title }}</h3>
+          <button class="close-btn" @click="showConfirmModal = false">×</button>
+        </div>
+        <div class="modal-content">
+          <div class="modal-icon">{{ confirmData.icon }}</div>
+          <p class="modal-message">{{ confirmData.message }}</p>
+          <p v-if="confirmData.submessage" class="modal-submessage">{{ confirmData.submessage }}</p>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-primary" @click="handleConfirmAction">{{ confirmData.confirmText }}</button>
+          <button class="btn-secondary" @click="showConfirmModal = false">취소</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
 import Header from '@/components/Header.vue';
-// import { useCartStore } from '@/store/cart.js';
+import { useCartStore } from '@/views/cart/cart.js';
+
 
 export default {
   name: 'LectureDetail',
@@ -367,6 +465,15 @@ export default {
       showShareModal: false,
       showReviewModal: false,
       showQAModal: false,
+      showCartModal: false,
+      showNotificationModal: false,
+      showErrorModal: false,
+      showSuccessModal: false,
+      showConfirmModal: false,
+      notificationData: {},
+      errorMessage: '',
+      successMessage: '',
+      confirmData: {},
       newReview: {
         rating: 0,
         content: ''
@@ -383,10 +490,10 @@ export default {
       currentQAPage: 1,
       // 장바구니 스토어
       cartStore: null,
-      // 강의 목록 데이터 (실제로는 API에서 가져옴)
+      // 강의 목록 데이터 (첫 8개 강의만)
       lecturesData: [
         {
-          id: 1,
+          id: '550e8400-e29b-41d4-a716-446655440001',
           image: '/src/assets/images/smu_mascort1.jpg',
           category: '한식',
           title: '전문가와 함께하는 한식 기초',
@@ -401,7 +508,7 @@ export default {
           date: '3일 전',
         },
         {
-          id: 2,
+          id: '550e8400-e29b-41d4-a716-446655440002',
           image: '/src/assets/images/smu_mascort3.jpg',
           category: '양식',
           title: '홈메이드 파스타 마스터클래스',
@@ -416,7 +523,7 @@ export default {
           date: '5일 전',
         },
         {
-          id: 3,
+          id: '550e8400-e29b-41d4-a716-446655440003',
           image: '/src/assets/images/smu_mascort2.jpg',
           category: '일식',
           title: '스시의 모든 것',
@@ -431,7 +538,7 @@ export default {
           date: '1주 전',
         },
         {
-          id: 4,
+          id: '550e8400-e29b-41d4-a716-446655440004',
           image: '/src/assets/images/smu_mascort4.jpg',
           category: '중식',
           title: '정통 중식 마스터',
@@ -446,7 +553,7 @@ export default {
           date: '2주 전',
         },
         {
-          id: 5,
+          id: '550e8400-e29b-41d4-a716-446655440005',
           image: '/src/assets/images/smu_mascort5.jpg',
           category: '디저트',
           title: '달콤한 디저트 클래스',
@@ -461,7 +568,7 @@ export default {
           date: '3주 전',
         },
         {
-          id: 6,
+          id: '550e8400-e29b-41d4-a716-446655440006',
           image: '/src/assets/images/smu_mascort1.jpg',
           category: '한식',
           title: '한식 고급반',
@@ -476,7 +583,7 @@ export default {
           date: '4주 전',
         },
         {
-          id: 7,
+          id: '550e8400-e29b-41d4-a716-446655440007',
           image: '/src/assets/images/smu_mascort2.jpg',
           category: '양식',
           title: '이탈리안 파스타 마스터',
@@ -491,7 +598,7 @@ export default {
           date: '1달 전',
         },
         {
-          id: 8,
+          id: '550e8400-e29b-41d4-a716-446655440008',
           image: '/src/assets/images/smu_mascort3.jpg',
           category: '디저트',
           title: '초콜릿 디저트 클래스',
@@ -504,636 +611,6 @@ export default {
           comments: 6,
           students: 70,
           date: '2달 전',
-        },
-        {
-          id: 9,
-          image: '/src/assets/images/smu_mascort4.jpg',
-          category: '한식',
-          title: '김치찌개 마스터 클래스',
-          description: '매콤달콤한 김치찌개 만드는 비법을 배워보세요.',
-          price: 28000,
-          teacher: '김치 셰프',
-          rating: 4,
-          ratingCount: 156,
-          likes: 420,
-          comments: 25,
-          students: 280,
-          date: '1주 전',
-        },
-        {
-          id: 10,
-          image: '/src/assets/images/smu_mascort5.jpg',
-          category: '양식',
-          title: '스테이크 홈메이드',
-          description: '집에서 만드는 완벽한 스테이크 레시피를 배워보세요.',
-          price: 45000,
-          teacher: '스테이크 셰프',
-          rating: 5,
-          ratingCount: 89,
-          likes: 350,
-          comments: 18,
-          students: 150,
-          date: '2주 전',
-        },
-        {
-          id: 11,
-          image: '/src/assets/images/smu_mascort1.jpg',
-          category: '일식',
-          title: '라멘 홈메이드',
-          description: '진한 국물의 라멘을 집에서 만들어보세요.',
-          price: 38000,
-          teacher: '라멘 셰프',
-          rating: 4,
-          ratingCount: 67,
-          likes: 220,
-          comments: 12,
-          students: 95,
-          date: '3주 전',
-        },
-        {
-          id: 12,
-          image: '/src/assets/images/smu_mascort2.jpg',
-          category: '중식',
-          title: '짜장면 홈메이드',
-          description: '정통 짜장면을 집에서 만들어보세요.',
-          price: 25000,
-          teacher: '짜장 셰프',
-          rating: 3,
-          ratingCount: 45,
-          likes: 180,
-          comments: 8,
-          students: 120,
-          date: '1달 전',
-        },
-        {
-          id: 13,
-          image: '/src/assets/images/smu_mascort3.jpg',
-          category: '디저트',
-          title: '티라미수 마스터',
-          description: '이탈리안 디저트의 정석, 티라미수를 배워보세요.',
-          price: 36000,
-          teacher: '티라미수 셰프',
-          rating: 5,
-          ratingCount: 78,
-          likes: 280,
-          comments: 15,
-          students: 110,
-          date: '2주 전',
-        },
-        {
-          id: 14,
-          image: '/src/assets/images/smu_mascort4.jpg',
-          category: '한식',
-          title: '비빔밥 홈메이드',
-          description: '건강한 비빔밥을 집에서 만들어보세요.',
-          price: 32000,
-          teacher: '비빔밥 셰프',
-          rating: 4,
-          ratingCount: 92,
-          likes: 310,
-          comments: 22,
-          students: 180,
-          date: '3주 전',
-        },
-        {
-          id: 15,
-          image: '/src/assets/images/smu_mascort5.jpg',
-          category: '양식',
-          title: '피자 홈메이드',
-          description: '도우부터 토핑까지 직접 만드는 피자 클래스.',
-          price: 41000,
-          teacher: '피자 셰프',
-          rating: 4,
-          ratingCount: 103,
-          likes: 290,
-          comments: 19,
-          students: 140,
-          date: '1달 전',
-        },
-        {
-          id: 16,
-          image: '/src/assets/images/smu_mascort1.jpg',
-          category: '일식',
-          title: '우동 홈메이드',
-          description: '진한 국물의 우동을 집에서 만들어보세요.',
-          price: 29000,
-          teacher: '우동 셰프',
-          rating: 3,
-          ratingCount: 56,
-          likes: 160,
-          comments: 9,
-          students: 85,
-          date: '2주 전',
-        },
-        {
-          id: 17,
-          image: '/src/assets/images/smu_mascort2.jpg',
-          category: '중식',
-          title: '탕수육 홈메이드',
-          description: '바삭한 탕수육을 집에서 만들어보세요.',
-          price: 34000,
-          teacher: '탕수육 셰프',
-          rating: 4,
-          ratingCount: 73,
-          likes: 240,
-          comments: 14,
-          students: 130,
-          date: '3주 전',
-        },
-        {
-          id: 18,
-          image: '/src/assets/images/smu_mascort3.jpg',
-          category: '디저트',
-          title: '마카롱 마스터',
-          description: '프랑스 디저트의 정석, 마카롱을 배워보세요.',
-          price: 48000,
-          teacher: '마카롱 셰프',
-          rating: 5,
-          ratingCount: 88,
-          likes: 320,
-          comments: 20,
-          students: 95,
-          date: '1달 전',
-        },
-        {
-          id: 19,
-          image: '/src/assets/images/smu_mascort4.jpg',
-          category: '한식',
-          title: '된장찌개 홈메이드',
-          description: '건강한 된장찌개를 집에서 만들어보세요.',
-          price: 26000,
-          teacher: '된장 셰프',
-          rating: 4,
-          ratingCount: 134,
-          likes: 380,
-          comments: 28,
-          students: 220,
-          date: '2주 전',
-        },
-        {
-          id: 20,
-          image: '/src/assets/images/smu_mascort5.jpg',
-          category: '양식',
-          title: '샐러드 마스터',
-          description: '건강한 샐러드를 맛있게 만드는 비법을 배워보세요.',
-          price: 22000,
-          teacher: '샐러드 셰프',
-          rating: 3,
-          ratingCount: 41,
-          likes: 140,
-          comments: 7,
-          students: 75,
-          date: '3주 전',
-        },
-        {
-          id: 21,
-          image: '/src/assets/images/smu_mascort1.jpg',
-          category: '한식',
-          title: '불고기 홈메이드',
-          description: '정통 불고기 만드는 비법을 배워보세요.',
-          price: 38000,
-          teacher: '불고기 셰프',
-          rating: 5,
-          ratingCount: 167,
-          likes: 450,
-          comments: 32,
-          students: 280,
-          date: '1주 전',
-        },
-        {
-          id: 22,
-          image: '/src/assets/images/smu_mascort2.jpg',
-          category: '양식',
-          title: '리조또 마스터클래스',
-          description: '크림리 리조또부터 해산물 리조또까지 완벽하게!',
-          price: 42000,
-          teacher: '리조또 셰프',
-          rating: 4,
-          ratingCount: 89,
-          likes: 230,
-          comments: 15,
-          students: 120,
-          date: '2주 전',
-        },
-        {
-          id: 23,
-          image: '/src/assets/images/smu_mascort3.jpg',
-          category: '일식',
-          title: '덮밥 홈메이드',
-          description: '카츠동, 규동 등 다양한 덮밥을 만들어보세요.',
-          price: 31000,
-          teacher: '덮밥 셰프',
-          rating: 4,
-          ratingCount: 78,
-          likes: 190,
-          comments: 11,
-          students: 95,
-          date: '3주 전',
-        },
-        {
-          id: 24,
-          image: '/src/assets/images/smu_mascort4.jpg',
-          category: '중식',
-          title: '깐풍기 홈메이드',
-          description: '바삭한 깐풍기를 집에서 만들어보세요.',
-          price: 36000,
-          teacher: '깐풍기 셰프',
-          rating: 4,
-          ratingCount: 65,
-          likes: 210,
-          comments: 13,
-          students: 110,
-          date: '1달 전',
-        },
-        {
-          id: 25,
-          image: '/src/assets/images/smu_mascort5.jpg',
-          category: '디저트',
-          title: '크로플 마스터',
-          description: '바삭한 크로플을 집에서 만들어보세요.',
-          price: 29000,
-          teacher: '크로플 셰프',
-          rating: 5,
-          ratingCount: 112,
-          likes: 340,
-          comments: 24,
-          students: 160,
-          date: '2주 전',
-        },
-        {
-          id: 26,
-          image: '/src/assets/images/smu_mascort1.jpg',
-          category: '한식',
-          title: '삼겹살 홈메이드',
-          description: '집에서 즐기는 완벽한 삼겹살 구이법.',
-          price: 44000,
-          teacher: '삼겹살 셰프',
-          rating: 4,
-          ratingCount: 145,
-          likes: 380,
-          comments: 29,
-          students: 200,
-          date: '1주 전',
-        },
-        {
-          id: 27,
-          image: '/src/assets/images/smu_mascort2.jpg',
-          category: '양식',
-          title: '스테이크 소스 마스터',
-          description: '완벽한 스테이크 소스 만드는 비법.',
-          price: 28000,
-          teacher: '소스 셰프',
-          rating: 3,
-          ratingCount: 52,
-          likes: 160,
-          comments: 8,
-          students: 85,
-          date: '3주 전',
-        },
-        {
-          id: 28,
-          image: '/src/assets/images/smu_mascort3.jpg',
-          category: '일식',
-          title: '오니기리 홈메이드',
-          description: '다양한 모양과 맛의 오니기리를 만들어보세요.',
-          price: 24000,
-          teacher: '오니기리 셰프',
-          rating: 4,
-          ratingCount: 88,
-          likes: 220,
-          comments: 16,
-          students: 130,
-          date: '2주 전',
-        },
-        {
-          id: 29,
-          image: '/src/assets/images/smu_mascort4.jpg',
-          category: '중식',
-          title: '마파두부 홈메이드',
-          description: '매콤달콤한 마파두부를 집에서 만들어보세요.',
-          price: 27000,
-          teacher: '마파두부 셰프',
-          rating: 4,
-          ratingCount: 73,
-          likes: 200,
-          comments: 12,
-          students: 100,
-          date: '1달 전',
-        },
-        {
-          id: 30,
-          image: '/src/assets/images/smu_mascort5.jpg',
-          category: '디저트',
-          title: '치즈케이크 마스터',
-          description: '부드러운 치즈케이크를 집에서 만들어보세요.',
-          price: 35000,
-          teacher: '치즈케이크 셰프',
-          rating: 5,
-          ratingCount: 134,
-          likes: 360,
-          comments: 26,
-          students: 180,
-          date: '1주 전',
-        },
-        {
-          id: 31,
-          image: '/src/assets/images/smu_mascort1.jpg',
-          category: '한식',
-          title: '닭볶음탕 홈메이드',
-          description: '매콤달콤한 닭볶음탕 만드는 비법.',
-          price: 33000,
-          teacher: '닭볶음탕 셰프',
-          rating: 4,
-          ratingCount: 96,
-          likes: 250,
-          comments: 18,
-          students: 140,
-          date: '2주 전',
-        },
-        {
-          id: 32,
-          image: '/src/assets/images/smu_mascort2.jpg',
-          category: '양식',
-          title: '크림파스타 마스터',
-          description: '부드러운 크림파스타를 완벽하게 만들어보세요.',
-          price: 39000,
-          teacher: '크림파스타 셰프',
-          rating: 4,
-          ratingCount: 104,
-          likes: 270,
-          comments: 21,
-          students: 150,
-          date: '3주 전',
-        },
-        {
-          id: 33,
-          image: '/src/assets/images/smu_mascort3.jpg',
-          category: '일식',
-          title: '오코노미야키 홈메이드',
-          description: '일본의 대표 음식 오코노미야키를 만들어보세요.',
-          price: 32000,
-          teacher: '오코노미야키 셰프',
-          rating: 3,
-          ratingCount: 58,
-          likes: 170,
-          comments: 9,
-          students: 90,
-          date: '1달 전',
-        },
-        {
-          id: 34,
-          image: '/src/assets/images/smu_mascort4.jpg',
-          category: '중식',
-          title: '깐풍새우 홈메이드',
-          description: '바삭한 깐풍새우를 집에서 만들어보세요.',
-          price: 41000,
-          teacher: '깐풍새우 셰프',
-          rating: 5,
-          ratingCount: 89,
-          likes: 290,
-          comments: 17,
-          students: 120,
-          date: '2주 전',
-        },
-        {
-          id: 35,
-          image: '/src/assets/images/smu_mascort5.jpg',
-          category: '디저트',
-          title: '몽블랑 마스터',
-          description: '프랑스 디저트의 정석, 몽블랑을 배워보세요.',
-          price: 52000,
-          teacher: '몽블랑 셰프',
-          rating: 5,
-          ratingCount: 76,
-          likes: 310,
-          comments: 22,
-          students: 95,
-          date: '1달 전',
-        },
-        {
-          id: 36,
-          image: '/src/assets/images/smu_mascort1.jpg',
-          category: '한식',
-          title: '갈비찜 홈메이드',
-          description: '부드러운 갈비찜 만드는 비법을 배워보세요.',
-          price: 46000,
-          teacher: '갈비찜 셰프',
-          rating: 4,
-          ratingCount: 123,
-          likes: 320,
-          comments: 25,
-          students: 170,
-          date: '1주 전',
-        },
-        {
-          id: 37,
-          image: '/src/assets/images/smu_mascort2.jpg',
-          category: '양식',
-          title: '라자냐 마스터클래스',
-          description: '이탈리안 라자냐를 완벽하게 만들어보세요.',
-          price: 43000,
-          teacher: '라자냐 셰프',
-          rating: 4,
-          ratingCount: 87,
-          likes: 240,
-          comments: 16,
-          students: 130,
-          date: '2주 전',
-        },
-        {
-          id: 38,
-          image: '/src/assets/images/smu_mascort3.jpg',
-          category: '일식',
-          title: '돈카츠 홈메이드',
-          description: '바삭한 돈카츠를 집에서 만들어보세요.',
-          price: 38000,
-          teacher: '돈카츠 셰프',
-          rating: 4,
-          ratingCount: 95,
-          likes: 260,
-          comments: 19,
-          students: 140,
-          date: '3주 전',
-        },
-        {
-          id: 39,
-          image: '/src/assets/images/smu_mascort4.jpg',
-          category: '중식',
-          title: '훠궈 홈메이드',
-          description: '중국식 샤브샤브 훠궈를 집에서 즐겨보세요.',
-          price: 48000,
-          teacher: '훠궈 셰프',
-          rating: 5,
-          ratingCount: 67,
-          likes: 280,
-          comments: 20,
-          students: 110,
-          date: '1달 전',
-        },
-        {
-          id: 40,
-          image: '/src/assets/images/smu_mascort5.jpg',
-          category: '디저트',
-          title: '에클레어 마스터',
-          description: '프랑스 디저트 에클레어를 배워보세요.',
-          price: 44000,
-          teacher: '에클레어 셰프',
-          rating: 5,
-          ratingCount: 82,
-          likes: 300,
-          comments: 23,
-          students: 100,
-          date: '2주 전',
-        },
-        {
-          id: 41,
-          image: '/src/assets/images/smu_mascort1.jpg',
-          category: '한식',
-          title: '순두부찌개 홈메이드',
-          description: '매콤한 순두부찌개를 집에서 만들어보세요.',
-          price: 25000,
-          teacher: '순두부 셰프',
-          rating: 4,
-          ratingCount: 156,
-          likes: 420,
-          comments: 31,
-          students: 240,
-          date: '1주 전',
-        },
-        {
-          id: 42,
-          image: '/src/assets/images/smu_mascort2.jpg',
-          category: '양식',
-          title: '카르보나라 마스터',
-          description: '정통 이탈리안 카르보나라를 배워보세요.',
-          price: 36000,
-          teacher: '카르보나라 셰프',
-          rating: 4,
-          ratingCount: 113,
-          likes: 290,
-          comments: 24,
-          students: 160,
-          date: '2주 전',
-        },
-        {
-          id: 43,
-          image: '/src/assets/images/smu_mascort3.jpg',
-          category: '일식',
-          title: '가라아게 홈메이드',
-          description: '바삭한 가라아게를 집에서 만들어보세요.',
-          price: 30000,
-          teacher: '가라아게 셰프',
-          rating: 3,
-          ratingCount: 74,
-          likes: 200,
-          comments: 14,
-          students: 105,
-          date: '3주 전',
-        },
-        {
-          id: 44,
-          image: '/src/assets/images/smu_mascort4.jpg',
-          category: '중식',
-          title: '꿔바로우 홈메이드',
-          description: '중국식 볶음밥 꿔바로우를 만들어보세요.',
-          price: 22000,
-          teacher: '꿔바로우 셰프',
-          rating: 4,
-          ratingCount: 89,
-          likes: 230,
-          comments: 17,
-          students: 125,
-          date: '1달 전',
-        },
-        {
-          id: 45,
-          image: '/src/assets/images/smu_mascort5.jpg',
-          category: '디저트',
-          title: '마들렌 마스터',
-          description: '프랑스 디저트 마들렌을 배워보세요.',
-          price: 28000,
-          teacher: '마들렌 셰프',
-          rating: 4,
-          ratingCount: 66,
-          likes: 180,
-          comments: 11,
-          students: 85,
-          date: '2주 전',
-        },
-        {
-          id: 46,
-          image: '/src/assets/images/smu_mascort1.jpg',
-          category: '한식',
-          title: '제육볶음 홈메이드',
-          description: '매콤달콤한 제육볶음을 집에서 만들어보세요.',
-          price: 34000,
-          teacher: '제육볶음 셰프',
-          rating: 4,
-          ratingCount: 108,
-          likes: 280,
-          comments: 20,
-          students: 155,
-          date: '1주 전',
-        },
-        {
-          id: 47,
-          image: '/src/assets/images/smu_mascort2.jpg',
-          category: '양식',
-          title: '뇨끼 마스터클래스',
-          description: '이탈리안 뇨끼를 완벽하게 만들어보세요.',
-          price: 47000,
-          teacher: '뇨끼 셰프',
-          rating: 5,
-          ratingCount: 73,
-          likes: 250,
-          comments: 18,
-          students: 95,
-          date: '2주 전',
-        },
-        {
-          id: 48,
-          image: '/src/assets/images/smu_mascort3.jpg',
-          category: '일식',
-          title: '오야코동 홈메이드',
-          description: '일본의 대표 덮밥 오야코동을 만들어보세요.',
-          price: 29000,
-          teacher: '오야코동 셰프',
-          rating: 4,
-          ratingCount: 92,
-          likes: 240,
-          comments: 16,
-          students: 135,
-          date: '3주 전',
-        },
-        {
-          id: 49,
-          image: '/src/assets/images/smu_mascort4.jpg',
-          category: '중식',
-          title: '훙샤오러우 홈메이드',
-          description: '중국식 탕수육 훙샤오러우를 만들어보세요.',
-          price: 35000,
-          teacher: '훙샤오러우 셰프',
-          rating: 4,
-          ratingCount: 81,
-          likes: 220,
-          comments: 15,
-          students: 115,
-          date: '1달 전',
-        },
-        {
-          id: 50,
-          image: '/src/assets/images/smu_mascort5.jpg',
-          category: '디저트',
-          title: '크레페 마스터',
-          description: '프랑스 디저트 크레페를 배워보세요.',
-          price: 32000,
-          teacher: '크레페 셰프',
-          rating: 4,
-          ratingCount: 94,
-          likes: 260,
-          comments: 19,
-          students: 140,
-          date: '2주 전',
         },
       ]
     };
@@ -1170,11 +647,20 @@ export default {
   methods: {
     // 강의 데이터를 받아오는 메서드 (실제로는 API 호출)
     async fetchLectureData(lectureId) {
-      // 실제 구현에서는 API에서 강의 데이터를 가져옴
-      console.log('강의 ID:', lectureId);
+      console.log('강의 ID:', lectureId, typeof lectureId);
       
       // 강의 목록에서 해당 ID의 강의 찾기
-      const baseLecture = this.lecturesData.find(l => l.id == lectureId);
+      let baseLecture = this.lecturesData.find(l => l.id === lectureId);
+      
+      // 만약 해당 ID의 강의가 없으면, ID를 1-8 범위로 변환하여 찾기
+      if (!baseLecture) {
+        const lectureIdNum = parseInt(lectureId.split('-').pop());
+        const normalizedId = ((lectureIdNum - 1) % 8) + 1;
+        const normalizedLectureId = `550e8400-e29b-41d4-a716-44665544000${normalizedId}`;
+        baseLecture = this.lecturesData.find(l => l.id === normalizedLectureId);
+      }
+      
+      console.log('찾은 강의:', baseLecture);
       
       if (baseLecture) {
         // 강의 상세 정보 생성
@@ -1192,8 +678,11 @@ export default {
           recipe: this.generateRecipe(baseLecture)
         };
       } else {
-        // 강의를 찾을 수 없는 경우 기본 데이터 사용
-        this.lecture = this.getDefaultLecture();
+        console.error('강의를 찾을 수 없습니다. ID:', lectureId);
+        this.showError('강의를 찾을 수 없습니다.');
+        setTimeout(() => {
+          this.$router.push({ name: 'LectureList' });
+        }, 2000);
       }
     },
     
@@ -1644,69 +1133,7 @@ export default {
       return qaTemplates;
     },
     
-    getDefaultLecture() {
-      return {
-        id: 1,
-        title: '크림 파스타의 모든 것',
-        description: '진짜 이탈리아 스타일 크림 파스타 만들기. 면 삶기부터 크림 소스 만들기까지 모든 노하우를 담았습니다.',
-        category: '양식',
-        level: '초급',
-        price: 35000,
-        totalDuration: '1시간 15분',
-        students: 142,
-        rating: 0.0,
-        ratingCount: 0,
-        instructor: {
-          name: '김 요리',
-          title: '요리 전문가'
-        },
-        lessons: [
-          {
-            title: '파스타 면 삶기의 비법',
-            description: '알덴테 파스타를 위한 삶기 방법',
-            duration: '15분',
-            isPreview: true
-          },
-          {
-            title: '크림 소스 만들기',
-            description: '진짜 이탈리아식 크림 소스 레시피',
-            duration: '30분',
-            isPreview: false
-          },
-          {
-            title: '파스타와 소스 결합하기',
-            description: '면과 소스를 완벽하게 결합하는 방법',
-            duration: '10분',
-            isPreview: false
-          }
-        ],
-        reviews: [],
-        qa: [],
-        recipe: {
-          title: '크림 파스타',
-          description: '진짜 이탈리아식 크림 파스타',
-          servings: '2인분',
-          cookTime: '25분',
-          difficulty: '초급',
-          ingredients: [
-            { name: '파스타 면', amount: '200 g' },
-            { name: '생크림', amount: '200 ml' },
-            { name: '파마산 치즈', amount: '50 g' },
-            { name: '마늘', amount: '3쪽' },
-            { name: '올리브오일', amount: '2큰술' },
-            { name: '후추', amount: '적당량' }
-          ],
-          steps: [
-            '파스타 면을 알덴테로 삶는다',
-            '팬에 올리브오일과 마늘을 볶는다',
-            '생크림을 넣고 끓인다',
-            '파마산 치즈를 넣어 녹인다',
-            '삶은 면을 넣고 소스와 잘 섞는다',
-            '후추로 마무리한다'
-          ]
-        }
-      };
-    },
+    
 
     // 공유 기능 메서드들
     getShareUrl() {
@@ -1717,36 +1144,12 @@ export default {
       return `${this.lecture.title} - ${this.lecture.description}`;
     },
 
-    // 모달 열 때 스크롤 방지
-    openShareModal() {
-      this.showShareModal = true;
-      // 스크롤 방지 - 여러 방법으로 확실하게 처리
-      document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.width = '100%';
-      document.body.style.top = `-${window.scrollY}px`;
-    },
-
-    // 모달 닫을 때 스크롤 복원
-    closeShareModal() {
-      this.showShareModal = false;
-      // 스크롤 복원
-      const scrollY = document.body.style.top;
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.width = '';
-      document.body.style.top = '';
-      if (scrollY) {
-        window.scrollTo(0, parseInt(scrollY || '0') * -1);
-      }
-    },
-
     shareToFacebook() {
       const url = encodeURIComponent(this.getShareUrl());
       const text = encodeURIComponent(this.getShareText());
       const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}&quote=${text}`;
       window.open(facebookUrl, '_blank', 'width=600,height=400');
-      this.closeShareModal();
+      this.showShareModal = false;
     },
 
     shareToKakaoTalk() {
@@ -1782,7 +1185,7 @@ export default {
         // Kakao SDK가 로드되지 않은 경우 링크 복사로 대체
         this.copyToClipboard();
       }
-      this.closeShareModal();
+      this.showShareModal = false;
     },
 
     shareToInstagram() {
@@ -1806,7 +1209,6 @@ export default {
           this.copyToClipboard();
         }, 1000);
       }
-      this.closeShareModal();
     },
 
     isMobile() {
@@ -1815,25 +1217,29 @@ export default {
 
     async copyToClipboard() {
       try {
-        // 링크만 복사 (페이지 정보 제외)
-        await navigator.clipboard.writeText(this.getShareUrl());
-        alert('링크가 클립보드에 복사되었습니다!');
-        this.closeShareModal();
+        const shareText = `${this.getShareText()}\n\n${this.getShareUrl()}`;
+        await navigator.clipboard.writeText(shareText);
+        this.showNotification({
+          title: '링크 복사',
+          icon: '🔗',
+          message: '링크가 클립보드에 복사되었습니다!'
+        });
+        this.showShareModal = false;
       } catch (err) {
         console.error('클립보드 복사 실패:', err);
-        alert('링크 복사에 실패했습니다. 수동으로 복사해주세요.');
+        this.showError('링크 복사에 실패했습니다. 수동으로 복사해주세요.');
       }
     },
 
     // 리뷰 제출
     submitReview() {
       if (this.newReview.rating === 0) {
-        alert('평점을 선택해주세요.');
+        this.showError('평점을 선택해주세요.');
         return;
       }
       
       if (!this.newReview.content.trim()) {
-        alert('리뷰 내용을 작성해주세요.');
+        this.showError('리뷰 내용을 작성해주세요.');
         return;
       }
 
@@ -1856,13 +1262,13 @@ export default {
       this.showReviewModal = false;
       this.newReview = { rating: 0, content: '' };
 
-      alert('리뷰가 등록되었습니다!');
+      this.showSuccess('리뷰가 등록되었습니다!');
     },
 
     // Q&A 제출
     submitQuestion() {
       if (!this.newQuestion.content.trim()) {
-        alert('질문 내용을 작성해주세요.');
+        this.showError('질문 내용을 작성해주세요.');
         return;
       }
 
@@ -1884,7 +1290,7 @@ export default {
       this.showQAModal = false;
       this.newQuestion = { content: '' };
 
-      alert('질문이 등록되었습니다!');
+      this.showSuccess('질문이 등록되었습니다!');
     },
 
     // 강의 평점 업데이트
@@ -1904,27 +1310,55 @@ export default {
     purchaseLecture() {
       // 실제로는 결제 API 호출
       this.isPurchased = true;
-      alert('강의가 구매되었습니다! 이제 리뷰를 작성할 수 있습니다.');
+      this.showNotification({
+        title: '구매 완료',
+        icon: '🎉',
+        message: '강의가 구매되었습니다!',
+        submessage: '이제 리뷰를 작성할 수 있습니다.'
+      });
     },
 
-    // 장바구니에 강의 추가
+    // 장바구니에 강의 추가/제거 (토글 기능)
     enrollLecture() {
       if (!this.lecture) {
-        alert('강의 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+        this.showError('강의 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
         return;
       }
 
-      // 이미 장바구니에 있는 경우
+      // 이미 장바구니에 있는 경우 - 제거
       if (this.cartStore.isInCart(this.lecture.id)) {
-        alert('이미 장바구니에 있는 강의입니다.');
+        this.showConfirm({
+          title: '장바구니 제거',
+          icon: '🗑️',
+          message: '장바구니에서 강의를 제거하시겠습니까?',
+          confirmText: '제거하기',
+          callback: () => {
+            const result = this.cartStore.removeFromCart(this.lecture.id);
+            if (result) {
+              this.showSuccess('장바구니에서 강의가 제거되었습니다.');
+            } else {
+              this.showError('장바구니에서 제거에 실패했습니다. 다시 시도해주세요.');
+            }
+          }
+        });
         return;
       }
 
       // 장바구니에 강의 추가
       const result = this.cartStore.addToCart(this.lecture);
       
-      // 결과 메시지 표시
-      alert(result.message);
+      // 결과 메시지 표시 - 모달로 변경
+      if (result) {
+        this.showCartModal = true;
+      } else {
+        this.showError('장바구니 추가에 실패했습니다. 다시 시도해주세요.');
+      }
+    },
+
+    // 장바구니로 이동
+    goToCart() {
+      this.showCartModal = false;
+      this.$router.push('/cart');
     },
     
     // 리뷰 더 보기 버튼 클릭
@@ -1935,6 +1369,41 @@ export default {
     // Q&A 더 보기 버튼 클릭
     loadMoreQA() {
       this.currentQAPage++;
+    },
+
+    // 모달 관련 헬퍼 메서드들
+    showError(message) {
+      this.errorMessage = message;
+      this.showErrorModal = true;
+    },
+
+    showSuccess(message) {
+      this.successMessage = message;
+      this.showSuccessModal = true;
+    },
+
+    showNotification(data) {
+      this.notificationData = data;
+      this.showNotificationModal = true;
+    },
+
+    showConfirm(data) {
+      this.confirmData = data;
+      this.showConfirmModal = true;
+    },
+
+    handlePrimaryAction() {
+      if (this.notificationData.primaryAction && this.notificationData.primaryAction.callback) {
+        this.notificationData.primaryAction.callback();
+      }
+      this.showNotificationModal = false;
+    },
+
+    handleConfirmAction() {
+      if (this.confirmData.callback) {
+        this.confirmData.callback();
+      }
+      this.showConfirmModal = false;
     }
   },
   mounted() {
@@ -1950,20 +1419,6 @@ export default {
     // Kakao SDK 초기화
     if (typeof Kakao !== 'undefined' && !Kakao.isInitialized()) {
       Kakao.init("3a1a982f8ee6ddbc64171c2f80850243");
-    }
-  },
-  
-  beforeUnmount() {
-    // 컴포넌트가 언마운트될 때 스크롤 상태 복원
-    if (this.showShareModal) {
-      const scrollY = document.body.style.top;
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.width = '';
-      document.body.style.top = '';
-      if (scrollY) {
-        window.scrollTo(0, parseInt(scrollY || '0') * -1);
-      }
     }
   }
 };
@@ -2630,7 +2085,6 @@ export default {
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  overflow: hidden;
 }
 
 .share-modal {
@@ -2689,17 +2143,16 @@ export default {
   align-items: center;
   gap: 12px;
   padding: 16px 20px;
-  border: none;
-  border-radius: 8px;
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
   cursor: pointer;
-  transition: all 0.2s;
-  font-weight: 600;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  background: white;
 }
 
 .share-option:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .share-option .share-icon {
@@ -2708,65 +2161,81 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
 }
 
 .share-option .share-icon img {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   object-fit: contain;
 }
 
-/* 페이스북 공유 버튼 */
-.facebook-share {
-  background: #1877F2;
-  color: #FFFFFF;
+.share-option.facebook-option {
+  background: #1877f2;
+  border-color: #1877f2;
 }
 
-.facebook-share:hover {
-  background: #166FE5;
+.share-option.facebook-option span {
+  color: white;
 }
 
-/* 카카오톡 공유 버튼 */
-.kakaotalk-share {
-  background: #FEE500;
-  color: #000000;
+.share-option.kakaotalk-option {
+  background: #fee500;
+  border-color: #fee500;
 }
 
-.kakaotalk-share:hover {
-  background: #FDD835;
+.share-option.kakaotalk-option span {
+  color: #000;
 }
 
-/* 인스타그램 공유 버튼 */
-.instagram-share {
-  background: #FFFFFF;
-  color: #333333;
-  border: 1px solid #e0e0e0;
+.share-option.instagram-option {
+  background: white;
+  border-color: #e9ecef;
 }
 
-.instagram-share:hover {
-  background: #f8f9fa;
-  border-color: #ff7a00;
+.share-option.instagram-option span {
+  color: #333;
 }
 
-/* 링크 복사 버튼 */
-.link-share {
-  background: #f8f9fa;
-  color: #666666;
-  border: 1px solid #e0e0e0;
+.share-option.link-option {
+  background: white;
+  border-color: #e9ecef;
 }
 
-.link-share:hover {
-  background: #e9ecef;
-  border-color: #ff7a00;
+.share-option.link-option span {
+  color: #333;
 }
+
+
 
 .share-option span {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
+  flex: 1;
 }
 
 @media (max-width: 480px) {
+  .share-options {
+    gap: 8px;
+  }
+  
+  .share-option {
+    padding: 14px 16px;
+  }
+  
+  .share-option .share-icon {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .share-option .share-icon img {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .share-option span {
+    font-size: 14px;
+  }
+  
   .share-modal {
     width: 95%;
     margin: 20px;
@@ -2794,6 +2263,114 @@ export default {
   width: 90%;
   max-width: 500px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* 장바구니 모달 스타일 */
+.cart-modal {
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  text-align: center;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #eee;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #222;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #999;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.modal-content {
+  margin-bottom: 32px;
+}
+
+.modal-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.modal-message {
+  font-size: 18px;
+  font-weight: 600;
+  color: #222;
+  margin-bottom: 8px;
+}
+
+.modal-submessage {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 0;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.btn-primary, .btn-secondary {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  min-width: 100px;
+}
+
+.btn-primary {
+  background: #FF6B35;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #e55a2b;
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: #f8f9fa;
+  color: #495057;
+  border: 1px solid #dee2e6;
+}
+
+.btn-secondary:hover {
+  background: #e9ecef;
+  transform: translateY(-1px);
 }
 
 .modal-header {
