@@ -226,10 +226,11 @@ export const useChatStore = defineStore('chat', {
     
     // 메시지 전송
     async sendMessage(content, files = null) {
-      if (!this.currentRoomId || this.loading) return;
+      if (!this.currentRoomId) return;
       
-      this.loading = true;
-      // this.error = null; // 에러 상태 제거
+      // 메시지 전송 중에는 전체 loading이 아닌 개별 loading 상태를 사용
+      const isSending = true;
+      this.error = null;
       
       try {
         const now = new Date().toISOString();
@@ -254,19 +255,24 @@ export const useChatStore = defineStore('chat', {
           this.messages[this.currentRoomId].push(message);
         }
         
-        // 채팅방의 마지막 메시지 정보 업데이트
-        const room = this.rooms.find(r => r.chatRoomId === this.currentRoomId);
-        if (room) {
+        // 채팅방의 마지막 메시지 정보 업데이트 및 정렬
+        const roomIndex = this.rooms.findIndex(r => r.chatRoomId === this.currentRoomId);
+        if (roomIndex !== -1) {
+          const room = this.rooms[roomIndex];
           room.lastMessage = content;
           room.lastMessageTime = now;
           room.unreadCount = 0;
+          
+          // 해당 채팅방을 맨 위로 이동 (최신 메시지 순 정렬)
+          if (roomIndex > 0) {
+            this.rooms.splice(roomIndex, 1); // 기존 위치에서 제거
+            this.rooms.unshift(room); // 맨 앞에 추가
+          }
         }
       } catch (error) {
         console.error('메시지 전송 실패:', error);
-        // this.error = error.message; // 에러 상태 제거
+        this.error = error.message;
         throw error;
-      } finally {
-        this.loading = false;
       }
     },
     
@@ -371,15 +377,22 @@ export const useChatStore = defineStore('chat', {
         // 이미 추가했으므로 별도 처리 불필요
       }
       
-      // 해당 채팅방의 정보 업데이트
-      const room = this.rooms.find(r => r.chatRoomId === chatMessageResponse.roomId);
-      if (room) {
+      // 해당 채팅방의 정보 업데이트 및 정렬
+      const roomIndex = this.rooms.findIndex(r => r.chatRoomId === chatMessageResponse.roomId);
+      if (roomIndex !== -1) {
+        const room = this.rooms[roomIndex];
         room.lastMessage = chatMessageResponse.message;
         room.lastMessageTime = chatMessageResponse.createdAt;
         
         // 현재 채팅방이 아니면 읽지 않은 메시지 수 증가
         if (chatMessageResponse.roomId !== this.currentRoomId) {
           room.unreadCount = (room.unreadCount || 0) + 1;
+        }
+        
+        // 해당 채팅방을 맨 위로 이동 (최신 메시지 순 정렬)
+        if (roomIndex > 0) {
+          this.rooms.splice(roomIndex, 1); // 기존 위치에서 제거
+          this.rooms.unshift(room); // 맨 앞에 추가
         }
       }
     },

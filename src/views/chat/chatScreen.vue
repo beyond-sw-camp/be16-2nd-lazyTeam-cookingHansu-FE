@@ -44,13 +44,14 @@
               style="height: calc(100vh - 280px); overflow-y: auto; direction: ltr;"
             >
               <v-list dense nav>
-                <v-list-item
-                  v-for="chat in visibleChats"
-                  :key="chat.chatRoomId"
-                  @click="selectChat(chat.chatRoomId)"
-                  :class="{ 'bg-grey-lighten-4': chat.chatRoomId === selectedChatId }"
-                  class="py-4 px-3"
-                >
+                <transition-group name="chat-list" tag="div">
+                  <v-list-item
+                    v-for="chat in visibleChats"
+                    :key="chat.chatRoomId"
+                    @click="selectChat(chat.chatRoomId)"
+                    :class="{ 'bg-grey-lighten-4': chat.chatRoomId === selectedChatId }"
+                    class="py-4 px-3 chat-item"
+                  >
                   <div class="d-flex w-100 align-start">
                     <!-- 아바타 -->
                     <v-avatar size="48" class="mr-4 flex-shrink-0">
@@ -88,8 +89,9 @@
                         {{ chat.lastMessage }}
                       </div>
                     </div>
-                  </div>
-                </v-list-item>
+                    </div>
+                  </v-list-item>
+                </transition-group>
               </v-list>
             </div>
           </v-sheet>
@@ -203,5 +205,30 @@ onMounted(() => {
 /* 채팅 상세 영역 고정 높이 */
 .chat-detail {
   height: 100%;
+}
+
+/* 채팅 목록 애니메이션 */
+.chat-list-move,
+.chat-list-enter-active,
+.chat-list-leave-active {
+  transition: all 0.3s ease;
+}
+
+.chat-list-enter-from {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.chat-list-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.chat-item {
+  transition: all 0.3s ease;
+}
+
+.chat-item:hover {
+  background-color: rgba(0, 0, 0, 0.04) !important;
 }
 </style>

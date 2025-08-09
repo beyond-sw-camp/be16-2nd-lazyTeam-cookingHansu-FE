@@ -556,7 +556,7 @@ const sendMessage = async (event) => {
     event.preventDefault();
     event.stopPropagation();
   }
-  if (isSending.value || loading.value) return;
+  if (isSending.value) return;
   
   // 메시지와 파일 유효성 검사
   const files = selectedFiles.value.map(item => item.file); // 원본 파일 객체들
@@ -566,12 +566,14 @@ const sendMessage = async (event) => {
     return;
   }
   
+  // 빈 메시지이고 파일도 없으면 전송하지 않음
+  const hasText = message.value.trim();
+  const hasFiles = files.length > 0;
+  if (!hasText && !hasFiles) return;
+  
   isSending.value = true;
   
   try {
-    const hasText = message.value.trim();
-    const hasFiles = files.length > 0;
-    
     if (hasText && !hasFiles) {
       // 텍스트만 있는 경우
       await chatStore.sendMessage(message.value, null);
