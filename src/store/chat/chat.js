@@ -269,10 +269,11 @@ export const useChatStore = defineStore('chat', {
         }
         
         // 채팅방의 마지막 메시지 정보 업데이트 및 정렬
+        // 백엔드에서 WebSocket으로 정확한 메시지를 받을 것이므로 
+        // 여기서는 간단하게 처리하고 WebSocket 메시지를 기다림
         const roomIndex = this.rooms.findIndex(r => r.chatRoomId === this.currentRoomId);
         if (roomIndex !== -1) {
           const room = this.rooms[roomIndex];
-          room.lastMessage = content;
           room.lastMessageTime = now;
           room.unreadCount = 0;
           
@@ -394,7 +395,26 @@ export const useChatStore = defineStore('chat', {
       const roomIndex = this.rooms.findIndex(r => r.chatRoomId === chatMessageResponse.roomId);
       if (roomIndex !== -1) {
         const room = this.rooms[roomIndex];
-        room.lastMessage = chatMessageResponse.message;
+        
+        // 마지막 메시지 내용 결정
+        let lastMessageText = chatMessageResponse.message;
+        if (!chatMessageResponse.message.trim() && chatMessageResponse.files && chatMessageResponse.files.length > 0) {
+          // 텍스트가 없고 파일이 있는 경우
+          const imageCount = chatMessageResponse.files.filter(file => file.fileType === 'IMAGE').length;
+          const videoCount = chatMessageResponse.files.filter(file => file.fileType === 'VIDEO').length;
+          
+          if (imageCount > 0 && videoCount > 0) {
+            lastMessageText = `사진 ${imageCount}장, 동영상 ${videoCount}개를 보냈습니다.`;
+          } else if (imageCount > 0) {
+            lastMessageText = `사진 ${imageCount}장을 보냈습니다.`;
+          } else if (videoCount > 0) {
+            lastMessageText = `동영상 ${videoCount}개를 보냈습니다.`;
+          } else {
+            lastMessageText = `파일 ${chatMessageResponse.files.length}개를 보냈습니다.`;
+          }
+        }
+        
+        room.lastMessage = lastMessageText;
         room.lastMessageTime = chatMessageResponse.createdAt;
         
         // 현재 채팅방이 아니면 읽지 않은 메시지 수 증가

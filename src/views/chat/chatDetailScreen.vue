@@ -136,23 +136,32 @@
                 <!-- 텍스트 메시지 -->
                 <span v-if="msg.hasMessage()" class="text-body-2">{{ msg.message }}</span>
                 
-                <!-- 이미지 파일들 -->
+                <!-- 이미지 파일들 (간단한 그리드) -->
                 <div v-if="msg.getImageFiles().length > 0" class="mt-1">
-                  <div class="d-flex flex-wrap gap-1" style="max-width: 300px;">
+                  <div 
+                    class="image-grid-simple"
+                    :style="{
+                      width: getImageGridLayout(msg.getImageFiles().length).containerWidth,
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: getImageGridLayout(msg.getImageFiles().length).gap
+                    }"
+                  >
                     <div 
-                      v-for="file in msg.getImageFiles()" 
+                      v-for="(file, index) in msg.getImageFiles()" 
                       :key="file.id" 
-                      class="position-relative"
-                      :style="getImageContainerStyle(msg.getImageFiles().length)"
+                      class="image-item-simple"
+                      :style="getImageItemStyle()"
                     >
                       <v-img 
                         :src="file.fileUrl" 
-                        :width="getImageSize(msg.getImageFiles().length)" 
-                        :height="getImageSize(msg.getImageFiles().length)"
+                        :width="getImageItemStyle().width"
+                        :height="getImageItemStyle().height"
                         class="rounded" 
                         :alt="file.fileName"
                         @click="openImage(file.fileUrl)"
                         style="cursor: pointer; object-fit: cover;"
+                        cover
                       />
                     </div>
                   </div>
@@ -186,23 +195,32 @@
                 <!-- 텍스트 메시지 -->
                 <span v-if="msg.hasMessage()" class="text-body-2">{{ msg.message }}</span>
                 
-                <!-- 이미지 파일들 -->
+                <!-- 이미지 파일들 (간단한 그리드) -->
                 <div v-if="msg.getImageFiles().length > 0" class="mt-1">
-                  <div class="d-flex flex-wrap gap-1" style="max-width: 300px;">
+                  <div 
+                    class="image-grid-simple"
+                    :style="{
+                      width: getImageGridLayout(msg.getImageFiles().length).containerWidth,
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: getImageGridLayout(msg.getImageFiles().length).gap
+                    }"
+                  >
                     <div 
-                      v-for="file in msg.getImageFiles()" 
+                      v-for="(file, index) in msg.getImageFiles()" 
                       :key="file.id" 
-                      class="position-relative"
-                      :style="getImageContainerStyle(msg.getImageFiles().length)"
+                      class="image-item-simple"
+                      :style="getImageItemStyle()"
                     >
                       <v-img 
                         :src="file.fileUrl" 
-                        :width="getImageSize(msg.getImageFiles().length)" 
-                        :height="getImageSize(msg.getImageFiles().length)"
+                        :width="getImageItemStyle().width"
+                        :height="getImageItemStyle().height"
                         class="rounded" 
                         :alt="file.fileName"
                         @click="openImage(file.fileUrl)"
                         style="cursor: pointer; object-fit: cover;"
+                        cover
                       />
                     </div>
                   </div>
@@ -338,7 +356,7 @@
         density="compact"
         @keyup.enter="sendMessage"
         @input="onTextInputWrapper"
-        :disabled="loading || selectedFiles.length > 0"
+        :disabled="loading"
       ></v-text-field>
       <v-btn 
         icon 
@@ -355,7 +373,7 @@
         class="d-none" 
         @change="handleFileChangeWrapper" 
       />
-      <v-btn color="orange" icon class="ml-2" :disabled="isSending || loading" @click="sendMessage">
+      <v-btn color="orange" icon class="ml-2" :disabled="isSending || loading || (!message.trim() && selectedFiles.length === 0)" @click="sendMessage">
         <v-icon>mdi-send</v-icon>
       </v-btn>
     </div>
@@ -592,25 +610,26 @@ const formatDateSeparator = (timestamp) => {
   return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
 };
 
-// 이미지 크기 계산 함수
-const getImageSize = (imageCount) => {
-  if (imageCount === 1) return 300; // 1개일 때는 채팅창 크기와 동일
-  if (imageCount === 2) return 150; // 2개일 때는 절반씩
-  if (imageCount === 3) return 100; // 3개일 때는 1/3씩
-  return 75; // 4개 이상일 때는 1/4씩
+// 간단한 이미지 그리드 계산 함수 (1줄에 4개씩)
+const getImageGridLayout = (imageCount) => {
+  const imageSize = '72px'; // 조금 더 큰 크기
+  const gap = '3px';
+  const maxPerRow = 4;
+  
+  return {
+    imageSize,
+    gap,
+    maxPerRow,
+    containerWidth: `${(72 * Math.min(imageCount, maxPerRow)) + (3 * (Math.min(imageCount, maxPerRow) - 1))}px`
+  };
 };
 
-// 이미지 컨테이너 스타일 계산 함수
-const getImageContainerStyle = (imageCount) => {
-  if (imageCount === 1) {
-    return 'width: 300px; height: 300px;';
-  } else if (imageCount === 2) {
-    return 'width: 150px; height: 150px;';
-  } else if (imageCount === 3) {
-    return 'width: 100px; height: 100px;';
-  } else {
-    return 'width: 75px; height: 75px;'; // 4개 이상
-  }
+// 이미지 아이템 스타일 (모든 이미지 동일한 크기)
+const getImageItemStyle = () => {
+  return {
+    width: '72px',
+    height: '72px'
+  };
 };
 
 
@@ -744,6 +763,16 @@ const leaveRoomInfo = computed(() => {
 .message-container {
   height: calc(100vh - 380px);
   overflow-y: auto;
+}
+
+/* 간단한 이미지 그리드 */
+.image-grid-simple {
+  border-radius: 4px;
+}
+
+.image-item-simple {
+  overflow: hidden;
+  border-radius: 4px;
 }
 
 /* 스켈레톤 UI 스타일 */
