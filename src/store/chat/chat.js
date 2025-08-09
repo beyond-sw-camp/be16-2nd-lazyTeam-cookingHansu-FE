@@ -193,8 +193,17 @@ export const useChatStore = defineStore('chat', {
       this.currentRoomId = roomId;
       
       try {
-        const messages = await getChatHistory(roomId);
-        this.messages[roomId] = messages;
+        // 최소 로딩 시간 보장을 위한 Promise 생성
+        const minLoadingTime = new Promise(resolve => setTimeout(resolve, 800));
+        
+        // 메시지 조회와 최소 로딩 시간을 병렬로 처리
+        const [messages] = await Promise.all([
+          getChatHistory(roomId),
+          minLoadingTime
+        ]);
+        
+        // 빈 배열이어도 캐시에 저장하여 재호출 방지
+        this.messages[roomId] = messages || [];
         
         // 메시지 읽음 처리
         await this.markAsRead(roomId);
@@ -204,6 +213,10 @@ export const useChatStore = defineStore('chat', {
       } catch (error) {
         console.error('메시지 조회 실패:', error);
         this.error = error.message;
+        // 에러 시에도 빈 배열로 초기화하여 재호출 방지
+        if (!this.messages[roomId]) {
+          this.messages[roomId] = [];
+        }
       } finally {
         this.loading = false;
       }
@@ -408,16 +421,24 @@ export const useChatStore = defineStore('chat', {
       
       this.currentRoomId = roomId;
       
-      // 이미 메시지가 캐시되어 있으면 API 호출하지 않음
-      if (this.messages[roomId] && this.messages[roomId].length > 0) {
-        // 메시지 읽음 처리만 수행
+      // 메시지 캐시가 있는지 확인 (undefined나 빈 배열이어도 한번 로드했다면 재로드하지 않음)
+      if (this.messages[roomId] !== undefined) {
+        // 캐시된 메시지가 있어도 잠깐 로딩 상태를 true로 설정하여 스켈레톤 표시
+        this.loading = true;
+        
+        // 짧은 딜레이 후 로딩 완료 처리
+        setTimeout(() => {
+          this.loading = false;
+        }, 300);
+        
+        // 메시지 읽음 처리
         this.markAsRead(roomId);
         // WebSocket 연결
         this.connectWebSocket(roomId);
         return;
       }
       
-      // 메시지가 없으면 API 호출
+      // 메시지가 처음 로드되는 경우에만 API 호출
       this.fetchChatHistory(roomId);
     },
     

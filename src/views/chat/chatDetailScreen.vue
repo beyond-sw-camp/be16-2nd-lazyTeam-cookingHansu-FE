@@ -1,14 +1,7 @@
 <template>
   <div class="d-flex flex-column h-100">
-    <!-- 로딩 상태 -->
-    <LoadingScreen 
-      v-if="loading && !currentRoomId"
-      title="채팅을 불러오는 중"
-      description="메시지를 확인하고 있어요..."
-    />
-
     <!-- 에러 상태 -->
-    <div v-else-if="error" class="d-flex justify-center align-center pa-8">
+    <div v-if="error" class="d-flex justify-center align-center pa-8">
       <div style="max-width: 500px; width: 100%;">
         <ErrorAlert
           title="연결 오류"
@@ -18,7 +11,7 @@
       </div>
     </div>
 
-    <!-- 정상 채팅 화면 -->
+    <!-- 채팅 화면 (로딩 중이어도 기본 UI는 표시) -->
     <template v-else>
       <!-- 헤더 -->
       <div class="d-flex align-center justify-space-between px-4 py-3 border-b grey lighten-4">
@@ -245,13 +238,41 @@
           </div>
         </div>
         
-        <!-- 로딩 상태 -->
-        <div v-if="loading" class="text-center py-4">
-          <v-progress-circular indeterminate color="primary" />
+        <!-- 로딩 중일 때 스켈레톤 UI -->
+        <div v-if="showSkeleton && chatMessages.length === 0" class="skeleton-messages">
+          <!-- 상대방 메시지 스켈레톤 -->
+          <div class="skeleton-message left mb-4">
+            <div class="skeleton-avatar"></div>
+            <div class="skeleton-bubble-wrapper">
+              <div class="skeleton-bubble left-bubble"></div>
+            </div>
+          </div>
+          
+          <!-- 내 메시지 스켈레톤 -->
+          <div class="skeleton-message right mb-4">
+            <div class="skeleton-bubble-wrapper right">
+              <div class="skeleton-bubble right-bubble"></div>
+            </div>
+          </div>
+          
+          <!-- 상대방 긴 메시지 스켈레톤 -->
+          <div class="skeleton-message left mb-4">
+            <div class="skeleton-avatar"></div>
+            <div class="skeleton-bubble-wrapper">
+              <div class="skeleton-bubble left-bubble long"></div>
+            </div>
+          </div>
+          
+          <!-- 내 짧은 메시지 스켈레톤 -->
+          <div class="skeleton-message right mb-4">
+            <div class="skeleton-bubble-wrapper right">
+              <div class="skeleton-bubble right-bubble short"></div>
+            </div>
+          </div>
         </div>
         
         <!-- 빈 상태 -->
-        <div v-if="!loading && chatMessages.length === 0" class="text-center py-8">
+        <div v-else-if="!showSkeleton && !loading && chatMessages.length === 0" class="text-center py-8">
           <v-icon size="48" color="grey">mdi-chat-outline</v-icon>
           <div class="mt-2 text-subtitle-1 text-grey">
             아직 메시지가 없습니다
@@ -343,7 +364,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onBeforeUnmount } from "vue";
+import { ref, computed, watch, nextTick, onBeforeUnmount, onMounted } from "vue";
 import { useRouter, onBeforeRouteLeave } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useChatStore } from '@/store/chat/chat';
@@ -352,7 +373,6 @@ import { useFileUpload } from '@/composables/useFileUpload';
 import { useDialog } from '@/composables/useDialog';
 import { validateMessageAndFiles } from '@/utils/fileValidation';
 import DeleteConfirmModal from '@/components/common/DeleteConfirmModal.vue';
-import LoadingScreen from '@/components/common/LoadingScreen.vue';
 import ErrorAlert from '@/components/common/ErrorAlert.vue';
 
 const props = defineProps({
@@ -362,6 +382,10 @@ const props = defineProps({
 const router = useRouter();
 const chatStore = useChatStore();
 const { messages, currentRoomId, loading, error } = storeToRefs(chatStore);
+
+// 스켈레톤 최소 표시 시간 관리
+const showSkeleton = ref(false);
+const skeletonTimer = ref(null);
 
 const chatContainer = ref(null);
 const myId = '550e8400-e29b-41d4-a716-446655440001'; // current_user ID
@@ -407,22 +431,105 @@ const partnerAvatar = computed(() => currentRoom.value?.otherUserProfileImage ||
 // 메시지 스크롤 자동 이동
 watch(chatMessages, () => {
   nextTick(() => {
-    if (chatContainer.value) {
-      // 일반적인 스크롤 방향으로 맨 아래로 이동
-      chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
-    }
+    scrollToBottom();
   });
 }, { deep: true });
+
+// 스크롤을 맨 아래로 이동하는 함수
+const scrollToBottom = () => {
+  if (chatContainer.value) {
+    // 강제로 스크롤을 맨 아래로 이동
+    requestAnimationFrame(() => {
+      chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
+    });
+  }
+};
+
+// 채팅방 변경 시에도 맨 아래로 스크롤
+watch(currentRoomId, () => {
+  if (currentRoomId.value) {
+    nextTick(() => {
+      scrollToBottom();
+    });
+  }
+});
+
+// 스켈레톤 표시 관리 함수들
+const startSkeletonTimer = () => {
+  if (skeletonTimer.value) {
+    clearTimeout(skeletonTimer.value);
+  }
+  showSkeleton.value = true;
+  
+  // 최소 0.5초간 스켈레톤 표시
+  skeletonTimer.value = setTimeout(() => {
+    if (!loading.value) {
+      showSkeleton.value = false;
+    }
+  }, 300);
+};
+
+const stopSkeletonTimer = () => {
+  if (skeletonTimer.value) {
+    clearTimeout(skeletonTimer.value);
+    skeletonTimer.value = null;
+  }
+  // 로딩이 끝나고 1.5초가 지났으면 스켈레톤 숨김
+  setTimeout(() => {
+    showSkeleton.value = false;
+  }, 100);
+};
+
+// 로딩 상태 변화 감지
+watch(loading, (newLoading, oldLoading) => {
+  if (newLoading && !oldLoading) {
+    // 로딩 시작 시 스켈레톤 표시
+    startSkeletonTimer();
+  } else if (!newLoading && oldLoading) {
+    // 로딩 완료 시 스켈레톤 숨김 처리
+    stopSkeletonTimer();
+  }
+});
+
+// 채팅방 변경 감지
+watch(currentRoomId, (newRoomId, oldRoomId) => {
+  if (newRoomId && newRoomId !== oldRoomId) {
+    // 새 채팅방으로 변경될 때 메시지가 비어있으면 스켈레톤 표시
+    nextTick(() => {
+      if (chatMessages.value.length === 0) {
+        startSkeletonTimer();
+      }
+    });
+  }
+});
 
 // 컴포넌트가 언마운트되기 전에 WebSocket 연결 해제
 onBeforeUnmount(() => {
   chatStore.disconnectWebSocket();
+  if (skeletonTimer.value) {
+    clearTimeout(skeletonTimer.value);
+  }
 });
 
 // 라우트를 떠나기 전에 WebSocket 연결 해제
 onBeforeRouteLeave((to, from, next) => {
   chatStore.disconnectWebSocket();
+  if (skeletonTimer.value) {
+    clearTimeout(skeletonTimer.value);
+  }
   next();
+});
+
+// 컴포넌트 마운트 시 초기화
+onMounted(() => {
+  // 현재 채팅방이 있고 메시지가 비어있으면 스켈레톤 표시
+  if (currentRoomId.value && chatMessages.value.length === 0) {
+    startSkeletonTimer();
+  }
+  
+  nextTick(() => {
+    scrollToBottom();
+  });
 });
 
 // 컴포저블의 함수들을 래핑하여 message ref를 전달
@@ -639,7 +746,108 @@ const leaveRoomInfo = computed(() => {
   overflow-y: auto;
 }
 
-.message-content {
-  /* direction 속성 제거 */
+/* 스켈레톤 UI 스타일 */
+.skeleton-messages {
+  padding: 16px;
+  animation: skeleton-fade-in 0.3s ease-in-out;
+}
+
+.skeleton-message {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  animation: skeleton-slide-in 0.5s ease-out;
+}
+
+.skeleton-message.left {
+  justify-content: flex-start;
+}
+
+.skeleton-message.right {
+  justify-content: flex-end;
+}
+
+.skeleton-message:nth-child(1) { animation-delay: 0s; }
+.skeleton-message:nth-child(2) { animation-delay: 0.1s; }
+.skeleton-message:nth-child(3) { animation-delay: 0.2s; }
+.skeleton-message:nth-child(4) { animation-delay: 0.3s; }
+
+.skeleton-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 2s infinite;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.skeleton-bubble-wrapper {
+  display: flex;
+  flex-direction: column;
+  max-width: 70%;
+}
+
+.skeleton-bubble-wrapper.right {
+  align-items: flex-end;
+}
+
+.skeleton-bubble {
+  height: 40px;
+  border-radius: 18px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 2s infinite;
+  margin-bottom: 4px;
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-bubble.left-bubble {
+  width: 180px;
+  background-color: #f5f5f5;
+}
+
+.skeleton-bubble.right-bubble {
+  width: 140px;
+  background-color: #fff3e0;
+}
+
+.skeleton-bubble.long {
+  width: 250px;
+}
+
+.skeleton-bubble.short {
+  width: 80px;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes skeleton-fade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes skeleton-slide-in {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

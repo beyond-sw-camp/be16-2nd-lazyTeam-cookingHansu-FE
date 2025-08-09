@@ -2,7 +2,7 @@
   <v-container fluid class="pa-6" style="margin-top: 80px;">
     <!-- 로딩 상태 -->
     <LoadingScreen 
-      v-if="loading"
+      v-if="loading && !hasRooms"
       title="채팅 목록을 불러오는 중"
       description="채팅 정보를 확인하고 있어요..."
     />
@@ -18,8 +18,8 @@
       </v-col>
     </v-row>
 
-    <!-- 채팅 화면 -->
-    <template v-else-if="hasRooms">
+    <!-- 채팅 화면 (항상 표시) -->
+    <template v-else>
       <v-row no-gutters class="chat-wrapper" style="height: calc(100vh - 270px);">
         <!-- 채팅 목록 -->
         <v-col md="1.5" />
@@ -43,7 +43,18 @@
               @scroll.passive="onScroll"
               style="height: calc(100vh - 280px); overflow-y: auto; direction: ltr;"
             >
-              <v-list dense nav>
+              <!-- 로딩 중이고 채팅방이 없을 때 -->
+              <div v-if="loading && rooms.length === 0" class="pa-4">
+                <div class="text-center">
+                  <v-progress-circular indeterminate color="primary" size="24" />
+                  <div class="mt-2 text-caption text-grey">
+                    채팅 목록을 불러오는 중...
+                  </div>
+                </div>
+              </div>
+              
+              <!-- 채팅 목록 -->
+              <v-list v-else dense nav>
                 <transition-group name="chat-list" tag="div">
                   <v-list-item
                     v-for="chat in visibleChats"
@@ -92,6 +103,16 @@
                     </div>
                   </v-list-item>
                 </transition-group>
+                
+                <!-- 빈 상태 -->
+                <v-list-item v-if="!loading && rooms.length === 0" class="text-center">
+                  <div class="d-flex flex-column align-center justify-center py-8">
+                    <v-icon size="48" color="grey">mdi-chat-outline</v-icon>
+                    <div class="mt-2 text-subtitle-1 text-grey">
+                      아직 채팅방이 없습니다
+                    </div>
+                  </div>
+                </v-list-item>
               </v-list>
             </div>
           </v-sheet>
@@ -118,17 +139,6 @@
           </v-sheet>
         </v-col>
         <v-col md="1.5" />
-      </v-row>
-    </template>
-
-    <!-- 채팅방이 없을 경우 -->
-    <template v-else>
-      <v-row justify="center" class="mt-10 mb-10">
-        <v-col cols="12" md="6" class="text-center">
-          <v-icon size="64" color="grey lighten-2">mdi-chat-outline</v-icon>
-          <h3 class="mt-4">채팅방이 없습니다</h3>
-          <p class="mt-2">다른 사용자와 대화를 시작해보세요!</p>
-        </v-col>
       </v-row>
     </template>
   </v-container>
