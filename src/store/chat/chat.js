@@ -22,7 +22,7 @@ export const useChatStore = defineStore('chat', {
     currentRoomId: null,
     loading: false,
     stompClient: null,
-    // error: null, // 에러 상태 제거
+    error: null, // 에러 상태 추가
   }),
   
   getters: {
@@ -35,6 +35,12 @@ export const useChatStore = defineStore('chat', {
     totalUnreadCount: (state) => {
       return state.rooms.reduce((total, room) => total + (room.unreadCount || 0), 0);
     },
+    
+    // 에러 상태 getter
+    getError: (state) => state.error,
+    
+    // 데이터 존재 여부
+    hasRooms: (state) => state.rooms.length > 0,
   },
   
   actions: {
@@ -167,14 +173,14 @@ export const useChatStore = defineStore('chat', {
     // 내 채팅방 목록 조회
     async fetchMyChatRooms() {
       this.loading = true;
-      // this.error = null; // 에러 상태 제거
+      this.error = null;
       
       try {
         const rooms = await getMyChatRooms();
         this.rooms = rooms;
       } catch (error) {
         console.error('채팅방 목록 조회 실패:', error);
-        // this.error = error.message; // 에러 상태 제거
+        this.error = error.message;
       } finally {
         this.loading = false;
       }
@@ -183,7 +189,7 @@ export const useChatStore = defineStore('chat', {
     // 채팅방 메시지 조회
     async fetchChatHistory(roomId) {
       this.loading = true;
-      // this.error = null; // 에러 상태 제거
+      this.error = null;
       this.currentRoomId = roomId;
       
       try {
@@ -197,7 +203,7 @@ export const useChatStore = defineStore('chat', {
         this.connectWebSocket(roomId);
       } catch (error) {
         console.error('메시지 조회 실패:', error);
-        // this.error = error.message; // 에러 상태 제거
+        this.error = error.message;
       } finally {
         this.loading = false;
       }
@@ -404,7 +410,7 @@ export const useChatStore = defineStore('chat', {
     
     // 에러 초기화
     clearError() {
-      // this.error = null; // 에러 상태 제거
+      this.error = null;
     },
     
     // 채팅 연결 해제

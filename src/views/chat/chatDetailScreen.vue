@@ -1,7 +1,25 @@
 <template>
   <div class="d-flex flex-column h-100">
-    <!-- 헤더 -->
-    <div class="d-flex align-center justify-space-between px-4 py-3 border-b grey lighten-4">
+    <!-- 로딩 상태 -->
+    <LoadingScreen 
+      v-if="loading && !currentRoomId"
+      title="채팅을 불러오는 중"
+      description="메시지를 확인하고 있어요..."
+    />
+
+    <!-- 에러 상태 -->
+    <div v-else-if="error" class="text-center pa-8">
+      <ErrorAlert
+        title="연결 오류"
+        :message="error"
+        @close="chatStore.clearError"
+      />
+    </div>
+
+    <!-- 정상 채팅 화면 -->
+    <template v-else>
+      <!-- 헤더 -->
+      <div class="d-flex align-center justify-space-between px-4 py-3 border-b grey lighten-4">
       <div class="d-flex align-center">
         <v-avatar color="grey-lighten-2" size="36" class="mr-2">
           <v-img :src="partnerAvatar" />
@@ -318,6 +336,7 @@
         <v-icon>mdi-send</v-icon>
       </v-btn>
     </div>
+    </template>
   </div>
 </template>
 
@@ -331,6 +350,8 @@ import { useFileUpload } from '@/composables/useFileUpload';
 import { useDialog } from '@/composables/useDialog';
 import { validateMessageAndFiles } from '@/utils/fileValidation';
 import DeleteConfirmModal from '@/components/common/DeleteConfirmModal.vue';
+import LoadingScreen from '@/components/common/LoadingScreen.vue';
+import ErrorAlert from '@/components/common/ErrorAlert.vue';
 
 const props = defineProps({
   chat: Object,
@@ -338,7 +359,7 @@ const props = defineProps({
 
 const router = useRouter();
 const chatStore = useChatStore();
-const { messages, currentRoomId, loading } = storeToRefs(chatStore);
+const { messages, currentRoomId, loading, error } = storeToRefs(chatStore);
 
 const chatContainer = ref(null);
 const myId = '550e8400-e29b-41d4-a716-446655440001'; // current_user ID
