@@ -194,7 +194,7 @@ export const useChatStore = defineStore('chat', {
       
       try {
         // 최소 로딩 시간 보장을 위한 Promise 생성
-        const minLoadingTime = new Promise(resolve => setTimeout(resolve, 800));
+        const minLoadingTime = new Promise(resolve => setTimeout(resolve, 400));
         
         // 메시지 조회와 최소 로딩 시간을 병렬로 처리
         const [messages] = await Promise.all([
@@ -429,7 +429,7 @@ export const useChatStore = defineStore('chat', {
         // 짧은 딜레이 후 로딩 완료 처리
         setTimeout(() => {
           this.loading = false;
-        }, 300);
+        }, 150);
         
         // 메시지 읽음 처리
         this.markAsRead(roomId);
