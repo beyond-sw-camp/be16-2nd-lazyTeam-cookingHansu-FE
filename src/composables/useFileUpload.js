@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import { validateFile, validateMessageAndFiles } from '@/utils/fileValidation';
+import { validateFile } from '@/utils/fileValidation';
 
 export function useFileUpload() {
   const selectedFiles = ref([]);

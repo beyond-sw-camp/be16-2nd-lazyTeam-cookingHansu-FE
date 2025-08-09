@@ -389,7 +389,7 @@ import { useChatStore } from '@/store/chat/chat';
 import { formatRelativeTime } from '@/utils/timeUtils';
 import { useFileUpload } from '@/composables/useFileUpload';
 import { useDialog } from '@/composables/useDialog';
-import { validateMessageAndFiles } from '@/utils/fileValidation';
+
 import DeleteConfirmModal from '@/components/common/DeleteConfirmModal.vue';
 import ErrorAlert from '@/components/common/ErrorAlert.vue';
 
@@ -684,31 +684,22 @@ const sendMessage = async (event) => {
   }
   if (isSending.value) return;
   
-  // 메시지와 파일 유효성 검사
-  const files = selectedFiles.value.map(item => item.file); // 원본 파일 객체들
-  const validation = validateMessageAndFiles(message.value, files);
-  if (!validation.isValid) {
-    alert(validation.error);
-    return;
-  }
-  
-  // 빈 메시지이고 파일도 없으면 전송하지 않음
+  const files = selectedFiles.value.map(item => item.file);
   const hasText = message.value.trim();
   const hasFiles = files.length > 0;
+  
+  // 텍스트나 파일 중 하나만 있어야 함
   if (!hasText && !hasFiles) return;
   
   isSending.value = true;
   
   try {
-    if (hasText && !hasFiles) {
-      // 텍스트만 있는 경우
+    if (hasText) {
+      // 텍스트만 전송
       await chatStore.sendMessage(message.value, null);
-    } else if (!hasText && hasFiles) {
-      // 파일만 있는 경우
+    } else {
+      // 파일만 전송
       await chatStore.sendMessage("", files);
-    } else if (hasText && hasFiles) {
-      // 텍스트와 파일 모두 있는 경우
-      await chatStore.sendMessage(message.value, files);
     }
     
     message.value = "";
