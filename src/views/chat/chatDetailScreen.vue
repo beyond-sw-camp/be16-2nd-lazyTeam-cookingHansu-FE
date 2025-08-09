@@ -8,12 +8,14 @@
     />
 
     <!-- 에러 상태 -->
-    <div v-else-if="error" class="text-center pa-8">
-      <ErrorAlert
-        title="연결 오류"
-        :message="error"
-        @close="chatStore.clearError"
-      />
+    <div v-else-if="error" class="d-flex justify-center align-center pa-8">
+      <div style="max-width: 500px; width: 100%;">
+        <ErrorAlert
+          title="연결 오류"
+          :message="error"
+          @close="chatStore.clearError"
+        />
+      </div>
     </div>
 
     <!-- 정상 채팅 화면 -->

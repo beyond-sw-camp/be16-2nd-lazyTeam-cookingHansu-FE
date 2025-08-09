@@ -8,13 +8,15 @@
     />
 
     <!-- 에러 상태 -->
-    <div v-else-if="error" class="text-center pa-8">
-      <ErrorAlert
-        title="연결 오류"
-        :message="error"
-        @close="chatStore.clearError"
-      />
-    </div>
+    <v-row v-else-if="error" justify="center" class="mt-10 mb-10">
+      <v-col cols="12" md="6" class="text-center">
+        <ErrorAlert
+          title="연결 오류"
+          :message="error"
+          @close="chatStore.clearError"
+        />
+      </v-col>
+    </v-row>
 
     <!-- 채팅 화면 -->
     <template v-else-if="hasRooms">
