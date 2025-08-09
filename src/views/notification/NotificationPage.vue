@@ -52,8 +52,7 @@
                     <!-- 읽지 않음 표시 -->
                     <div v-if="!notification.isRead" class="unread-dot"></div>
                   </div>
-                  <p class="notification-title">{{ notification.title }}</p>
-                  <p class="notification-message">{{ notification.message }}</p>
+                  <p class="notification-message">{{ notification.content }}</p>
                 </div>
                 <div class="notification-meta">
                   <span class="notification-time">{{ formatTime(notification.createdAt) }}</span>
@@ -92,6 +91,9 @@ import { ko } from 'date-fns/locale'
 
 const router = useRouter()
 const notificationStore = useNotificationStore()
+
+// 사용자 ID (전역 변수로 정의)
+const userId = 'e8ac8264-6fb5-11f0-b37d-821aab84ea13' // 실제 생성된 사용자 ID
 
 // 반응형 데이터
 const activeFilter = ref('ALL')
@@ -163,7 +165,7 @@ const formatTime = (timestamp) => {
 const handleNotificationClick = async (notification) => {
   // 알림을 읽음으로 표시
   try {
-    await notificationStore.markAsRead(notification.id)
+    await notificationStore.markAsRead(notification.id, userId)
   } catch (error) {
     console.error('읽음 처리 실패:', error)
   }
@@ -202,11 +204,12 @@ const handleNotificationClick = async (notification) => {
 
 // 알림 삭제 처리
 const handleDeleteNotification = async (notificationId) => {
+  console.log('🗑️ 삭제 버튼 클릭됨, ID:', notificationId, 'userId:', userId)
   try {
-    await notificationStore.deleteNotification(notificationId)
-    console.log('알림 삭제 완료:', notificationId)
+    await notificationStore.deleteNotification(notificationId, userId)
+    console.log('✅ 알림 삭제 완료:', notificationId)
   } catch (error) {
-    console.error('알림 삭제 실패:', error)
+    console.error('❌ 알림 삭제 실패:', error)
   }
 }
 
@@ -226,21 +229,17 @@ const loadMore = async () => {
 onMounted(async () => {
   loading.value = true
   try {
-    // 이미 데이터가 있으면 다시 로드하지 않음
-    if (notificationStore.notifications.length === 0) {
-      // 개발 중에는 테스트 데이터 사용
-      notificationStore.initTestData()
-      // 실제 배포시에는 아래 코드 사용
-      // await notificationStore.fetchNotifications()
-    } else {
-      // 뒤로가기로 돌아온 경우 이전 필터 상태 복원
-      const savedFilter = sessionStorage.getItem('notificationFilter')
-      if (savedFilter) {
-        activeFilter.value = savedFilter
-      }
+    // 실제 API에서 알림 로드
+    await notificationStore.fetchNotifications({ userId })
+    
+    // 이전 필터 상태 복원
+    const savedFilter = sessionStorage.getItem('notificationFilter')
+    if (savedFilter) {
+      activeFilter.value = savedFilter
     }
   } catch (error) {
     console.error('알림 로드 실패:', error)
+    // API 실패시에도 더미데이터 사용하지 않음
   } finally {
     loading.value = false
   }

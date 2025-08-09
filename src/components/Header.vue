@@ -20,7 +20,7 @@
                 <span class="icon-bell">
                   <svg xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 0 24 24" fill="none" stroke="#495057" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
                 </span>
-                <span v-if="notificationStore.unreadCount > 0" class="badge">{{ notificationStore.unreadCount }}</span>
+                <span v-if="unreadCount && unreadCount > 0" class="badge">{{ unreadCount }}</span>
               </button>
 
             </div>
@@ -55,7 +55,7 @@
                 <span class="icon-bell">
                   <svg xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 0 24 24" fill="none" stroke="#495057" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
                 </span>
-                <span v-if="notificationStore.unreadCount > 0" class="badge">{{ notificationStore.unreadCount }}</span>
+                <span v-if="unreadCount && unreadCount > 0" class="badge">{{ unreadCount }}</span>
               </button>
 
             </div>
@@ -85,14 +85,24 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '@/views/cart/cart.js'
 import { useNotificationStore } from '@/store/notification/notification.js'
+import { useNotifications } from '@/composables/useNotifications.js'
 
 const router = useRouter()
 const cartStore = useCartStore()
 const notificationStore = useNotificationStore()
+const { isConnected } = useNotifications()
+
+// unreadCount를 computed로 참조
+const unreadCount = computed(() => notificationStore.unreadCount)
+
+// unreadCount 변화 감지
+watch(unreadCount, (newValue, oldValue) => {
+  
+}, { immediate: true })
 
 const isLoggedIn = ref(true) // 임시: 실제 로그인 상태와 연동 필요 (테스트용으로 true 설정)
 const nickname = ref('김요리') // 임시: 실제 닉네임 연동 필요
@@ -142,19 +152,11 @@ onMounted(async () => {
   handleResize()
   window.addEventListener('resize', handleResize)
   
-  // 로그인한 경우 알림 개수 업데이트
-  if (isLoggedIn.value) {
-    // 개발 중에는 테스트 데이터 사용
-    notificationStore.initTestData()
-    // 실제 배포시에는 아래 코드 사용
-    // await notificationStore.updateUnreadCount()
-    // notificationStore.connectToNotificationStream()
-  }
+  // 실시간 알림 연결은 useNotifications에서 자동 처리
+  console.log('Header 컴포넌트 마운트 완료')
 })
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
-  // 실시간 알림 연결 해제
-  notificationStore.disconnectFromNotificationStream()
 })
 </script>
 
