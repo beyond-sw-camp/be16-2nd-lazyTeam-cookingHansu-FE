@@ -100,7 +100,9 @@ export const notificationService = {
         userId: userId
       })
       
+      console.log('🔍 DELETE 요청 URL:', `/api/notifications/${notificationId}?${queryParams}`)
       const response = await apiDelete(`/api/notifications/${notificationId}?${queryParams}`)
+      console.log('🔍 DELETE 응답 상태:', response.status)
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }

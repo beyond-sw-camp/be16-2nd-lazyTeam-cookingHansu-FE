@@ -1,6 +1,6 @@
 <template>
   <div class="notice-list-container">
-    <!-- 메인 헤더 추가 -->
+
     <Header />
     
     <div class="notice-header">

@@ -1,4 +1,3 @@
-// 실시간 알림을 위한 Composable
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useNotificationStore } from '@/store/notification/notification.js'
 
@@ -6,12 +5,12 @@ export function useNotifications() {
   const notificationStore = useNotificationStore()
   const isConnected = ref(false)
   
-  // 임시 사용자 ID (실제로는 로그인 스토어에서 가져와야 함)
+    // 임시 사용자 ID
   const getCurrentUserId = () => {
-    // TODO: 실제 로그인 상태에서 사용자 ID 가져오기
     // return useAuthStore().user?.id
-    return 'e8ac8264-6fb5-11f0-b37d-821aab84ea13' // 실제 생성된 사용자 ID
+    // 실제 생성된 사용자 ID
   }
+
 
   // 실시간 알림 연결 시작
   const startNotificationStream = () => {
@@ -75,13 +74,11 @@ export function useNotifications() {
   })
 
   return {
-    // State
     isConnected,
     notifications: notificationStore.notifications,
     unreadCount: notificationStore.unreadCount,
     loading: notificationStore.loading,
     
-    // Actions
     startNotificationStream,
     stopNotificationStream,
     loadNotifications,
