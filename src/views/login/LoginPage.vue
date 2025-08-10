@@ -1,13 +1,13 @@
 <template>
-  <LoginLayout 
-    title="요리한수" 
-    subtitle="레시피 공유 & 강의 플랫폼" 
+  <LoginLayout
+    title="요리한수"
+    subtitle="레시피 공유 & 강의 플랫폼"
     :show-back-link="false"
   >
     <template #progress>
       <ProgressStep :step="1" />
     </template>
-    
+
     <div class="login-content">
       <div class="login-label">로그인</div>
       <button class="social-btn google" @click="socialLogin('google')">
@@ -60,6 +60,9 @@ async function socialLogin(provider) {
       // Google OAuth URL로 리다이렉트 (인가 코드 방식)
       const oauthUrl = generateOAuthUrl("google");
       window.location.href = oauthUrl;
+    } else if (provider === "kakao") {
+      const oauthUrl = generateOAuthUrl("kakao");
+      window.location.href = oauthUrl;
     } else {
       // 다른 소셜 로그인의 경우 authService 사용
       const loginData = {
@@ -70,7 +73,7 @@ async function socialLogin(provider) {
       };
 
       const response = await authService.socialLogin(provider, loginData);
-      
+
       if (response.isSuccess()) {
         const token = response.getData()?.token;
         if (token) {
