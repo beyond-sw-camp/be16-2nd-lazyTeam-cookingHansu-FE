@@ -6,12 +6,12 @@ import {
   getChatHistory, 
   sendMessage, 
   uploadFiles,
-  markMessageAsRead,
   createChatRoom,
   updateChatRoomName,
   leaveChatRoom
 } from '../../services/chat/chatService';
 import { ChatMessageResponse } from '../../models/chat/ChatResponse';
+
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -22,13 +22,14 @@ export const useChatStore = defineStore('chat', {
     currentRoomId: null,
     loading: false,
     stompClient: null,
-    error: null, // 에러 상태 추가
+    error: null,
+    onlineUsers: {}, // roomId -> 온라인 사용자 목록
   }),
   
   getters: {
     // 현재 선택된 채팅방 정보
     currentRoom: (state) => {
-      return state.rooms.find(room => room.chatRoomId === state.currentRoomId);
+      return state.rooms.find(room => room.roomId === state.currentRoomId);
     },
     
     // 읽지 않은 메시지 총 개수
@@ -36,20 +37,47 @@ export const useChatStore = defineStore('chat', {
       return state.rooms.reduce((total, room) => total + (room.unreadCount || 0), 0);
     },
     
+    // 특정 방의 읽지 않은 메시지 수 계산 (Redis 온라인 상태 기반)
+    getUnreadCount: (state) => (roomId) => {
+      const room = state.rooms.find(r => r.roomId === roomId);
+      if (!room) return 0;
+      
+      const onlineUserIds = state.onlineUsers[roomId] || [];
+      
+      // 상대방이 온라인이면 읽음, 오프라인이면 읽지 않음
+      if (onlineUserIds.length > 0) {
+        // 상대방이 온라인이면 읽음 처리
+        return 0;
+      } else {
+        // 상대방이 오프라인이면 원래 unreadCount 반환
+        return room.unreadCount || 0;
+      }
+    },
+    
     // 에러 상태 getter
     getError: (state) => state.error,
     
     // 데이터 존재 여부
     hasRooms: (state) => state.rooms.length > 0,
+    
+    // 상대방 사용자 ID 가져오기 (백엔드에서 제공하지 않으므로 null 반환)
+    getOtherUserId: (state) => (roomId) => {
+      return null; // 백엔드에서 otherUserId를 제공하지 않음
+    },
   },
   
   actions: {
     // WebSocket 연결
     connectWebSocket(roomId) {
+      console.log('WebSocket 연결 시도:', { roomId, currentRoomId: this.currentRoomId });
+      
       // 기존 연결이 있으면 해제
       this.disconnectWebSocket();
       
-      if (!roomId) return;
+      if (!roomId) {
+        console.error('roomId가 없습니다:', roomId);
+        return;
+      }
       
       // const token = localStorage.getItem("token"); // 테스트용: 토큰 없이 연결
       // if (!token) {
@@ -58,19 +86,21 @@ export const useChatStore = defineStore('chat', {
       // }
 
       try {
+        console.log('SockJS 연결 시도:', `${API_BASE_URL}/connect`);
         const sockJs = new SockJs(`${API_BASE_URL}/connect`);
         this.stompClient = Stomp.over(sockJs);
 
         this.stompClient.connect(
           {
-            // Authorization: `Bearer ${token}`, // 테스트용: 토큰 없이 연결
+            // 테스트용: 헤더 없이 연결
           },
           () => {
             console.log('WebSocket 연결 성공');
             
-            // 채팅방 구독
+            // 채팅방 메시지 구독
+            console.log('메시지 구독 시도:', `/topic/chat-rooms/${roomId}/chat-message`);
             this.stompClient.subscribe(
-              `/topic/${roomId}`,
+              `/topic/chat-rooms/${roomId}/chat-message`,
               (message) => {
                 try {
                   const parsedMessage = JSON.parse(message.body);
@@ -78,15 +108,30 @@ export const useChatStore = defineStore('chat', {
                 } catch (error) {
                   console.error('메시지 파싱 실패:', error);
                 }
-              },
-              {
-                // Authorization: `Bearer ${token}`, // 테스트용: 토큰 없이 구독
               }
             );
+            
+            // 온라인 참여자 상태 구독
+            this.stompClient.subscribe(
+              `/topic/chat-rooms/${roomId}/online-participant`,
+              (message) => {
+                try {
+                  const onlineUsers = JSON.parse(message.body);
+                  console.log('온라인 참여자:', onlineUsers);
+                  this.updateOnlineUsers(roomId, onlineUsers);
+                } catch (error) {
+                  console.error('온라인 참여자 파싱 실패:', error);
+                }
+              }
+            );
+            
+            // ✅ 연결 성공 후 온라인 상태 알림
+            setTimeout(() => {
+              this.sendOnlineStatus(roomId, true);
+            }, 100);
           },
           (error) => {
             console.error('WebSocket 연결 실패:', error);
-            // 연결 실패 시 HTTP API 사용
             this.stompClient = null;
           }
         );
@@ -100,9 +145,12 @@ export const useChatStore = defineStore('chat', {
     disconnectWebSocket() {
       if (this.stompClient && this.stompClient.connected) {
         try {
+
+          // 오프라인 상태 전송
           if (this.currentRoomId) {
-            this.stompClient.unsubscribe(`/topic/${this.currentRoomId}`);
+            this.sendOnlineStatus(this.currentRoomId, false);
           }
+          
           this.stompClient.disconnect();
           console.log('WebSocket 연결 해제');
         } catch (error) {
@@ -110,6 +158,48 @@ export const useChatStore = defineStore('chat', {
         } finally {
           this.stompClient = null;
         }
+      }
+    },
+    
+    updateOnlineUsers(roomId, onlineUserIds) {
+      console.log('온라인 사용자 업데이트:', { roomId, onlineUserIds });
+      
+      this.onlineUsers[roomId] = onlineUserIds;
+      
+      // 상대방이 온라인 상태가 되면 읽음 처리
+      this.updateMessageReadStatus(roomId);
+      
+      // 현재 보고 있는 채팅방이면 즉시 UI 반영
+      if (roomId === this.currentRoomId) {
+        // Vue의 반응성을 위해 강제 업데이트 트리거
+        this.$patch({});
+      }
+    },
+    
+    // 메시지 읽음 상태 업데이트 (상대방 온라인 상태에 따라)
+    // 3. 읽음 상태 업데이트 로직 개선
+    updateMessageReadStatus(roomId) {
+      const roomIndex = this.rooms.findIndex(r => r.roomId === roomId);
+      if (roomIndex !== -1) {
+        const onlineUserIds = this.onlineUsers[roomId] || [];
+        
+        // ✅ 상대방이 온라인이고, 나 말고 다른 사람이 온라인이면 읽음 처리
+        const otherUserOnline = onlineUserIds.some(userId => 
+          userId !== '550e8400-e29b-41d4-a716-446655440001'
+        );
+        
+        if (otherUserOnline) {
+          this.rooms[roomIndex].unreadCount = 0;
+          console.log(`채팅방 ${roomId} 읽음 처리됨 (상대방 온라인)`);
+        }
+      }
+    },
+    
+    // 채팅방 읽음 처리 (UI적으로)
+    markRoomAsRead(roomId) {
+      const roomIndex = this.rooms.findIndex(room => room.roomId === roomId);
+      if (roomIndex !== -1) {
+        this.rooms[roomIndex].unreadCount = 0;
       }
     },
 
@@ -123,16 +213,15 @@ export const useChatStore = defineStore('chat', {
       // 백엔드 ChatMessageReqDto 형식에 맞춤
       const message = {
         roomId: this.currentRoomId,
-        senderId: '550e8400-e29b-41d4-a716-446655440001', // 테스트용 고정 ID
+        senderId: '550e8400-e29b-41d4-a716-446655440001',
         message: content,
-        files: uploadedFiles ? uploadedFiles.files : null // 업로드된 파일 정보들
+        files: uploadedFiles ? uploadedFiles.files : null
       };
 
       try {
         this.stompClient.send(
-          `/publish/${this.currentRoomId}`,
+          `/publish/chat-rooms/${this.currentRoomId}/message`,
           JSON.stringify(message)
-          // , { Authorization: `Bearer ${token}` } // 테스트용: 토큰 없이 전송
         );
       } catch (error) {
         console.error('WebSocket 메시지 전송 실패:', error);
@@ -205,11 +294,12 @@ export const useChatStore = defineStore('chat', {
         // 빈 배열이어도 캐시에 저장하여 재호출 방지
         this.messages[roomId] = messages || [];
         
-        // 메시지 읽음 처리
-        await this.markAsRead(roomId);
-        
         // WebSocket 연결
-        this.connectWebSocket(roomId);
+        try {
+          this.connectWebSocket(roomId);
+        } catch (error) {
+          console.log('WebSocket 연결 실패, HTTP API 모드로 전환:', error);
+        }
       } catch (error) {
         console.error('메시지 조회 실패:', error);
         this.error = error.message;
@@ -222,18 +312,28 @@ export const useChatStore = defineStore('chat', {
       }
     },
     
-    // 메시지 읽음 처리
-    async markAsRead(roomId) {
+    // 온라인 상태 전송
+    sendOnlineStatus(roomId, isOnline) {
+      if (!this.stompClient || !this.stompClient.connected) {
+        return;
+      }
+
       try {
-        await markMessageAsRead(roomId);
+        const userId = '550e8400-e29b-41d4-a716-446655440001';
         
-        // 로컬 상태에서 읽지 않은 메시지 수 초기화
-        const room = this.rooms.find(r => r.chatRoomId === roomId);
-        if (room) {
-          room.unreadCount = 0;
-        }
+        const statusRequest = {
+          userId: userId
+        };
+
+        const endpoint = isOnline ? 'online' : 'offline';
+        this.stompClient.send(
+          `/publish/chat-rooms/${roomId}/${endpoint}`,
+          JSON.stringify(statusRequest)
+        );
+
+        console.log(`${isOnline ? '온라인' : '오프라인'} 상태 전송:`, statusRequest);
       } catch (error) {
-        console.error('메시지 읽음 처리 실패:', error);
+        console.error('온라인 상태 전송 실패:', error);
       }
     },
     
@@ -241,8 +341,6 @@ export const useChatStore = defineStore('chat', {
     async sendMessage(content, files = null) {
       if (!this.currentRoomId) return;
       
-      // 메시지 전송 중에는 전체 loading이 아닌 개별 loading 상태를 사용
-      const isSending = true;
       this.error = null;
       
       try {
@@ -258,7 +356,6 @@ export const useChatStore = defineStore('chat', {
         // WebSocket을 통해 메시지 전송
         if (this.stompClient && this.stompClient.connected) {
           await this.sendMessageViaWebSocket(content, uploadedFiles);
-          // WebSocket 연결이 있으면 백엔드에서 받은 메시지를 사용하므로 로컬 추가하지 않음
         } else {
           // WebSocket이 연결되지 않은 경우 HTTP API 사용
           const message = await sendMessage(this.currentRoomId, content, uploadedFiles);
@@ -269,9 +366,7 @@ export const useChatStore = defineStore('chat', {
         }
         
         // 채팅방의 마지막 메시지 정보 업데이트 및 정렬
-        // 백엔드에서 WebSocket으로 정확한 메시지를 받을 것이므로 
-        // 여기서는 간단하게 처리하고 WebSocket 메시지를 기다림
-        const roomIndex = this.rooms.findIndex(r => r.chatRoomId === this.currentRoomId);
+        const roomIndex = this.rooms.findIndex(r => r.roomId === this.currentRoomId);
         if (roomIndex !== -1) {
           const room = this.rooms[roomIndex];
           room.lastMessageTime = now;
@@ -279,8 +374,8 @@ export const useChatStore = defineStore('chat', {
           
           // 해당 채팅방을 맨 위로 이동 (최신 메시지 순 정렬)
           if (roomIndex > 0) {
-            this.rooms.splice(roomIndex, 1); // 기존 위치에서 제거
-            this.rooms.unshift(room); // 맨 앞에 추가
+            this.rooms.splice(roomIndex, 1);
+            this.rooms.unshift(room);
           }
         }
       } catch (error) {
@@ -293,18 +388,16 @@ export const useChatStore = defineStore('chat', {
     // 채팅방 생성
     async createRoom(otherUserId) {
       this.loading = true;
-      // this.error = null; // 에러 상태 제거
       
       try {
         const roomId = await createChatRoom(otherUserId);
         
-        // 새 채팅방 정보를 목록에 추가 (실제로는 서버에서 전체 목록을 다시 가져와야 함)
+        // 새 채팅방 정보를 목록에 추가
         await this.fetchMyChatRooms();
         
         return roomId;
       } catch (error) {
         console.error('채팅방 생성 실패:', error);
-        // this.error = error.message; // 에러 상태 제거
         throw error;
       } finally {
         this.loading = false;
@@ -314,13 +407,12 @@ export const useChatStore = defineStore('chat', {
     // 채팅방 이름 수정
     async updateRoomName(roomId, roomName) {
       this.loading = true;
-      // this.error = null; // 에러 상태 제거
       
       try {
         await updateChatRoomName(roomId, roomName);
         
-        // 로컬 상태 업데이트 (반응성을 위해 새 배열 생성)
-        const roomIndex = this.rooms.findIndex(r => r.chatRoomId === roomId);
+        // 로컬 상태 업데이트
+        const roomIndex = this.rooms.findIndex(r => r.roomId === roomId);
         if (roomIndex !== -1) {
           const updatedRooms = [...this.rooms];
           updatedRooms[roomIndex] = {
@@ -331,7 +423,6 @@ export const useChatStore = defineStore('chat', {
         }
       } catch (error) {
         console.error('채팅방 이름 수정 실패:', error);
-        // this.error = error.message; // 에러 상태 제거
         throw error;
       } finally {
         this.loading = false;
@@ -343,7 +434,6 @@ export const useChatStore = defineStore('chat', {
       if (!roomId) return;
       
       this.loading = true;
-      // this.error = null; // 에러 상태 제거
       
       try {
         await leaveChatRoom(roomId);
@@ -354,7 +444,7 @@ export const useChatStore = defineStore('chat', {
         }
         
         // 로컬 상태에서 채팅방 제거
-        this.rooms = this.rooms.filter(r => r.chatRoomId !== roomId);
+        this.rooms = this.rooms.filter(r => r.roomId !== roomId);
         
         // 현재 채팅방이 나간 채팅방이면 선택 해제
         if (this.currentRoomId === roomId) {
@@ -363,7 +453,6 @@ export const useChatStore = defineStore('chat', {
         }
       } catch (error) {
         console.error('채팅방 나가기 실패:', error);
-        // this.error = error.message; // 에러 상태 제거
         throw error;
       } finally {
         this.loading = false;
@@ -372,13 +461,10 @@ export const useChatStore = defineStore('chat', {
     
     // 새 메시지 수신 (WebSocket 등에서 호출)
     receiveMessage(message) {
-      console.log('받은 메시지:', message); // 디버깅용
-      console.log('받은 메시지 createdAt:', message.createdAt); // 시간 확인
+      console.log('받은 메시지:', message);
       
       // 백엔드에서 받은 메시지를 ChatMessageResponse 객체로 변환
       const chatMessageResponse = ChatMessageResponse.fromJson(message);
-      console.log('변환된 메시지:', chatMessageResponse);
-      console.log('변환된 메시지 createdAt:', chatMessageResponse.createdAt);
       
       // 해당 채팅방의 메시지에 추가
       if (!this.messages[chatMessageResponse.roomId]) {
@@ -386,22 +472,16 @@ export const useChatStore = defineStore('chat', {
       }
       this.messages[chatMessageResponse.roomId].push(chatMessageResponse);
       
-      // 현재 채팅방의 메시지라면 즉시 반영
-      if (chatMessageResponse.roomId === this.currentRoomId) {
-        // 이미 추가했으므로 별도 처리 불필요
-      }
-      
       // 해당 채팅방의 정보 업데이트 및 정렬
-      const roomIndex = this.rooms.findIndex(r => r.chatRoomId === chatMessageResponse.roomId);
+      const roomIndex = this.rooms.findIndex(r => r.roomId === chatMessageResponse.roomId);
       if (roomIndex !== -1) {
         const room = this.rooms[roomIndex];
         
         // 마지막 메시지 내용 결정
         let lastMessageText = chatMessageResponse.message;
         if (!chatMessageResponse.message.trim() && chatMessageResponse.files && chatMessageResponse.files.length > 0) {
-          // 텍스트가 없고 파일이 있는 경우
-          const imageCount = chatMessageResponse.files.filter(file => file.fileType === 'IMAGE').length;
-          const videoCount = chatMessageResponse.files.filter(file => file.fileType === 'VIDEO').length;
+          const imageCount = chatMessageResponse.files.filter(file => file.isImage()).length;
+          const videoCount = chatMessageResponse.files.filter(file => file.isVideo()).length;
           
           if (imageCount > 0 && videoCount > 0) {
             lastMessageText = `사진 ${imageCount}장, 동영상 ${videoCount}개를 보냈습니다.`;
@@ -424,8 +504,8 @@ export const useChatStore = defineStore('chat', {
         
         // 해당 채팅방을 맨 위로 이동 (최신 메시지 순 정렬)
         if (roomIndex > 0) {
-          this.rooms.splice(roomIndex, 1); // 기존 위치에서 제거
-          this.rooms.unshift(room); // 맨 앞에 추가
+          this.rooms.splice(roomIndex, 1);
+          this.rooms.unshift(room);
         }
       }
     },
@@ -441,7 +521,10 @@ export const useChatStore = defineStore('chat', {
       
       this.currentRoomId = roomId;
       
-      // 메시지 캐시가 있는지 확인 (undefined나 빈 배열이어도 한번 로드했다면 재로드하지 않음)
+      // 채팅방 입장 시 읽음 처리 (UI적으로)
+      this.markRoomAsRead(roomId);
+      
+      // 메시지 캐시가 있는지 확인
       if (this.messages[roomId] !== undefined) {
         // 캐시된 메시지가 있어도 잠깐 로딩 상태를 true로 설정하여 스켈레톤 표시
         this.loading = true;
@@ -451,10 +534,12 @@ export const useChatStore = defineStore('chat', {
           this.loading = false;
         }, 150);
         
-        // 메시지 읽음 처리
-        this.markAsRead(roomId);
         // WebSocket 연결
-        this.connectWebSocket(roomId);
+        try {
+          this.connectWebSocket(roomId);
+        } catch (error) {
+          console.log('WebSocket 연결 실패, HTTP API 모드로 전환:', error);
+        }
         return;
       }
       
@@ -481,6 +566,35 @@ export const useChatStore = defineStore('chat', {
     
     async fetchMessages(roomId) {
       return this.fetchChatHistory(roomId);
+    },
+
+    // 테스트용: 간단한 메시지 추가
+    addTestMessage(roomId, content, isFromMe = true) {
+      if (!this.messages[roomId]) {
+        this.messages[roomId] = [];
+      }
+
+      const testMessage = {
+        id: `test-${Date.now()}`,
+        roomId: roomId,
+        senderId: isFromMe ? '550e8400-e29b-41d4-a716-446655440001' : 'other-user-id',
+        message: content,
+        files: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      this.messages[roomId].push(testMessage);
+      
+      // 채팅방 정보 업데이트
+      const roomIndex = this.rooms.findIndex(r => r.roomId === roomId);
+      if (roomIndex !== -1) {
+        this.rooms[roomIndex].lastMessage = content;
+        this.rooms[roomIndex].lastMessageTime = testMessage.createdAt;
+        if (!isFromMe) {
+          this.rooms[roomIndex].unreadCount = (this.rooms[roomIndex].unreadCount || 0) + 1;
+        }
+      }
     },
   },
 }); 

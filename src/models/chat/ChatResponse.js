@@ -1,36 +1,37 @@
 // 채팅 관련 응답 모델
 
-// 채팅방 목록 응답 모델
+// 채팅방 목록 응답 모델 (ChatRoomListDto 기반)
 export class ChatRoomResponse {
-  constructor(chatRoomId, customRoomName, otherUserName, otherUserNickname, otherUserProfileImage, lastMessage, lastMessageTime, unreadCount) {
-    this.chatRoomId = chatRoomId;
+  constructor(roomId, customRoomName, otherUserName, otherUserNickname, otherUserProfileImage, lastMessage, lastMessageTime, newMessageCount) {
+    this.roomId = roomId;
     this.customRoomName = customRoomName;
     this.otherUserName = otherUserName;
     this.otherUserNickname = otherUserNickname;
     this.otherUserProfileImage = otherUserProfileImage;
     this.lastMessage = lastMessage;
     this.lastMessageTime = lastMessageTime;
-    this.unreadCount = unreadCount;
+    this.unreadCount = newMessageCount || 0;
   }
 
   static fromJson(json) {
     return new ChatRoomResponse(
-      json.chatRoomId,
+      json.roomId,
       json.customRoomName,
       json.otherUserName,
       json.otherUserNickname,
       json.otherUserProfileImage,
       json.lastMessage,
       json.lastMessageTime,
-      json.unreadCount
+      json.newMessageCount
     );
   }
 }
 
-// 채팅 파일 응답 모델
+// 채팅 파일 응답 모델 (ChatFileUploadResDto.FileInfo 기반)
 export class ChatFileResponse {
-  constructor(id, fileName, fileUrl, fileType, fileSize) {
-    this.id = id;
+  constructor(fileId, fileUrl, fileName, fileType, fileSize) {
+    this.id = fileId;
+    this.fileId = fileId; // 기존 호환성을 위해 유지
     this.fileName = fileName;
     this.fileUrl = fileUrl;
     this.fileType = fileType;
@@ -39,20 +40,25 @@ export class ChatFileResponse {
 
   static fromJson(json) {
     return new ChatFileResponse(
-      json.id,
-      json.fileName,
+      json.fileId,
       json.fileUrl,
+      json.fileName,
       json.fileType,
       json.fileSize
     );
   }
 
-  // 파일이 이미지인지 확인
+  // 파일이 이미지인지 확인 (백엔드 FileType enum 기반)
   isImage() {
-    return this.fileType && this.fileType.startsWith('image/');
+    return this.fileType === 'IMAGE';
   }
 
-  // 파일 확장자로 이미지인지 확인
+  // 파일이 비디오인지 확인 (백엔드 FileType enum 기반)
+  isVideo() {
+    return this.fileType === 'VIDEO';
+  }
+
+  // 파일 확장자로 이미지인지 확인 (기존 호환성)
   isImageByExtension() {
     const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
     return imageExtensions.some(ext => 
@@ -61,7 +67,7 @@ export class ChatFileResponse {
   }
 }
 
-// 채팅 메시지 응답 모델
+// 채팅 메시지 응답 모델 (ChatMessageResDto 기반)
 export class ChatMessageResponse {
   constructor(id, roomId, senderId, message, files, createdAt, updatedAt) {
     this.id = id;
@@ -95,13 +101,18 @@ export class ChatMessageResponse {
     return this.files && this.files.length > 0;
   }
 
-  // 이미지 파일들만 가져오기
+  // 이미지 파일들만 가져오기 (백엔드 FileType 기반)
   getImageFiles() {
-    return this.files.filter(file => file.isImage() || file.isImageByExtension());
+    return this.files.filter(file => file.isImage());
   }
 
-  // 일반 파일들만 가져오기 (이미지 제외)
+  // 비디오 파일들만 가져오기 (백엔드 FileType 기반)
+  getVideoFiles() {
+    return this.files.filter(file => file.isVideo());
+  }
+
+  // 일반 파일들만 가져오기 (이미지, 비디오 제외)
   getNonImageFiles() {
-    return this.files.filter(file => !file.isImage() && !file.isImageByExtension());
+    return this.files.filter(file => !file.isImage() && !file.isVideo());
   }
 } 

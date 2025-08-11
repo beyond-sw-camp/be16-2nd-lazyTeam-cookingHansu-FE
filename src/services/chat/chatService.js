@@ -1,14 +1,13 @@
 // 채팅 API 서비스
 
-import { apiGet, apiPost, apiPatch, apiDelete, apiPostFormData } from '../../utils/api';
+import { apiGet, apiPatch, apiDelete, apiPostFormData } from '../../utils/api';
 import { handleApiResponse } from '../../models/common/ApiResponse';
 import { ChatRoomResponse, ChatMessageResponse } from '../../models/chat/ChatResponse';
 
-// API 엔드포인트 상수
+// API 엔드포인트 상수 (백엔드와 맞춤)
 const API_ENDPOINTS = {
   MY_CHAT_ROOMS: '/chat/my/rooms',
   CHAT_HISTORY: (roomId) => `/chat/room/${roomId}/history`,
-  MARK_AS_READ: (roomId) => `/chat/room/${roomId}/read`,
   CREATE_ROOM: (otherUserId) => `/chat/room/create/${otherUserId}`,
   UPDATE_ROOM_NAME: (roomId) => `/chat/room/${roomId}/name`,
   LEAVE_ROOM: (roomId) => `/chat/room/${roomId}/leave`,
@@ -35,13 +34,6 @@ export const chatService = {
     return messagesData.map(messageData => ChatMessageResponse.fromJson(messageData));
   },
 
-  // 메시지 읽음 처리
-  async markMessageAsRead(roomId) {
-    const response = await apiPost(API_ENDPOINTS.MARK_AS_READ(roomId));
-    const apiResponse = await handleApiResponse(response);
-    return apiResponse.getData();
-  },
-
   // 채팅방 생성
   async createChatRoom(otherUserId) {
     const response = await apiGet(API_ENDPOINTS.CREATE_ROOM(otherUserId));
@@ -63,10 +55,14 @@ export const chatService = {
     return apiResponse.getData();
   },
 
-  // 파일 업로드
+  // 파일 업로드 (백엔드 ChatFileUploadReqDto 기반)
   async uploadFiles(roomId, files, fileTypes) {
     const formData = new FormData();
     
+    // roomId 추가
+    formData.append('roomId', roomId);
+    
+    // 파일들 추가
     files.forEach((file, index) => {
       formData.append('files', file);
       formData.append('fileTypes', fileTypes[index]);
@@ -77,10 +73,12 @@ export const chatService = {
     return apiResponse.getData();
   },
 
-  // 메시지 전송
+  // 메시지 전송 (백엔드 ChatMessageReqDto 기반)
   async sendMessage(roomId, content, uploadedFiles = null) {
     const formData = new FormData();
-    formData.append('content', content);
+    formData.append('roomId', roomId);
+    formData.append('senderId', '550e8400-e29b-41d4-a716-446655440001'); // 테스트용 고정 ID
+    formData.append('message', content);
     
     if (uploadedFiles && uploadedFiles.files && uploadedFiles.files.length > 0) {
       formData.append('files', JSON.stringify(uploadedFiles.files));
@@ -93,7 +91,7 @@ export const chatService = {
     return ChatMessageResponse.fromJson(messageData);
   },
 
-  // 파일 타입 추정 유틸리티
+  // 파일 타입 추정 유틸리티 (백엔드 FileType enum 기반)
   getFileTypeFromFile(file) {
     if (!file || !file.name) {
       return 'UNKNOWN';
@@ -124,12 +122,12 @@ export const chatService = {
 // 기존 호환성 함수들 (점진적 마이그레이션을 위해 유지)
 export const getMyChatRooms = () => chatService.getMyChatRooms();
 export const getChatHistory = (roomId) => chatService.getChatHistory(roomId);
-export const markMessageAsRead = (roomId) => chatService.markMessageAsRead(roomId);
 export const createChatRoom = (otherUserId) => chatService.createChatRoom(otherUserId);
 export const updateChatRoomName = (roomId, roomName) => chatService.updateChatRoomName(roomId, roomName);
 export const leaveChatRoom = (roomId) => chatService.leaveChatRoom(roomId);
 export const uploadFiles = (roomId, files, fileTypes) => chatService.uploadFiles(roomId, files, fileTypes);
 export const sendMessage = (roomId, content, uploadedFiles) => chatService.sendMessage(roomId, content, uploadedFiles);
+
 export const getFileTypeFromFile = (file) => chatService.getFileTypeFromFile(file);
 
 // 기존 호환성 함수들

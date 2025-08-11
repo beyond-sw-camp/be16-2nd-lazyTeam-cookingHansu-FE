@@ -58,9 +58,9 @@
                 <transition-group name="chat-list" tag="div">
                   <v-list-item
                     v-for="chat in visibleChats"
-                    :key="chat.chatRoomId"
-                    @click="selectChat(chat.chatRoomId)"
-                    :class="{ 'bg-grey-lighten-4': chat.chatRoomId === selectedChatId }"
+                    :key="chat.roomId"
+                    @click="selectChat(chat.roomId)"
+                    :class="{ 'bg-grey-lighten-4': chat.roomId === selectedChatId }"
                     class="py-4 px-3 chat-item"
                   >
                   <div class="d-flex w-100 align-start">
@@ -154,7 +154,10 @@ import LoadingScreen from '@/components/common/LoadingScreen.vue';
 import ErrorAlert from '@/components/common/ErrorAlert.vue';
 
 const chatStore = useChatStore();
-const { rooms, currentRoomId, loading, totalUnreadCount, error, hasRooms } = storeToRefs(chatStore);
+const { rooms, currentRoomId, loading, totalUnreadCount, error } = storeToRefs(chatStore);
+
+// hasRooms를 getter로 사용
+const hasRooms = computed(() => chatStore.hasRooms);
 
 const selectChat = (roomId) => {
   chatStore.selectRoom(roomId);
@@ -175,8 +178,6 @@ const onScroll = () => {
     visibleCount.value += 5;
   }
 };
-
-
 
 onMounted(() => {
   chatStore.fetchMyChatRooms();
