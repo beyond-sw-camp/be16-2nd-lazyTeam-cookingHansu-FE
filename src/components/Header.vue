@@ -41,7 +41,7 @@
         <!-- Logged In State -->
         <div v-else class="user-section">
           <v-avatar size="32" class="profile-avatar">
-            <v-img :src="userProfileImage" alt="프로필 이미지"></v-img>
+            <v-img :src="profileInfo.profileImageUrl" alt="프로필 이미지"></v-img>
           </v-avatar>
           
           <v-btn
@@ -60,7 +60,7 @@
             </v-badge>
           </v-btn>
 
-          <span class="welcome-text">{{ userNickname }}님 환영합니다!</span>
+          <span class="welcome-text">{{ profileInfo.nickname }}님 환영합니다!</span>
 
           <v-btn
             variant="outlined"
@@ -227,6 +227,10 @@ const userNickname = computed(() => {
 
 const userProfileImage = computed(() => {
   return authStore.getUser?.profileImage || '/default-avatar.png'
+})
+
+const profileInfo = computed(() => {
+  return authStore.getProfileInfo;
 })
 
 const notificationCount = computed(() => {

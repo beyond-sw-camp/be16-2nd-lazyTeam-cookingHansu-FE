@@ -120,6 +120,8 @@ export default {
       const urlParams = new URLSearchParams(window.location.search);
       const code = urlParams.get('code');
       const error = urlParams.get('error');
+
+      console.log('code:', code);
       
       if (error) {
         throw new Error(`Kakao OAuth Error: ${error}`);
@@ -140,6 +142,7 @@ export default {
         
         // 인가 코드 추출
         authorizationCode.value = extractAuthorizationCode();
+        console.log('authorizationCode:', authorizationCode.value);
         
         // 서버에 인가 코드 전송하여 로그인 처리
         const user = await authStore.handleKakaoLogin(authorizationCode.value);

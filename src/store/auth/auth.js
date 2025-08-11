@@ -60,6 +60,14 @@ export const useAuthStore = defineStore('auth', {
       console.log('Checking newUser - user.newUser:', state.user?.newUser);
       return state.user?.newUser === true;
     },
+
+    // 헤더에 렌더링할 사용자 정보 getter
+    getProfileInfo: (state) => {
+      return {
+        nickname: state.user?.nickname, 
+        profileImageUrl: state.user?.profileImageUrl,
+      };
+    }
   },
 
   actions: {
@@ -124,6 +132,37 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    // Kakao OAuth 로그인 처리
+    async handleKakaoLogin(authorizationCode) {
+      try {
+        this.isLoading = true;
+        this.error = null;
+        
+        const response = await axios.post(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.KAKAO_LOGIN}`, {
+          code: authorizationCode
+        });
+        console.log('response:', response);
+        
+        const { data: { accessToken, user, expiresIn } } = response.data;
+
+        // 토큰 및 사용자 정보 확인
+        console.log('accessToken:', accessToken);
+        console.log('user object:', user);
+        console.log('user.newUser:', user?.newUser);
+        
+        // 토큰 및 사용자 정보 저장
+        this.setAuthData(accessToken, user, expiresIn);
+        
+        return user;
+      } catch (error) {
+        console.error('Kakao login failed:', error);
+        this.error = error.response?.data?.message || 'Kakao 로그인에 실패했습니다.';
+        throw error;
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
     // 인증 데이터 설정
     setAuthData(accessToken, user, expiresIn) {
       this.accessToken = accessToken;
@@ -170,10 +209,18 @@ export const useAuthStore = defineStore('auth', {
       try {
         this.isRefreshing = true;
         
-        const response = await axios.post(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.GOOGLE_REFRESH}`, {}, {
-          withCredentials: true // 쿠키 포함
-        });
-        
+        const response = null;
+
+        if (this.accessToken.provider === 'google') {
+          response = await axios.post(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.GOOGLE_REFRESH}`, {}, {
+            withCredentials: true // 쿠키 포함
+          });
+        } else if (this.accessToken.provider === 'kakao') {
+          response = await axios.post(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.KAKAO_REFRESH}`, {}, {
+            withCredentials: true 
+          });
+        }
+         
         const { accessToken, expiresIn } = response.data;
         
         // 새로운 토큰으로 업데이트

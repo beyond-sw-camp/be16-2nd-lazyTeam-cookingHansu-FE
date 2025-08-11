@@ -9,6 +9,7 @@ const API_ENDPOINTS = {
   KAKAO_LOGIN: "/user/kakao/login",
   KAKAO_REFRESH: "/user/kakao/refresh",
   LOGOUT: "/user/logout",
+  PROFILE_INFO: "/user/profile",
   REGISTER: "/user/register",
   VERIFY_TOKEN: "/user/verify-token",
   ADD_INFO: "/user/add-info",
@@ -44,6 +45,7 @@ export const authService = {
     const response = await apiPost(API_ENDPOINTS.KAKAO_LOGIN, {
       code: authCode,
     });
+    console.log('response:', response);
     return handleApiResponse(response);
   },
 
@@ -58,6 +60,11 @@ export const authService = {
   // 로그아웃
   async logout() {
     const response = await apiPost(API_ENDPOINTS.LOGOUT);
+    return handleApiResponse(response);
+  },
+
+  async profileInfo() {
+    const response = await apiGet(API_ENDPOINTS.PROFILE_INFO);
     return handleApiResponse(response);
   },
 
