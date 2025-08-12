@@ -339,8 +339,24 @@ const handleScroll = (event) => {
 // 맨 아래로 '부드럽게' 이동(초기 제외)
 const scrollToBottom = (behavior = "auto") => {
   const el = chatContainer.value;
-  if (!el) return;
-  el.scrollTo({ top: el.scrollHeight, behavior });
+  if (!el) {
+    console.log('scrollToBottom: chatContainer not found');
+    return;
+  }
+  
+  const scrollHeight = el.scrollHeight;
+  const clientHeight = el.clientHeight;
+  const currentScrollTop = el.scrollTop;
+  
+  console.log('scrollToBottom:', {
+    behavior,
+    scrollHeight,
+    clientHeight,
+    currentScrollTop,
+    targetScrollTop: scrollHeight - clientHeight
+  });
+  
+  el.scrollTo({ top: scrollHeight - clientHeight, behavior });
 };
 
 // 맨 아래로 '즉시' 이동(초기 1회용, 모션 제거)
@@ -440,7 +456,7 @@ watch(
     await nextTick();
     if (!didInitialBottomScroll.value) return;
     if (isPrepending.value) return;
-    if (shouldStickToBottom.value) scrollToBottom("smooth");
+    if (shouldStickToBottom.value) scrollToBottom("auto");
   },
   { deep: true }
 );
@@ -536,6 +552,45 @@ onMounted(() => {
   // 초기: 메시지가 비어 있으면 스켈레톤
   if (currentRoomId.value && chatMessages.value.length === 0) {
     startSkeletonTimer();
+  }
+});
+
+// 메시지가 새로 도착했을 때 자동 스크롤
+watch(chatMessages, (newMessages, oldMessages) => {
+  if (!oldMessages || newMessages.length === 0) return;
+  
+  // 새 메시지가 추가되었는지 확인
+  if (newMessages.length > oldMessages.length) {
+    // 새 메시지가 추가된 경우, 사용자가 하단 근처에 있다면 자동 스크롤
+    nextTick(() => {
+      if (shouldStickToBottom.value) {
+        scrollToBottom("auto");
+      }
+    });
+  }
+}, { deep: true });
+
+// 채팅방이 변경되거나 초기 로딩 시 스크롤을 맨 아래로 이동
+watch(currentRoomId, async (newRoomId, oldRoomId) => {
+  if (newRoomId && newRoomId !== oldRoomId) {
+    // 새 채팅방으로 변경된 경우
+    await nextTick();
+    // 메시지가 로드될 때까지 잠시 대기
+    setTimeout(() => {
+      scrollToBottom("auto");
+      updateStickiness();
+    }, 100);
+  }
+});
+
+// 메시지가 처음 로드되었을 때 스크롤을 맨 아래로 이동
+watch(() => chatMessages.value.length, (newLength, oldLength) => {
+  if (oldLength === 0 && newLength > 0) {
+    // 메시지가 처음 로드된 경우
+    nextTick(() => {
+      scrollToBottom("auto");
+      updateStickiness();
+    });
   }
 });
 
@@ -664,10 +719,13 @@ const sendMessage = async (event) => {
     else await chatStore.sendMessage("", files);
     message.value = "";
     removeAllFiles();
-    // 전송 직후, 사용자가 하단 근처라면 부드럽게 따라감
+    
+    // 메시지 전송 후 항상 스크롤을 맨 아래로 이동
+    await nextTick();
     requestAnimationFrame(() => {
+      scrollToBottom("auto");
+      // 스크롤 후 stickiness 상태 업데이트
       updateStickiness();
-      if (shouldStickToBottom.value) scrollToBottom("smooth");
     });
   } catch (e) {
     console.error('메시지 전송 실패:', e);
@@ -681,7 +739,7 @@ const sendMessage = async (event) => {
 .chat-scroll { 
   overflow-y: auto; 
   scrollbar-width: thin; 
-  scroll-behavior: auto; /* ✅ 초기 및 기본은 instant */
+  scroll-behavior: auto; /* 즉시 스크롤 동작 */
   height: calc(100vh - 380px);
 }
 
