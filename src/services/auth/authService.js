@@ -8,6 +8,8 @@ const API_ENDPOINTS = {
   GOOGLE_REFRESH: "/user/google/refresh",
   KAKAO_LOGIN: "/user/kakao/login",
   KAKAO_REFRESH: "/user/kakao/refresh",
+  NAVER_LOGIN: "/user/naver/login",
+  NAVER_REFRESH: "/user/naver/refresh",
   LOGOUT: "/user/logout",
   PROFILE_INFO: "/user/profile",
   REGISTER: "/user/register",
@@ -52,6 +54,23 @@ export const authService = {
   // Kakao 토큰 갱신
   async kakaoRefresh(refreshToken) {
     const response = await apiPost(API_ENDPOINTS.KAKAO_REFRESH, {
+      refreshToken,
+    });
+    return handleApiResponse(response);
+  },
+
+  // Naver OAuth 로그인
+  async naverLogin(authCode) {
+    const response = await apiPost(API_ENDPOINTS.NAVER_LOGIN, {
+      code: authCode,
+    });
+    console.log('response:', response);
+    return handleApiResponse(response);
+  },
+
+  // Naver 토큰 갱신
+  async naverRefresh(refreshToken) {
+    const response = await apiPost(API_ENDPOINTS.NAVER_REFRESH, {
       refreshToken,
     });
     return handleApiResponse(response);

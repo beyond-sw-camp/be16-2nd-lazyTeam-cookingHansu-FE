@@ -18,6 +18,12 @@ export const OAUTH_CONFIG = {
     KAKAO_RESPONSE_TYPE: import.meta.env.VITE_KAKAO_RESPONSE_TYPE,
     // KAKAO는 SCOPE 설정 필요 X -> 콘솔에서 자동으로 설정
   },
+  NAVER: {
+    NAVER_URL: import.meta.env.VITE_NAVER_OAUTH_URL,
+    NAVER_CLIENT_ID: import.meta.env.VITE_NAVER_CLIENT_ID,
+    NAVER_REDIRECT_URL: import.meta.env.VITE_NAVER_REDIRECT_URL,
+    NAVER_RESPONSE_TYPE: import.meta.env.VITE_NAVER_RESPONSE_TYPE,
+  }
 };
 
 // API 설정 상수
@@ -29,6 +35,8 @@ export const API_CONFIG = {
     GOOGLE_REFRESH: "/user/google/refresh",
     KAKAO_LOGIN: "/user/kakao/login",
     KAKAO_REFRESH: "/user/kakao/refresh",
+    NAVER_LOGIN: "/user/naver/login",
+    NAVER_REFRESH: "/user/naver/refresh",
     LOGOUT: "/user/logout",
   },
 };
@@ -82,6 +90,27 @@ export const generateOAuthUrl = (provider) => {
         state: generateRandomState(), // CSRF 방지를 위한 state 파라미터
       });
       return `${KAKAO_URL}?${kakaoParams.toString()}`;
+    case "naver":
+        const {
+          NAVER_URL,
+          NAVER_CLIENT_ID,
+          NAVER_REDIRECT_URL,
+          NAVER_RESPONSE_TYPE,
+        } = OAUTH_CONFIG.NAVER;
+  
+        if (!NAVER_CLIENT_ID) {
+          throw new Error(
+            "NAVER Client ID is not configured. Please check your environment variables."
+          );
+        }
+  
+        const naverParams = new URLSearchParams({
+          client_id: NAVER_CLIENT_ID,
+          redirect_uri: NAVER_REDIRECT_URL,
+          response_type: NAVER_RESPONSE_TYPE,
+          state: generateRandomState(), // CSRF 방지를 위한 state 파라미터
+        });
+        return `${NAVER_URL}?${naverParams.toString()}`;
     default:
       throw new Error(`Unsupported OAuth provider: ${provider}`);
   }

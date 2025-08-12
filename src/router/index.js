@@ -32,6 +32,7 @@ import NoticeDetail from "@/views/notice/NoticeDetail.vue";
 import NoticeCreate from "@/views/notice/NoticeCreate.vue";
 import NoticeEdit from "@/views/notice/NoticeEdit.vue";
 import KakaoRedirect from "@/views/login/oauth/KakaoRedirect.vue";
+import NaverRedirect from "@/views/login/oauth/NaverRedirect.vue";
 
 const routes = [
   {
@@ -91,6 +92,11 @@ const routes = [
     path: "/oauth/kakao/redirect",
     name: "KakaoOAuthRedirect",
     component: KakaoRedirect,
+  },
+  {
+    path: "/oauth/naver/redirect",
+    name: "NaverOAuthRedirect",
+    component: NaverRedirect,
   },
   {
     path: "/add-info",

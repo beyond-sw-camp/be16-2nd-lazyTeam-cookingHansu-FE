@@ -163,6 +163,37 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    // Naver OAuth 로그인 처리
+    async handleNaverLogin(authorizationCode) {
+      try {
+        this.isLoading = true;
+        this.error = null;
+        
+        const response = await axios.post(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.NAVER_LOGIN}`, {
+          code: authorizationCode
+        });
+        console.log('response:', response);
+        
+        const { data: { accessToken, user, expiresIn } } = response.data;
+
+        // 토큰 및 사용자 정보 확인
+        console.log('accessToken:', accessToken);
+        console.log('user object:', user);
+        console.log('user.newUser:', user?.newUser);
+        
+        // 토큰 및 사용자 정보 저장
+        this.setAuthData(accessToken, user, expiresIn);
+        
+        return user;
+      } catch (error) {
+        console.error('Naver login failed:', error);
+        this.error = error.response?.data?.message || 'Naver 로그인에 실패했습니다.';
+        throw error;
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
     // 인증 데이터 설정
     setAuthData(accessToken, user, expiresIn) {
       this.accessToken = accessToken;

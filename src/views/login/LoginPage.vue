@@ -63,28 +63,9 @@ async function socialLogin(provider) {
     } else if (provider === "kakao") {
       const oauthUrl = generateOAuthUrl("kakao");
       window.location.href = oauthUrl;
-    } else {
-      // 다른 소셜 로그인의 경우 authService 사용
-      const loginData = {
-        provider: provider,
-        email: data.value.email,
-        name: data.value.name,
-        profileImage: data.value.profileImage,
-      };
-
-      const response = await authService.socialLogin(provider, loginData);
-
-      if (response.isSuccess()) {
-        const token = response.getData()?.token;
-        if (token) {
-          localStorage.setItem("token", token);
-          window.location.href = "/";
-        } else {
-          throw new Error("토큰을 받지 못했습니다.");
-        }
-      } else {
-        throw new Error(response.getMessage() || "로그인에 실패했습니다.");
-      }
+    } else if (provider === "naver") {
+      const oauthUrl = generateOAuthUrl("naver");
+      window.location.href = oauthUrl;
     }
   } catch (error) {
     console.error(`${provider} 로그인 오류:`, error);
