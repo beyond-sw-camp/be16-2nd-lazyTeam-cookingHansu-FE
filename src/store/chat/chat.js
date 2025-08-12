@@ -17,13 +17,18 @@ export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 // 현재 사용자 ID 상수화 (실 서비스에선 Auth에서 주입)
 const MY_ID = '550e8400-e29b-41d4-a716-446655440001';
 
+// 내부 유틸: ms 대기
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 export const useChatStore = defineStore('chat', {
   state: () => ({
     rooms: [],
     messages: {},                 // roomId -> messages[]
     currentRoomId: null,
     loading: false,
-    stompClient: null,
+    stompClient: null,            // 상세 방용 STOMP 클라이언트
+    _stompRoomId: null,           // 현재 stompClient가 연결된 roomId (중복연결 방지)
+    _disconnectPromise: null,     // 종료 직렬화 락 (NEW)
     error: null,
     onlineUsers: {},              // roomId -> [userIds]
 
@@ -68,28 +73,64 @@ export const useChatStore = defineStore('chat', {
      * Presence / Lifecycle
      * ========================= */
     async goOfflineFireAndForget(roomId) {
-      if (!roomId) return;
-      if (!this.stompClient || !this.stompClient.connected) return;
+      // FIX: 안전 가드 (클라이언트 캡처 + 존재/연결 여부 확인)
+      const client = this.stompClient;
+      if (!roomId || !client || !client.connected) return;
       try {
-        this.stompClient.send(
+        client.send(
           `/publish/chat-rooms/${roomId}/offline`,
           JSON.stringify({ userId: MY_ID })
         );
       } catch (e) {
-        console.error('offline 전송 실패(F&F):', e);
+        // no-op: 파이어 앤 포겟
       }
     },
 
-    async flushOfflineAndDisconnect({ roomId, waitMs = 180 } = {}) {
-      if (!this.stompClient || !this.stompClient.connected) return;
+    // NEW: 안전 종료 유틸 (콜백 기반 disconnect를 Promise로)
+    _safeDisconnect(client) {
+      return new Promise((resolve) => {
+        try {
+          if (client && client.connected) {
+            client.disconnect(() => resolve());
+          } else {
+            resolve();
+          }
+        } catch (_e) {
+          resolve();
+        }
+      });
+    },
+
+    async flushOfflineAndDisconnect({ roomId, waitMs = 120 } = {}) {
+      // FIX: 동시 종료 직렬화
+      if (this._disconnectPromise) {
+        try { await this._disconnectPromise; } catch (_e) {}
+      }
+
+      const client = this.stompClient; // 로컬 캡처
+      if (!client) return;
+
+      this._disconnectPromise = (async () => {
+        try {
+          // 가능한 경우에만 오프라인 신호 + 짧은 대기
+          if (client.connected && roomId) {
+            try { client.send(`/publish/chat-rooms/${roomId}/offline`, JSON.stringify({ userId: MY_ID })); } catch (_e) {}
+            if (waitMs > 0) await sleep(waitMs);
+          }
+        } finally {
+          // FIX: null 참조 방지 + 캡처한 client만 종료
+          await this._safeDisconnect(client);
+          if (this.stompClient === client) {
+            this.stompClient = null;
+            this._stompRoomId = null;
+          }
+        }
+      })();
+
       try {
-        await this.goOfflineFireAndForget(roomId);
-        await new Promise((r) => setTimeout(r, waitMs));
-      } catch (_e) {
-        // no-op
+        await this._disconnectPromise;
       } finally {
-        try { this.stompClient.disconnect(); } catch (e) { console.warn('disconnect 에러 무시', e); }
-        this.stompClient = null;
+        this._disconnectPromise = null;
       }
     },
 
@@ -110,7 +151,7 @@ export const useChatStore = defineStore('chat', {
       const pagehideHandler = async () => {
         const rid = this.currentRoomId;
         if (!rid) return;
-        await this.flushOfflineAndDisconnect({ roomId: rid, waitMs: 180 });
+        await this.flushOfflineAndDisconnect({ roomId: rid, waitMs: 100 });
       };
 
       document.addEventListener('visibilitychange', quickOfflineOnHide, { capture: true });
@@ -150,34 +191,45 @@ export const useChatStore = defineStore('chat', {
     },
 
     /* =========================
-     * WebSocket
+     * WebSocket (상세 방)
      * ========================= */
-    connectWebSocket(roomId) {
-      console.log('WebSocket 연결 시도:', { roomId, currentRoomId: this.currentRoomId });
-      this.disconnectWebSocket();
+    async connectWebSocket(roomId) {
       if (!roomId) {
         console.error('roomId가 없습니다:', roomId);
         return;
       }
 
-      try {
-        console.log('SockJS 연결 시도:', `${API_BASE_URL}/connect`);
-        const sockJs = new SockJs(`${API_BASE_URL}/connect`);
-        this.stompClient = Stomp.over(sockJs);
+      // FIX: 기존 종료가 진행중이면 대기 (race 방지)
+      if (this._disconnectPromise) {
+        try { await this._disconnectPromise; } catch (_e) {}
+      }
 
-        this.stompClient.connect(
+      // FIX: 동일 방에 이미 연결되어 있으면 재연결 스킵
+      if (this.stompClient && this.stompClient.connected && this._stompRoomId === roomId) {
+        return;
+      }
+
+      // FIX: 다른 방에 연결 중이면 먼저 종료
+      if (this.stompClient && this.stompClient.connected && this._stompRoomId !== roomId) {
+        await this.flushOfflineAndDisconnect({ roomId: this._stompRoomId, waitMs: 80 });
+      }
+
+      try {
+        const sockJs = new SockJs(`${API_BASE_URL}/connect`);
+        const client = Stomp.over(sockJs);
+        this.stompClient = client;     // 우선 지정
+        this._stompRoomId = null;      // 연결 확정 전엔 null
+
+        client.connect(
           {},
           () => {
-            console.log('WebSocket 연결 성공');
-
             // 메시지 구독
-            console.log('메시지 구독 시도:', `/topic/chat-rooms/${roomId}/chat-message`);
-            this.stompClient.subscribe(
+            client.subscribe(
               `/topic/chat-rooms/${roomId}/chat-message`,
               (message) => {
                 try {
-                  const parsedMessage = JSON.parse(message.body);
-                  this.receiveMessage(parsedMessage);
+                  const parsed = JSON.parse(message.body);
+                  this.receiveMessage(parsed);
                 } catch (error) {
                   console.error('메시지 파싱 실패:', error);
                 }
@@ -185,12 +237,11 @@ export const useChatStore = defineStore('chat', {
             );
 
             // 온라인 참여자 상태 구독
-            this.stompClient.subscribe(
+            client.subscribe(
               `/topic/chat-rooms/${roomId}/online-participant`,
               (message) => {
                 try {
                   const onlineUsers = JSON.parse(message.body);
-                  console.log('온라인 참여자:', onlineUsers);
                   this.updateOnlineUsers(roomId, onlineUsers);
                 } catch (error) {
                   console.error('온라인 참여자 파싱 실패:', error);
@@ -199,38 +250,43 @@ export const useChatStore = defineStore('chat', {
             );
 
             // 연결 성공 후 온라인 상태 알림
-            setTimeout(() => {
-              this.sendOnlineStatus(roomId, true);
-            }, 100);
+            this._stompRoomId = roomId; // FIX: 연결 확정 시점에 세팅
+            setTimeout(() => { this.sendOnlineStatus(roomId, true); }, 80);
           },
-          (error) => {
+          async (error) => {
             console.error('WebSocket 연결 실패:', error);
-            this.stompClient = null;
+            // 실패 시 캡처된 client만 종료
+            await this._safeDisconnect(client);
+            if (this.stompClient === client) {
+              this.stompClient = null;
+              this._stompRoomId = null;
+            }
           }
         );
       } catch (error) {
         console.error('WebSocket 초기화 실패:', error);
         this.stompClient = null;
+        this._stompRoomId = null;
       }
     },
 
-    async disconnectWebSocket(roomId = this.currentRoomId) {
-      if (!this.stompClient || !this.stompClient.connected) {
-        this.stompClient = null;
-        return;
-      }
+    async disconnectWebSocket(roomId = this._stompRoomId || this.currentRoomId) {
+      const client = this.stompClient; // 캡처
+      if (!client) { this.stompClient = null; this._stompRoomId = null; return; }
+
       try {
-        await this.flushOfflineAndDisconnect({ roomId, waitMs: 150 });
-      } catch (e) {
-        console.warn('graceful disconnect 실패, 강제 종료', e);
-        try { this.stompClient.disconnect(); } catch {}
-        this.stompClient = null;
+        await this.flushOfflineAndDisconnect({ roomId, waitMs: 100 });
+      } catch (_e) {
+        // 보루: 로컬 캡처만 종료, 전역 참조는 일치할 때만 null 처리
+        await this._safeDisconnect(client);
+        if (this.stompClient === client) {
+          this.stompClient = null;
+          this._stompRoomId = null;
+        }
       }
     },
     
     updateOnlineUsers(roomId, onlineUserIds) {
-      console.log('온라인 사용자 업데이트:', { roomId, onlineUserIds });
-
       const prev = Array.isArray(this.onlineUsers[roomId]) ? this.onlineUsers[roomId] : [];
       const wasOnline = prev.some((id) => id !== MY_ID);
 
@@ -319,7 +375,8 @@ export const useChatStore = defineStore('chat', {
      * REST + WS Send
      * ========================= */
     async sendMessageViaWebSocket(content, uploadedFiles = null) {
-      if (!this.currentRoomId || !this.stompClient || !this.stompClient.connected) {
+      const client = this.stompClient;
+      if (!this.currentRoomId || !client || !client.connected) {
         console.error('WebSocket이 연결되지 않았습니다.');
         return;
       }
@@ -332,7 +389,7 @@ export const useChatStore = defineStore('chat', {
       };
 
       try {
-        this.stompClient.send(
+        client.send(
           `/publish/chat-rooms/${this.currentRoomId}/message`,
           JSON.stringify(message)
         );
@@ -412,7 +469,7 @@ export const useChatStore = defineStore('chat', {
       };
       
       try {
-        const minLoadingTime = new Promise(resolve => setTimeout(resolve, 400));
+        const minLoadingTime = new Promise(resolve => setTimeout(resolve, 300)); // 살짝 단축
         const [result] = await Promise.all([
           getChatHistory(roomId, 30, null),
           minLoadingTime
@@ -428,11 +485,7 @@ export const useChatStore = defineStore('chat', {
           isLoading: false
         };
 
-        try {
-          this.connectWebSocket(roomId);
-        } catch (error) {
-          console.log('WebSocket 연결 실패, HTTP API 모드로 전환:', error);
-        }
+        await this.connectWebSocket(roomId);
       } catch (error) {
         console.error('메시지 조회 실패:', error);
         this.error = error.message;
@@ -480,17 +533,17 @@ export const useChatStore = defineStore('chat', {
     },
     
     sendOnlineStatus(roomId, isOnline) {
-      if (!this.stompClient || !this.stompClient.connected) return;
+      const client = this.stompClient;
+      if (!client || !client.connected) return;
       try {
         const statusRequest = { userId: MY_ID };
         const endpoint = isOnline ? 'online' : 'offline';
-        this.stompClient.send(
+        client.send(
           `/publish/chat-rooms/${roomId}/${endpoint}`,
           JSON.stringify(statusRequest)
         );
-        console.log(`${isOnline ? '온라인' : '오프라인'} 상태 전송:`, statusRequest);
-      } catch (error) {
-        console.error('온라인 상태 전송 실패:', error);
+      } catch (_e) {
+        // no-op
       }
     },
     
@@ -570,8 +623,8 @@ export const useChatStore = defineStore('chat', {
       this.loading = true;
       try {
         await leaveChatRoom(roomId);
-        if (this.currentRoomId === roomId) {
-          this.disconnectWebSocket();
+        if (this._stompRoomId === roomId) {
+          await this.disconnectWebSocket(roomId);
         }
         this.rooms = this.rooms.filter((r) => r.roomId !== roomId);
         if (this.currentRoomId === roomId) {
@@ -591,7 +644,6 @@ export const useChatStore = defineStore('chat', {
     },
     
     receiveMessage(message) {
-      console.log('받은 메시지:', message);
       const chatMessageResponse = ChatMessageResponse.fromJson(message);
       const roomId = chatMessageResponse.roomId;
 
@@ -629,11 +681,14 @@ export const useChatStore = defineStore('chat', {
         room.lastMessageTime = chatMessageResponse.createdAt;
 
         if (roomId !== this.currentRoomId) {
-          room.unreadCount = (room.unreadCount || 0) + 1;
+          if (chatMessageResponse.senderId !== MY_ID) {
+            room.unreadCount = (room.unreadCount || 0) + 1;
+          }
         } else {
           if (chatMessageResponse.senderId !== MY_ID) {
             this.lastReadByMe[roomId] = chatMessageResponse.createdAt;
           }
+          room.unreadCount = 0;
         }
 
         if (roomIndex > 0) {
@@ -646,11 +701,14 @@ export const useChatStore = defineStore('chat', {
     /* =========================
      * Room Selection
      * ========================= */
-    selectRoom(roomId) {
+    async selectRoom(roomId) {
       if (!roomId) return;
-      if (this.currentRoomId && this.currentRoomId !== roomId) {
-        this.disconnectWebSocket();
+
+      // 다른 방에서 넘어오는 경우, 안전 종료 먼저
+      if (this._stompRoomId && this._stompRoomId !== roomId) {
+        await this.disconnectWebSocket(this._stompRoomId);
       }
+
       this.currentRoomId = roomId;
 
       // ✅ UI 읽음 + 스냅샷
@@ -658,20 +716,20 @@ export const useChatStore = defineStore('chat', {
 
       if (this.messages[roomId] !== undefined) {
         // ✅ 캐시 즉시 표시 + 소켓 연결 + 최신 페이지 백그라운드 머지(SWR)
-        try { this.connectWebSocket(roomId); } catch (error) { console.log('WebSocket 연결 실패:', error); }
+        await this.connectWebSocket(roomId);
         this.refreshRoomLatest(roomId); // ⬅️ 핵심
         return;
       }
       // 캐시가 없으면 최초 히스토리 로드
-      this.fetchChatHistory(roomId);
+      await this.fetchChatHistory(roomId);
     },
 
     /* =========================
      * Misc
      * ========================= */
     clearError() { this.error = null; },
-    disconnectChat() {
-      this.disconnectWebSocket();
+    async disconnectChat() {
+      await this.disconnectWebSocket(this._stompRoomId || this.currentRoomId);
       this.currentRoomId = null;
       this.messages = {};
       this.lastReadByMe = {};
