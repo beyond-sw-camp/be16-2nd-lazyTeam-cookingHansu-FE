@@ -70,28 +70,15 @@ export const chatService = {
     const messageData = apiResponse.getData();
     return ChatMessageResponse.fromJson(messageData);
   },
-
-  getFileTypeFromFile(file) {
-    if (!file || !file.name) return 'UNKNOWN';
-    const lastDotIndex = file.name.lastIndexOf(".");
-    if (lastDotIndex === -1) return 'UNKNOWN';
-    const extension = file.name.substring(lastDotIndex + 1).toLowerCase();
-    const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-    const videoExtensions = ['mp4', 'avi', 'mov'];
-    if (imageExtensions.includes(extension)) return 'IMAGE';
-    if (videoExtensions.includes(extension)) return 'VIDEO';
-    return 'UNKNOWN';
-  },
 };
 
-// 기존 호환성 함수들
-export const getMyChatRooms = () => chatService.getMyChatRooms();
-export const getChatHistory = (roomId) => chatService.getChatHistory(roomId);
-export const createChatRoom = (otherUserId) => chatService.createChatRoom(otherUserId);
-export const updateChatRoomName = (roomId, roomName) => chatService.updateChatRoomName(roomId, roomName);
-export const leaveChatRoom = (roomId) => chatService.leaveChatRoom(roomId);
-export const uploadFiles = (roomId, files, fileTypes) => chatService.uploadFiles(roomId, files, fileTypes);
-export const sendMessage = (roomId, content, uploadedFiles) => chatService.sendMessage(roomId, content, uploadedFiles);
-export const getFileTypeFromFile = (file) => chatService.getFileTypeFromFile(file);
-export function getChatRooms() { return getMyChatRooms(); }
-export function getMessages(roomId) { return getChatHistory(roomId); }
+// 주요 함수들만 export (개별 함수 export 제거)
+export const {
+  getMyChatRooms,
+  getChatHistory,
+  createChatRoom,
+  updateChatRoomName,
+  leaveChatRoom,
+  uploadFiles,
+  sendMessage
+} = chatService;

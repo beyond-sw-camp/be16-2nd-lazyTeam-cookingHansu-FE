@@ -68,7 +68,9 @@ export function validateFile(file, fileType) {
  * @param {File} file - 파일
  * @returns {string} - 파일 타입 ('IMAGE' 또는 'VIDEO')
  */
-function getFileTypeFromFile(file) {
+export function getFileTypeFromFile(file) {
+  if (!file || !file.name) return 'UNKNOWN';
+  
   const fileName = file.name;
   const extension = fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase();
   

@@ -11,6 +11,7 @@ import {
   leaveChatRoom
 } from '../../services/chat/chatService';
 import { ChatMessageResponse } from '../../models/chat/ChatResponse';
+import { getFileTypeFromFile } from '../../utils/fileValidation';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -287,26 +288,6 @@ initPresenceLifecycle() {
       }
     },
 
-    getFileTypeFromFile(file) {
-      if (!file || !file.name) {
-        console.error('파일 또는 파일 이름이 없습니다:', file);
-        return 'UNKNOWN';
-      }
-      const fileName = file.name;
-      const lastDotIndex = fileName.lastIndexOf(".");
-      if (lastDotIndex === -1) {
-        console.error('파일 확장자가 없습니다:', fileName);
-        return 'UNKNOWN';
-      }
-      const extension = fileName.substring(lastDotIndex + 1).toLowerCase();
-      const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-      const videoExtensions = ['mp4', 'avi', 'mov'];
-      if (imageExtensions.includes(extension)) return 'IMAGE';
-      if (videoExtensions.includes(extension)) return 'VIDEO';
-      console.error('지원하지 않는 파일 형식입니다:', extension);
-      return 'UNKNOWN';
-    },
-
     // 내 채팅방 목록 조회
     async fetchMyChatRooms() {
       this.loading = true;
@@ -377,7 +358,7 @@ initPresenceLifecycle() {
         let uploadedFiles = null;
 
         if (files && files.length > 0) {
-          const fileTypes = files.map(file => this.getFileTypeFromFile(file));
+          const fileTypes = files.map(file => getFileTypeFromFile(file));
           uploadedFiles = await uploadFiles(this.currentRoomId, files, fileTypes);
         }
 
@@ -566,9 +547,5 @@ initPresenceLifecycle() {
       this.onlineUsers = {};
       this.pendingMyOffline = {}; // [NEW]
     },
-
-    // 호환성 함수
-    async fetchRooms() { return this.fetchMyChatRooms(); },
-    async fetchMessages(roomId) { return this.fetchChatHistory(roomId); },
   },
 });

@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import { validateFile } from '@/utils/fileValidation';
+import { getFileTypeFromFile, validateFile } from '../utils/fileValidation';
 
 export function useFileUpload() {
   const selectedFiles = ref([]);
@@ -90,36 +90,6 @@ export function useFileUpload() {
     }
   };
 
-  // 파일로부터 파일 타입 추정
-  const getFileTypeFromFile = (file) => {
-    if (!file || !file.name) {
-      console.error('파일 또는 파일 이름이 없습니다:', file);
-      return 'UNKNOWN';
-    }
-    
-    const fileName = file.name;
-    const lastDotIndex = fileName.lastIndexOf(".");
-    
-    if (lastDotIndex === -1) {
-      console.error('파일 확장자가 없습니다:', fileName);
-      return 'UNKNOWN';
-    }
-    
-    const extension = fileName.substring(lastDotIndex + 1).toLowerCase();
-    
-    const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-    const videoExtensions = ['mp4', 'avi', 'mov'];
-    
-    if (imageExtensions.includes(extension)) {
-      return 'IMAGE';
-    } else if (videoExtensions.includes(extension)) {
-      return 'VIDEO';
-    } else {
-      console.error('지원하지 않는 파일 형식입니다:', extension);
-      return 'UNKNOWN';
-    }
-  };
-
   return {
     selectedFiles,
     selectedFileNames,
@@ -131,4 +101,4 @@ export function useFileUpload() {
     triggerFileInput,
     onTextInput
   };
-} 
+}; 
