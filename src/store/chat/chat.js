@@ -4,7 +4,6 @@ import SockJs from "sockjs-client";
 import { 
   getMyChatRooms, 
   getChatHistory, 
-  sendMessage, 
   uploadFiles,
   createChatRoom,
   updateChatRoomName,
@@ -32,18 +31,20 @@ export const useChatStore = defineStore('chat', {
     lastReadByMe: {},             // roomId -> ISO time (상대 메시지 기준)
     lastReadByOther: {},          // roomId -> ISO time (내 메시지 기준)
 
-    // ✅ [NEW] 오프라인 동안 내가 보낸 메시지 버킷 (각 메시지별 1 표시용)
+    // ✅ 오프라인 동안 내가 보낸 메시지 버킷 (각 메시지별 1 표시용)
     pendingMyOffline: {},         // roomId -> { [messageId]: true }
 
-    // ✅ [NEW] 스크롤 페이지네이션을 위한 상태
+    // ✅ 스크롤 페이지네이션 상태
     pagination: {},               // roomId -> { hasNext: boolean, nextCursor: string, isLoading: boolean }
     
-    // ✅ [NEW] 채팅방 목록 페이지네이션을 위한 상태
+    // ✅ 채팅방 목록 페이지네이션 상태
     roomsPagination: {
       hasNext: false,
       nextCursor: null,
       isLoading: false
     },
+
+    _presenceInit: false,
   }),
   
   getters: {
@@ -53,7 +54,6 @@ export const useChatStore = defineStore('chat', {
     totalUnreadCount: (state) => {
       return state.rooms.reduce((total, room) => total + (room.unreadCount || 0), 0);
     },
-    // ✅ 온라인 여부 의존 제거
     getUnreadCount: (state) => (roomId) => {
       const room = state.rooms.find((r) => r.roomId === roomId);
       return room?.unreadCount || 0;
@@ -64,99 +64,94 @@ export const useChatStore = defineStore('chat', {
   },
   
   actions: {
-    // 1) receipt 없는 빠른 offline 전송
-async goOfflineFireAndForget(roomId) {
-  if (!roomId) return;
-  if (!this.stompClient || !this.stompClient.connected) return;
-  try {
-    this.stompClient.send(
-      `/publish/chat-rooms/${roomId}/offline`,
-      JSON.stringify({ userId: MY_ID })
-    );
-  } catch (e) {
-    console.error('offline 전송 실패(F&F):', e);
-  }
-},
+    /* =========================
+     * Presence / Lifecycle
+     * ========================= */
+    async goOfflineFireAndForget(roomId) {
+      if (!roomId) return;
+      if (!this.stompClient || !this.stompClient.connected) return;
+      try {
+        this.stompClient.send(
+          `/publish/chat-rooms/${roomId}/offline`,
+          JSON.stringify({ userId: MY_ID })
+        );
+      } catch (e) {
+        console.error('offline 전송 실패(F&F):', e);
+      }
+    },
 
-// 2) 짧게 기다렸다가 소켓 끊기
-async flushOfflineAndDisconnect({ roomId, waitMs = 180 } = {}) {
-  if (!this.stompClient || !this.stompClient.connected) return;
-  try {
-    await this.goOfflineFireAndForget(roomId);
-    // 프레임이 실제로 나갈 시간 조금 주기
-    await new Promise((r) => setTimeout(r, waitMs));
-  } catch (_e) {
-    // 무시 (어차피 disconnect 진행)
-  } finally {
-    try { this.stompClient.disconnect(); } catch (e) { console.warn('disconnect 에러 무시', e); }
-    this.stompClient = null;
-  }
-},
+    async flushOfflineAndDisconnect({ roomId, waitMs = 180 } = {}) {
+      if (!this.stompClient || !this.stompClient.connected) return;
+      try {
+        await this.goOfflineFireAndForget(roomId);
+        await new Promise((r) => setTimeout(r, waitMs));
+      } catch (_e) {
+        // no-op
+      } finally {
+        try { this.stompClient.disconnect(); } catch (e) { console.warn('disconnect 에러 무시', e); }
+        this.stompClient = null;
+      }
+    },
 
-// 3) 페이지 라이프사이클 바인딩(앱 전체에서 1번만)
-initPresenceLifecycle() {
-  if (this._presenceInit) return;
-  this._presenceInit = true;
+    initPresenceLifecycle() {
+      if (this._presenceInit) return;
+      this._presenceInit = true;
 
-  const quickOfflineOnHide = () => {
-    const rid = this.currentRoomId;
-    if (!rid) return;
-    if (document.hidden) {
-      // 브라우저가 페이지 정리 들어가기 전에 먼저 한 발 쏴둔다
-      this.goOfflineFireAndForget(rid);
-    } else {
-      // 다시 보이면 온라인
-      this.sendOnlineStatus(rid, true);
-    }
-  };
+      const quickOfflineOnHide = () => {
+        const rid = this.currentRoomId;
+        if (!rid) return;
+        if (document.hidden) {
+          this.goOfflineFireAndForget(rid);
+        } else {
+          this.sendOnlineStatus(rid, true);
+        }
+      };
 
-  const pagehideHandler = async () => {
-    const rid = this.currentRoomId;
-    if (!rid) return;
-    // 네비/새로고침 직전: 마지막으로 한 번 더 쏘고 아주 잠깐 기다렸다가 끊기
-    await this.flushOfflineAndDisconnect({ roomId: rid, waitMs: 180 });
-  };
+      const pagehideHandler = async () => {
+        const rid = this.currentRoomId;
+        if (!rid) return;
+        await this.flushOfflineAndDisconnect({ roomId: rid, waitMs: 180 });
+      };
 
-  document.addEventListener('visibilitychange', quickOfflineOnHide, { capture: true });
-  window.addEventListener('pagehide', pagehideHandler, { capture: true });
-
-  // 일부 브라우저 보강용: unload 전에 최후의 한 발
-  window.addEventListener('beforeunload', () => {
-    const rid = this.currentRoomId;
-    if (!rid) return;
-    this.goOfflineFireAndForget(rid);
-  }, { capture: true });
-},
+      document.addEventListener('visibilitychange', quickOfflineOnHide, { capture: true });
+      window.addEventListener('pagehide', pagehideHandler, { capture: true });
+      window.addEventListener('beforeunload', () => {
+        const rid = this.currentRoomId;
+        if (!rid) return;
+        this.goOfflineFireAndForget(rid);
+      }, { capture: true });
+    },
 
     isOtherOnline(roomId) {
       return (this.onlineUsers[roomId] || []).some((id) => id !== MY_ID);
     },
 
-    // [NEW] 방별 버킷 보장
+    /* =========================
+     * Pending / Read Heuristics
+     * ========================= */
     ensurePendingBucket(roomId) {
       if (!this.pendingMyOffline[roomId]) this.pendingMyOffline[roomId] = {};
     },
 
-    // [NEW] 내 메시지를 '오프라인 보류'로 등록
     markMyMessagePendingOffline(roomId, messageId) {
       if (!messageId) return;
       this.ensurePendingBucket(roomId);
       this.pendingMyOffline[roomId][messageId] = true;
     },
 
-    // [NEW] 상대가 다시 온라인이 되었을 때: 경계 갱신 + 버킷 비우기
     flushPendingBecauseOtherOnline(roomId) {
       const list = this.messages[roomId] || [];
       const lastMyMsg = [...list].reverse().find((m) => m.senderId === MY_ID);
       if (lastMyMsg?.createdAt) {
-        // '상대가 돌아오면 적어도 여기까지는 읽었다'는 휴리스틱
         this.lastReadByOther[roomId] = lastMyMsg.createdAt;
       }
       this.pendingMyOffline[roomId] = {};
       if (roomId === this.currentRoomId) this.$patch({});
     },
 
-    // WebSocket 연결
+    /* =========================
+     * WebSocket
+     * ========================= */
     connectWebSocket(roomId) {
       console.log('WebSocket 연결 시도:', { roomId, currentRoomId: this.currentRoomId });
       this.disconnectWebSocket();
@@ -219,7 +214,6 @@ initPresenceLifecycle() {
       }
     },
 
-    // WebSocket 연결 해제
     async disconnectWebSocket(roomId = this.currentRoomId) {
       if (!this.stompClient || !this.stompClient.connected) {
         this.stompClient = null;
@@ -234,20 +228,17 @@ initPresenceLifecycle() {
       }
     },
     
-    // ✅ 온라인 이벤트를 "상태+오프라인→온라인 전환"에만 사용
     updateOnlineUsers(roomId, onlineUserIds) {
       console.log('온라인 사용자 업데이트:', { roomId, onlineUserIds });
 
       const prev = Array.isArray(this.onlineUsers[roomId]) ? this.onlineUsers[roomId] : [];
       const wasOnline = prev.some((id) => id !== MY_ID);
 
-      // 현재 상태 저장
       this.onlineUsers[roomId] = Array.isArray(onlineUserIds) ? onlineUserIds : [];
       const nowOnline = this.isOtherOnline(roomId);
 
-      // [핵심] 오프라인 → 온라인 전환 시: 오프라인 동안 보낸 내 메시지들을 읽음으로 전환
       if (!wasOnline && nowOnline) {
-        this.flushPendingBecauseOtherOnline(roomId); // [NEW]
+        this.flushPendingBecauseOtherOnline(roomId);
       }
 
       if (roomId === this.currentRoomId) {
@@ -255,25 +246,78 @@ initPresenceLifecycle() {
       }
     },
     
-    // ✅ UI 읽음 처리 + 내가 읽은 스냅샷 저장
+    /* =========================
+     * Read & Badges
+     * ========================= */
     markRoomAsRead(roomId) {
       const idx = this.rooms.findIndex((room) => room.roomId === roomId);
       if (idx !== -1) {
         this.rooms[idx].unreadCount = 0;
       }
 
-      // 내가 읽은 범위(상대 메시지의 최신 시각) 스냅샷
       const list = this.messages[roomId] || [];
       const lastOtherMsg = [...list].reverse().find((m) => m.senderId !== MY_ID);
       if (lastOtherMsg?.createdAt) {
         this.lastReadByMe[roomId] = lastOtherMsg.createdAt;
       } else {
-        // 상대 메시지가 없으면 현재 시각으로 찍어도 무방
         this.lastReadByMe[roomId] = new Date().toISOString();
       }
     },
 
-    // 메시지 전송 (WebSocket 사용)
+    /* =========================
+     * SWR 유틸
+     * ========================= */
+    // 메시지 중복 제거 + 시간 오름차순 정렬
+    dedupeAndSortMessages(roomId) {
+      const list = this.messages[roomId] || [];
+      const byId = new Map();
+      for (const m of list) {
+        const key = m.id ?? `${m.senderId}-${m.createdAt}-${m.message ?? ''}`;
+        byId.set(key, m);
+      }
+      const arr = Array.from(byId.values());
+      arr.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      this.messages[roomId] = arr;
+    },
+
+    // 방 입장 시 캐시를 보여주면서, 백그라운드로 최신 페이지 재조회하여 머지
+    async refreshRoomLatest(roomId) {
+      try {
+        const result = await getChatHistory(roomId, 30, null); // 최신 페이지
+        const incoming = result.data || [];
+        const current = this.messages[roomId] || [];
+        const known = new Set(current.map(m => m.id).filter(Boolean));
+
+        // 캐시에 없는 새 메시지만 필터링
+        const newcomers = incoming.filter(m => !m.id || !known.has(m.id));
+        if (newcomers.length > 0) {
+          this.messages[roomId] = [...current, ...newcomers];
+          this.dedupeAndSortMessages(roomId);
+        }
+
+        // 최신 페이지 기준의 이전(스크롤 업) 커서 갱신
+        this.pagination[roomId] = {
+          hasNext: result.hasNext,
+          nextCursor: result.nextCursor,
+          isLoading: false
+        };
+
+        // 내가 방에 '있는' 상태라면 상대 메시지를 읽음 스냅샷으로 반영
+        const lastOtherMsg = [...(this.messages[roomId] || [])].reverse().find(m => m.senderId !== MY_ID);
+        if (lastOtherMsg?.createdAt) {
+          this.lastReadByMe[roomId] = lastOtherMsg.createdAt;
+          // 방 목록의 뱃지도 0으로 맞춤
+          const idx = this.rooms.findIndex(r => r.roomId === roomId);
+          if (idx !== -1) this.rooms[idx].unreadCount = 0;
+        }
+      } catch (e) {
+        console.error('refreshRoomLatest 실패:', e);
+      }
+    },
+
+    /* =========================
+     * REST + WS Send
+     * ========================= */
     async sendMessageViaWebSocket(content, uploadedFiles = null) {
       if (!this.currentRoomId || !this.stompClient || !this.stompClient.connected) {
         console.error('WebSocket이 연결되지 않았습니다.');
@@ -298,12 +342,13 @@ initPresenceLifecycle() {
       }
     },
 
-    // 내 채팅방 목록 조회
+    /* =========================
+     * Rooms & History
+     * ========================= */
     async fetchMyChatRooms() {
       this.loading = true;
       this.error = null;
       
-      // 페이지네이션 상태 초기화
       this.roomsPagination = {
         hasNext: false,
         nextCursor: null,
@@ -326,7 +371,6 @@ initPresenceLifecycle() {
       }
     },
 
-    // ✅ [NEW] 더 많은 채팅방 로드
     async loadMoreChatRooms() {
       if (!this.roomsPagination.hasNext || this.roomsPagination.isLoading) {
         return;
@@ -338,17 +382,13 @@ initPresenceLifecycle() {
         const result = await getMyChatRooms(10, this.roomsPagination.nextCursor);
         
         if (result.data && result.data.length > 0) {
-          // 기존 채팅방 목록에 추가
           this.rooms = [...this.rooms, ...result.data];
-          
-          // 페이지네이션 상태 업데이트
           this.roomsPagination = {
             hasNext: result.hasNext,
             nextCursor: result.nextCursor,
             isLoading: false
           };
         } else {
-          // 더 이상 채팅방이 없음
           this.roomsPagination.hasNext = false;
           this.roomsPagination.nextCursor = null;
           this.roomsPagination.isLoading = false;
@@ -365,7 +405,6 @@ initPresenceLifecycle() {
       this.error = null;
       this.currentRoomId = roomId;
       
-      // 페이지네이션 상태 초기화
       this.pagination[roomId] = {
         hasNext: false,
         nextCursor: null,
@@ -380,13 +419,15 @@ initPresenceLifecycle() {
         ]);
         
         this.messages[roomId] = result.data || [];
+        // ✅ 정렬 보정
+        this.dedupeAndSortMessages(roomId);
+
         this.pagination[roomId] = {
           hasNext: result.hasNext,
           nextCursor: result.nextCursor,
           isLoading: false
         };
 
-        // 웹소켓 연결
         try {
           this.connectWebSocket(roomId);
         } catch (error) {
@@ -403,7 +444,7 @@ initPresenceLifecycle() {
       }
     },
 
-    // ✅ [NEW] 스크롤 페이지네이션으로 이전 메시지 로드
+    // 스크롤 페이지네이션: 이전 메시지 로드(프리펜드)
     async loadMoreMessages(roomId) {
       if (!this.pagination[roomId] || 
           !this.pagination[roomId].hasNext || 
@@ -417,17 +458,17 @@ initPresenceLifecycle() {
         const result = await getChatHistory(roomId, 30, this.pagination[roomId].nextCursor);
         
         if (result.data && result.data.length > 0) {
-          // 기존 메시지 앞에 추가 (역순 정렬이므로)
+          // 기존 메시지 앞에 추가(오래된 → 최신 순 유지)
           this.messages[roomId] = [...result.data, ...this.messages[roomId]];
-          
-          // 페이지네이션 상태 업데이트
+          // ✅ 정렬 보정 + 중복 제거
+          this.dedupeAndSortMessages(roomId);
+
           this.pagination[roomId] = {
             hasNext: result.hasNext,
             nextCursor: result.nextCursor,
             isLoading: false
           };
         } else {
-          // 더 이상 메시지가 없음
           this.pagination[roomId].hasNext = false;
           this.pagination[roomId].nextCursor = null;
           this.pagination[roomId].isLoading = false;
@@ -438,7 +479,6 @@ initPresenceLifecycle() {
       }
     },
     
-    // 온라인 상태 전송
     sendOnlineStatus(roomId, isOnline) {
       if (!this.stompClient || !this.stompClient.connected) return;
       try {
@@ -454,7 +494,6 @@ initPresenceLifecycle() {
       }
     },
     
-    // 메시지 전송
     async sendMessage(content, files = null) {
       if (!this.currentRoomId) return;
       this.error = null;
@@ -470,18 +509,7 @@ initPresenceLifecycle() {
         if (this.stompClient && this.stompClient.connected) {
           await this.sendMessageViaWebSocket(content, uploadedFiles);
         } else {
-          const message = await sendMessage(this.currentRoomId, content, uploadedFiles);
-          if (!this.messages[this.currentRoomId]) {
-            this.messages[this.currentRoomId] = [];
-          }
-          this.messages[this.currentRoomId].push(message);
-
-          // [NEW] 상대가 오프라인이면 보류 등록, 온라인이면 즉시 읽음 경계 갱신(heuristic)
-          if (!this.isOtherOnline(this.currentRoomId) && message?.id) {
-            this.markMyMessagePendingOffline(this.currentRoomId, message.id);
-          } else if (message?.createdAt) {
-            this.lastReadByOther[this.currentRoomId] = message.createdAt;
-          }
+          throw new Error('WebSocket 연결이 필요합니다. 메시지를 전송할 수 없습니다.');
         }
         
         // 방 메타 업데이트
@@ -502,7 +530,6 @@ initPresenceLifecycle() {
       }
     },
     
-    // 채팅방 생성
     async createRoom(otherUserId) {
       this.loading = true;
       try {
@@ -517,7 +544,6 @@ initPresenceLifecycle() {
       }
     },
     
-    // 채팅방 이름 수정
     async updateRoomName(roomId, roomName) {
       this.loading = true;
       try {
@@ -539,7 +565,6 @@ initPresenceLifecycle() {
       }
     },
     
-    // 채팅방 나가기
     async leaveRoom(roomId) {
       if (!roomId) return;
       this.loading = true;
@@ -555,7 +580,7 @@ initPresenceLifecycle() {
           delete this.lastReadByMe[roomId];
           delete this.lastReadByOther[roomId];
           delete this.onlineUsers[roomId];
-          delete this.pendingMyOffline[roomId]; // [NEW]
+          delete this.pendingMyOffline[roomId];
         }
       } catch (error) {
         console.error('채팅방 나가기 실패:', error);
@@ -565,7 +590,6 @@ initPresenceLifecycle() {
       }
     },
     
-    // 새 메시지 수신
     receiveMessage(message) {
       console.log('받은 메시지:', message);
       const chatMessageResponse = ChatMessageResponse.fromJson(message);
@@ -574,22 +598,22 @@ initPresenceLifecycle() {
       if (!this.messages[roomId]) this.messages[roomId] = [];
       this.messages[roomId].push(chatMessageResponse);
 
-      // [NEW] 내 에코 메시지 처리
+      // 내 에코 메시지 처리 + 읽음 휴리스틱
       if (chatMessageResponse.senderId === MY_ID) {
         if (!this.isOtherOnline(roomId)) {
-          // 상대 오프라인이면 보류 등록
           this.markMyMessagePendingOffline(roomId, chatMessageResponse.id);
         } else if (chatMessageResponse?.createdAt) {
-          // 상대 온라인이면 실시간 읽음 가정 (1 표시 방지)
           this.lastReadByOther[roomId] = chatMessageResponse.createdAt;
         }
       }
+
+      // 정렬/중복 보정
+      this.dedupeAndSortMessages(roomId);
 
       const roomIndex = this.rooms.findIndex((r) => r.roomId === roomId);
       if (roomIndex !== -1) {
         const room = this.rooms[roomIndex];
 
-        // 마지막 메시지 프리뷰 텍스트
         const raw = (chatMessageResponse.message ?? '');
         let lastMessageText = raw;
         if (!raw.trim() && chatMessageResponse.files && chatMessageResponse.files.length > 0) {
@@ -604,25 +628,24 @@ initPresenceLifecycle() {
         room.lastMessage = lastMessageText;
         room.lastMessageTime = chatMessageResponse.createdAt;
 
-        // ✅ 현재 방이 아니면 '내가 안 읽은' 증가
         if (roomId !== this.currentRoomId) {
           room.unreadCount = (room.unreadCount || 0) + 1;
         } else {
-          // ✅ 현재 방이면 상대 메시지를 즉시 내가 읽음으로 간주 (스냅샷)
           if (chatMessageResponse.senderId !== MY_ID) {
             this.lastReadByMe[roomId] = chatMessageResponse.createdAt;
           }
         }
 
-        // 최신 정렬
         if (roomIndex > 0) {
           this.rooms.splice(roomIndex, 1);
           this.rooms.unshift(room);
         }
       }
     },
-    
-    // 채팅방 선택
+
+    /* =========================
+     * Room Selection
+     * ========================= */
     selectRoom(roomId) {
       if (!roomId) return;
       if (this.currentRoomId && this.currentRoomId !== roomId) {
@@ -634,21 +657,18 @@ initPresenceLifecycle() {
       this.markRoomAsRead(roomId);
 
       if (this.messages[roomId] !== undefined) {
-        // 이미 메시지가 있는 경우에도 스켈레톤 UI를 보여주기 위해 적절한 로딩 시간 설정
-        this.loading = true;
-        setTimeout(() => { 
-          this.loading = false; 
-        }, 300); // 150ms에서 300ms로 증가
-        try { 
-          this.connectWebSocket(roomId); 
-        } catch (error) { 
-          console.log('WebSocket 연결 실패:', error); 
-        }
+        // ✅ 캐시 즉시 표시 + 소켓 연결 + 최신 페이지 백그라운드 머지(SWR)
+        try { this.connectWebSocket(roomId); } catch (error) { console.log('WebSocket 연결 실패:', error); }
+        this.refreshRoomLatest(roomId); // ⬅️ 핵심
         return;
       }
+      // 캐시가 없으면 최초 히스토리 로드
       this.fetchChatHistory(roomId);
     },
-    
+
+    /* =========================
+     * Misc
+     * ========================= */
     clearError() { this.error = null; },
     disconnectChat() {
       this.disconnectWebSocket();
@@ -657,7 +677,7 @@ initPresenceLifecycle() {
       this.lastReadByMe = {};
       this.lastReadByOther = {};
       this.onlineUsers = {};
-      this.pendingMyOffline = {}; // [NEW]
+      this.pendingMyOffline = {};
     },
   },
 });
