@@ -50,6 +50,9 @@ export const useChatStore = defineStore('chat', {
     },
 
     _presenceInit: false,
+
+    // ⬇⬇⬇ 새로고침 후 1회만 복원 실행하기 위한 플래그
+    _reconstructDone: {},         // roomId -> boolean
   }),
   
   getters: {
@@ -191,6 +194,49 @@ export const useChatStore = defineStore('chat', {
     },
 
     /* =========================
+     * 새로고침 후 '읽음' 복원 로직 (프론트 전용, 휴리스틱)
+     * ========================= */
+    _getTailMyMessages(roomId) {
+      const list = this.messages[roomId] || [];
+      if (!list.length) return { tail: [], lastOtherIndex: -1 };
+      let i = list.length - 1;
+      // 뒤에서 앞으로 스캔하다가 '상대 메시지'를 처음 만나면 stop
+      while (i >= 0 && list[i].senderId === MY_ID) i--;
+      const tail = list.slice(i + 1).filter((m) => m.senderId === MY_ID);
+      return { tail, lastOtherIndex: i };
+    },
+
+    _reconstructReadStateAfterBoot(roomId) {
+      if (!roomId || this._reconstructDone?.[roomId]) return;
+    
+      const list = this.messages[roomId] || [];
+      if (!list.length) { this._reconstructDone[roomId] = true; return; }
+    
+      // 꼬리 구간(상대 마지막 메시지 이후 내가 연속으로 보낸 내 메시지들)
+      const { tail, lastOtherIndex } = this._getTailMyMessages(roomId);
+    
+      // 경계: "상대가 마지막으로 보낸 메시지"보다 앞 구간에서
+      // 내가 보낸 메시지 중 가장 늦은 시각 (없으면 null)
+      let boundary = null;
+      if (lastOtherIndex >= 0) {
+        for (let j = lastOtherIndex; j >= 0; j--) {
+          const m = list[j];
+          if (m.senderId === MY_ID) { boundary = m.createdAt; break; }
+        }
+      }
+    
+      // 꼬리 전부 pending = true
+      const bucket = {};
+      for (const m of tail) if (m?.id) bucket[m.id] = true;
+    
+      this.pendingMyOffline[roomId] = bucket;
+      this.lastReadByOther[roomId] = boundary; // null이면 경계 없음
+    
+      this._reconstructDone[roomId] = true;
+      if (roomId === this.currentRoomId) this.$patch({});
+    },
+
+    /* =========================
      * WebSocket (상세 방)
      * ========================= */
     async connectWebSocket(roomId) {
@@ -289,17 +335,20 @@ export const useChatStore = defineStore('chat', {
     updateOnlineUsers(roomId, onlineUserIds) {
       const prev = Array.isArray(this.onlineUsers[roomId]) ? this.onlineUsers[roomId] : [];
       const wasOnline = prev.some((id) => id !== MY_ID);
-
+    
       this.onlineUsers[roomId] = Array.isArray(onlineUserIds) ? onlineUserIds : [];
       const nowOnline = this.isOtherOnline(roomId);
-
+    
+      // 온라인 목록을 처음 받는 시점에 1회 복원
+      if (!this._reconstructDone?.[roomId]) {
+        this._reconstructReadStateAfterBoot(roomId);
+      }
+    
+      // ✅ 온라인 진입 시에만 읽음 정리(대기열 비움 + 경계 올림)
       if (!wasOnline && nowOnline) {
         this.flushPendingBecauseOtherOnline(roomId);
       }
-
-      if (roomId === this.currentRoomId) {
-        this.$patch({});
-      }
+      if (roomId === this.currentRoomId) this.$patch({});
     },
     
     /* =========================
@@ -357,6 +406,9 @@ export const useChatStore = defineStore('chat', {
           nextCursor: result.nextCursor,
           isLoading: false
         };
+
+        // ✅ 최신 메시지 반영 후, 새로고침 복원 1회 수행
+        this._reconstructReadStateAfterBoot(roomId);
 
         // 내가 방에 '있는' 상태라면 상대 메시지를 읽음 스냅샷으로 반영
         const lastOtherMsg = [...(this.messages[roomId] || [])].reverse().find(m => m.senderId !== MY_ID);
@@ -478,6 +530,9 @@ export const useChatStore = defineStore('chat', {
         this.messages[roomId] = result.data || [];
         // ✅ 정렬 보정
         this.dedupeAndSortMessages(roomId);
+
+        // ✅ 히스토리 로드 직후, 새로고침 복원 1회 수행
+        this._reconstructReadStateAfterBoot(roomId);
 
         this.pagination[roomId] = {
           hasNext: result.hasNext,
@@ -634,6 +689,7 @@ export const useChatStore = defineStore('chat', {
           delete this.lastReadByOther[roomId];
           delete this.onlineUsers[roomId];
           delete this.pendingMyOffline[roomId];
+          delete this._reconstructDone[roomId];
         }
       } catch (error) {
         console.error('채팅방 나가기 실패:', error);
@@ -650,17 +706,41 @@ export const useChatStore = defineStore('chat', {
       if (!this.messages[roomId]) this.messages[roomId] = [];
       this.messages[roomId].push(chatMessageResponse);
 
+
+      // 정렬/중복 보정
+      this.dedupeAndSortMessages(roomId);
+
+      
+      if (chatMessageResponse.senderId !== MY_ID) {
+        const list = this.messages[roomId] || [];
+        const tsOther = new Date(chatMessageResponse.createdAt).getTime();
+        // 상대 메시지 시각 이전의 "내" 마지막 메시지 시각을 경계로 삼아 읽음 처리
+        const lastMyBefore = [...list].reverse()
+          .find(m => m.senderId === MY_ID && new Date(m.createdAt).getTime() <= tsOther);
+        if (lastMyBefore?.createdAt) {
+          this.lastReadByOther[roomId] = lastMyBefore.createdAt;
+          const bucket = this.pendingMyOffline[roomId] || {};
+          for (const mid of Object.keys(bucket)) {
+            const myMsg = list.find(m => m.id === mid);
+            if (myMsg && new Date(myMsg.createdAt).getTime() <= tsOther) {
+              delete bucket[mid];
+            }
+          }
+          this.pendingMyOffline[roomId] = bucket;
+        }
+      }
+
+
       // 내 에코 메시지 처리 + 읽음 휴리스틱
       if (chatMessageResponse.senderId === MY_ID) {
         if (!this.isOtherOnline(roomId)) {
           this.markMyMessagePendingOffline(roomId, chatMessageResponse.id);
         } else if (chatMessageResponse?.createdAt) {
           this.lastReadByOther[roomId] = chatMessageResponse.createdAt;
+          // 온라인이면 대기열은 자연스럽게 비워짐(아래 flush에서도 처리)
         }
       }
 
-      // 정렬/중복 보정
-      this.dedupeAndSortMessages(roomId);
 
       const roomIndex = this.rooms.findIndex((r) => r.roomId === roomId);
       if (roomIndex !== -1) {
@@ -736,6 +816,7 @@ export const useChatStore = defineStore('chat', {
       this.lastReadByOther = {};
       this.onlineUsers = {};
       this.pendingMyOffline = {};
+      this._reconstructDone = {};
     },
   },
 });

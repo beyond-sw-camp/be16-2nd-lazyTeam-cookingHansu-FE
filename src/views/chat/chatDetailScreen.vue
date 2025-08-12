@@ -307,7 +307,7 @@ const myId = '550e8400-e29b-41d4-a716-446655440001';
 const isLoadingMore = ref(false);
 const isPrepending = ref(false);
 const scrollTimeout = ref(null);
-const TOP_PRELOAD_THRESHOLD_PX = 100;
+const TOP_PRELOAD_THRESHOLD_PX = 300; // 상단에서 300px 이내에 있을 때 API 호출
 const BOTTOM_STICK_THRESHOLD_PX = 80;
 
 // 하단 고정 여부(사용자가 하단 근처일 때만 true)
@@ -336,30 +336,14 @@ const handleScroll = (event) => {
   }, 100);
 };
 
-// 맨 아래로 '부드럽게' 이동(초기 제외)
+// 맨 아래로 이동하는 통합 함수
 const scrollToBottom = (behavior = "auto") => {
   const el = chatContainer.value;
-  if (!el) {
-    console.log('scrollToBottom: chatContainer not found');
-    return;
-  }
-  
-  const scrollHeight = el.scrollHeight;
-  const clientHeight = el.clientHeight;
-  const currentScrollTop = el.scrollTop;
-  
-  console.log('scrollToBottom:', {
-    behavior,
-    scrollHeight,
-    clientHeight,
-    currentScrollTop,
-    targetScrollTop: scrollHeight - clientHeight
-  });
-  
-  el.scrollTo({ top: scrollHeight - clientHeight, behavior });
+  if (!el) return;
+  el.scrollTo({ top: el.scrollHeight - el.clientHeight, behavior });
 };
 
-// 맨 아래로 '즉시' 이동(초기 1회용, 모션 제거)
+// 초기 로딩 시 즉시 맨 아래로 이동 (모션 없음)
 const jumpToBottomInstant = () => {
   const el = chatContainer.value;
   if (!el) return;
@@ -367,7 +351,7 @@ const jumpToBottomInstant = () => {
   el.style.scrollBehavior = 'auto';
   el.scrollTop = el.scrollHeight;
   requestAnimationFrame(() => {
-    el.scrollTop = el.scrollHeight;  // 레이아웃 변동(이미지/폰트) 한 틱 보정
+    el.scrollTop = el.scrollHeight;
     el.style.scrollBehavior = prev || '';
   });
 };
@@ -436,7 +420,6 @@ const chatMessages = computed(() => {
 /* -----------------------------
  * 자동 하단 스크롤 정책
  * ----------------------------- */
-// 초기: 메시지가 실제 채워진 "그 순간" 딱 1번 instant 점프
 watch(
   [currentRoomId, () => chatMessages.value.length],
   async ([rid, len], [_pr, _pl]) => {
@@ -449,7 +432,6 @@ watch(
   }
 );
 
-// 이후: 프리펜드 중엔 하단 점프 금지, 하단 근처일 때만 smooth
 watch(
   chatMessages,
   async () => {
@@ -484,9 +466,7 @@ watch(loading, (n, o) => {
 });
 watch(currentRoomId, (n, o) => {
   if (n && n !== o) {
-    // 방 바뀔 때 초기화
     didInitialBottomScroll.value = false;
-    // 다음 방에서 메시지 없으면 스켈레톤
     nextTick(() => {
       if (chatMessages.value.length === 0) startSkeletonTimer();
     });
@@ -535,7 +515,7 @@ onMounted(() => {
       },
       {
         root: chatContainer.value,
-        rootMargin: '200px 0px 0px 0px', // 상단 200px 전에 미리 로드
+        rootMargin: '400px 0px 0px 0px',
         threshold: 0.0,
       }
     );
@@ -544,12 +524,10 @@ onMounted(() => {
 
   mountObserver();
 
-  // 방 변경 시 옵저버 재바인딩
   watch(currentRoomId, () => {
     nextTick(() => mountObserver());
   });
 
-  // 초기: 메시지가 비어 있으면 스켈레톤
   if (currentRoomId.value && chatMessages.value.length === 0) {
     startSkeletonTimer();
   }
@@ -558,10 +536,7 @@ onMounted(() => {
 // 메시지가 새로 도착했을 때 자동 스크롤
 watch(chatMessages, (newMessages, oldMessages) => {
   if (!oldMessages || newMessages.length === 0) return;
-  
-  // 새 메시지가 추가되었는지 확인
   if (newMessages.length > oldMessages.length) {
-    // 새 메시지가 추가된 경우, 사용자가 하단 근처에 있다면 자동 스크롤
     nextTick(() => {
       if (shouldStickToBottom.value) {
         scrollToBottom("auto");
@@ -573,9 +548,7 @@ watch(chatMessages, (newMessages, oldMessages) => {
 // 채팅방이 변경되거나 초기 로딩 시 스크롤을 맨 아래로 이동
 watch(currentRoomId, async (newRoomId, oldRoomId) => {
   if (newRoomId && newRoomId !== oldRoomId) {
-    // 새 채팅방으로 변경된 경우
     await nextTick();
-    // 메시지가 로드될 때까지 잠시 대기
     setTimeout(() => {
       scrollToBottom("auto");
       updateStickiness();
@@ -586,7 +559,6 @@ watch(currentRoomId, async (newRoomId, oldRoomId) => {
 // 메시지가 처음 로드되었을 때 스크롤을 맨 아래로 이동
 watch(() => chatMessages.value.length, (newLength, oldLength) => {
   if (oldLength === 0 && newLength > 0) {
-    // 메시지가 처음 로드된 경우
     nextTick(() => {
       scrollToBottom("auto");
       updateStickiness();
@@ -619,7 +591,6 @@ const partnerAvatar = computed(() => currentRoom.value?.otherUserProfileImage ||
 
 const handleFileChangeWrapper = (e) => handleFileChange(e, message);
 const onTextInputWrapper = () => {
-  // 텍스트가 입력되면 파일들을 제거
   if (message.value.trim() && hasFiles()) {
     removeAllFiles();
   }
@@ -703,7 +674,6 @@ const confirmLeaveRoom = async () => {
 const cancelLeaveRoom = () => { resetLeaveConfirmDialog(); };
 
 // 전송
-const messageRef = ref(null);
 const sendMessage = async (event) => {
   if (event) { event.preventDefault(); event.stopPropagation(); }
   if (isSending.value) return;
@@ -720,11 +690,9 @@ const sendMessage = async (event) => {
     message.value = "";
     removeAllFiles();
     
-    // 메시지 전송 후 항상 스크롤을 맨 아래로 이동
     await nextTick();
     requestAnimationFrame(() => {
       scrollToBottom("auto");
-      // 스크롤 후 stickiness 상태 업데이트
       updateStickiness();
     });
   } catch (e) {
@@ -736,11 +704,16 @@ const sendMessage = async (event) => {
 </script>
 
 <style scoped>
+/* 공통 높이 변수 */
 .chat-scroll { 
+  --chat-scroll-height: calc(100vh - 380px);
+  --chat-scroll-height-tablet: calc(100vh - 320px);
+  --chat-scroll-height-mobile: calc(100vh - 280px);
+  
   overflow-y: auto; 
   scrollbar-width: thin; 
-  scroll-behavior: auto; /* 즉시 스크롤 동작 */
-  height: calc(100vh - 380px);
+  scroll-behavior: auto;
+  height: var(--chat-scroll-height);
 }
 
 .chat-scroll::-webkit-scrollbar { 
@@ -764,7 +737,7 @@ const sendMessage = async (event) => {
 }
 
 .message-container { 
-  height: calc(100vh - 380px); 
+  height: var(--chat-scroll-height); 
   overflow-y: auto; 
 }
 
@@ -780,11 +753,11 @@ const sendMessage = async (event) => {
 /* 모바일 반응형 스타일 */
 @media (max-width: 960px) {
   .chat-scroll {
-    height: calc(100vh - 320px);
+    height: var(--chat-scroll-height-tablet);
   }
   
   .message-container {
-    height: calc(100vh - 320px);
+    height: var(--chat-scroll-height-tablet);
   }
   
   .message-input-area {
@@ -803,12 +776,12 @@ const sendMessage = async (event) => {
 
 @media (max-width: 600px) {
   .chat-scroll {
-    height: calc(100vh - 280px);
+    height: var(--chat-scroll-height-mobile);
     padding: 12px !important;
   }
   
   .message-container {
-    height: calc(100vh - 280px);
+    height: var(--chat-scroll-height-mobile);
   }
   
   .message-input-area {
