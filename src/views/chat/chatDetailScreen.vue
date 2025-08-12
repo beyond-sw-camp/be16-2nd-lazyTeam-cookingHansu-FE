@@ -237,7 +237,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref, computed, watch, nextTick, onBeforeUnmount, onMounted } from "vue";
 import { useRouter, onBeforeRouteLeave } from 'vue-router';
 import { storeToRefs } from 'pinia';
@@ -248,15 +248,20 @@ import { useDialog } from '@/composables/useDialog';
 import DeleteConfirmModal from '@/components/common/DeleteConfirmModal.vue';
 import ErrorAlert from '@/components/common/ErrorAlert.vue';
 
-const props = defineProps<{ chat: any }>();
+const props = defineProps({
+  chat: {
+    type: Object,
+    default: () => ({})
+  }
+});
 const router = useRouter();
 const chatStore = useChatStore();
 const { messages, currentRoomId, loading, error } = storeToRefs(chatStore);
 
 const showSkeleton = ref(false);
-const skeletonTimer = ref<number | null>(null);
+const skeletonTimer = ref(null);
 
-const chatContainer = ref<HTMLElement | null>(null);
+const chatContainer = ref(null);
 const myId = '550e8400-e29b-41d4-a716-446655440001';
 
 // ✅ 핵심: lastReadByOther 스냅샷을 이용해 내 메시지 isRead 계산
@@ -303,9 +308,11 @@ const partnerAvatar = computed(() => currentRoom.value?.otherUserProfileImage ||
 watch(chatMessages, () => { nextTick(() => { scrollToBottom(); }); }, { deep: true });
 const scrollToBottom = () => {
   if (chatContainer.value) {
-    requestAnimationFrame(() => {
-      chatContainer.value!.scrollTop = chatContainer.value!.scrollHeight;
-    });
+          requestAnimationFrame(() => {
+        if (chatContainer.value) {
+          chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
+        }
+      });
   }
 };
 watch(currentRoomId, () => { if (currentRoomId.value) nextTick(() => scrollToBottom()); });
@@ -357,11 +364,11 @@ onMounted(() => {
 });
 
 // 파일/입력 핸들러
-const handleFileChangeWrapper = (e: Event) => handleFileChange(e, message);
+const handleFileChangeWrapper = (e) => handleFileChange(e, message);
 const onTextInputWrapper = () => onTextInput(message);
 
 // 시간 표시 로직들
-const shouldShowTime = (index: number, _isMyMessage: boolean) => {
+const shouldShowTime = (index, _isMyMessage) => {
   const currentMsg = chatMessages.value[index];
   const nextMsg = chatMessages.value[index + 1];
   if (!nextMsg) return true;
@@ -370,11 +377,11 @@ const shouldShowTime = (index: number, _isMyMessage: boolean) => {
 
   const a = new Date(currentMsg.createdAt);
   const b = new Date(nextMsg.createdAt);
-  const key = (d: Date) => d.getFullYear()*100000000 + (d.getMonth()+1)*1000000 + d.getDate()*10000 + d.getHours()*100 + d.getMinutes();
+  const key = (d) => d.getFullYear()*100000000 + (d.getMonth()+1)*1000000 + d.getDate()*10000 + d.getHours()*100 + d.getMinutes();
   return key(a) !== key(b);
 };
 
-const shouldShowDateSeparator = (index: number) => {
+const shouldShowDateSeparator = (index) => {
   const currentMsg = chatMessages.value[index];
   const prevMsg = chatMessages.value[index - 1];
   if (!prevMsg) return true;
@@ -383,14 +390,14 @@ const shouldShowDateSeparator = (index: number) => {
   return currentDate.toDateString() !== prevDate.toDateString();
 };
 
-const formatDateSeparator = (ts: string) => {
+const formatDateSeparator = (ts) => {
   if (!ts) return '';
   const d = new Date(ts);
   if (isNaN(d.getTime())) return '';
   return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
 };
 
-const getImageGridLayout = (count: number) => {
+const getImageGridLayout = (count) => {
   const imageSize = '72px';
   const gap = '3px';
   const maxPerRow = 4;
@@ -407,7 +414,12 @@ const editRoomName = () => {
 };
 const confirmRoomNameChange = async () => {
   if (newRoomName.value.trim()) {
-    try { await chatStore.updateRoomName(currentRoomId.value!, newRoomName.value.trim()); resetNameEditDialog(); }
+         try { 
+       if (currentRoomId.value) {
+         await chatStore.updateRoomName(currentRoomId.value, newRoomName.value.trim()); 
+         resetNameEditDialog(); 
+       }
+     }
     catch (e) { console.error('채팅방 이름 변경 실패:', e); }
   }
 };
@@ -421,7 +433,9 @@ const leaveRoom = () => { showLeaveConfirmDialog.value = true; showRoomOptions.v
 const confirmLeaveRoom = async () => {
   try {
     leaving.value = true;
-    await chatStore.leaveRoom(currentRoomId.value!);
+         if (currentRoomId.value) {
+       await chatStore.leaveRoom(currentRoomId.value);
+     }
     resetLeaveConfirmDialog();
   } catch (e) {
     console.error('채팅방 나가기 실패:', e);
@@ -432,11 +446,11 @@ const confirmLeaveRoom = async () => {
 const cancelLeaveRoom = () => { resetLeaveConfirmDialog(); };
 
 // 전송
-const sendMessage = async (event?: Event) => {
+const sendMessage = async (event) => {
   if (event) { event.preventDefault(); event.stopPropagation(); }
   if (isSending.value) return;
 
-  const files = selectedFiles.value.map((item: any) => item.file);
+  const files = selectedFiles.value.map((item) => item.file);
   const hasText = message.value.trim();
   const hasFiles = files.length > 0;
   if (!hasText && !hasFiles) return;
