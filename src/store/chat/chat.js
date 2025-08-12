@@ -53,6 +53,70 @@ export const useChatStore = defineStore('chat', {
   },
   
   actions: {
+    // 1) receipt 없는 빠른 offline 전송
+async goOfflineFireAndForget(roomId) {
+  if (!roomId) return;
+  if (!this.stompClient || !this.stompClient.connected) return;
+  try {
+    this.stompClient.send(
+      `/publish/chat-rooms/${roomId}/offline`,
+      JSON.stringify({ userId: MY_ID })
+    );
+  } catch (e) {
+    console.error('offline 전송 실패(F&F):', e);
+  }
+},
+
+// 2) 짧게 기다렸다가 소켓 끊기
+async flushOfflineAndDisconnect({ roomId, waitMs = 180 } = {}) {
+  if (!this.stompClient || !this.stompClient.connected) return;
+  try {
+    await this.goOfflineFireAndForget(roomId);
+    // 프레임이 실제로 나갈 시간 조금 주기
+    await new Promise((r) => setTimeout(r, waitMs));
+  } catch (_e) {
+    // 무시 (어차피 disconnect 진행)
+  } finally {
+    try { this.stompClient.disconnect(); } catch (e) { console.warn('disconnect 에러 무시', e); }
+    this.stompClient = null;
+  }
+},
+
+// 3) 페이지 라이프사이클 바인딩(앱 전체에서 1번만)
+initPresenceLifecycle() {
+  if (this._presenceInit) return;
+  this._presenceInit = true;
+
+  const quickOfflineOnHide = () => {
+    const rid = this.currentRoomId;
+    if (!rid) return;
+    if (document.hidden) {
+      // 브라우저가 페이지 정리 들어가기 전에 먼저 한 발 쏴둔다
+      this.goOfflineFireAndForget(rid);
+    } else {
+      // 다시 보이면 온라인
+      this.sendOnlineStatus(rid, true);
+    }
+  };
+
+  const pagehideHandler = async () => {
+    const rid = this.currentRoomId;
+    if (!rid) return;
+    // 네비/새로고침 직전: 마지막으로 한 번 더 쏘고 아주 잠깐 기다렸다가 끊기
+    await this.flushOfflineAndDisconnect({ roomId: rid, waitMs: 180 });
+  };
+
+  document.addEventListener('visibilitychange', quickOfflineOnHide, { capture: true });
+  window.addEventListener('pagehide', pagehideHandler, { capture: true });
+
+  // 일부 브라우저 보강용: unload 전에 최후의 한 발
+  window.addEventListener('beforeunload', () => {
+    const rid = this.currentRoomId;
+    if (!rid) return;
+    this.goOfflineFireAndForget(rid);
+  }, { capture: true });
+},
+
     isOtherOnline(roomId) {
       return (this.onlineUsers[roomId] || []).some((id) => id !== MY_ID);
     },
@@ -145,19 +209,17 @@ export const useChatStore = defineStore('chat', {
     },
 
     // WebSocket 연결 해제
-    disconnectWebSocket() {
-      if (this.stompClient && this.stompClient.connected) {
-        try {
-          if (this.currentRoomId) {
-            this.sendOnlineStatus(this.currentRoomId, false);
-          }
-          this.stompClient.disconnect();
-          console.log('WebSocket 연결 해제');
-        } catch (error) {
-          console.error('WebSocket 연결 해제 실패:', error);
-        } finally {
-          this.stompClient = null;
-        }
+    async disconnectWebSocket(roomId = this.currentRoomId) {
+      if (!this.stompClient || !this.stompClient.connected) {
+        this.stompClient = null;
+        return;
+      }
+      try {
+        await this.flushOfflineAndDisconnect({ roomId, waitMs: 150 });
+      } catch (e) {
+        console.warn('graceful disconnect 실패, 강제 종료', e);
+        try { this.stompClient.disconnect(); } catch {}
+        this.stompClient = null;
       }
     },
     

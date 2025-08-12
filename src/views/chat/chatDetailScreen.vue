@@ -363,22 +363,23 @@ watch(currentRoomId, (n, o) => {
 });
 
 // 언마운트/라우트 이탈 시 오프라인 전송 & 연결 해제
-onBeforeUnmount(() => {
-  if (currentRoomId.value) chatStore.sendOnlineStatus(currentRoomId.value, false);
-  chatStore.disconnectWebSocket();
-  if (skeletonTimer.value) clearTimeout(skeletonTimer.value);
-});
-onBeforeRouteLeave((_to, _from, next) => {
-  if (currentRoomId.value) chatStore.sendOnlineStatus(currentRoomId.value, false);
-  chatStore.disconnectWebSocket();
-  if (skeletonTimer.value) clearTimeout(skeletonTimer.value);
+onBeforeRouteLeave(async (_to, _from, next) => {
+  if (currentRoomId.value) {
+    await chatStore.disconnectWebSocket(currentRoomId.value);
+  }
   next();
+});
+
+onBeforeUnmount(async () => {
+  if (currentRoomId.value) {
+    await chatStore.disconnectWebSocket(currentRoomId.value);
+  }
 });
 
 // 마운트
 onMounted(() => {
-  if (currentRoomId.value && chatMessages.value.length === 0) startSkeletonTimer();
-  nextTick(() => { scrollToBottom(); });
+  const chatStore = useChatStore();
+  chatStore.initPresenceLifecycle();
 });
 
 // 파일/입력 핸들러
