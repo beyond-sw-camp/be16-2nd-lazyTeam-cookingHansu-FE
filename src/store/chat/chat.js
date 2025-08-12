@@ -529,9 +529,16 @@ initPresenceLifecycle() {
       this.markRoomAsRead(roomId);
 
       if (this.messages[roomId] !== undefined) {
+        // 이미 메시지가 있는 경우에도 스켈레톤 UI를 보여주기 위해 적절한 로딩 시간 설정
         this.loading = true;
-        setTimeout(() => { this.loading = false; }, 150);
-        try { this.connectWebSocket(roomId); } catch (error) { console.log('WebSocket 연결 실패:', error); }
+        setTimeout(() => { 
+          this.loading = false; 
+        }, 300); // 150ms에서 300ms로 증가
+        try { 
+          this.connectWebSocket(roomId); 
+        } catch (error) { 
+          console.log('WebSocket 연결 실패:', error); 
+        }
         return;
       }
       this.fetchChatHistory(roomId);

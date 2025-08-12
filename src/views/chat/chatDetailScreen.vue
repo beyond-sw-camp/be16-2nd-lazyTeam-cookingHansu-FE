@@ -199,7 +199,47 @@
           </div>
 
           <div v-if="showSkeleton && chatMessages.length === 0" class="skeleton-messages">
-            <!-- ... 스켈레톤 그대로 ... -->
+            <!-- 스켈레톤 메시지들 -->
+            <div class="skeleton-message left">
+              <div class="skeleton-avatar"></div>
+              <div class="skeleton-bubble-wrapper">
+                <div class="skeleton-bubble left-bubble medium"></div>
+                <div class="skeleton-bubble left-bubble short"></div>
+              </div>
+            </div>
+            
+            <div class="skeleton-message right">
+              <div class="skeleton-bubble-wrapper right">
+                <div class="skeleton-bubble right-bubble long"></div>
+              </div>
+            </div>
+            
+            <div class="skeleton-message left">
+              <div class="skeleton-avatar"></div>
+              <div class="skeleton-bubble-wrapper">
+                <div class="skeleton-bubble left-bubble long"></div>
+              </div>
+            </div>
+            
+            <div class="skeleton-message right">
+              <div class="skeleton-bubble-wrapper right">
+                <div class="skeleton-bubble right-bubble short"></div>
+                <div class="skeleton-bubble right-bubble medium"></div>
+              </div>
+            </div>
+            
+            <div class="skeleton-message left">
+              <div class="skeleton-avatar"></div>
+              <div class="skeleton-bubble-wrapper">
+                <div class="skeleton-bubble left-bubble short"></div>
+              </div>
+            </div>
+            
+            <div class="skeleton-message right">
+              <div class="skeleton-bubble-wrapper right">
+                <div class="skeleton-bubble right-bubble long"></div>
+              </div>
+            </div>
           </div>
 
           <div v-else-if="!showSkeleton && !loading && chatMessages.length === 0" class="text-center py-8">
@@ -350,14 +390,26 @@ const stopSkeletonTimer = () => {
   }
   setTimeout(() => { showSkeleton.value = false; }, 100);
 };
+
+// loading 상태 변경 감지
 watch(loading, (n, o) => {
-  if (n && !o) startSkeletonTimer();
-  else if (!n && o) stopSkeletonTimer();
+  if (n && !o) {
+    // loading이 false에서 true로 변경될 때 (로딩 시작)
+    startSkeletonTimer();
+  } else if (!n && o) {
+    // loading이 true에서 false로 변경될 때 (로딩 완료)
+    stopSkeletonTimer();
+  }
 });
+
+// currentRoomId 변경 감지
 watch(currentRoomId, (n, o) => {
   if (n && n !== o) {
+    // 새로운 채팅방 선택 시
     nextTick(() => {
-      if (chatMessages.value.length === 0) startSkeletonTimer();
+      if (chatMessages.value.length === 0) {
+        startSkeletonTimer();
+      }
     });
   }
 });
@@ -380,6 +432,11 @@ onBeforeUnmount(async () => {
 onMounted(() => {
   const chatStore = useChatStore();
   chatStore.initPresenceLifecycle();
+  
+  // 초기 채팅방이 설정되어 있고 메시지가 없으면 스켈레톤 표시
+  if (currentRoomId.value && chatMessages.value.length === 0) {
+    startSkeletonTimer();
+  }
 });
 
 // 파일/입력 핸들러
@@ -496,23 +553,101 @@ const sendMessage = async (event) => {
 .message-container { height: calc(100vh - 380px); overflow-y: auto; }
 .image-grid-simple { border-radius: 4px; }
 .image-item-simple { overflow: hidden; border-radius: 4px; }
-.skeleton-messages { padding: 16px; animation: skeleton-fade-in 0.3s ease-in-out; }
-.skeleton-message { display: flex; align-items: flex-start; margin-bottom: 16px; animation: skeleton-slide-in 0.5s ease-out; }
-.skeleton-message.left { justify-content: flex-start; }
-.skeleton-message.right { justify-content: flex-end; }
+.skeleton-messages { 
+  padding: 20px; 
+  animation: skeleton-fade-in 0.5s ease-out; 
+}
+
+.skeleton-message { 
+  display: flex; 
+  align-items: flex-start; 
+  margin-bottom: 30px; 
+  animation: skeleton-slide-in 0.6s ease-out; 
+}
+
+.skeleton-message.left { 
+  justify-content: flex-start; 
+}
+
+.skeleton-message.right { 
+  justify-content: flex-end; 
+}
+
 .skeleton-message:nth-child(1) { animation-delay: 0s; }
 .skeleton-message:nth-child(2) { animation-delay: 0.1s; }
 .skeleton-message:nth-child(3) { animation-delay: 0.2s; }
 .skeleton-message:nth-child(4) { animation-delay: 0.3s; }
-.skeleton-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: skeleton-loading 2s infinite; margin-right: 12px; flex-shrink: 0; }
-.skeleton-bubble-wrapper { display: flex; flex-direction: column; max-width: 70%; }
-.skeleton-bubble-wrapper.right { align-items: flex-end; }
-.skeleton-bubble { height: 40px; border-radius: 18px; background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: skeleton-loading 2s infinite; margin-bottom: 4px; position: relative; overflow: hidden; }
-.skeleton-bubble.left-bubble { width: 180px; background-color: #f5f5f5; }
-.skeleton-bubble.right-bubble { width: 140px; background-color: #fff3e0; }
-.skeleton-bubble.long { width: 250px; }
-.skeleton-bubble.short { width: 80px; }
-@keyframes skeleton-loading { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-@keyframes skeleton-fade-in { 0% { opacity: 0; } 100% { opacity: 1; } }
-@keyframes skeleton-slide-in { 0% { opacity: 0; transform: translateY(20px); } 100% { opacity: 1; transform: translateY(0); } }
+.skeleton-message:nth-child(5) { animation-delay: 0.4s; }
+.skeleton-message:nth-child(6) { animation-delay: 0.5s; }
+
+.skeleton-avatar { 
+  width: 36px; 
+  height: 36px; 
+  border-radius: 50%; 
+  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%); 
+  background-size: 200% 100%; 
+  animation: skeleton-loading 1.5s ease-in-out infinite; 
+  margin-right: 12px; 
+  flex-shrink: 0; 
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.skeleton-bubble-wrapper { 
+  display: flex; 
+  flex-direction: column; 
+  max-width: 70%; 
+  gap: 6px;
+}
+
+.skeleton-bubble-wrapper.right { 
+  align-items: flex-end; 
+}
+
+.skeleton-bubble { 
+  height: 20px; 
+  border-radius: 18px; 
+  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%); 
+  background-size: 200% 100%; 
+  animation: skeleton-loading 1.5s ease-in-out infinite; 
+  position: relative; 
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.skeleton-bubble.left-bubble { 
+  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+}
+
+.skeleton-bubble.right-bubble { 
+  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+}
+
+.skeleton-bubble.long { 
+  width: 280px; 
+}
+
+.skeleton-bubble.medium { 
+  width: 140px; 
+}
+
+.skeleton-bubble.short { 
+  width: 90px; 
+}
+
+@keyframes skeleton-loading { 
+  0% { background-position: -200% 0; } 
+  100% { background-position: 200% 0; } 
+}
+
+@keyframes skeleton-fade-in { 
+  0% { opacity: 0; transform: translateY(10px); } 
+  100% { opacity: 1; transform: translateY(0); } 
+}
+
+@keyframes skeleton-slide-in { 
+  0% { opacity: 0; transform: translateY(15px); } 
+  100% { opacity: 1; transform: translateY(0); } 
+}
 </style>
