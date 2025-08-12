@@ -84,7 +84,6 @@
       <div
         class="flex-grow-1 pa-4 overflow-y-auto chat-scroll"
         ref="chatContainer"
-        style="height: calc(100vh - 380px);"
         @scroll="handleScroll"
       >
         <!-- ✅ 상단 프리로드 센티넬: 꼭대기 '전'에 감지 -->
@@ -231,14 +230,15 @@
         @remove-all="removeAllFiles"
       />
 
-      <div class="pa-2 border-t d-flex align-center">
+      <!-- 메시지 입력 영역 -->
+      <div class="pa-2 border-t d-flex align-center message-input-area">
         <v-text-field
           ref="messageInput"
           v-model="message"
           :placeholder="hasFiles() ? '파일이 선택되었습니다. 텍스트를 입력하려면 파일을 제거하세요.' : '메시지를 입력하세요...'"
           hide-details
           variant="outlined"
-          class="flex-grow-1 mr-2"
+          class="flex-grow-1 mr-2 message-input"
           rounded
           density="compact"
           @keyup.enter="sendMessage"
@@ -251,6 +251,7 @@
           :disabled="loading || (hasFiles() && message.trim())" 
           color="primary"
           :title="hasFiles() && message.trim() ? '텍스트를 입력하려면 파일을 제거하세요' : '파일 첨부'"
+          class="file-attach-btn"
         >
           <v-icon>mdi-paperclip</v-icon>
         </v-btn>
@@ -258,7 +259,7 @@
         <v-btn 
           color="orange" 
           icon 
-          class="ml-2" 
+          class="ml-2 send-btn" 
           :disabled="isSending || loading || (!message.trim() && !hasFiles())" 
           @click="sendMessage"
           :title="!message.trim() && !hasFiles() ? '메시지나 파일을 입력해주세요' : '전송'"
@@ -681,13 +682,100 @@ const sendMessage = async (event) => {
   overflow-y: auto; 
   scrollbar-width: thin; 
   scroll-behavior: auto; /* ✅ 초기 및 기본은 instant */
+  height: calc(100vh - 380px);
 }
-.chat-scroll::-webkit-scrollbar { width: 4px; }
-.chat-scroll::-webkit-scrollbar-thumb { background-color: rgba(0, 0, 0, 0.2); border-radius: 4px; }
-.chat-scroll::-webkit-scrollbar-track { background-color: rgba(0, 0, 0, 0.05); border-radius: 4px; }
 
-.chat-container { height: calc(100vh - 120px); display: flex; flex-direction: column; }
-.message-container { height: calc(100vh - 380px); overflow-y: auto; }
-.image-grid-simple { border-radius: 4px; }
-.image-item-simple { overflow: hidden; border-radius: 4px; }
+.chat-scroll::-webkit-scrollbar { 
+  width: 4px; 
+}
+
+.chat-scroll::-webkit-scrollbar-thumb { 
+  background-color: rgba(0, 0, 0, 0.2); 
+  border-radius: 4px; 
+}
+
+.chat-scroll::-webkit-scrollbar-track { 
+  background-color: rgba(0, 0, 0, 0.05); 
+  border-radius: 4px; 
+}
+
+.chat-container { 
+  height: calc(100vh - 120px); 
+  display: flex; 
+  flex-direction: column; 
+}
+
+.message-container { 
+  height: calc(100vh - 380px); 
+  overflow-y: auto; 
+}
+
+.image-grid-simple { 
+  border-radius: 4px; 
+}
+
+.image-item-simple { 
+  overflow: hidden; 
+  border-radius: 4px; 
+}
+
+/* 모바일 반응형 스타일 */
+@media (max-width: 960px) {
+  .chat-scroll {
+    height: calc(100vh - 320px);
+  }
+  
+  .message-container {
+    height: calc(100vh - 320px);
+  }
+  
+  .message-input-area {
+    padding: 12px !important;
+  }
+  
+  .message-input {
+    font-size: 14px;
+  }
+  
+  .file-attach-btn,
+  .send-btn {
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .chat-scroll {
+    height: calc(100vh - 280px);
+    padding: 12px !important;
+  }
+  
+  .message-container {
+    height: calc(100vh - 280px);
+  }
+  
+  .message-input-area {
+    padding: 8px !important;
+    gap: 8px;
+  }
+  
+  .message-input {
+    font-size: 14px;
+    margin-right: 8px !important;
+  }
+  
+  .file-attach-btn,
+  .send-btn {
+    flex-shrink: 0;
+    min-width: 40px;
+    height: 40px;
+  }
+  
+  .file-attach-btn {
+    margin-left: 0;
+  }
+  
+  .send-btn {
+    margin-left: 8px !important;
+  }
+}
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <v-container fluid class="pa-6" style="margin-top: 80px;">
+  <v-container fluid class="pa-6 chat-container">
     <LoadingScreen 
       v-if="loading && !hasRooms"
       title="채팅 목록을 불러오는 중"
@@ -17,8 +17,11 @@
     </v-row>
 
     <template v-else>
-      <v-row no-gutters class="chat-wrapper" style="height: calc(100vh - 270px);">
-        <v-col md="1.5" />
+      <v-row no-gutters class="chat-wrapper">
+        <!-- 데스크탑에서는 좌측 여백, 모바일에서는 제거 -->
+        <v-col md="1.5" class="d-none d-md-block" />
+        
+        <!-- 채팅 목록 -->
         <v-col cols="12" md="3" class="chat-list">
           <v-sheet class="h-100 pa-4" elevation="2">
             <div class="d-flex justify-space-between align-center mb-4">
@@ -114,6 +117,7 @@
           </v-sheet>
         </v-col>
 
+        <!-- 채팅 상세 화면 -->
         <v-col cols="12" md="6" class="chat-detail">
           <v-sheet class="h-100 d-flex flex-column justify-space-between" elevation="2">
             <template v-if="selectedChatId === null">
@@ -127,7 +131,9 @@
             <ChatDetailView v-else :chat="selectedChat" />
           </v-sheet>
         </v-col>
-        <v-col md="1.5" />
+        
+        <!-- 데스크탑에서는 우측 여백, 모바일에서는 제거 -->
+        <v-col md="1.5" class="d-none d-md-block" />
       </v-row>
     </template>
   </v-container>
@@ -190,23 +196,122 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.chat-container {
+  margin-top: 80px;
+  min-height: calc(100vh - 80px);
+}
+
 .chat-scroll-wrapper { 
   scrollbar-width: thin; 
   height: calc(100vh - 350px);
   overflow-y: auto; 
   direction: ltr;
 }
-.chat-scroll-wrapper::-webkit-scrollbar { width: 4px; }
-.chat-scroll-wrapper::-webkit-scrollbar-thumb { background-color: rgba(0, 0, 0, 0.2); border-radius: 4px; }
-.chat-scroll-wrapper::-webkit-scrollbar-track { background-color: rgba(0, 0, 0, 0.05); border-radius: 4px; }
-.chat-wrapper { height: calc(100vh - 200px); }
+
+.chat-scroll-wrapper::-webkit-scrollbar { 
+  width: 4px; 
+}
+
+.chat-scroll-wrapper::-webkit-scrollbar-thumb { 
+  background-color: rgba(0, 0, 0, 0.2); 
+  border-radius: 4px; 
+}
+
+.chat-scroll-wrapper::-webkit-scrollbar-track { 
+  background-color: rgba(0, 0, 0, 0.05); 
+  border-radius: 4px; 
+}
+
+.chat-wrapper { 
+  height: calc(100vh - 200px); 
+}
+
 .chat-list { 
   height: 100%; 
 }
-.chat-detail { height: 100%; }
-.chat-list-move, .chat-list-enter-active, .chat-list-leave-active { transition: all 0.3s ease; }
-.chat-list-enter-from { opacity: 0; transform: translateY(-10px); }
-.chat-list-leave-to { opacity: 0; transform: translateY(10px); }
-.chat-item { transition: all 0.3s ease; }
-.chat-item:hover { background-color: rgba(0, 0, 0, 0.04) !important; }
+
+.chat-detail { 
+  height: 100%; 
+}
+
+.chat-list-move, .chat-list-enter-active, .chat-list-leave-active { 
+  transition: all 0.3s ease; 
+}
+
+.chat-list-enter-from { 
+  opacity: 0; 
+  transform: translateY(-10px); 
+}
+
+.chat-list-leave-to { 
+  opacity: 0; 
+  transform: translateY(10px); 
+}
+
+.chat-item { 
+  transition: all 0.3s ease; 
+}
+
+.chat-item:hover { 
+  background-color: rgba(0, 0, 0, 0.04) !important; 
+}
+
+/* 모바일 반응형 스타일 */
+@media (max-width: 960px) {
+  .chat-container {
+    margin-top: 80px;
+    padding: 16px !important;
+  }
+  
+  .chat-wrapper {
+    height: auto;
+    min-height: calc(100vh - 200px);
+  }
+  
+  .chat-list {
+    margin-bottom: 16px;
+    height: auto;
+    min-height: 400px;
+  }
+  
+  .chat-detail {
+    height: auto;
+    min-height: 500px;
+  }
+  
+  .chat-scroll-wrapper {
+    height: 350px;
+  }
+  
+  /* 모바일에서 채팅 목록과 상세 화면을 세로로 배치 */
+  .chat-list, .chat-detail {
+    margin-bottom: 16px;
+  }
+}
+
+@media (max-width: 600px) {
+  .chat-container {
+    margin-top: 80px;
+    padding: 12px !important;
+  }
+  
+  .chat-scroll-wrapper {
+    height: 300px;
+  }
+  
+  .chat-list {
+    min-height: 350px;
+    margin-bottom: 12px;
+  }
+  
+  .chat-detail {
+    min-height: 450px;
+  }
+  
+  /* 모바일에서 패딩 조정 */
+  .chat-list .v-sheet,
+  .chat-detail .v-sheet {
+    padding: 12px !important;
+  }
+}
 </style>
