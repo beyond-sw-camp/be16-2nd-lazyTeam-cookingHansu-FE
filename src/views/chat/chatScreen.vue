@@ -47,10 +47,20 @@
                 </div>
               </div>
               
+              <!-- 추가 로딩 인디케이터 -->
+              <div v-if="isLoadingMore" class="pa-4">
+                <div class="text-center">
+                  <v-progress-circular indeterminate color="primary" size="24" />
+                  <div class="mt-2 text-caption text-grey">
+                    더 많은 채팅방을 불러오는 중...
+                  </div>
+                </div>
+              </div>
+              
               <v-list v-else dense nav>
                 <transition-group name="chat-list" tag="div">
                   <v-list-item
-                    v-for="chat in visibleChats"
+                    v-for="chat in rooms"
                     :key="chat.roomId"
                     @click="selectChat(chat.roomId)"
                     :class="{ 'bg-grey-lighten-4': chat.roomId === selectedChatId }"
@@ -144,10 +154,9 @@ const selectedChatId = computed(() => chatStore.currentRoomId);
 const selectedChat = computed(() => chatStore.currentRoom);
 
 const chatScroll = ref(null);
-const visibleCount = ref(10);
-const visibleChats = computed(() => rooms.value.slice(0, visibleCount.value));
+const isLoadingMore = ref(false);
 
-const onScroll = (event) => {
+const onScroll = async (event) => {
   const el = event.target;
   if (!el) return;
   
@@ -155,8 +164,23 @@ const onScroll = (event) => {
   const scrollBottom = el.scrollTop + el.clientHeight;
   const scrollHeight = el.scrollHeight;
   
-  if (scrollBottom >= scrollHeight - 20 && visibleCount.value < rooms.value.length) {
-    visibleCount.value += 5;
+  if (scrollBottom >= scrollHeight - 20 && !isLoadingMore.value) {
+    const pagination = chatStore.roomsPagination;
+    if (pagination.hasNext && !pagination.isLoading) {
+      await loadMoreChatRooms();
+    }
+  }
+};
+
+// ✅ [NEW] 더 많은 채팅방 로드
+const loadMoreChatRooms = async () => {
+  if (isLoadingMore.value) return;
+  
+  isLoadingMore.value = true;
+  try {
+    await chatStore.loadMoreChatRooms();
+  } finally {
+    isLoadingMore.value = false;
   }
 };
 

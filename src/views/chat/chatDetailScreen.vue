@@ -81,7 +81,21 @@
       </v-dialog>
 
       <!-- 메시지 영역 -->
-      <div class="flex-grow-1 pa-4 overflow-y-auto chat-scroll" ref="chatContainer" style="height: calc(100vh - 380px);">
+      <div
+        class="flex-grow-1 pa-4 overflow-y-auto chat-scroll"
+        ref="chatContainer"
+        style="height: calc(100vh - 380px);"
+        @scroll="handleScroll"
+      >
+        <!-- ✅ 상단 프리로드 센티넬: 꼭대기 '전'에 감지 -->
+        <div ref="topSentinel" style="height:1px;"></div>
+
+        <!-- 로딩 인디케이터 -->
+        <div v-if="isLoadingMore" class="text-center py-4">
+          <v-progress-circular indeterminate size="24" color="primary"></v-progress-circular>
+          <div class="text-caption text-grey mt-2">이전 메시지를 불러오는 중...</div>
+        </div>
+        
         <div>
           <div v-for="(msg, index) in chatMessages" :key="msg.id || index" class="mb-1">
             <!-- 날짜 구분선 -->
@@ -98,7 +112,6 @@
             <div :class="['d-flex', msg.senderId === myId ? 'justify-end' : 'justify-start']">
               <!-- 내 메시지 -->
               <template v-if="msg.senderId === myId">
-                <!-- 시간 표시는 기존 로직 유지, 뱃지는 안 읽힌 '모든' 내 메시지에 표시 -->
                 <div class="d-flex align-end mr-1" style="min-width: 50px;">
                   <div class="d-flex flex-column align-end">
                     <div class="mb-1" v-if="!msg.isRead">
@@ -116,7 +129,6 @@
                 <div class="d-inline-flex flex-column pa-2 rounded-lg bg-orange-lighten-5 align-end" style="max-width: 70%; word-break: break-word">
                   <span v-if="msg.hasMessage()" class="text-body-2">{{ msg.message }}</span>
 
-                  <!-- 이미지/비디오/파일 렌더는 기존과 동일 -->
                   <div v-if="msg.getImageFiles().length > 0" class="mt-1">
                     <div 
                       class="image-grid-simple"
@@ -290,11 +302,9 @@ import DeleteConfirmModal from '@/components/common/DeleteConfirmModal.vue';
 import ErrorAlert from '@/components/common/ErrorAlert.vue';
 
 const props = defineProps({
-  chat: {
-    type: Object,
-    default: () => ({})
-  }
+  chat: { type: Object, default: () => ({}) }
 });
+
 const router = useRouter();
 const chatStore = useChatStore();
 const { messages, currentRoomId, loading, error } = storeToRefs(chatStore);
@@ -303,79 +313,158 @@ const showSkeleton = ref(false);
 const skeletonTimer = ref(null);
 
 const chatContainer = ref(null);
+const topSentinel = ref(null);
+let topObserver = null;
+
 const myId = '550e8400-e29b-41d4-a716-446655440001';
 
-// ✅ 핵심: lastReadByOther + pendingMyOffline 로 내 메시지의 읽힘 계산
+/* -----------------------------
+ * 스크롤/프리로드 상태
+ * ----------------------------- */
+const isLoadingMore = ref(false);
+const isPrepending = ref(false);
+const scrollTimeout = ref(null);
+const TOP_PRELOAD_THRESHOLD_PX = 100;
+const BOTTOM_STICK_THRESHOLD_PX = 80;
+
+// 하단 고정 여부(사용자가 하단 근처일 때만 true)
+const shouldStickToBottom = ref(true);
+
+// 최초 1회 instant 하단 점프 처리 여부
+const didInitialBottomScroll = ref(false);
+
+const isNearBottom = () => {
+  const el = chatContainer.value;
+  if (!el) return true;
+  const gap = el.scrollHeight - el.scrollTop - el.clientHeight;
+  return gap <= BOTTOM_STICK_THRESHOLD_PX;
+};
+const updateStickiness = () => { shouldStickToBottom.value = isNearBottom(); };
+
+// 스크롤 이벤트(백업 프리로드 & stickiness 갱신)
+const handleScroll = (event) => {
+  updateStickiness();
+  if (scrollTimeout.value) clearTimeout(scrollTimeout.value);
+  scrollTimeout.value = setTimeout(async () => {
+    const { scrollTop } = event.target;
+    if (scrollTop <= TOP_PRELOAD_THRESHOLD_PX) {
+      await maybeLoadMore("fallback-scroll-top");
+    }
+  }, 100);
+};
+
+// 맨 아래로 '부드럽게' 이동(초기 제외)
+const scrollToBottom = (behavior = "auto") => {
+  const el = chatContainer.value;
+  if (!el) return;
+  el.scrollTo({ top: el.scrollHeight, behavior });
+};
+
+// 맨 아래로 '즉시' 이동(초기 1회용, 모션 제거)
+const jumpToBottomInstant = () => {
+  const el = chatContainer.value;
+  if (!el) return;
+  const prev = el.style.scrollBehavior;
+  el.style.scrollBehavior = 'auto';
+  el.scrollTop = el.scrollHeight;
+  requestAnimationFrame(() => {
+    el.scrollTop = el.scrollHeight;  // 레이아웃 변동(이미지/폰트) 한 틱 보정
+    el.style.scrollBehavior = prev || '';
+  });
+};
+
+// 상단 프리로드: 조건 검사 후 로드
+const maybeLoadMore = async () => {
+  if (!currentRoomId.value) return;
+  const pagination = chatStore.pagination?.[currentRoomId.value];
+  if (!pagination || !pagination.hasNext || pagination.isLoading || isLoadingMore.value) return;
+  await loadMoreMessages();
+};
+
+// 이전 메시지 로드(프리펜드) + 위치 보정
+const loadMoreMessages = async () => {
+  if (!currentRoomId.value) return;
+
+  const el = chatContainer.value;
+  const beforeScrollTop = el?.scrollTop ?? 0;
+  const beforeScrollHeight = el?.scrollHeight ?? 0;
+
+  isLoadingMore.value = true;
+  isPrepending.value = true;
+  try {
+    await chatStore.loadMoreMessages(currentRoomId.value);
+    await nextTick();
+    if (el) {
+      const afterScrollHeight = el.scrollHeight;
+      const delta = afterScrollHeight - beforeScrollHeight;
+      el.scrollTop = beforeScrollTop + delta; // 눈앞 메시지 유지
+    }
+  } finally {
+    isLoadingMore.value = false;
+    requestAnimationFrame(() => { isPrepending.value = false; });
+  }
+};
+
+/* -----------------------------
+ * 메시지/읽음 계산
+ * ----------------------------- */
 const chatMessages = computed(() => {
   if (!currentRoomId.value) return [];
   const roomId = currentRoomId.value;
   const list = messages.value[roomId] || [];
 
-  // 상대가 '내 메시지'를 어디까지 읽었는지 (없으면 null)
   const otherReadAt = chatStore.lastReadByOther[roomId] || null;
   const boundary = otherReadAt ? new Date(otherReadAt).getTime() : null;
-
-  // 오프라인 동안 보낸 내 메시지 보류 버킷
   const pending = chatStore.pendingMyOffline?.[roomId] || {};
 
   return list.map((msg) => {
     let isRead = true;
-
     if (msg.senderId === myId) {
       const ts = new Date(msg.createdAt).getTime();
-
       if (boundary !== null) {
-        // 경계 이후거나 pending이면 미확인
         const unreadByBoundary = ts > boundary;
         const unreadByPending = !!pending[msg.id];
         isRead = !(unreadByBoundary || unreadByPending);
       } else {
-        // 경계 없으면: pending만 1로 (이전 읽힘 유지)
         isRead = !pending[msg.id];
       }
     }
-
     msg.isRead = isRead;
     return msg;
   });
 });
 
-const message = ref("");
-const isSending = ref(false);
-
-// 파일 업로드
-const {
-  selectedFiles, selectedFileNames, selectedFileTypes, fileInput,
-  handleFileChange, removeSelectedFile, removeAllFiles, triggerFileInput, onTextInput
-} = useFileUpload();
-
-// 다이얼로그
-const {
-  showImageDialog, selectedImageUrl,
-  showNameEditDialog, newRoomName,
-  openImage, closeImageDialog,
-  resetNameEditDialog, resetLeaveConfirmDialog
-} = useDialog();
-
-const showRoomOptions = ref(false);
-const currentRoom = computed(() => chatStore.currentRoom);
-const partnerName = computed(() => currentRoom.value?.otherUserNickname || currentRoom.value?.otherUserName || '상대방');
-const partnerAvatar = computed(() => currentRoom.value?.otherUserProfileImage || '');
-
-// 스크롤
-watch(chatMessages, () => { nextTick(() => { scrollToBottom(); }); }, { deep: true });
-const scrollToBottom = () => {
-  if (chatContainer.value) {
-    requestAnimationFrame(() => {
-      if (chatContainer.value) {
-        chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
-      }
-    });
+/* -----------------------------
+ * 자동 하단 스크롤 정책
+ * ----------------------------- */
+// 초기: 메시지가 실제 채워진 "그 순간" 딱 1번 instant 점프
+watch(
+  [currentRoomId, () => chatMessages.value.length],
+  async ([rid, len], [_pr, _pl]) => {
+    if (!rid) return;
+    if (!didInitialBottomScroll.value && len > 0) {
+      await nextTick();
+      jumpToBottomInstant();      // ✅ 모션 없이 즉시 바닥
+      didInitialBottomScroll.value = true;
+    }
   }
-};
-watch(currentRoomId, () => { if (currentRoomId.value) nextTick(() => scrollToBottom()); });
+);
 
-// 스켈레톤 타이머
+// 이후: 프리펜드 중엔 하단 점프 금지, 하단 근처일 때만 smooth
+watch(
+  chatMessages,
+  async () => {
+    await nextTick();
+    if (!didInitialBottomScroll.value) return;
+    if (isPrepending.value) return;
+    if (shouldStickToBottom.value) scrollToBottom("smooth");
+  },
+  { deep: true }
+);
+
+/* -----------------------------
+ * 스켈레톤 표시
+ * ----------------------------- */
 const startSkeletonTimer = () => {
   if (skeletonTimer.value) clearTimeout(skeletonTimer.value);
   showSkeleton.value = true;
@@ -390,31 +479,24 @@ const stopSkeletonTimer = () => {
   }
   setTimeout(() => { showSkeleton.value = false; }, 100);
 };
-
-// loading 상태 변경 감지
 watch(loading, (n, o) => {
-  if (n && !o) {
-    // loading이 false에서 true로 변경될 때 (로딩 시작)
-    startSkeletonTimer();
-  } else if (!n && o) {
-    // loading이 true에서 false로 변경될 때 (로딩 완료)
-    stopSkeletonTimer();
-  }
+  if (n && !o) startSkeletonTimer();
+  else if (!n && o) stopSkeletonTimer();
 });
-
-// currentRoomId 변경 감지
 watch(currentRoomId, (n, o) => {
   if (n && n !== o) {
-    // 새로운 채팅방 선택 시
+    // 방 바뀔 때 초기화
+    didInitialBottomScroll.value = false;
+    // 다음 방에서 메시지 없으면 스켈레톤
     nextTick(() => {
-      if (chatMessages.value.length === 0) {
-        startSkeletonTimer();
-      }
+      if (chatMessages.value.length === 0) startSkeletonTimer();
     });
   }
 });
 
-// 언마운트/라우트 이탈 시 오프라인 전송 & 연결 해제
+/* -----------------------------
+ * 라우트 이탈/언마운트 정리
+ * ----------------------------- */
 onBeforeRouteLeave(async (_to, _from, next) => {
   if (currentRoomId.value) {
     await chatStore.disconnectWebSocket(currentRoomId.value);
@@ -426,24 +508,80 @@ onBeforeUnmount(async () => {
   if (currentRoomId.value) {
     await chatStore.disconnectWebSocket(currentRoomId.value);
   }
+  if (scrollTimeout.value) clearTimeout(scrollTimeout.value);
+  if (topObserver) {
+    try { topObserver.disconnect(); } catch {}
+    topObserver = null;
+  }
 });
 
-// 마운트
+/* -----------------------------
+ * 마운트: 프리로드 옵저버 세팅
+ * ----------------------------- */
 onMounted(() => {
-  const chatStore = useChatStore();
   chatStore.initPresenceLifecycle();
-  
-  // 초기 채팅방이 설정되어 있고 메시지가 없으면 스켈레톤 표시
+
+  const mountObserver = () => {
+    if (!chatContainer.value || !topSentinel.value) return;
+    if (topObserver) {
+      try { topObserver.disconnect(); } catch {}
+      topObserver = null;
+    }
+    topObserver = new IntersectionObserver(
+      async (entries) => {
+        const entry = entries[0];
+        if (entry && entry.isIntersecting) {
+          await maybeLoadMore();
+        }
+      },
+      {
+        root: chatContainer.value,
+        rootMargin: '200px 0px 0px 0px', // 상단 200px 전에 미리 로드
+        threshold: 0.0,
+      }
+    );
+    topObserver.observe(topSentinel.value);
+  };
+
+  mountObserver();
+
+  // 방 변경 시 옵저버 재바인딩
+  watch(currentRoomId, () => {
+    nextTick(() => mountObserver());
+  });
+
+  // 초기: 메시지가 비어 있으면 스켈레톤
   if (currentRoomId.value && chatMessages.value.length === 0) {
     startSkeletonTimer();
   }
 });
 
-// 파일/입력 핸들러
+/* -----------------------------
+ * 파일/입력/다이얼로그
+ * ----------------------------- */
+const message = ref("");
+const isSending = ref(false);
+const {
+  selectedFiles, selectedFileNames, selectedFileTypes, fileInput,
+  handleFileChange, removeSelectedFile, removeAllFiles, triggerFileInput, onTextInput
+} = useFileUpload();
+
+const {
+  showImageDialog, selectedImageUrl,
+  showNameEditDialog, newRoomName,
+  openImage, closeImageDialog,
+  resetNameEditDialog, resetLeaveConfirmDialog
+} = useDialog();
+
+const showRoomOptions = ref(false);
+const currentRoom = computed(() => chatStore.currentRoom);
+const partnerName = computed(() => currentRoom.value?.otherUserNickname || currentRoom.value?.otherUserName || '상대방');
+const partnerAvatar = computed(() => currentRoom.value?.otherUserProfileImage || '');
+
 const handleFileChangeWrapper = (e) => handleFileChange(e, message);
 const onTextInputWrapper = () => onTextInput(message);
 
-// 시간 표시 로직들
+// 시간/구분선 표시
 const shouldShowTime = (index, _isMyMessage) => {
   const currentMsg = chatMessages.value[index];
   const nextMsg = chatMessages.value[index + 1];
@@ -521,6 +659,7 @@ const confirmLeaveRoom = async () => {
 const cancelLeaveRoom = () => { resetLeaveConfirmDialog(); };
 
 // 전송
+const messageRef = ref(null);
 const sendMessage = async (event) => {
   if (event) { event.preventDefault(); event.stopPropagation(); }
   if (isSending.value) return;
@@ -536,6 +675,11 @@ const sendMessage = async (event) => {
     else await chatStore.sendMessage("", files);
     message.value = "";
     removeAllFiles();
+    // 전송 직후, 사용자가 하단 근처라면 부드럽게 따라감
+    requestAnimationFrame(() => {
+      updateStickiness();
+      if (shouldStickToBottom.value) scrollToBottom("smooth");
+    });
   } catch (e) {
     console.error('메시지 전송 실패:', e);
   } finally {
@@ -545,34 +689,32 @@ const sendMessage = async (event) => {
 </script>
 
 <style scoped>
-.chat-scroll { overflow-y: auto; scrollbar-width: thin; }
+.chat-scroll { 
+  overflow-y: auto; 
+  scrollbar-width: thin; 
+  scroll-behavior: auto; /* ✅ 초기 및 기본은 instant */
+}
 .chat-scroll::-webkit-scrollbar { width: 4px; }
 .chat-scroll::-webkit-scrollbar-thumb { background-color: rgba(0, 0, 0, 0.2); border-radius: 4px; }
 .chat-scroll::-webkit-scrollbar-track { background-color: rgba(0, 0, 0, 0.05); border-radius: 4px; }
+
 .chat-container { height: calc(100vh - 120px); display: flex; flex-direction: column; }
 .message-container { height: calc(100vh - 380px); overflow-y: auto; }
 .image-grid-simple { border-radius: 4px; }
 .image-item-simple { overflow: hidden; border-radius: 4px; }
+
 .skeleton-messages { 
   padding: 20px; 
   animation: skeleton-fade-in 0.5s ease-out; 
 }
-
 .skeleton-message { 
   display: flex; 
   align-items: flex-start; 
   margin-bottom: 30px; 
   animation: skeleton-slide-in 0.6s ease-out; 
 }
-
-.skeleton-message.left { 
-  justify-content: flex-start; 
-}
-
-.skeleton-message.right { 
-  justify-content: flex-end; 
-}
-
+.skeleton-message.left { justify-content: flex-start; }
+.skeleton-message.right { justify-content: flex-end; }
 .skeleton-message:nth-child(1) { animation-delay: 0s; }
 .skeleton-message:nth-child(2) { animation-delay: 0.1s; }
 .skeleton-message:nth-child(3) { animation-delay: 0.2s; }
@@ -581,71 +723,35 @@ const sendMessage = async (event) => {
 .skeleton-message:nth-child(6) { animation-delay: 0.5s; }
 
 .skeleton-avatar { 
-  width: 36px; 
-  height: 36px; 
-  border-radius: 50%; 
+  width: 36px; height: 36px; border-radius: 50%; 
   background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%); 
   background-size: 200% 100%; 
   animation: skeleton-loading 1.5s ease-in-out infinite; 
-  margin-right: 12px; 
-  flex-shrink: 0; 
+  margin-right: 12px; flex-shrink: 0; 
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
-
-.skeleton-bubble-wrapper { 
-  display: flex; 
-  flex-direction: column; 
-  max-width: 70%; 
-  gap: 6px;
-}
-
-.skeleton-bubble-wrapper.right { 
-  align-items: flex-end; 
-}
-
+.skeleton-bubble-wrapper { display: flex; flex-direction: column; max-width: 70%; gap: 6px; }
+.skeleton-bubble-wrapper.right { align-items: flex-end; }
 .skeleton-bubble { 
-  height: 20px; 
-  border-radius: 18px; 
+  height: 20px; border-radius: 18px; 
   background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%); 
   background-size: 200% 100%; 
   animation: skeleton-loading 1.5s ease-in-out infinite; 
-  position: relative; 
-  overflow: hidden;
+  position: relative; overflow: hidden;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
-
-.skeleton-bubble.left-bubble { 
-  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
-  background-size: 200% 100%;
-}
-
-.skeleton-bubble.right-bubble { 
-  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
-  background-size: 200% 100%;
-}
-
-.skeleton-bubble.long { 
-  width: 280px; 
-}
-
-.skeleton-bubble.medium { 
-  width: 140px; 
-}
-
-.skeleton-bubble.short { 
-  width: 90px; 
-}
+.skeleton-bubble.long { width: 280px; }
+.skeleton-bubble.medium { width: 140px; }
+.skeleton-bubble.short { width: 90px; }
 
 @keyframes skeleton-loading { 
   0% { background-position: -200% 0; } 
   100% { background-position: 200% 0; } 
 }
-
 @keyframes skeleton-fade-in { 
   0% { opacity: 0; transform: translateY(10px); } 
   100% { opacity: 1; transform: translateY(0); } 
 }
-
 @keyframes skeleton-slide-in { 
   0% { opacity: 0; transform: translateY(15px); } 
   100% { opacity: 1; transform: translateY(0); } 

@@ -34,6 +34,16 @@ export const useChatStore = defineStore('chat', {
 
     // ✅ [NEW] 오프라인 동안 내가 보낸 메시지 버킷 (각 메시지별 1 표시용)
     pendingMyOffline: {},         // roomId -> { [messageId]: true }
+
+    // ✅ [NEW] 스크롤 페이지네이션을 위한 상태
+    pagination: {},               // roomId -> { hasNext: boolean, nextCursor: string, isLoading: boolean }
+    
+    // ✅ [NEW] 채팅방 목록 페이지네이션을 위한 상태
+    roomsPagination: {
+      hasNext: false,
+      nextCursor: null,
+      isLoading: false
+    },
   }),
   
   getters: {
@@ -292,9 +302,22 @@ initPresenceLifecycle() {
     async fetchMyChatRooms() {
       this.loading = true;
       this.error = null;
+      
+      // 페이지네이션 상태 초기화
+      this.roomsPagination = {
+        hasNext: false,
+        nextCursor: null,
+        isLoading: false
+      };
+      
       try {
-        const rooms = await getMyChatRooms();
-        this.rooms = rooms;
+        const result = await getMyChatRooms(10, null);
+        this.rooms = result.data;
+        this.roomsPagination = {
+          hasNext: result.hasNext,
+          nextCursor: result.nextCursor,
+          isLoading: false
+        };
       } catch (error) {
         console.error('채팅방 목록 조회 실패:', error);
         this.error = error.message;
@@ -302,19 +325,66 @@ initPresenceLifecycle() {
         this.loading = false;
       }
     },
+
+    // ✅ [NEW] 더 많은 채팅방 로드
+    async loadMoreChatRooms() {
+      if (!this.roomsPagination.hasNext || this.roomsPagination.isLoading) {
+        return;
+      }
+
+      this.roomsPagination.isLoading = true;
+      
+      try {
+        const result = await getMyChatRooms(10, this.roomsPagination.nextCursor);
+        
+        if (result.data && result.data.length > 0) {
+          // 기존 채팅방 목록에 추가
+          this.rooms = [...this.rooms, ...result.data];
+          
+          // 페이지네이션 상태 업데이트
+          this.roomsPagination = {
+            hasNext: result.hasNext,
+            nextCursor: result.nextCursor,
+            isLoading: false
+          };
+        } else {
+          // 더 이상 채팅방이 없음
+          this.roomsPagination.hasNext = false;
+          this.roomsPagination.nextCursor = null;
+          this.roomsPagination.isLoading = false;
+        }
+      } catch (error) {
+        console.error('추가 채팅방 로드 실패:', error);
+        this.roomsPagination.isLoading = false;
+      }
+    },
     
-    // 채팅방 메시지 조회
+    // 채팅방 메시지 조회 (초기 로드)
     async fetchChatHistory(roomId) {
       this.loading = true;
       this.error = null;
       this.currentRoomId = roomId;
+      
+      // 페이지네이션 상태 초기화
+      this.pagination[roomId] = {
+        hasNext: false,
+        nextCursor: null,
+        isLoading: false
+      };
+      
       try {
         const minLoadingTime = new Promise(resolve => setTimeout(resolve, 400));
-        const [messages] = await Promise.all([
-          getChatHistory(roomId),
+        const [result] = await Promise.all([
+          getChatHistory(roomId, 30, null),
           minLoadingTime
         ]);
-        this.messages[roomId] = messages || [];
+        
+        this.messages[roomId] = result.data || [];
+        this.pagination[roomId] = {
+          hasNext: result.hasNext,
+          nextCursor: result.nextCursor,
+          isLoading: false
+        };
 
         // 웹소켓 연결
         try {
@@ -330,6 +400,41 @@ initPresenceLifecycle() {
         }
       } finally {
         this.loading = false;
+      }
+    },
+
+    // ✅ [NEW] 스크롤 페이지네이션으로 이전 메시지 로드
+    async loadMoreMessages(roomId) {
+      if (!this.pagination[roomId] || 
+          !this.pagination[roomId].hasNext || 
+          this.pagination[roomId].isLoading) {
+        return;
+      }
+
+      this.pagination[roomId].isLoading = true;
+      
+      try {
+        const result = await getChatHistory(roomId, 30, this.pagination[roomId].nextCursor);
+        
+        if (result.data && result.data.length > 0) {
+          // 기존 메시지 앞에 추가 (역순 정렬이므로)
+          this.messages[roomId] = [...result.data, ...this.messages[roomId]];
+          
+          // 페이지네이션 상태 업데이트
+          this.pagination[roomId] = {
+            hasNext: result.hasNext,
+            nextCursor: result.nextCursor,
+            isLoading: false
+          };
+        } else {
+          // 더 이상 메시지가 없음
+          this.pagination[roomId].hasNext = false;
+          this.pagination[roomId].nextCursor = null;
+          this.pagination[roomId].isLoading = false;
+        }
+      } catch (error) {
+        console.error('이전 메시지 로드 실패:', error);
+        this.pagination[roomId].isLoading = false;
       }
     },
     

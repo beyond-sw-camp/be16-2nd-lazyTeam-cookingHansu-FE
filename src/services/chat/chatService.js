@@ -13,18 +13,40 @@ const API_ENDPOINTS = {
 };
 
 export const chatService = {
-  async getMyChatRooms() {
-    const response = await apiGet(API_ENDPOINTS.MY_CHAT_ROOMS);
+  async getMyChatRooms(size = 10, cursor = null) {
+    const params = new URLSearchParams();
+    params.append('size', size.toString());
+    if (cursor) {
+      params.append('cursor', cursor);
+    }
+    
+    const response = await apiGet(`${API_ENDPOINTS.MY_CHAT_ROOMS}?${params.toString()}`);
     const apiResponse = await handleApiResponse(response);
-    const roomsData = apiResponse.getData() || [];
-    return roomsData.map((roomData) => ChatRoomResponse.fromJson(roomData));
+    const paginatedData = apiResponse.getData();
+    
+    return {
+      data: (paginatedData.data || []).map((roomData) => ChatRoomResponse.fromJson(roomData)),
+      hasNext: paginatedData.hasNext || false,
+      nextCursor: paginatedData.nextCursor || null
+    };
   },
 
-  async getChatHistory(roomId) {
-    const response = await apiGet(API_ENDPOINTS.CHAT_HISTORY(roomId));
+  async getChatHistory(roomId, size = 30, cursor = null) {
+    const params = new URLSearchParams();
+    params.append('size', size.toString());
+    if (cursor) {
+      params.append('cursor', cursor);
+    }
+    
+    const response = await apiGet(`${API_ENDPOINTS.CHAT_HISTORY(roomId)}?${params.toString()}`);
     const apiResponse = await handleApiResponse(response);
-    const messagesData = apiResponse.getData() || [];
-    return messagesData.map((messageData) => ChatMessageResponse.fromJson(messageData));
+    const paginatedData = apiResponse.getData();
+    
+    return {
+      data: (paginatedData.data || []).map((messageData) => ChatMessageResponse.fromJson(messageData)),
+      hasNext: paginatedData.hasNext || false,
+      nextCursor: paginatedData.nextCursor || null
+    };
   },
 
   async createChatRoom(otherUserId) {
