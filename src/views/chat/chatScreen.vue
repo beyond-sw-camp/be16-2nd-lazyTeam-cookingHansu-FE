@@ -36,8 +36,7 @@
             <div
               ref="chatScroll"
               class="chat-scroll-wrapper"
-              @scroll.passive="onScroll"
-              style="height: calc(100vh - 280px); overflow-y: auto; direction: ltr;"
+              @scroll="onScroll"
             >
               <div v-if="loading && rooms.length === 0" class="pa-4">
                 <div class="text-center">
@@ -124,7 +123,7 @@
   </v-container>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref, computed, onMounted } from "vue";
 import { storeToRefs } from 'pinia';
 import { useChatStore } from '@/store/chat/chat';
@@ -137,22 +136,26 @@ const chatStore = useChatStore();
 const { rooms, currentRoomId, loading, totalUnreadCount, error } = storeToRefs(chatStore);
 const hasRooms = computed(() => chatStore.hasRooms);
 
-const selectChat = (roomId: string) => {
+const selectChat = (roomId) => {
   chatStore.selectRoom(roomId);
 };
 
 const selectedChatId = computed(() => chatStore.currentRoomId);
 const selectedChat = computed(() => chatStore.currentRoom);
 
-const chatScroll = ref<HTMLElement | null>(null);
+const chatScroll = ref(null);
 const visibleCount = ref(10);
 const visibleChats = computed(() => rooms.value.slice(0, visibleCount.value));
 
-const onScroll = () => {
-  const el = chatScroll.value;
+const onScroll = (event) => {
+  const el = event.target;
   if (!el) return;
-  const bottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 10;
-  if (bottom && visibleCount.value < rooms.value.length) {
+  
+  // 스크롤이 하단에 가까워지면 더 많은 채팅방을 로드
+  const scrollBottom = el.scrollTop + el.clientHeight;
+  const scrollHeight = el.scrollHeight;
+  
+  if (scrollBottom >= scrollHeight - 20 && visibleCount.value < rooms.value.length) {
     visibleCount.value += 5;
   }
 };
@@ -163,12 +166,19 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.chat-scroll-wrapper { scrollbar-width: thin; }
+.chat-scroll-wrapper { 
+  scrollbar-width: thin; 
+  height: calc(100vh - 350px);
+  overflow-y: auto; 
+  direction: ltr;
+}
 .chat-scroll-wrapper::-webkit-scrollbar { width: 4px; }
 .chat-scroll-wrapper::-webkit-scrollbar-thumb { background-color: rgba(0, 0, 0, 0.2); border-radius: 4px; }
 .chat-scroll-wrapper::-webkit-scrollbar-track { background-color: rgba(0, 0, 0, 0.05); border-radius: 4px; }
 .chat-wrapper { height: calc(100vh - 200px); }
-.chat-list { height: 100%; }
+.chat-list { 
+  height: 100%; 
+}
 .chat-detail { height: 100%; }
 .chat-list-move, .chat-list-enter-active, .chat-list-leave-active { transition: all 0.3s ease; }
 .chat-list-enter-from { opacity: 0; transform: translateY(-10px); }
