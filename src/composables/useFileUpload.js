@@ -10,7 +10,7 @@ export function useFileUpload() {
   const handleFileChange = (e, messageRef) => {
     const files = Array.from(e.target.files);
     
-    // 텍스트가 입력되어 있으면 자동으로 텍스트 지우기
+    // 파일이 선택되면 텍스트 입력을 막기 위해 텍스트 지우기
     if (messageRef.value.trim()) {
       messageRef.value = '';
     }
@@ -90,6 +90,16 @@ export function useFileUpload() {
     }
   };
 
+  // 파일이 선택되어 있는지 확인
+  const hasFiles = () => {
+    return selectedFiles.value.length > 0;
+  };
+
+  // 텍스트 입력이 가능한지 확인 (파일이 없을 때만)
+  const canInputText = () => {
+    return selectedFiles.value.length === 0;
+  };
+
   return {
     selectedFiles,
     selectedFileNames,
@@ -99,6 +109,8 @@ export function useFileUpload() {
     removeSelectedFile,
     removeAllFiles,
     triggerFileInput,
-    onTextInput
+    onTextInput,
+    hasFiles,
+    canInputText
   };
 }; 

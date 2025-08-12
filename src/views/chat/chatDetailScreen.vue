@@ -235,7 +235,7 @@
         <v-text-field
           ref="messageInput"
           v-model="message"
-          placeholder="메시지를 입력하세요..."
+          :placeholder="hasFiles() ? '파일이 선택되었습니다. 텍스트를 입력하려면 파일을 제거하세요.' : '메시지를 입력하세요...'"
           hide-details
           variant="outlined"
           class="flex-grow-1 mr-2"
@@ -243,11 +243,26 @@
           density="compact"
           @keyup.enter="sendMessage"
           @input="onTextInputWrapper"
-          :disabled="loading"
+          :disabled="loading || hasFiles()"
         />
-        <v-btn icon @click="triggerFileInput" :disabled="loading" color="primary"><v-icon>mdi-paperclip</v-icon></v-btn>
+        <v-btn 
+          icon 
+          @click="triggerFileInput" 
+          :disabled="loading || (hasFiles() && message.trim())" 
+          color="primary"
+          :title="hasFiles() && message.trim() ? '텍스트를 입력하려면 파일을 제거하세요' : '파일 첨부'"
+        >
+          <v-icon>mdi-paperclip</v-icon>
+        </v-btn>
         <input ref="fileInput" type="file" multiple class="d-none" @change="handleFileChangeWrapper" />
-        <v-btn color="orange" icon class="ml-2" :disabled="isSending || loading || (!message.trim() && selectedFiles.length === 0)" @click="sendMessage">
+        <v-btn 
+          color="orange" 
+          icon 
+          class="ml-2" 
+          :disabled="isSending || loading || (!message.trim() && !hasFiles())" 
+          @click="sendMessage"
+          :title="!message.trim() && !hasFiles() ? '메시지나 파일을 입력해주세요' : '전송'"
+        >
           <v-icon>mdi-send</v-icon>
         </v-btn>
       </div>
@@ -530,7 +545,8 @@ const message = ref("");
 const isSending = ref(false);
 const {
   selectedFiles, selectedFileNames, selectedFileTypes, fileInput,
-  handleFileChange, removeSelectedFile, removeAllFiles, triggerFileInput, onTextInput
+  handleFileChange, removeSelectedFile, removeAllFiles, triggerFileInput, onTextInput,
+  hasFiles, canInputText
 } = useFileUpload();
 
 const {
@@ -546,7 +562,12 @@ const partnerName = computed(() => currentRoom.value?.otherUserNickname || curre
 const partnerAvatar = computed(() => currentRoom.value?.otherUserProfileImage || '');
 
 const handleFileChangeWrapper = (e) => handleFileChange(e, message);
-const onTextInputWrapper = () => onTextInput(message);
+const onTextInputWrapper = () => {
+  // 텍스트가 입력되면 파일들을 제거
+  if (message.value.trim() && hasFiles()) {
+    removeAllFiles();
+  }
+};
 
 // 시간/구분선 표시
 const shouldShowTime = (index, _isMyMessage) => {
