@@ -207,31 +207,19 @@ export const useChatStore = defineStore('chat', {
     },
 
     _reconstructReadStateAfterBoot(roomId) {
-      if (!roomId || this._reconstructDone?.[roomId]) return;
-    
+      if (!roomId || this._reconstructDone[roomId]) return;
+
       const list = this.messages[roomId] || [];
       if (!list.length) { this._reconstructDone[roomId] = true; return; }
-    
-      // 꼬리 구간(상대 마지막 메시지 이후 내가 연속으로 보낸 내 메시지들)
-      const { tail, lastOtherIndex } = this._getTailMyMessages(roomId);
-    
-      // 경계: "상대가 마지막으로 보낸 메시지"보다 앞 구간에서
-      // 내가 보낸 메시지 중 가장 늦은 시각 (없으면 null)
-      let boundary = null;
-      if (lastOtherIndex >= 0) {
-        for (let j = lastOtherIndex; j >= 0; j--) {
-          const m = list[j];
-          if (m.senderId === MY_ID) { boundary = m.createdAt; break; }
-        }
+
+       // 🆕 낙관적 복원: 마지막 내 메시지까지 읽은 것으로 간주
+      const lastMy = [...list].reverse().find((m) => m.senderId === MY_ID);
+      if (lastMy?.createdAt) {
+        this.lastReadByOther[roomId] = lastMy.createdAt;
       }
-    
-      // 꼬리 전부 pending = true
-      const bucket = {};
-      for (const m of tail) if (m?.id) bucket[m.id] = true;
-    
-      this.pendingMyOffline[roomId] = bucket;
-      this.lastReadByOther[roomId] = boundary; // null이면 경계 없음
-    
+      // 세션에서 이미 채운 pending만 유지(새로고침 직후엔 비어있음)
+      this.pendingMyOffline[roomId] = this.pendingMyOffline[roomId] || {};
+
       this._reconstructDone[roomId] = true;
       if (roomId === this.currentRoomId) this.$patch({});
     },
@@ -335,20 +323,27 @@ export const useChatStore = defineStore('chat', {
     updateOnlineUsers(roomId, onlineUserIds) {
       const prev = Array.isArray(this.onlineUsers[roomId]) ? this.onlineUsers[roomId] : [];
       const wasOnline = prev.some((id) => id !== MY_ID);
-    
+
       this.onlineUsers[roomId] = Array.isArray(onlineUserIds) ? onlineUserIds : [];
       const nowOnline = this.isOtherOnline(roomId);
-    
-      // 온라인 목록을 처음 받는 시점에 1회 복원
-      if (!this._reconstructDone?.[roomId]) {
+
+      // 온라인 목록을 처음 받는 시점에, 아직 복원을 안 했다면 1회 수행
+      if (!this._reconstructDone[roomId]) {
         this._reconstructReadStateAfterBoot(roomId);
       }
-    
-      // ✅ 온라인 진입 시에만 읽음 정리(대기열 비움 + 경계 올림)
-      if (!wasOnline && nowOnline) {
-        this.flushPendingBecauseOtherOnline(roomId);
+
+       // 온라인 진입: 기존 로직 그대로
+       if (!wasOnline && nowOnline) {
+         this.flushPendingBecauseOtherOnline(roomId);
+       }
+       // 🆕 오프라인 전환: 서버도 마지막까지 읽음으로 처리하므로 프론트도 정리
+       if (wasOnline && !nowOnline) {
+         this.flushPendingBecauseOtherOnline(roomId);
+       }
+
+      if (roomId === this.currentRoomId) {
+        this.$patch({});
       }
-      if (roomId === this.currentRoomId) this.$patch({});
     },
     
     /* =========================
@@ -706,31 +701,6 @@ export const useChatStore = defineStore('chat', {
       if (!this.messages[roomId]) this.messages[roomId] = [];
       this.messages[roomId].push(chatMessageResponse);
 
-
-      // 정렬/중복 보정
-      this.dedupeAndSortMessages(roomId);
-
-      
-      if (chatMessageResponse.senderId !== MY_ID) {
-        const list = this.messages[roomId] || [];
-        const tsOther = new Date(chatMessageResponse.createdAt).getTime();
-        // 상대 메시지 시각 이전의 "내" 마지막 메시지 시각을 경계로 삼아 읽음 처리
-        const lastMyBefore = [...list].reverse()
-          .find(m => m.senderId === MY_ID && new Date(m.createdAt).getTime() <= tsOther);
-        if (lastMyBefore?.createdAt) {
-          this.lastReadByOther[roomId] = lastMyBefore.createdAt;
-          const bucket = this.pendingMyOffline[roomId] || {};
-          for (const mid of Object.keys(bucket)) {
-            const myMsg = list.find(m => m.id === mid);
-            if (myMsg && new Date(myMsg.createdAt).getTime() <= tsOther) {
-              delete bucket[mid];
-            }
-          }
-          this.pendingMyOffline[roomId] = bucket;
-        }
-      }
-
-
       // 내 에코 메시지 처리 + 읽음 휴리스틱
       if (chatMessageResponse.senderId === MY_ID) {
         if (!this.isOtherOnline(roomId)) {
@@ -741,6 +711,8 @@ export const useChatStore = defineStore('chat', {
         }
       }
 
+      // 정렬/중복 보정
+      this.dedupeAndSortMessages(roomId);
 
       const roomIndex = this.rooms.findIndex((r) => r.roomId === roomId);
       if (roomIndex !== -1) {
