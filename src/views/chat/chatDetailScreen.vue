@@ -98,17 +98,18 @@
             <div :class="['d-flex', msg.senderId === myId ? 'justify-end' : 'justify-start']">
               <!-- 내 메시지 -->
               <template v-if="msg.senderId === myId">
-                <div v-if="shouldShowTime(index, true)" class="d-flex align-end mr-1" style="min-width: 50px;">
+                <!-- 시간 표시는 기존 로직 유지, 뱃지는 안 읽힌 '모든' 내 메시지에 표시 -->
+                <div class="d-flex align-end mr-1" style="min-width: 50px;">
                   <div class="d-flex flex-column align-end">
-                    <div v-if="index === chatMessages.length - 1 || !shouldShowTime(index + 1, true)" class="mb-1">
-                      <!-- ✅ 읽지 않은 상태 표시: 스냅샷 기준 -->
-                      <div 
-                        v-if="!msg.isRead"
-                        class="d-flex align-center justify-center rounded-circle text-white text-caption font-weight-bold"
-                        style="background-color: #ff9500; width: 18px; height: 18px; min-width: 18px; font-size: 11px; line-height: 1;"
-                      >1</div>
+                    <div class="mb-1" v-if="!msg.isRead">
+                      <div class="d-flex align-center justify-center rounded-circle text-white text-caption font-weight-bold"
+                          style="background-color: #ff9500; width: 18px; height: 18px; min-width: 18px; font-size: 11px; line-height: 1;">
+                        1
+                      </div>
                     </div>
-                    <span class="text-caption text-grey-darken-1">{{ formatRelativeTime(msg.createdAt) }}</span>
+                    <span class="text-caption text-grey-darken-1" v-if="shouldShowTime(index, true)">
+                      {{ formatRelativeTime(msg.createdAt) }}
+                    </span>
                   </div>
                 </div>
 
@@ -264,20 +265,37 @@ const skeletonTimer = ref(null);
 const chatContainer = ref(null);
 const myId = '550e8400-e29b-41d4-a716-446655440001';
 
-// ✅ 핵심: lastReadByOther 스냅샷을 이용해 내 메시지 isRead 계산
+// ✅ 핵심: lastReadByOther + pendingMyOffline 로 내 메시지의 읽힘 계산
 const chatMessages = computed(() => {
   if (!currentRoomId.value) return [];
-  const list = messages.value[currentRoomId.value] || [];
-  const otherReadAt = chatStore.lastReadByOther[currentRoomId.value];
+  const roomId = currentRoomId.value;
+  const list = messages.value[roomId] || [];
+
+  // 상대가 '내 메시지'를 어디까지 읽었는지 (없으면 null)
+  const otherReadAt = chatStore.lastReadByOther[roomId] || null;
+  const boundary = otherReadAt ? new Date(otherReadAt).getTime() : null;
+
+  // 오프라인 동안 보낸 내 메시지 보류 버킷
+  const pending = chatStore.pendingMyOffline?.[roomId] || {};
 
   return list.map((msg) => {
-    const readByOther =
-      msg.senderId === myId &&
-      !!otherReadAt &&
-      new Date(msg.createdAt) <= new Date(otherReadAt);
+    let isRead = true;
 
-    // 원본 인스턴스에만 플래그 주입 (메서드들 그대로 유지)
-    msg.isRead = !!readByOther;
+    if (msg.senderId === myId) {
+      const ts = new Date(msg.createdAt).getTime();
+
+      if (boundary !== null) {
+        // 경계 이후거나 pending이면 미확인
+        const unreadByBoundary = ts > boundary;
+        const unreadByPending = !!pending[msg.id];
+        isRead = !(unreadByBoundary || unreadByPending);
+      } else {
+        // 경계 없으면: pending만 1로 (이전 읽힘 유지)
+        isRead = !pending[msg.id];
+      }
+    }
+
+    msg.isRead = isRead;
     return msg;
   });
 });
@@ -308,11 +326,11 @@ const partnerAvatar = computed(() => currentRoom.value?.otherUserProfileImage ||
 watch(chatMessages, () => { nextTick(() => { scrollToBottom(); }); }, { deep: true });
 const scrollToBottom = () => {
   if (chatContainer.value) {
-          requestAnimationFrame(() => {
-        if (chatContainer.value) {
-          chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
-        }
-      });
+    requestAnimationFrame(() => {
+      if (chatContainer.value) {
+        chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
+      }
+    });
   }
 };
 watch(currentRoomId, () => { if (currentRoomId.value) nextTick(() => scrollToBottom()); });
@@ -414,13 +432,12 @@ const editRoomName = () => {
 };
 const confirmRoomNameChange = async () => {
   if (newRoomName.value.trim()) {
-         try { 
-       if (currentRoomId.value) {
-         await chatStore.updateRoomName(currentRoomId.value, newRoomName.value.trim()); 
-         resetNameEditDialog(); 
-       }
-     }
-    catch (e) { console.error('채팅방 이름 변경 실패:', e); }
+    try { 
+      if (currentRoomId.value) {
+        await chatStore.updateRoomName(currentRoomId.value, newRoomName.value.trim()); 
+        resetNameEditDialog(); 
+      }
+    } catch (e) { console.error('채팅방 이름 변경 실패:', e); }
   }
 };
 const cancelRoomNameChange = () => { resetNameEditDialog(); };
@@ -433,9 +450,9 @@ const leaveRoom = () => { showLeaveConfirmDialog.value = true; showRoomOptions.v
 const confirmLeaveRoom = async () => {
   try {
     leaving.value = true;
-         if (currentRoomId.value) {
-       await chatStore.leaveRoom(currentRoomId.value);
-     }
+    if (currentRoomId.value) {
+      await chatStore.leaveRoom(currentRoomId.value);
+    }
     resetLeaveConfirmDialog();
   } catch (e) {
     console.error('채팅방 나가기 실패:', e);
@@ -467,8 +484,6 @@ const sendMessage = async (event) => {
     isSending.value = false;
   }
 };
-
-// (옵션) 시뮬레이션 버튼 사용하는 경우 필요하면 store에 helper 추가 가능
 </script>
 
 <style scoped>

@@ -27,9 +27,12 @@ export const useChatStore = defineStore('chat', {
     error: null,
     onlineUsers: {},              // roomId -> [userIds]
 
-    // ✅ 추가: 읽음 스냅샷(불가역)
+    // ✅ 읽음 스냅샷(불가역)
     lastReadByMe: {},             // roomId -> ISO time (상대 메시지 기준)
     lastReadByOther: {},          // roomId -> ISO time (내 메시지 기준)
+
+    // ✅ [NEW] 오프라인 동안 내가 보낸 메시지 버킷 (각 메시지별 1 표시용)
+    pendingMyOffline: {},         // roomId -> { [messageId]: true }
   }),
   
   getters: {
@@ -50,6 +53,34 @@ export const useChatStore = defineStore('chat', {
   },
   
   actions: {
+    isOtherOnline(roomId) {
+      return (this.onlineUsers[roomId] || []).some((id) => id !== MY_ID);
+    },
+
+    // [NEW] 방별 버킷 보장
+    ensurePendingBucket(roomId) {
+      if (!this.pendingMyOffline[roomId]) this.pendingMyOffline[roomId] = {};
+    },
+
+    // [NEW] 내 메시지를 '오프라인 보류'로 등록
+    markMyMessagePendingOffline(roomId, messageId) {
+      if (!messageId) return;
+      this.ensurePendingBucket(roomId);
+      this.pendingMyOffline[roomId][messageId] = true;
+    },
+
+    // [NEW] 상대가 다시 온라인이 되었을 때: 경계 갱신 + 버킷 비우기
+    flushPendingBecauseOtherOnline(roomId) {
+      const list = this.messages[roomId] || [];
+      const lastMyMsg = [...list].reverse().find((m) => m.senderId === MY_ID);
+      if (lastMyMsg?.createdAt) {
+        // '상대가 돌아오면 적어도 여기까지는 읽었다'는 휴리스틱
+        this.lastReadByOther[roomId] = lastMyMsg.createdAt;
+      }
+      this.pendingMyOffline[roomId] = {};
+      if (roomId === this.currentRoomId) this.$patch({});
+    },
+
     // WebSocket 연결
     connectWebSocket(roomId) {
       console.log('WebSocket 연결 시도:', { roomId, currentRoomId: this.currentRoomId });
@@ -130,20 +161,20 @@ export const useChatStore = defineStore('chat', {
       }
     },
     
-    // ✅ 온라인 이벤트를 "읽음 스냅샷"으로만 반영
+    // ✅ 온라인 이벤트를 "상태+오프라인→온라인 전환"에만 사용
     updateOnlineUsers(roomId, onlineUserIds) {
       console.log('온라인 사용자 업데이트:', { roomId, onlineUserIds });
-      this.onlineUsers[roomId] = onlineUserIds;
 
-      // 상대가 온라인이면, "내 메시지"는 그 시점까지 읽었다고 스냅샷
-      const otherUserOnline = (onlineUserIds || []).some((id) => id !== MY_ID);
-      if (otherUserOnline) {
-        const list = this.messages[roomId] || [];
-        const lastMyMsg = [...list].reverse().find((m) => m.senderId === MY_ID);
-        if (lastMyMsg?.createdAt) {
-          // 상대가 나갔다/offline 되어도 이 값은 유지됨
-          this.lastReadByOther[roomId] = lastMyMsg.createdAt;
-        }
+      const prev = Array.isArray(this.onlineUsers[roomId]) ? this.onlineUsers[roomId] : [];
+      const wasOnline = prev.some((id) => id !== MY_ID);
+
+      // 현재 상태 저장
+      this.onlineUsers[roomId] = Array.isArray(onlineUserIds) ? onlineUserIds : [];
+      const nowOnline = this.isOtherOnline(roomId);
+
+      // [핵심] 오프라인 → 온라인 전환 시: 오프라인 동안 보낸 내 메시지들을 읽음으로 전환
+      if (!wasOnline && nowOnline) {
+        this.flushPendingBecauseOtherOnline(roomId); // [NEW]
       }
 
       if (roomId === this.currentRoomId) {
@@ -296,6 +327,13 @@ export const useChatStore = defineStore('chat', {
             this.messages[this.currentRoomId] = [];
           }
           this.messages[this.currentRoomId].push(message);
+
+          // [NEW] 상대가 오프라인이면 보류 등록, 온라인이면 즉시 읽음 경계 갱신(heuristic)
+          if (!this.isOtherOnline(this.currentRoomId) && message?.id) {
+            this.markMyMessagePendingOffline(this.currentRoomId, message.id);
+          } else if (message?.createdAt) {
+            this.lastReadByOther[this.currentRoomId] = message.createdAt;
+          }
         }
         
         // 방 메타 업데이트
@@ -369,6 +407,7 @@ export const useChatStore = defineStore('chat', {
           delete this.lastReadByMe[roomId];
           delete this.lastReadByOther[roomId];
           delete this.onlineUsers[roomId];
+          delete this.pendingMyOffline[roomId]; // [NEW]
         }
       } catch (error) {
         console.error('채팅방 나가기 실패:', error);
@@ -387,13 +426,25 @@ export const useChatStore = defineStore('chat', {
       if (!this.messages[roomId]) this.messages[roomId] = [];
       this.messages[roomId].push(chatMessageResponse);
 
+      // [NEW] 내 에코 메시지 처리
+      if (chatMessageResponse.senderId === MY_ID) {
+        if (!this.isOtherOnline(roomId)) {
+          // 상대 오프라인이면 보류 등록
+          this.markMyMessagePendingOffline(roomId, chatMessageResponse.id);
+        } else if (chatMessageResponse?.createdAt) {
+          // 상대 온라인이면 실시간 읽음 가정 (1 표시 방지)
+          this.lastReadByOther[roomId] = chatMessageResponse.createdAt;
+        }
+      }
+
       const roomIndex = this.rooms.findIndex((r) => r.roomId === roomId);
       if (roomIndex !== -1) {
         const room = this.rooms[roomIndex];
 
         // 마지막 메시지 프리뷰 텍스트
-        let lastMessageText = chatMessageResponse.message;
-        if (!chatMessageResponse.message.trim() && chatMessageResponse.files && chatMessageResponse.files.length > 0) {
+        const raw = (chatMessageResponse.message ?? '');
+        let lastMessageText = raw;
+        if (!raw.trim() && chatMessageResponse.files && chatMessageResponse.files.length > 0) {
           const imageCount = chatMessageResponse.files.filter((f) => f.isImage()).length;
           const videoCount = chatMessageResponse.files.filter((f) => f.isVideo()).length;
           if (imageCount > 0 && videoCount > 0) lastMessageText = `사진 ${imageCount}장, 동영상 ${videoCount}개를 보냈습니다.`;
@@ -451,34 +502,11 @@ export const useChatStore = defineStore('chat', {
       this.lastReadByMe = {};
       this.lastReadByOther = {};
       this.onlineUsers = {};
+      this.pendingMyOffline = {}; // [NEW]
     },
 
     // 호환성 함수
     async fetchRooms() { return this.fetchMyChatRooms(); },
     async fetchMessages(roomId) { return this.fetchChatHistory(roomId); },
-
-    // 테스트 메시지
-    addTestMessage(roomId, content, isFromMe = true) {
-      if (!this.messages[roomId]) this.messages[roomId] = [];
-      const testMessage = {
-        id: `test-${Date.now()}`,
-        roomId,
-        senderId: isFromMe ? MY_ID : 'other-user-id',
-        message: content,
-        files: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      this.messages[roomId].push(testMessage);
-
-      const roomIndex = this.rooms.findIndex((r) => r.roomId === roomId);
-      if (roomIndex !== -1) {
-        this.rooms[roomIndex].lastMessage = content;
-        this.rooms[roomIndex].lastMessageTime = testMessage.createdAt;
-        if (!isFromMe) {
-          this.rooms[roomIndex].unreadCount = (this.rooms[roomIndex].unreadCount || 0) + 1;
-        }
-      }
-    },
   },
 });
