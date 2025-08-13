@@ -12,11 +12,8 @@ const API_ENDPOINTS = {
   NAVER_REFRESH: "/user/naver/refresh",
   LOGOUT: "/user/logout",
   PROFILE_INFO: "/user/profile",
-  REGISTER: "/user/register",
-  VERIFY_TOKEN: "/user/verify-token",
   ADD_INFO: "/user/add-info",
-  AUTH_DETAIL: "/user/auth-detail",
-  COMPLETE_REGISTRATION: "/user/complete-registration",
+  REFRESH: "/user/refresh",
 };
 
 export const authService = {
@@ -47,7 +44,6 @@ export const authService = {
     const response = await apiPost(API_ENDPOINTS.KAKAO_LOGIN, {
       code: authCode,
     });
-    console.log('response:', response);
     return handleApiResponse(response);
   },
 
@@ -64,7 +60,6 @@ export const authService = {
     const response = await apiPost(API_ENDPOINTS.NAVER_LOGIN, {
       code: authCode,
     });
-    console.log('response:', response);
     return handleApiResponse(response);
   },
 
@@ -82,22 +77,9 @@ export const authService = {
     return handleApiResponse(response);
   },
 
+  // 프로필 정보 조회
   async profileInfo() {
     const response = await apiGet(API_ENDPOINTS.PROFILE_INFO);
-    return handleApiResponse(response);
-  },
-
-  // 회원가입
-  async register(userData) {
-    const response = await apiPost(API_ENDPOINTS.REGISTER, userData);
-    return handleApiResponse(response);
-  },
-
-  // 토큰 검증
-  async verifyToken(token) {
-    const response = await apiGet(
-      `${API_ENDPOINTS.VERIFY_TOKEN}?token=${token}`
-    );
     return handleApiResponse(response);
   },
 
@@ -109,36 +91,17 @@ export const authService = {
     return handleApiResponse(response);
   },
 
-  // 추가 정보 입력
-  async addUserInfo(userInfo) {
-    const response = await apiPost(API_ENDPOINTS.ADD_INFO, userInfo);
-    return handleApiResponse(response);
-  },
-
-  // 인증 상세 정보 입력 (FormData 지원)
-  async addAuthDetail(authDetail) {
-    let response;
-
-    // FormData인지 확인
-    if (authDetail instanceof FormData) {
-      response = await apiPostFormData(API_ENDPOINTS.AUTH_DETAIL, authDetail);
-    } else {
-      response = await apiPost(API_ENDPOINTS.AUTH_DETAIL, authDetail);
-    }
-
-    return handleApiResponse(response);
-  },
-
-  // 최종 회원가입 완료 (localStorage 데이터 기반)
-  async completeRegistration(userId) {
-    const { getCompleteRegistrationData } = await import(
-      "../../utils/userRegistration"
-    );
-    const registrationData = getCompleteRegistrationData();
-
-    // userId를 쿼리 파라미터로 포함
+  // 추가 정보 입력 (통합)
+  async addUserInfo(userId, userInfo) {
     const endpoint = `${API_ENDPOINTS.ADD_INFO}?userId=${userId}`;
-    const response = await apiPost(endpoint, registrationData);
+    const response = await apiPost(endpoint, userInfo);
+    return handleApiResponse(response);
+  },
+
+  // 회원가입 상태 확인
+  async getUserRegistrationStatus(userId) {
+    const endpoint = `${API_ENDPOINTS.ADD_INFO}/status?userId=${userId}`;
+    const response = await apiGet(endpoint);
     return handleApiResponse(response);
   },
 };

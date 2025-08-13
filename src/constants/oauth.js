@@ -1,34 +1,29 @@
 // OAuth 설정 상수
 export const OAUTH_CONFIG = {
   GOOGLE: {
-    GOOGLE_URL:
-      import.meta.env.VITE_GOOGLE_OAUTH_URL ||
-      "https://accounts.google.com/o/oauth2/v2/auth",
+    GOOGLE_URL: import.meta.env.VITE_GOOGLE_OAUTH_URL,
     GOOGLE_CLIENT_ID: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-    GOOGLE_REDIRECT_URL:
-      import.meta.env.VITE_GOOGLE_REDIRECT_URL ||
-      "http://localhost:3000/oauth/google/redirect",
-    GOOGLE_SCOPE: import.meta.env.VITE_GOOGLE_SCOPE || "email profile",
+    GOOGLE_REDIRECT_URL: import.meta.env.VITE_GOOGLE_REDIRECT_URL,
+    GOOGLE_SCOPE: import.meta.env.VITE_GOOGLE_SCOPE,
     GOOGLE_RESPONSE_TYPE: import.meta.env.VITE_GOOGLE_RESPONSE_TYPE || "code",
   },
   KAKAO: {
     KAKAO_URL: import.meta.env.VITE_KAKAO_OAUTH_URL,
     KAKAO_CLIENT_ID: import.meta.env.VITE_KAKAO_CLIENT_ID,
     KAKAO_REDIRECT_URL: import.meta.env.VITE_KAKAO_REDIRECT_URL,
-    KAKAO_RESPONSE_TYPE: import.meta.env.VITE_KAKAO_RESPONSE_TYPE,
-    // KAKAO는 SCOPE 설정 필요 X -> 콘솔에서 자동으로 설정
+    KAKAO_RESPONSE_TYPE: import.meta.env.VITE_KAKAO_RESPONSE_TYPE || "code",
   },
   NAVER: {
     NAVER_URL: import.meta.env.VITE_NAVER_OAUTH_URL,
     NAVER_CLIENT_ID: import.meta.env.VITE_NAVER_CLIENT_ID,
     NAVER_REDIRECT_URL: import.meta.env.VITE_NAVER_REDIRECT_URL,
-    NAVER_RESPONSE_TYPE: import.meta.env.VITE_NAVER_RESPONSE_TYPE,
+    NAVER_RESPONSE_TYPE: import.meta.env.VITE_NAVER_RESPONSE_TYPE || "code",
   }
 };
 
 // API 설정 상수
 export const API_CONFIG = {
-  BASE_URL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8080",
+  BASE_URL: import.meta.env.VITE_API_BASE_URL,
   ENDPOINTS: {
     LOGIN: "/user/login",
     GOOGLE_LOGIN: "/user/google/login",
@@ -38,6 +33,7 @@ export const API_CONFIG = {
     NAVER_LOGIN: "/user/naver/login",
     NAVER_REFRESH: "/user/naver/refresh",
     LOGOUT: "/user/logout",
+    REFRESH: "/user/refresh",
   },
 };
 
@@ -66,9 +62,10 @@ export const generateOAuthUrl = (provider) => {
         scope: GOOGLE_SCOPE,
         access_type: "offline",
         prompt: "consent",
-        state: generateRandomState(), // CSRF 방지를 위한 state 파라미터
+        state: generateRandomState(),
       });
       return `${GOOGLE_URL}?${params.toString()}`;
+      
     case "kakao":
       const {
         KAKAO_URL,
@@ -87,30 +84,32 @@ export const generateOAuthUrl = (provider) => {
         client_id: KAKAO_CLIENT_ID,
         redirect_uri: KAKAO_REDIRECT_URL,
         response_type: KAKAO_RESPONSE_TYPE,
-        state: generateRandomState(), // CSRF 방지를 위한 state 파라미터
+        state: generateRandomState(),
       });
       return `${KAKAO_URL}?${kakaoParams.toString()}`;
+      
     case "naver":
-        const {
-          NAVER_URL,
-          NAVER_CLIENT_ID,
-          NAVER_REDIRECT_URL,
-          NAVER_RESPONSE_TYPE,
-        } = OAUTH_CONFIG.NAVER;
-  
-        if (!NAVER_CLIENT_ID) {
-          throw new Error(
-            "NAVER Client ID is not configured. Please check your environment variables."
-          );
-        }
-  
-        const naverParams = new URLSearchParams({
-          client_id: NAVER_CLIENT_ID,
-          redirect_uri: NAVER_REDIRECT_URL,
-          response_type: NAVER_RESPONSE_TYPE,
-          state: generateRandomState(), // CSRF 방지를 위한 state 파라미터
-        });
-        return `${NAVER_URL}?${naverParams.toString()}`;
+      const {
+        NAVER_URL,
+        NAVER_CLIENT_ID,
+        NAVER_REDIRECT_URL,
+        NAVER_RESPONSE_TYPE,
+      } = OAUTH_CONFIG.NAVER;
+
+      if (!NAVER_CLIENT_ID) {
+        throw new Error(
+          "NAVER Client ID is not configured. Please check your environment variables."
+        );
+      }
+
+      const naverParams = new URLSearchParams({
+        client_id: NAVER_CLIENT_ID,
+        redirect_uri: NAVER_REDIRECT_URL,
+        response_type: NAVER_RESPONSE_TYPE,
+        state: generateRandomState(),
+      });
+      return `${NAVER_URL}?${naverParams.toString()}`;
+      
     default:
       throw new Error(`Unsupported OAuth provider: ${provider}`);
   }

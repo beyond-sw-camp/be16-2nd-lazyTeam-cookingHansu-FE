@@ -1,12 +1,10 @@
 import { defineStore } from 'pinia';
-import axios from 'axios';
 import { API_CONFIG } from '@/constants/oauth';
 
 // Auth 관련 상태 관리 스토어
 // OAuth2 소셜 로그인 기반의 토큰 관리, 로그인 상태 관리, 사용자 정보 관리
 // 토큰 만료 시간 체크, 토큰 갱신, 로그아웃 처리
 // 페이지 새로고침 시 로그인 상태 복원
-// Axios 인터셉터 설정 - 401 에러 시 자동 refresh
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -15,6 +13,7 @@ export const useAuthStore = defineStore('auth', {
     
     // JWT 토큰 (메모리에 저장)
     accessToken: null,
+    refreshToken: null,
     
     // 로그인 상태
     isAuthenticated: false,
@@ -56,8 +55,6 @@ export const useAuthStore = defineStore('auth', {
     
     // 신규 사용자 여부
     isNewUser: (state) => {
-      console.log('Checking newUser - user:', state.user);
-      console.log('Checking newUser - user.newUser:', state.user?.newUser);
       return state.user?.newUser === true;
     },
 
@@ -75,22 +72,21 @@ export const useAuthStore = defineStore('auth', {
     async initialize() {
       try {
         // 로컬 스토리지에서 토큰 정보 복원
-        const savedToken = localStorage.getItem('accessToken');
+        const savedAccessToken = localStorage.getItem('accessToken');
+        const savedRefreshToken = localStorage.getItem('refreshToken');
         const savedExpiry = localStorage.getItem('tokenExpiry');
         const savedUser = localStorage.getItem('user');
         
-        if (savedToken && savedExpiry && savedUser) {
+        if (savedAccessToken && savedRefreshToken && savedExpiry && savedUser) {
           const expiry = parseInt(savedExpiry);
           
           // 토큰이 아직 유효한 경우
           if (Date.now() < expiry) {
-            this.accessToken = savedToken;
+            this.accessToken = savedAccessToken;
+            this.refreshToken = savedRefreshToken;
             this.tokenExpiry = expiry;
             this.user = JSON.parse(savedUser);
             this.isAuthenticated = true;
-            
-            // Axios 기본 헤더 설정
-            this.setupAxiosHeaders();
           } else {
             // 토큰이 만료된 경우 자동 갱신 시도
             await this.refreshToken();
@@ -108,24 +104,28 @@ export const useAuthStore = defineStore('auth', {
         this.isLoading = true;
         this.error = null;
         
-        const response = await axios.post(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.GOOGLE_LOGIN}`, {
-          code: authorizationCode
+        const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.GOOGLE_LOGIN}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ code: authorizationCode })
         });
         
-        const { data: { accessToken, user, expiresIn } } = response.data;
-
-        // 토큰 및 사용자 정보 확인
-        console.log('accessToken:', accessToken);
-        console.log('user object:', user);
-        console.log('user.newUser:', user?.newUser);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
         
+        const responseData = await response.json();
+        const { accessToken, refreshToken, user, expiresIn } = responseData.data;
+
         // 토큰 및 사용자 정보 저장
-        this.setAuthData(accessToken, user, expiresIn);
+        this.setAuthData(accessToken, refreshToken, user, expiresIn);
         
         return user;
       } catch (error) {
         console.error('Google login failed:', error);
-        this.error = error.response?.data?.message || 'Google 로그인에 실패했습니다.';
+        this.error = error.message || 'Google 로그인에 실패했습니다.';
         throw error;
       } finally {
         this.isLoading = false;
@@ -138,25 +138,28 @@ export const useAuthStore = defineStore('auth', {
         this.isLoading = true;
         this.error = null;
         
-        const response = await axios.post(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.KAKAO_LOGIN}`, {
-          code: authorizationCode
+        const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.KAKAO_LOGIN}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ code: authorizationCode })
         });
-        console.log('response:', response);
         
-        const { data: { accessToken, user, expiresIn } } = response.data;
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const responseData = await response.json();
+        const { accessToken, refreshToken, user, expiresIn } = responseData.data;
 
-        // 토큰 및 사용자 정보 확인
-        console.log('accessToken:', accessToken);
-        console.log('user object:', user);
-        console.log('user.newUser:', user?.newUser);
-        
         // 토큰 및 사용자 정보 저장
-        this.setAuthData(accessToken, user, expiresIn);
+        this.setAuthData(accessToken, refreshToken, user, expiresIn);
         
         return user;
       } catch (error) {
         console.error('Kakao login failed:', error);
-        this.error = error.response?.data?.message || 'Kakao 로그인에 실패했습니다.';
+        this.error = error.message || 'Kakao 로그인에 실패했습니다.';
         throw error;
       } finally {
         this.isLoading = false;
@@ -169,25 +172,28 @@ export const useAuthStore = defineStore('auth', {
         this.isLoading = true;
         this.error = null;
         
-        const response = await axios.post(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.NAVER_LOGIN}`, {
-          code: authorizationCode
+        const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.NAVER_LOGIN}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ code: authorizationCode })
         });
-        console.log('response:', response);
         
-        const { data: { accessToken, user, expiresIn } } = response.data;
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const responseData = await response.json();
+        const { accessToken, refreshToken, user, expiresIn } = responseData.data;
 
-        // 토큰 및 사용자 정보 확인
-        console.log('accessToken:', accessToken);
-        console.log('user object:', user);
-        console.log('user.newUser:', user?.newUser);
-        
         // 토큰 및 사용자 정보 저장
-        this.setAuthData(accessToken, user, expiresIn);
+        this.setAuthData(accessToken, refreshToken, user, expiresIn);
         
         return user;
       } catch (error) {
         console.error('Naver login failed:', error);
-        this.error = error.response?.data?.message || 'Naver 로그인에 실패했습니다.';
+        this.error = error.message || 'Naver 로그인에 실패했습니다.';
         throw error;
       } finally {
         this.isLoading = false;
@@ -195,8 +201,9 @@ export const useAuthStore = defineStore('auth', {
     },
 
     // 인증 데이터 설정
-    setAuthData(accessToken, user, expiresIn) {
+    setAuthData(accessToken, refreshToken, user, expiresIn) {
       this.accessToken = accessToken;
+      this.refreshToken = refreshToken;
       this.user = user;
       this.isAuthenticated = true;
       
@@ -205,22 +212,9 @@ export const useAuthStore = defineStore('auth', {
       
       // 로컬 스토리지에 저장 (페이지 새로고침 시 복원용)
       localStorage.setItem('accessToken', accessToken);
+      localStorage.setItem('refreshToken', refreshToken);
       localStorage.setItem('tokenExpiry', this.tokenExpiry.toString());
       localStorage.setItem('user', JSON.stringify(user));
-
-      console.log('Setting auth data - accessToken:', accessToken);
-      console.log('Setting auth data - user:', user);
-      console.log('Setting auth data - user.newUser:', user?.newUser);
-      
-      // Axios 기본 헤더 설정
-      this.setupAxiosHeaders();
-    },
-
-    // Axios 헤더 설정
-    setupAxiosHeaders() {
-      if (this.accessToken) {
-        axios.defaults.headers.common['Authorization'] = `Bearer ${this.accessToken}`;
-      }
     },
 
     // 토큰 갱신
@@ -240,30 +234,34 @@ export const useAuthStore = defineStore('auth', {
       try {
         this.isRefreshing = true;
         
-        const response = null;
-
-        if (this.accessToken.provider === 'google') {
-          response = await axios.post(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.GOOGLE_REFRESH}`, {}, {
-            withCredentials: true // 쿠키 포함
-          });
-        } else if (this.accessToken.provider === 'kakao') {
-          response = await axios.post(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.KAKAO_REFRESH}`, {}, {
-            withCredentials: true 
-          });
+        if (!this.refreshToken) {
+          throw new Error('Refresh token not found');
         }
-         
-        const { accessToken, expiresIn } = response.data;
+
+        const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.REFRESH}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ refreshToken: this.refreshToken })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const responseData = await response.json();
+        const { accessToken, refreshToken } = responseData.data;
         
         // 새로운 토큰으로 업데이트
         this.accessToken = accessToken;
-        this.tokenExpiry = Date.now() + (expiresIn * 1000);
+        this.refreshToken = refreshToken;
+        this.tokenExpiry = Date.now() + (3600 * 1000); // 1시간으로 설정
         
         // 로컬 스토리지 업데이트
         localStorage.setItem('accessToken', accessToken);
+        localStorage.setItem('refreshToken', refreshToken);
         localStorage.setItem('tokenExpiry', this.tokenExpiry.toString());
-        
-        // Axios 헤더 업데이트
-        this.setupAxiosHeaders();
         
       } catch (error) {
         console.error('Token refresh failed:', error);
@@ -280,8 +278,12 @@ export const useAuthStore = defineStore('auth', {
       try {
         // 서버에 로그아웃 요청
         if (this.accessToken) {
-          await axios.post(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.LOGOUT}`, {}, {
-            withCredentials: true
+          await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.LOGOUT}`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${this.accessToken}`,
+              'Content-Type': 'application/json',
+            }
           });
         }
       } catch (error) {
@@ -296,17 +298,16 @@ export const useAuthStore = defineStore('auth', {
     clearAuth() {
       this.user = null;
       this.accessToken = null;
+      this.refreshToken = null;
       this.isAuthenticated = false;
       this.tokenExpiry = null;
       this.error = null;
       
       // 로컬 스토리지 정리
       localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
       localStorage.removeItem('tokenExpiry');
       localStorage.removeItem('user');
-      
-      // Axios 헤더 정리
-      delete axios.defaults.headers.common['Authorization'];
     },
 
     // 에러 설정
@@ -326,48 +327,3 @@ export const useAuthStore = defineStore('auth', {
     },
   },
 });
-
-// Axios 인터셉터 설정
-export const setupAuthInterceptors = (authStore) => {
-  // 요청 인터셉터
-  axios.interceptors.request.use(
-    (config) => {
-      // 토큰이 유효하지 않으면 갱신 시도
-      if (authStore.isAuthenticated && !authStore.isTokenValid && !authStore.isRefreshing) {
-        authStore.refreshToken();
-      }
-      return config;
-    },
-    (error) => {
-      return Promise.reject(error);
-    }
-  );
-
-  // 응답 인터셉터
-  axios.interceptors.response.use(
-    (response) => {
-      return response;
-    },
-    async (error) => {
-      const originalRequest = error.config;
-      
-      // 401 에러이고 토큰 갱신을 시도하지 않은 경우
-      if (error.response?.status === 401 && !originalRequest._retry) {
-        originalRequest._retry = true;
-        
-        try {
-          await authStore.refreshToken();
-          // 토큰 갱신 후 원래 요청 재시도
-          originalRequest.headers['Authorization'] = `Bearer ${authStore.accessToken}`;
-          return axios(originalRequest);
-        } catch (refreshError) {
-          // 토큰 갱신 실패 시 로그아웃
-          await authStore.logout();
-          return Promise.reject(refreshError);
-        }
-      }
-      
-      return Promise.reject(error);
-    }
-  );
-};

@@ -36,7 +36,7 @@ import LoginLayout from '@/components/login/LoginLayout.vue'
 import FormSelect from '@/components/login/FormSelect.vue'
 import FormButtons from '@/components/login/FormButtons.vue'
 import { authService } from '@/services/auth/authService'
-import { saveStepData, getStepData, clearRegistrationData } from '@/utils/userRegistration'
+import { saveStepData, getStepData, clearRegistrationData,getCompleteRegistrationData } from '@/utils/userRegistration'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -86,8 +86,9 @@ async function onSubmit() {
       throw new Error('사용자 정보를 찾을 수 없습니다.')
     }
     
-    // 최종 회원가입 완료
-    const response = await authService.completeRegistration(currentUser.id)
+    // 최종 회원가입 완료 - 통합 API 사용
+    const registrationData = getCompleteRegistrationData()
+    const response = await authService.addUserInfo(currentUser.id, registrationData)
     
     if (response.isSuccess()) {
       // 성공 시 localStorage 데이터 초기화

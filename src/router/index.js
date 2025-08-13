@@ -179,7 +179,6 @@ router.beforeEach(async (to, from, next) => {
   if (authStore.isAuthenticated && !authStore.user) {
     try {
       // 사용자 정보가 없는 경우 로그아웃 처리
-      console.log("User info missing, clearing auth");
       authStore.clearAuth();
     } catch (error) {
       console.error("Auth check failed:", error);
@@ -206,9 +205,6 @@ router.beforeEach(async (to, from, next) => {
     to.meta.requiresNewUser &&
     (!authStore.isAuthenticated || !authStore.isNewUser)
   ) {
-    console.log(
-      "Non-new user trying to access add-info page, redirecting to home"
-    );
     next("/");
     return;
   }

@@ -53,7 +53,7 @@ import FormInput from '@/components/login/FormInput.vue'
 import FileUpload from '@/components/login/FileUpload.vue'
 import FormButtons from '@/components/login/FormButtons.vue'
 import { authService } from '@/services/auth/authService'
-import { saveStepData, getStepData, clearRegistrationData } from '@/utils/userRegistration'
+import { saveStepData, getStepData, clearRegistrationData, getCompleteRegistrationData } from '@/utils/userRegistration'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -89,15 +89,6 @@ function onPrev() {
 
 async function onSubmit() { 
   try {
-    // FormData 생성
-    const formData = new FormData()
-    formData.append('type', form.value.type)
-    formData.append('certNum', form.value.certNum)
-    
-    if (form.value.certFile) {
-      formData.append('certFile', form.value.certFile)
-    }
-    
     // localStorage에 현재 단계 데이터 저장
     saveStepData('authDetail', {
       type: form.value.type,
@@ -111,8 +102,9 @@ async function onSubmit() {
       throw new Error('사용자 정보를 찾을 수 없습니다.')
     }
     
-    // 최종 회원가입 완료
-    const response = await authService.completeRegistration(currentUser.id)
+    // 최종 회원가입 완료 - 통합 API 사용
+    const registrationData = getCompleteRegistrationData()
+    const response = await authService.addUserInfo(currentUser.id, registrationData)
     
     if (response.isSuccess()) {
       // 성공 시 localStorage 데이터 초기화

@@ -153,18 +153,12 @@ export default {
         
         // 사용자 상태에 따른 리다이렉트
         setTimeout(() => {
-          console.log('User object:', user);
-          console.log('newUser from user object:', user?.newUser);
-          console.log('newUser from auth store:', authStore.isNewUser);
-          
           // 인증 스토어의 isNewUser getter를 우선 사용
           if (authStore.isNewUser) {
             // 신규 사용자: 추가 정보 입력 페이지로 이동
-            console.log('Redirecting to /add-info for new user');
             router.push('/add-info');
           } else {
             // 기존 사용자: 홈페이지로 이동
-            console.log('Redirecting to / for existing user');
             router.push('/');
           }
         }, 2000); // 2초 후 자동 이동

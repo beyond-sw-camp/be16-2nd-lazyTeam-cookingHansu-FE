@@ -69,14 +69,12 @@ const roles = [
 onMounted(() => {
   // 인증 상태 확인
   if (!authStore.isAuthenticated) {
-    console.log('User not authenticated, redirecting to login');
     router.push('/login');
     return;
   }
   
   // 신규 사용자가 아닌 경우 홈으로 리다이렉트
   if (!authStore.isNewUser) {
-    console.log('User is not new, redirecting to home');
     router.push('/');
     return;
   }

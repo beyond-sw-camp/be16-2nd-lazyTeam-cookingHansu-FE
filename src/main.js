@@ -3,7 +3,7 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 import vuetify from './plugins/vuetify'
-import { useAuthStore, setupAuthInterceptors } from './store/auth/auth'
+import { useAuthStore } from './store/auth/auth'
 import './assets/fonts/global.scss';
 import './assets/styles/layout.css'
 
@@ -18,7 +18,7 @@ app.use(vuetify)
 const authStore = useAuthStore()
 
 // Auth 인터셉터 설정
-setupAuthInterceptors(authStore)
+// setupAuthInterceptors(authStore)
 
 // 인증 상태 초기화
 authStore.initialize().then(() => {

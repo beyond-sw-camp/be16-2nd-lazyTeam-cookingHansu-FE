@@ -48,19 +48,15 @@ export const getCompleteRegistrationData = () => {
   if (data.addInfo?.role === 'GENERAL') {
     userData.generalType = data.authDetail?.extra;
   } else if (data.addInfo?.role === 'CHEF') {
-    userData.chef = {
-      licenseNumber: data.authDetail?.certNum,
-      cuisineType: data.authDetail?.type,
-      licenseUrl: data.authDetail?.certFile
-    };
+    userData.licenseNumber = data.authDetail?.certNum;
+    userData.cuisineType = data.authDetail?.type;
+    userData.licenseUrl = data.authDetail?.certFile;
   } else if (data.addInfo?.role === 'OWNER') {
-    userData.business = {
-      businessNumber: data.authDetail?.bizNum,
-      businessName: data.authDetail?.shopName,
-      businessAddress: data.authDetail?.shopAddr,
-      shopCategory: data.authDetail?.type,
-      businessUrl: data.authDetail?.bizFile
-    };
+    userData.businessNumber = data.authDetail?.bizNum;
+    userData.businessName = data.authDetail?.shopName;
+    userData.businessAddress = data.authDetail?.shopAddr;
+    userData.shopCategory = data.authDetail?.type;
+    userData.businessUrl = data.authDetail?.bizFile;
   }
   
   return userData;
