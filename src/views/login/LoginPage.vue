@@ -32,7 +32,7 @@
         />
       </button>
       <div class="admin-login">
-        <button class="admin-link" @click="goAdmin">관리자</button>
+        <button class="admin-link" @click="goAdmin">관리자 로그인</button>
       </div>
     </div>
   </LoginLayout>

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { API_CONFIG } from '@/constants/oauth';
+import { authService } from '@/services/auth/authService';
 
 // Auth 관련 상태 관리 스토어
 // OAuth2 소셜 로그인 기반의 토큰 관리, 로그인 상태 관리, 사용자 정보 관리
@@ -29,6 +30,9 @@ export const useAuthStore = defineStore('auth', {
     
     // 토큰 만료 시간 (밀리초)
     tokenExpiry: null,
+    
+    // 로그인 제공자 (google, kakao, naver, local)
+    provider: null,
   }),
 
   getters: {
@@ -68,6 +72,33 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
+    // 일반 로그인 처리
+    async handleLocalLogin(loginData) {
+      try {
+        this.isLoading = true;
+        this.error = null;
+        
+        const response = await authService.login(loginData);
+        
+        if (response.success && response.data) {
+          const { accessToken, refreshToken, user, expiresIn } = response.data;
+          
+          // 토큰 및 사용자 정보 저장 (local 제공자로 설정)
+          this.setAuthData(accessToken, refreshToken, user, expiresIn, 'local');
+          
+          return user;
+        } else {
+          throw new Error(response.message || '로그인에 실패했습니다.');
+        }
+      } catch (error) {
+        console.error('Local login failed:', error);
+        this.error = error.message || '로그인에 실패했습니다.';
+        throw error;
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
     // 초기화 - 페이지 새로고침 시 로그인 상태 복원
     async initialize() {
       try {
@@ -76,6 +107,7 @@ export const useAuthStore = defineStore('auth', {
         const savedRefreshToken = localStorage.getItem('refreshToken');
         const savedExpiry = localStorage.getItem('tokenExpiry');
         const savedUser = localStorage.getItem('user');
+        const savedProvider = localStorage.getItem('provider');
         
         if (savedAccessToken && savedRefreshToken && savedExpiry && savedUser) {
           const expiry = parseInt(savedExpiry);
@@ -86,6 +118,7 @@ export const useAuthStore = defineStore('auth', {
             this.refreshToken = savedRefreshToken;
             this.tokenExpiry = expiry;
             this.user = JSON.parse(savedUser);
+            this.provider = savedProvider || 'local';
             this.isAuthenticated = true;
           } else {
             // 토큰이 만료된 경우 자동 갱신 시도
@@ -119,8 +152,8 @@ export const useAuthStore = defineStore('auth', {
         const responseData = await response.json();
         const { accessToken, refreshToken, user, expiresIn } = responseData.data;
 
-        // 토큰 및 사용자 정보 저장
-        this.setAuthData(accessToken, refreshToken, user, expiresIn);
+        // 토큰 및 사용자 정보 저장 (Google 제공자로 설정)
+        this.setAuthData(accessToken, refreshToken, user, expiresIn, 'google');
         
         return user;
       } catch (error) {
@@ -153,8 +186,8 @@ export const useAuthStore = defineStore('auth', {
         const responseData = await response.json();
         const { accessToken, refreshToken, user, expiresIn } = responseData.data;
 
-        // 토큰 및 사용자 정보 저장
-        this.setAuthData(accessToken, refreshToken, user, expiresIn);
+        // 토큰 및 사용자 정보 저장 (Kakao 제공자로 설정)
+        this.setAuthData(accessToken, refreshToken, user, expiresIn, 'kakao');
         
         return user;
       } catch (error) {
@@ -187,8 +220,8 @@ export const useAuthStore = defineStore('auth', {
         const responseData = await response.json();
         const { accessToken, refreshToken, user, expiresIn } = responseData.data;
 
-        // 토큰 및 사용자 정보 저장
-        this.setAuthData(accessToken, refreshToken, user, expiresIn);
+        // 토큰 및 사용자 정보 저장 (Naver 제공자로 설정)
+        this.setAuthData(accessToken, refreshToken, user, expiresIn, 'naver');
         
         return user;
       } catch (error) {
@@ -201,11 +234,12 @@ export const useAuthStore = defineStore('auth', {
     },
 
     // 인증 데이터 설정
-    setAuthData(accessToken, refreshToken, user, expiresIn) {
+    setAuthData(accessToken, refreshToken, user, expiresIn, provider = 'local') {
       this.accessToken = accessToken;
       this.refreshToken = refreshToken;
       this.user = user;
       this.isAuthenticated = true;
+      this.provider = provider;
       
       // 토큰 만료 시간 설정 (현재 시간 + 만료 시간)
       this.tokenExpiry = Date.now() + (expiresIn * 1000);
@@ -215,6 +249,7 @@ export const useAuthStore = defineStore('auth', {
       localStorage.setItem('refreshToken', refreshToken);
       localStorage.setItem('tokenExpiry', this.tokenExpiry.toString());
       localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('provider', provider);
     },
 
     // 토큰 갱신
@@ -238,7 +273,17 @@ export const useAuthStore = defineStore('auth', {
           throw new Error('Refresh token not found');
         }
 
-        const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.REFRESH}`, {
+        // 제공자에 따라 적절한 엔드포인트 선택
+        let refreshEndpoint;
+        if (this.provider === 'google') {
+          refreshEndpoint = API_CONFIG.ENDPOINTS.GOOGLE_REFRESH;
+        } else if (this.provider === 'kakao') {
+          refreshEndpoint = API_CONFIG.ENDPOINTS.KAKAO_REFRESH;
+        } else if (this.provider === 'naver') {
+          refreshEndpoint = API_CONFIG.ENDPOINTS.NAVER_REFRESH;
+        } 
+        
+        const response = await fetch(`${API_CONFIG.BASE_URL}${refreshEndpoint}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -251,6 +296,12 @@ export const useAuthStore = defineStore('auth', {
         }
         
         const responseData = await response.json();
+        // const { accessToken, refreshToken } = responseData.data;
+
+        if (!responseData.data || !responseData.data.accessToken || !responseData.data.refreshToken) {
+          throw new Error('Invalid response structure from server');
+        }
+
         const { accessToken, refreshToken } = responseData.data;
         
         // 새로운 토큰으로 업데이트
@@ -302,12 +353,14 @@ export const useAuthStore = defineStore('auth', {
       this.isAuthenticated = false;
       this.tokenExpiry = null;
       this.error = null;
+      this.provider = null;
       
       // 로컬 스토리지 정리
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('tokenExpiry');
       localStorage.removeItem('user');
+      localStorage.removeItem('provider');
     },
 
     // 에러 설정
