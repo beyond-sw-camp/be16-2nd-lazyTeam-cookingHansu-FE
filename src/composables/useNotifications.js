@@ -8,7 +8,9 @@ export function useNotifications() {
     // 임시 사용자 ID
   const getCurrentUserId = () => {
     // return useAuthStore().user?.id
-    // 실제 생성된 사용자 ID
+    
+    // 결제 알림 테스트를 위한 사용자 ID
+    return '00000000-0000-0000-0000-000000000000'
   }
 
 

@@ -93,7 +93,7 @@ const router = useRouter()
 const notificationStore = useNotificationStore()
 
 // 사용자 ID (전역 변수로 정의)
-const userId = '87654321-dcba-4321-abcd-111111111111' // QNA 테스터 질문자 ID
+const userId = '00000000-0000-0000-0000-000000000000' // 결제 테스트 사용자 ID
 
 // 반응형 데이터
 const activeFilter = ref('ALL')

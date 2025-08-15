@@ -185,8 +185,8 @@ export const notificationService = {
         throw new Error('userId는 필수 파라미터입니다.')
       }
 
-      const eventSource = new EventSource(
-        `http://localhost:8080/api/notifications/subscribe?userId=${userId}`,
+          const eventSource = new EventSource(
+      `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/notifications/subscribe?userId=${userId}`,
         { withCredentials: false }
       )
 
