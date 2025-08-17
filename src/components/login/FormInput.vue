@@ -12,7 +12,7 @@
       :required="required"
       v-bind="$attrs"
     />
-    <div v-if="errorMessage" class="input-error">
+    <div v-if="errorMessage && hasError" class="input-error">
       <span class="error-icon">&#10006;</span> {{ errorMessage }}
     </div>
   </div>
@@ -22,35 +22,35 @@
 defineProps({
   modelValue: {
     type: [String, Number],
-    default: ''
+    default: "",
   },
   label: {
     type: String,
-    default: ''
+    default: "",
   },
   type: {
     type: String,
-    default: 'text'
+    default: "text",
   },
   placeholder: {
     type: String,
-    default: ''
+    default: "",
   },
   required: {
     type: Boolean,
-    default: false
+    default: false,
   },
   hasError: {
     type: Boolean,
-    default: false
+    default: false,
   },
   errorMessage: {
     type: String,
-    default: ''
-  }
-})
+    default: "",
+  },
+});
 
-defineEmits(['update:modelValue'])
+defineEmits(["update:modelValue"]);
 </script>
 
 <style scoped>

@@ -15,46 +15,47 @@
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router'
+import { useRouter } from "vue-router";
 
-const router = useRouter()
+const router = useRouter();
 
 const props = defineProps({
   title: {
     type: String,
-    default: '요리한수'
+    default: "요리한수",
   },
   subtitle: {
     type: String,
-    default: ''
+    default: "",
   },
   showBackLink: {
     type: Boolean,
-    default: true
+    default: true,
   },
   showBox: {
     type: Boolean,
-    default: true
-  }
-})
+    default: true,
+  },
+});
 
 function goHome() {
-  router.push('/')
+  router.push("/");
 }
 </script>
 
 <style scoped>
-@import '../../assets/fonts/global.scss';
-@import '../../assets/styles/layout.css';
+@import "../../assets/fonts/global.scss";
+@import "../../assets/styles/layout.css";
 
 .login-layout {
   min-height: 100vh;
   height: 100vh;
-  background: #F5F1E8;
+  background: #f5f1e8;
   display: flex;
   flex-direction: column;
+  justify-content: center;
   align-items: center;
-  font-family: 'NotoSansKR', 'Noto Sans', sans-serif;
+  font-family: "NotoSansKR", "Noto Sans", sans-serif;
   overflow: hidden;
 }
 
@@ -83,7 +84,7 @@ function goHome() {
 .login-box {
   background: var(--color-white);
   border-radius: 16px;
-  box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.07);
   padding: 32px 32px 32px 32px;
   width: 100%;
   max-width: 600px;
@@ -111,8 +112,9 @@ function goHome() {
   text-align: center;
 }
 
-.box-slide-enter-active, .box-slide-leave-active {
-  transition: all 0.35s cubic-bezier(.4,0,.2,1);
+.box-slide-enter-active,
+.box-slide-leave-active {
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .box-slide-enter-from {

@@ -14,66 +14,76 @@
         v-bind="$attrs"
       >
         <option disabled value="">{{ placeholder }}</option>
-        <option v-for="option in options" :key="option.value" :value="option.value">
+        <option
+          v-for="option in options"
+          :key="option.value"
+          :value="option.value"
+        >
           {{ option.label }}
         </option>
       </select>
       <span class="select-arrow" :class="{ open: selectOpen }">
         <svg width="18" height="18" viewBox="0 0 20 20">
-          <path d="M5 8l5 5 5-5" stroke="#bdbdbd" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <path
+            d="M5 8l5 5 5-5"
+            stroke="#bdbdbd"
+            stroke-width="2"
+            fill="none"
+            stroke-linecap="round"
+          />
         </svg>
       </span>
     </div>
-    <div v-if="errorMessage" class="input-error">
+    <div v-if="errorMessage && hasError" class="input-error">
       <span class="error-icon">&#10006;</span> {{ errorMessage }}
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref } from "vue";
 
-const selectOpen = ref(false)
+const selectOpen = ref(false);
 
 const props = defineProps({
   modelValue: {
     type: [String, Number],
-    default: ''
+    default: "",
   },
   label: {
     type: String,
-    default: ''
+    default: "",
   },
   placeholder: {
     type: String,
-    default: '선택하세요'
+    default: "선택하세요",
   },
   options: {
     type: Array,
-    default: () => []
+    default: () => [],
   },
   required: {
     type: Boolean,
-    default: false
+    default: false,
   },
   hasError: {
     type: Boolean,
-    default: false
+    default: false,
   },
   errorMessage: {
     type: String,
-    default: ''
-  }
-})
+    default: "",
+  },
+});
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(["update:modelValue"]);
 
 function handleSelectOpen() {
-  selectOpen.value = true
+  selectOpen.value = true;
 }
 
 function handleSelectClose() {
-  selectOpen.value = false
+  selectOpen.value = false;
 }
 </script>
 

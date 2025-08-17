@@ -9,70 +9,83 @@
         :accept="accept"
         @change="handleFileChange"
         :id="inputId"
-        style="display:none;"
+        style="display: none"
         :required="required"
       />
       <label :for="inputId" class="file-label">
         <span v-if="fileName">{{ fileName }}</span>
         <span v-else class="file-placeholder">
-          <svg width="20" height="20" viewBox="0 0 20 20" style="vertical-align:middle;margin-right:6px;">
-            <path d="M10 3v10m0 0l-3-3m3 3l3-3" stroke="#bdbdbd" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 20 20"
+            style="vertical-align: middle; margin-right: 6px"
+          >
+            <path
+              d="M10 3v10m0 0l-3-3m3 3l3-3"
+              stroke="#bdbdbd"
+              stroke-width="2"
+              fill="none"
+              stroke-linecap="round"
+            />
           </svg>
           {{ placeholder }}
         </span>
       </label>
     </div>
-    <div v-if="errorMessage" class="input-error">
+    <div v-if="errorMessage && hasError" class="input-error">
       <span class="error-icon">&#10006;</span> {{ errorMessage }}
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed } from "vue";
 
 const props = defineProps({
   modelValue: {
     type: File,
-    default: null
+    default: null,
   },
   label: {
     type: String,
-    default: ''
+    default: "",
   },
   placeholder: {
     type: String,
-    default: '파일을 선택하세요'
+    default: "파일을 선택하세요",
   },
   accept: {
     type: String,
-    default: 'image/*,.pdf'
+    default: "image/*,.pdf",
   },
   required: {
     type: Boolean,
-    default: false
+    default: false,
   },
   hasError: {
     type: Boolean,
-    default: false
+    default: false,
   },
   errorMessage: {
     type: String,
-    default: ''
-  }
-})
+    default: "",
+  },
+});
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(["update:modelValue"]);
 
-const inputId = computed(() => `file-upload-${Math.random().toString(36).substr(2, 9)}`)
+const inputId = computed(
+  () => `file-upload-${Math.random().toString(36).substr(2, 9)}`
+);
 
 const fileName = computed(() => {
-  return props.modelValue ? props.modelValue.name : ''
-})
+  return props.modelValue ? props.modelValue.name : "";
+});
 
 function handleFileChange(event) {
-  const file = event.target.files[0]
-  emit('update:modelValue', file)
+  const file = event.target.files[0];
+  emit("update:modelValue", file);
 }
 </script>
 

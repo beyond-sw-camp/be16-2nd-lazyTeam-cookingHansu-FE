@@ -98,6 +98,7 @@ function goAdmin() {
 
 .social-btn {
   border: none;
+  max-width: 80%;
   border-radius: 8px;
   font-size: 1.08rem;
   font-weight: 500;
@@ -114,7 +115,6 @@ function goAdmin() {
 }
 
 .social_btn_img {
-  max-width: 100%;
   max-height: 70px;
 }
 
