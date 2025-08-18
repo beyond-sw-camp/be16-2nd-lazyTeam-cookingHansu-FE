@@ -10,7 +10,7 @@ export const getHeaders = () => {
   };
   
   // JWT 토큰이 있으면 헤더에 추가
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('accessToken');
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
@@ -147,7 +147,7 @@ export const apiPutFormData = async (endpoint, formData) => {
   
   try {
     const headers = {};
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('accessToken');
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
@@ -178,7 +178,7 @@ export const apiPostFormData = async (endpoint, formData) => {
   
   try {
     const headers = {};
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('accessToken');
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }

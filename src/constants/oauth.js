@@ -27,11 +27,8 @@ export const API_CONFIG = {
   ENDPOINTS: {
     LOGIN: "/user/login",
     GOOGLE_LOGIN: "/user/google/login",
-    GOOGLE_REFRESH: "/user/google/refresh",
     KAKAO_LOGIN: "/user/kakao/login",
-    KAKAO_REFRESH: "/user/kakao/refresh",
     NAVER_LOGIN: "/user/naver/login",
-    NAVER_REFRESH: "/user/naver/refresh",
     LOGOUT: "/user/logout",
     REFRESH: "/user/refresh",
   },

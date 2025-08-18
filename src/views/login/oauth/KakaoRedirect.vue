@@ -153,7 +153,8 @@ export default {
         
         // 사용자 상태에 따른 리다이렉트
         setTimeout(() => {
-          // 인증 스토어의 isNewUser getter를 우선 사용
+          // 백엔드에서 isNewUser 컬럼을 제거하고 DB 조회로 기존 사용자 판단
+          // 프론트엔드에서는 사용자의 기본 프로필 정보 완성 여부로 판단
           if (authStore.isNewUser) {
             // 신규 사용자: 추가 정보 입력 페이지로 이동
             router.push('/add-info');

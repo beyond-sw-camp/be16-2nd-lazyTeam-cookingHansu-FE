@@ -170,7 +170,9 @@ router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
 
   // OAuth 리다이렉트 페이지는 인증 가드 건너뛰기
-  if (to.name === "GoogleOAuthRedirect") {
+  if (to.name === "GoogleOAuthRedirect" || 
+      to.name === "KakaoOAuthRedirect" || 
+      to.name === "NaverOAuthRedirect") {
     next();
     return;
   }

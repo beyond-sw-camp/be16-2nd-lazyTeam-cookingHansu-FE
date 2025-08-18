@@ -41,7 +41,12 @@
         <!-- Logged In State -->
         <div v-else class="user-section">
           <v-avatar size="32" class="profile-avatar">
-            <v-img :src="profileInfo.profileImageUrl" alt="프로필 이미지"></v-img>
+            <v-img 
+              v-if="profileInfo.profileImageUrl" 
+              :src="profileInfo.profileImageUrl" 
+              alt="프로필 이미지"
+            ></v-img>
+            <v-icon v-else size="20" color="grey">mdi-account</v-icon>
           </v-avatar>
           
           <v-btn
@@ -60,7 +65,7 @@
             </v-badge>
           </v-btn>
 
-          <span class="welcome-text">{{ profileInfo.nickname }}님 환영합니다!</span>
+          <span class="welcome-text">{{ userNickname }}님 환영합니다!</span>
 
           <v-btn
             variant="outlined"
@@ -123,7 +128,12 @@
 
         <div class="mobile-user-section">
           <v-avatar size="32" class="profile-avatar">
-            <v-img :src="userProfileImage" alt="프로필 이미지"></v-img>
+            <v-img 
+              v-if="userProfileImage && userProfileImage !== '/default-avatar.png'" 
+              :src="userProfileImage" 
+              alt="프로필 이미지"
+            ></v-img>
+            <v-icon v-else size="20" color="grey">mdi-account</v-icon>
           </v-avatar>
           <v-btn
             variant="outlined"
@@ -167,8 +177,8 @@ import { ref, computed, watch, onUnmounted, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/auth/auth'
 
-const router = useRouter()
-const authStore = useAuthStore()
+const router = useRouter();
+const authStore = useAuthStore();
 
 // Reactive data
 const mobileMenuOpen = ref(false)
@@ -184,7 +194,46 @@ const mobileMenuItems = ref([
 const handleResize = () => {
   // 데스크톱 크기(960px 이상)로 변경되면 모바일 메뉴 닫기
   if (window.innerWidth >= 960 && mobileMenuOpen.value) {
-    mobileMenuOpen.value = false
+    mobileMenuOpen.value = false;
+  }
+}
+
+// Reactive data for profile
+const profileData = ref({
+  nickname: '',
+  profileImageUrl: ''
+})
+
+// Computed properties
+const isLoggedIn = computed(() => {
+  return authStore.getIsAuthenticated;
+})
+
+// 프로필 정보 가져오기
+const fetchProfileInfo = async () => {
+  if (isLoggedIn.value && authStore.accessToken) {
+    try {
+      const profileInfo = await authStore.fetchProfileInfo();
+      if (profileInfo) {
+        profileData.value = {
+          nickname: profileInfo.nickname || '사용자',
+          profileImageUrl: profileInfo.profileImageUrl || ''
+        };
+      } else {
+        // 프로필 정보가 없는 경우 기본값 설정
+        profileData.value = {
+          nickname: '사용자',
+          profileImageUrl: ''
+        };
+      }
+    } catch (error) {
+      console.error('프로필 정보 가져오기 실패:', error);
+      // 에러 발생 시 기본값 설정
+      profileData.value = {
+        nickname: '사용자',
+        profileImageUrl: ''
+      };
+    }
   }
 }
 
@@ -192,69 +241,83 @@ const handleResize = () => {
 watch(mobileMenuOpen, (isOpen) => {
   if (isOpen) {
     // 메뉴가 열릴 때 스크롤 방지
-    document.body.style.overflow = 'hidden'
-    document.body.style.position = 'fixed'
-    document.body.style.width = '100%'
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
   } else {
     // 메뉴가 닫힐 때 스크롤 복원
-    document.body.style.overflow = ''
-    document.body.style.position = ''
-    document.body.style.width = ''
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.width = '';
   }
 })
 
-// 컴포넌트 마운트 시 리사이즈 이벤트 리스너 추가
-onMounted(() => {
-  window.addEventListener('resize', handleResize)
+// 로그인 상태 변경 감시하여 프로필 정보 가져오기
+watch(isLoggedIn, async (newValue) => {
+  if (newValue) {
+    await fetchProfileInfo();
+  } else {
+    // 로그아웃 시 프로필 정보 초기화
+    profileData.value = {
+      nickname: '',
+      profileImageUrl: ''
+    };
+  }
+})
+
+// 컴포넌트 마운트 시 리사이즈 이벤트 리스너 추가 및 프로필 정보 가져오기
+onMounted(async () => {
+  window.addEventListener('resize', handleResize);
+  
+  // 로그인된 상태라면 프로필 정보 가져오기
+  if (isLoggedIn.value) {
+    await fetchProfileInfo();
+  }
 })
 
 // 컴포넌트 언마운트 시 이벤트 리스너 제거 및 스크롤 복원
 onUnmounted(() => {
-  window.removeEventListener('resize', handleResize)
-  document.body.style.overflow = ''
-  document.body.style.position = ''
-  document.body.style.width = ''
-})
-
-// Computed properties
-const isLoggedIn = computed(() => {
-  return authStore.getIsAuthenticated
+  window.removeEventListener('resize', handleResize);
+  document.body.style.overflow = '';
+  document.body.style.position = '';
+  document.body.style.width = '';
 })
 
 const userNickname = computed(() => {
-  return authStore.getUser?.nickname || '사용자'
+  return profileData.value.nickname || '사용자';
 })
 
 const userProfileImage = computed(() => {
-  return authStore.getUser?.profileImage || '/default-avatar.png'
+  return profileData.value.profileImageUrl || '';
 })
 
 const profileInfo = computed(() => {
-  return authStore.getProfileInfo;
+  return profileData.value;
 })
 
 const notificationCount = computed(() => {
   // 실제 알림 개수 가져오기 로직으로 교체 필요
-  return 3
+  return 3;
 })
 
 // Methods
 const goToLogin = () => {
-  router.push('/login')
+  router.push('/login');
 }
 
 const logout = async () => {
   try {
-    await authStore.logout()
-    router.push('/')
+    await authStore.logout();
+    window.location.reload();
+    router.push('/');
   } catch (error) {
-    console.error('로그아웃 실패:', error)
+    console.error('로그아웃 실패:', error);
   }
 }
 
 const showNotifications = () => {
   // 알림 표시 로직 구현 필요
-  console.log('알림 표시')
+  console.log('알림 표시');
 }
 
 const toggleMobileMenu = () => {

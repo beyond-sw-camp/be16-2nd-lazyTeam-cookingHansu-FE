@@ -78,7 +78,7 @@ export const authService = {
   },
 
   // 프로필 정보 조회
-  async profileInfo() {
+  async getProfileInfo() {
     const response = await apiGet(API_ENDPOINTS.PROFILE_INFO);
     return handleApiResponse(response);
   },

@@ -29,7 +29,7 @@ export const useAuthStore = defineStore('auth', {
     isRefreshing: false,
     
     // 토큰 만료 시간 (밀리초)
-    tokenExpiry: null,
+    expiresIn: null,
     
     // 로그인 제공자 (google, kakao, naver, local)
     provider: null,
@@ -50,8 +50,8 @@ export const useAuthStore = defineStore('auth', {
     
     // 토큰이 유효한지 확인
     isTokenValid: (state) => {
-      if (!state.accessToken || !state.tokenExpiry) return false;
-      return Date.now() < state.tokenExpiry;
+      if (!state.accessToken || !state.expiresIn) return false;
+      return Date.now() < state.expiresIn;
     },
     
     // 사용자 역할 확인
@@ -59,7 +59,15 @@ export const useAuthStore = defineStore('auth', {
     
     // 신규 사용자 여부
     isNewUser: (state) => {
-      return state.user?.newUser === true;
+      // 백엔드에서 isNewUser 컬럼을 제거했으므로
+      // 사용자의 기본 프로필 정보가 완성되었는지 여부로 판단
+      if (!state.user) return false;
+      
+      // // 기본 프로필 정보가 누락된 경우 신규 사용자로 간주
+      // // 닉네임, 프로필 이미지, 전화번호, 주소 중 하나라도 없으면 신규 사용자
+      const hasBasicProfile = state.user.nickname != null;
+      console.log(hasBasicProfile);
+      return !hasBasicProfile;
     },
 
     // 헤더에 렌더링할 사용자 정보 getter
@@ -83,7 +91,7 @@ export const useAuthStore = defineStore('auth', {
         if (response.success && response.data) {
           const { accessToken, refreshToken, user, expiresIn } = response.data;
           
-          // 토큰 및 사용자 정보 저장 (local 제공자로 설정)
+          // 토큰 및 사용자 정보 저장 
           this.setAuthData(accessToken, refreshToken, user, expiresIn, 'local');
           
           return user;
@@ -105,7 +113,7 @@ export const useAuthStore = defineStore('auth', {
         // 로컬 스토리지에서 토큰 정보 복원
         const savedAccessToken = localStorage.getItem('accessToken');
         const savedRefreshToken = localStorage.getItem('refreshToken');
-        const savedExpiry = localStorage.getItem('tokenExpiry');
+        const savedExpiry = localStorage.getItem('expiresIn');
         const savedUser = localStorage.getItem('user');
         const savedProvider = localStorage.getItem('provider');
         
@@ -116,7 +124,7 @@ export const useAuthStore = defineStore('auth', {
           if (Date.now() < expiry) {
             this.accessToken = savedAccessToken;
             this.refreshToken = savedRefreshToken;
-            this.tokenExpiry = expiry;
+            this.expiresIn = expiry;
             this.user = JSON.parse(savedUser);
             this.provider = savedProvider || 'local';
             this.isAuthenticated = true;
@@ -234,20 +242,21 @@ export const useAuthStore = defineStore('auth', {
     },
 
     // 인증 데이터 설정
-    setAuthData(accessToken, refreshToken, user, expiresIn, provider = 'local') {
+    setAuthData(accessToken, refreshToken, user, expiresIn, provider) {
       this.accessToken = accessToken;
       this.refreshToken = refreshToken;
+      this.expiresIn = expiresIn;
       this.user = user;
       this.isAuthenticated = true;
       this.provider = provider;
       
       // 토큰 만료 시간 설정 (현재 시간 + 만료 시간)
-      this.tokenExpiry = Date.now() + (expiresIn * 1000);
+      this.expiresIn = Date.now() + (expiresIn * 1000);
       
       // 로컬 스토리지에 저장 (페이지 새로고침 시 복원용)
       localStorage.setItem('accessToken', accessToken);
       localStorage.setItem('refreshToken', refreshToken);
-      localStorage.setItem('tokenExpiry', this.tokenExpiry.toString());
+      localStorage.setItem('expiresIn', this.expiresIn);
       localStorage.setItem('user', JSON.stringify(user));
       localStorage.setItem('provider', provider);
     },
@@ -273,17 +282,7 @@ export const useAuthStore = defineStore('auth', {
           throw new Error('Refresh token not found');
         }
 
-        // 제공자에 따라 적절한 엔드포인트 선택
-        let refreshEndpoint;
-        if (this.provider === 'google') {
-          refreshEndpoint = API_CONFIG.ENDPOINTS.GOOGLE_REFRESH;
-        } else if (this.provider === 'kakao') {
-          refreshEndpoint = API_CONFIG.ENDPOINTS.KAKAO_REFRESH;
-        } else if (this.provider === 'naver') {
-          refreshEndpoint = API_CONFIG.ENDPOINTS.NAVER_REFRESH;
-        } 
-        
-        const response = await fetch(`${API_CONFIG.BASE_URL}${refreshEndpoint}`, {
+        const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.REFRESH}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -307,12 +306,12 @@ export const useAuthStore = defineStore('auth', {
         // 새로운 토큰으로 업데이트
         this.accessToken = accessToken;
         this.refreshToken = refreshToken;
-        this.tokenExpiry = Date.now() + (3600 * 1000); // 1시간으로 설정
+        this.expiresIn = Date.now() + (3600 * 1000); // 1시간으로 설정
         
         // 로컬 스토리지 업데이트
         localStorage.setItem('accessToken', accessToken);
         localStorage.setItem('refreshToken', refreshToken);
-        localStorage.setItem('tokenExpiry', this.tokenExpiry.toString());
+        localStorage.setItem('expiresIn', this.expiresIn);
         
       } catch (error) {
         console.error('Token refresh failed:', error);
@@ -351,14 +350,14 @@ export const useAuthStore = defineStore('auth', {
       this.accessToken = null;
       this.refreshToken = null;
       this.isAuthenticated = false;
-      this.tokenExpiry = null;
+      this.expiresIn = null;
       this.error = null;
       this.provider = null;
       
       // 로컬 스토리지 정리
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
-      localStorage.removeItem('tokenExpiry');
+      localStorage.removeItem('expiresIn');
       localStorage.removeItem('user');
       localStorage.removeItem('provider');
     },
@@ -377,6 +376,31 @@ export const useAuthStore = defineStore('auth', {
     updateUserInfo(userInfo) {
       this.user = { ...this.user, ...userInfo };
       localStorage.setItem('user', JSON.stringify(this.user));
+    },
+
+    // 백엔드에서 최신 프로필 정보 가져오기
+    async fetchProfileInfo() {
+      try {
+        if (!this.accessToken) {
+          console.warn('Access token not available');
+          return null;
+        }
+
+        const response = await authService.getProfileInfo();
+        
+        if (response.success && response.data) {
+          // 사용자 정보 업데이트
+          this.user = { ...this.user, ...response.data };
+          localStorage.setItem('user', JSON.stringify(this.user));
+          return response.data;
+        } else {
+          console.error('Failed to fetch profile info:', response.message);
+          return null;
+        }
+      } catch (error) {
+        console.error('Error fetching profile info:', error);
+        return null;
+      }
     },
   },
 });
