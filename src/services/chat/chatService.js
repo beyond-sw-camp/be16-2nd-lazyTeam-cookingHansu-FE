@@ -1,4 +1,4 @@
-import { apiGet, apiPatch, apiDelete, apiPostFormData } from '../../utils/api';
+import { apiGet, apiPatch, apiDelete, apiPostFormData, apiPost } from '../../utils/api';
 import { handleApiResponse } from '../../models/common/ApiResponse';
 import { ChatRoomResponse, ChatMessageResponse } from '../../models/chat/ChatResponse';
 
@@ -9,6 +9,7 @@ const API_ENDPOINTS = {
   UPDATE_ROOM_NAME: (roomId) => `/chat/room/${roomId}/name`,
   LEAVE_ROOM: (roomId) => `/chat/room/${roomId}/leave`,
   UPLOAD_FILES: (roomId) => `/chat/room/${roomId}/upload`,
+  READ_MESSAGES: (roomId) => `/chat/room/${roomId}/read`,
 };
 
 export const chatService = {
@@ -24,9 +25,11 @@ export const chatService = {
     const paginatedData = apiResponse.getData();
     
     return {
-      data: (paginatedData.data || []).map((roomData) => ChatRoomResponse.fromJson(roomData)),
+      data: (paginatedData.data || []).map(room => ChatRoomResponse.fromJson(room)),
       hasNext: paginatedData.hasNext || false,
-      nextCursor: paginatedData.nextCursor || null
+      nextCursor: paginatedData.nextCursor || null,
+      // ✅ 추가: lastReadTimestamp 반환
+      lastReadTimestamp: paginatedData.lastReadTimestamp || null
     };
   },
 
@@ -42,9 +45,11 @@ export const chatService = {
     const paginatedData = apiResponse.getData();
     
     return {
-      data: (paginatedData.data || []).map((messageData) => ChatMessageResponse.fromJson(messageData)),
+      data: (paginatedData.data || []).map(message => ChatMessageResponse.fromJson(message)),
       hasNext: paginatedData.hasNext || false,
-      nextCursor: paginatedData.nextCursor || null
+      nextCursor: paginatedData.nextCursor || null,
+      // ✅ 추가: lastReadTimestamp 반환
+      lastReadTimestamp: paginatedData.lastReadTimestamp || null
     };
   },
 
@@ -56,27 +61,38 @@ export const chatService = {
 
   async updateChatRoomName(roomId, roomName) {
     const response = await apiPatch(API_ENDPOINTS.UPDATE_ROOM_NAME(roomId), { name: roomName });
-    const apiResponse = await handleApiResponse(response);
-    return apiResponse.getData();
+    return handleApiResponse(response);
   },
 
   async leaveChatRoom(roomId) {
     const response = await apiDelete(API_ENDPOINTS.LEAVE_ROOM(roomId));
-    const apiResponse = await handleApiResponse(response);
-    return apiResponse.getData();
+    return handleApiResponse(response);
   },
 
   async uploadFiles(roomId, files, fileTypes) {
     const formData = new FormData();
-    formData.append('roomId', roomId);
     files.forEach((file, index) => {
       formData.append('files', file);
       formData.append('fileTypes', fileTypes[index]);
     });
+    
     const response = await apiPostFormData(API_ENDPOINTS.UPLOAD_FILES(roomId), formData);
     const apiResponse = await handleApiResponse(response);
     return apiResponse.getData();
   },
+
+  // ✅ 개선된 읽음 처리 API
+  async readMessages(roomId, userId) {
+    try {
+      const response = await apiPost(API_ENDPOINTS.READ_MESSAGES(roomId), { userId });
+      const apiResponse = await handleApiResponse(response);
+      console.log(`✅ 읽음 처리 API 호출 성공: roomId=${roomId}, userId=${userId}`);
+      return apiResponse.getData();
+    } catch (error) {
+      console.error(`❌ 읽음 처리 API 호출 실패: roomId=${roomId}, userId=${userId}`, error);
+      throw error;
+    }
+  }
 };
 
 // 주요 함수들만 export (개별 함수 export 제거)
@@ -86,5 +102,6 @@ export const {
   createChatRoom,
   updateChatRoomName,
   leaveChatRoom,
-  uploadFiles
+  uploadFiles,
+  readMessages
 } = chatService;

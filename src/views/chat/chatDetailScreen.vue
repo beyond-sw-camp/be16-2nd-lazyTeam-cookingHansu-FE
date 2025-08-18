@@ -113,10 +113,10 @@
               <template v-if="msg.senderId === myId">
                 <div class="d-flex align-end mr-1" style="min-width: 50px;">
                   <div class="d-flex flex-column align-end">
-                    <div class="mb-1" v-if="!msg.isRead">
+                    <div class="mb-1" v-if="msg.unreadCount > 0">
                       <div class="d-flex align-center justify-center rounded-circle text-white text-caption font-weight-bold"
                           style="background-color: #ff9500; width: 18px; height: 18px; min-width: 18px; font-size: 11px; line-height: 1;">
-                        1
+                        {{ msg.unreadCount }}
                       </div>
                     </div>
                     <span class="text-caption text-grey-darken-1" v-if="shouldShowTime(index, true)">
@@ -126,33 +126,33 @@
                 </div>
 
                 <div class="d-inline-flex flex-column pa-2 rounded-lg bg-orange-lighten-5 align-end" style="max-width: 70%; word-break: break-word">
-                  <span v-if="msg.hasMessage()" class="text-body-2">{{ msg.message }}</span>
+                  <span v-if="msg.message" class="text-body-2">{{ msg.message }}</span>
 
-                  <div v-if="msg.getImageFiles().length > 0" class="mt-1">
+                  <div v-if="msg.files && msg.files.filter(f => f.fileType === 'IMAGE').length > 0" class="mt-1">
                     <div 
                       class="image-grid-simple"
                       :style="{
-                        width: getImageGridLayout(msg.getImageFiles().length).containerWidth,
+                        width: getImageGridLayout(msg.files.filter(f => f.fileType === 'IMAGE').length).containerWidth,
                         display: 'flex',
                         flexWrap: 'wrap',
-                        gap: getImageGridLayout(msg.getImageFiles().length).gap
+                        gap: getImageGridLayout(msg.files.filter(f => f.fileType === 'IMAGE').length).gap
                       }"
                     >
-                      <div v-for="(file, i) in msg.getImageFiles()" :key="file.id" class="image-item-simple" :style="getImageItemStyle()">
+                      <div v-for="(file, i) in msg.files.filter(f => f.fileType === 'IMAGE')" :key="file.id" class="image-item-simple" :style="getImageItemStyle()">
                         <v-img :src="file.fileUrl" :width="getImageItemStyle().width" :height="getImageItemStyle().height"
                                class="rounded" :alt="file.fileName" @click="openImage(file.fileUrl)" cover />
                       </div>
                     </div>
                   </div>
 
-                  <div v-if="msg.getVideoFiles().length > 0" class="mt-1">
-                    <div v-for="file in msg.getVideoFiles()" :key="file.id" class="mb-1">
+                  <div v-if="msg.files && msg.files.filter(f => f.fileType === 'VIDEO').length > 0" class="mt-1">
+                    <div v-for="file in msg.files.filter(f => f.fileType === 'VIDEO')" :key="file.id" class="mb-1">
                       <video :src="file.fileUrl" controls :width="200" :height="150" class="rounded" :alt="file.fileName" />
                     </div>
                   </div>
 
-                  <div v-if="msg.getNonImageFiles().length > 0" class="mt-1">
-                    <div v-for="file in msg.getNonImageFiles()" :key="file.id" class="mb-1">
+                  <div v-if="msg.files && msg.files.filter(f => f.fileType === 'OTHER').length > 0" class="mt-1">
+                    <div v-for="file in msg.files.filter(f => f.fileType === 'OTHER')" :key="file.id" class="mb-1">
                       <v-btn variant="text" color="primary" :href="file.fileUrl" download :title="file.fileName"
                              class="pa-0 text-left" style="min-width: auto; text-transform: none;">
                         <v-icon size="small" class="mr-1">mdi-file</v-icon>
@@ -166,33 +166,33 @@
               <!-- 상대 메시지 -->
               <template v-else>
                 <div class="d-inline-flex flex-column pa-2 rounded-lg bg-grey-lighten-4 align-start" style="max-width: 70%; word-break: break-word">
-                  <span v-if="msg.hasMessage()" class="text-body-2">{{ msg.message }}</span>
+                  <span v-if="msg.message" class="text-body-2">{{ msg.message }}</span>
 
-                  <div v-if="msg.getImageFiles().length > 0" class="mt-1">
+                  <div v-if="msg.files && msg.files.filter(f => f.fileType === 'IMAGE').length > 0" class="mt-1">
                     <div 
                       class="image-grid-simple"
                       :style="{
-                        width: getImageGridLayout(msg.getImageFiles().length).containerWidth,
+                        width: getImageGridLayout(msg.files.filter(f => f.fileType === 'IMAGE').length).containerWidth,
                         display: 'flex',
                         flexWrap: 'wrap',
-                        gap: getImageGridLayout(msg.getImageFiles().length).gap
+                        gap: getImageGridLayout(msg.files.filter(f => f.fileType === 'IMAGE').length).gap
                       }"
                     >
-                      <div v-for="(file, i) in msg.getImageFiles()" :key="file.id" class="image-item-simple" :style="getImageItemStyle()">
+                      <div v-for="(file, i) in msg.files.filter(f => f.fileType === 'IMAGE')" :key="file.id" class="image-item-simple" :style="getImageItemStyle()">
                         <v-img :src="file.fileUrl" :width="getImageItemStyle().width" :height="getImageItemStyle().height"
                                class="rounded" :alt="file.fileName" @click="openImage(file.fileUrl)" cover />
                       </div>
                     </div>
                   </div>
 
-                  <div v-if="msg.getVideoFiles().length > 0" class="mt-1">
-                    <div v-for="file in msg.getVideoFiles()" :key="file.id" class="mb-1">
+                  <div v-if="msg.files && msg.files.filter(f => f.fileType === 'VIDEO').length > 0" class="mt-1">
+                    <div v-for="file in msg.files.filter(f => f.fileType === 'VIDEO')" :key="file.id" class="mb-1">
                       <video :src="file.fileUrl" controls :width="200" :height="150" class="rounded" :alt="file.fileName" />
                     </div>
                   </div>
 
-                  <div v-if="msg.getNonImageFiles().length > 0" class="mt-1">
-                    <div v-for="file in msg.getNonImageFiles()" :key="file.id" class="mb-1">
+                  <div v-if="msg.files && msg.files.filter(f => f.fileType === 'OTHER').length > 0" class="mt-1">
+                    <div v-for="file in msg.files.filter(f => f.fileType === 'OTHER')" :key="file.id" class="mb-1">
                       <v-btn variant="text" color="primary" :href="file.fileUrl" download :title="file.fileName"
                              class="pa-0 text-left" style="min-width: auto; text-transform: none;">
                         <v-icon size="small" class="mr-1">mdi-file</v-icon>
@@ -391,31 +391,195 @@ const loadMoreMessages = async () => {
 /* -----------------------------
  * 메시지/읽음 계산
  * ----------------------------- */
+// ✅ 수정: Store의 lastReadTimestamps 사용
+
+// 각 메시지별 unreadCount 계산 (Store의 lastReadTimestamps 사용)
 const chatMessages = computed(() => {
-  if (!currentRoomId.value) return [];
-  const roomId = currentRoomId.value;
-  const list = messages.value[roomId] || [];
-
-  const otherReadAt = chatStore.lastReadByOther[roomId] || null;
-  const boundary = otherReadAt ? new Date(otherReadAt).getTime() : null;
-  const pending = chatStore.pendingMyOffline?.[roomId] || {};
-
-  return list.map((msg) => {
-    let isRead = true;
-    if (msg.senderId === myId) {
-      const ts = new Date(msg.createdAt).getTime();
-      if (boundary !== null) {
-        const unreadByBoundary = ts > boundary;
-        const unreadByPending = !!pending[msg.id];
-        isRead = !(unreadByBoundary || unreadByPending);
-      } else {
-        isRead = !pending[msg.id];
-      }
+  // Store의 lastReadTimestamp 사용
+  const lastReadTimestamp = chatStore.lastReadTimestamps[currentRoomId.value];
+  
+  // onlineUsers 상태도 의존성에 추가하여 온라인 상태 변경 감지
+  const onlineUsers = chatStore.onlineUsers[currentRoomId.value];
+  const isOtherOnline = onlineUsers && onlineUsers.some(user => user.userId !== myId);
+  
+  const list = chatStore.messages[currentRoomId.value] || [];
+  if (list.length === 0) return [];
+  
+  // 디버깅: lastReadTimestamp 상태 확인
+  console.log(`🔍 chatMessages computed 실행:`, {
+    roomId: currentRoomId.value,
+    messageCount: list.length,
+    lastReadTimestamp: lastReadTimestamp,
+    hasLastReadTimestamp: !!lastReadTimestamp,
+    onlineUsers: onlineUsers,
+    isOtherOnline: isOtherOnline,
+    currentTime: new Date().toISOString()
+  });
+  
+  // lastReadTimestamp가 없으면 모든 메시지를 읽지 않음
+  if (!lastReadTimestamp) {
+    console.log(`⚠️ lastReadTimestamp가 설정되지 않음 - 모든 메시지를 읽지 않은 상태로 표시`);
+    return list.map(msg => ({
+      ...msg,
+      unreadCount: 1
+    }));
+  }
+  
+  const lastReadTime = new Date(lastReadTimestamp).getTime();
+  console.log(`✅ lastReadTimestamp 기준 시간: ${lastReadTimestamp} (원본)`);
+  
+  // 상대방이 온라인이고 lastReadTimestamp가 현재 시간에 가깝다면 모든 메시지를 읽은 것으로 간주
+  if (isOtherOnline) {
+    const currentTime = new Date().getTime();
+    const timeDiff = currentTime - lastReadTime;
+    const isRecent = timeDiff < 60000; // 1분 이내
+    
+    if (isRecent) {
+      console.log(`🟢 상대방이 온라인이고 최근 시간: 모든 메시지를 읽은 상태로 표시`);
+      return list.map(msg => ({
+        ...msg,
+        unreadCount: 0
+      }));
     }
-    msg.isRead = isRead;
-    return msg;
+  }
+  
+  return list.map((msg) => {
+    let unreadCount = 0;
+    const msgTime = new Date(msg.createdAt).getTime();
+    
+    // ✅ 핵심 로직: createdAt과 lastReadTimestamp 비교
+    if (msg.senderId === myId) {
+      // 내 메시지: 상대방이 읽었으면 0, 읽지 않았으면 1
+      unreadCount = msgTime > lastReadTime ? 1 : 0;
+    } else {
+      // 상대방 메시지: 내가 읽었으면 0, 읽지 않았으면 1
+      unreadCount = msgTime > lastReadTime ? 1 : 0;
+    }
+    
+    // 디버깅: 개별 메시지 unreadCount 계산 결과
+    if (unreadCount === 1) {
+      console.log(`📝 메시지 ${msg.id} unreadCount: 1`, {
+        senderId: msg.senderId,
+        isMyMessage: msg.senderId === myId,
+        messageTime: msg.createdAt,
+        lastReadTime: lastReadTimestamp,
+        diff: msgTime - lastReadTime,
+        isOtherOnline: isOtherOnline
+      });
+    }
+    
+    return {
+      ...msg,
+      unreadCount
+    };
   });
 });
+
+// ✅ 수정: Store의 lastReadTimestamps 변경 감지
+watch(
+  () => chatStore.lastReadTimestamps[currentRoomId.value],
+  (newTimestamp, oldTimestamp) => {
+    if (newTimestamp && newTimestamp !== oldTimestamp) {
+      console.log(`🔄 lastReadTimestamp 변경됨: ${oldTimestamp} → ${newTimestamp}`);
+      
+      // 강제로 computed 재계산을 위해 $forceUpdate와 유사한 효과
+      // Vue 3에서는 nextTick으로 처리
+      nextTick(() => {
+        console.log(`✅ unreadCount 재계산 완료`);
+      });
+    }
+  }
+);
+
+// ✅ 추가: 상대방 온라인 상태 변경 감지하여 자동 읽음 처리
+watch(
+  () => chatStore.onlineUsers[currentRoomId.value],
+  (newOnlineUsers, oldOnlineUsers) => {
+    if (!currentRoomId.value || !newOnlineUsers) return;
+    
+    const prev = Array.isArray(oldOnlineUsers) ? oldOnlineUsers : [];
+    const wasOnline = prev.some((user) => user.userId !== myId);
+    const nowOnline = newOnlineUsers.some((user) => user.userId !== myId);
+    
+    console.log(`🔍 온라인 상태 변경 감지:`, {
+      roomId: currentRoomId.value,
+      wasOnline,
+      nowOnline
+    });
+    
+    // 상대방이 오프라인에서 온라인으로 변경된 경우
+    if (!wasOnline && nowOnline) {
+      console.log(`🟢 상대방이 온라인되었습니다. 자동 읽음 처리 시작`);
+      
+      // 상대방이 온라인이 되면 자동으로 읽음 처리
+      setTimeout(async () => {
+        await chatStore.markMessagesAsRead(currentRoomId.value);
+        console.log(`✅ 상대방 온라인으로 인한 자동 읽음 처리 완료`);
+      }, 100);
+    }
+  },
+  { deep: true, immediate: true }
+);
+
+// 채팅방 입장 시 lastMessageTimestamp 초기화
+watch(
+  currentRoomId,
+  async (newRoomId, oldRoomId) => {
+    if (newRoomId && newRoomId !== oldRoomId) {
+      console.log(`🚪 채팅방 ${newRoomId} 입장`);
+      
+      // 메시지가 로드될 때까지 잠시 대기
+      await nextTick();
+      
+      // ✅ 수정: Store에서 lastReadTimestamp 확인
+      const lastReadTimestamp = chatStore.lastReadTimestamps[newRoomId];
+      if (lastReadTimestamp) {
+        console.log(`✅ Store에서 lastReadTimestamp 확인: ${lastReadTimestamp}`);
+      } else {
+        console.log(`⚠️ Store에 lastReadTimestamp가 없음`);
+      }
+    }
+  }
+);
+
+// 메시지 로드 완료 후 lastMessageTimestamp 설정
+watch(
+  () => chatStore.messages[currentRoomId.value],
+  (newMessages, oldMessages) => {
+    if (!newMessages || !currentRoomId.value) return;
+    
+    // ✅ 수정: Store의 lastReadTimestamps 사용하므로 별도 설정 불필요
+    // 메시지가 처음 로드되었거나 새로 추가된 경우
+    if (!oldMessages || newMessages.length !== oldMessages.length) {
+      // Store에서 lastReadTimestamp 확인
+      const lastReadTimestamp = chatStore.lastReadTimestamps[currentRoomId.value];
+      if (lastReadTimestamp) {
+        console.log(`✅ Store에서 lastReadTimestamp 확인: ${lastReadTimestamp}`);
+      } else {
+        console.log(`⚠️ Store에 lastReadTimestamp가 없음`);
+      }
+    }
+    
+    // 새로운 메시지가 추가되었는지 확인
+    if (oldMessages && newMessages.length > oldMessages.length) {
+      const newMessage = newMessages[newMessages.length - 1];
+      
+      // 상대방 메시지이고 현재 방에 있을 때만 읽음처리
+      if (newMessage.senderId !== myId && newMessage.roomId === currentRoomId.value) {
+        console.log(`📥 상대방 메시지 수신: 자동 읽음 처리`);
+        
+        // 약간의 지연 후 읽음 처리 (UI 렌더링 완료 후)
+        setTimeout(async () => {
+          await chatStore.markMessagesAsRead(currentRoomId.value);
+          
+          // ✅ 수정: Store에서 자동으로 lastReadTimestamp 업데이트됨
+          console.log(`✅ 상대방 메시지 수신 후 읽음 처리 완료`);
+        }, 100);
+      }
+    }
+  },
+  { deep: true }
+);
 
 /* -----------------------------
  * 자동 하단 스크롤 정책
@@ -483,15 +647,20 @@ onBeforeRouteLeave(async (_to, _from, next) => {
   next();
 });
 
-onBeforeUnmount(async () => {
+// 채팅방을 나갈 때 정리
+onBeforeUnmount(() => {
+  // lastMessageTimestamp 정리
+  // lastMessageTimestamp.value = null; // 로컬 상태 제거
+  
+  // WebSocket 연결 해제
   if (currentRoomId.value) {
-    await chatStore.disconnectWebSocket(currentRoomId.value);
+    chatStore.disconnectWebSocket(currentRoomId.value);
   }
+  
+  // 스크롤 타이머 정리
   if (scrollTimeout.value) clearTimeout(scrollTimeout.value);
-  if (topObserver) {
-    try { topObserver.disconnect(); } catch {}
-    topObserver = null;
-  }
+  
+  console.log(`🧹 채팅방 상세 컴포넌트 정리 완료`);
 });
 
 /* -----------------------------

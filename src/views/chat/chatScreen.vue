@@ -88,10 +88,10 @@
                             <span class="text-caption text-grey-darken-1 mr-1">
                               {{ formatChatTime(chat.lastMessageTime) }}
                             </span>
-                            <div v-if="chat.unreadCount > 0"
+                            <div v-if="chat.newMessageCount > 0"
                               class="rounded-circle text-white text-caption font-weight-bold d-flex align-center justify-center flex-shrink-0"
                               style="background-color: orange; width: 20px; height: 20px; min-width: 20px;">
-                              {{ chat.unreadCount }}
+                              {{ chat.newMessageCount }}
                             </div>
                           </div>
                         </div>
