@@ -20,23 +20,9 @@
                 <span class="icon-bell">
                   <svg xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 0 24 24" fill="none" stroke="#495057" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
                 </span>
-                <span v-if="notifications.length" class="badge">{{ notifications.length }}</span>
+                <span v-if="unreadCount && unreadCount > 0" class="badge">{{ unreadCount }}</span>
               </button>
-              <transition name="fade-slide">
-                <div v-if="showNotification" class="notification-modal">
-                  <div class="modal-header">알림</div>
-                  <ul>
-                    <li v-for="(msg, idx) in notifications" :key="idx">
-                      <img :src="msg.avatar" class="notification-avatar" alt="profile" />
-                      <div class="notification-content">
-                        <span class="notification-sender">{{ msg.sender }}</span>
-                        <span class="notification-message">{{ msg.message }}</span>
-                      </div>
-                    </li>
-                    <li v-if="!notifications.length" style="justify-content:center;">수신된 메시지가 없습니다.</li>
-                  </ul>
-                </div>
-              </transition>
+
             </div>
             <div class="cart-wrapper">
               <button class="cart-btn" @click="goToCart">
@@ -69,24 +55,9 @@
                 <span class="icon-bell">
                   <svg xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 0 24 24" fill="none" stroke="#495057" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
                 </span>
-                <span v-if="notifications.length" class="badge">{{ notifications.length }}</span>
+                <span v-if="unreadCount && unreadCount > 0" class="badge">{{ unreadCount }}</span>
               </button>
-              <!-- 알림 정보 모달창 -->
-              <transition name="fade-slide">
-                <div v-if="showNotification" class="notification-modal">
-                  <div class="modal-header">알림</div>
-                  <ul>
-                    <li v-for="(msg, idx) in notifications" :key="idx">
-                      <img :src="msg.avatar" class="notification-avatar" alt="profile" />
-                      <div class="notification-content">
-                        <span class="notification-sender">{{ msg.sender }}</span>
-                        <span class="notification-message">{{ msg.message }}</span>
-                      </div>
-                    </li>
-                    <li v-if="!notifications.length" style="justify-content:center;">수신된 메시지가 없습니다.</li>
-                  </ul>
-                </div>
-              </transition>
+
             </div>
             <div class="cart-wrapper">
               <button class="cart-btn" @click="goToCart">
@@ -114,33 +85,29 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '@/views/cart/cart.js'
+import { useNotificationStore } from '@/store/notification/notification.js'
+import { useNotifications } from '@/composables/useNotifications.js'
 
 const router = useRouter()
-// const cartStore = useCartStore()
-const isLoggedIn = ref(false) // 임시: 실제 로그인 상태와 연동 필요
+const cartStore = useCartStore()
+const notificationStore = useNotificationStore()
+const { isConnected } = useNotifications()
+
+// unreadCount를 computed로 참조
+const unreadCount = computed(() => notificationStore.unreadCount)
+
+// unreadCount 변화 감지
+watch(unreadCount, (newValue, oldValue) => {
+  
+}, { immediate: true })
+
+const isLoggedIn = ref(true) // 임시: 실제 로그인 상태와 연동 필요 (테스트용으로 true 설정)
 const nickname = ref('김요리') // 임시: 실제 닉네임 연동 필요
 const hoverMenu = ref('')
 const showNotification = ref(false)
-const notifications = ref([
-  {
-    sender: '홍길동',
-    avatar: 'https://randomuser.me/api/portraits/men/32.jpg',
-    message: '새로운 1:1 채팅 메시지가 도착했습니다. 오늘 저녁에 시간 되시나요?'
-  },
-  {
-    sender: '김요리',
-    avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
-    message: '강의가 승인되었습니다.'
-  },
-  {
-    sender: '이수진',
-    avatar: 'https://randomuser.me/api/portraits/women/68.jpg',
-    message: '레시피에 댓글이 달렸습니다. 정말 맛있어 보여요!'
-  }
-]) // 임시 데이터
 const isMobile = ref(false)
 const showMobileMenu = ref(false)
 
@@ -164,7 +131,8 @@ function logout() {
   closeMobileMenu()
 }
 function toggleNotification() {
-  showNotification.value = !showNotification.value
+  // 알림 페이지로 이동
+  router.push('/notifications')
 }
 function handleResize() {
   isMobile.value = window.innerWidth <= 900
@@ -180,9 +148,12 @@ function goToCart() {
   router.push('/cart')
   closeMobileMenu()
 }
-onMounted(() => {
+onMounted(async () => {
   handleResize()
   window.addEventListener('resize', handleResize)
+  
+  // 실시간 알림 연결은 useNotifications에서 자동 처리
+  console.log('Header 컴포넌트 마운트 완료')
 })
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
@@ -294,77 +265,7 @@ onUnmounted(() => {
   text-align: center;
   font-weight: bold;
 }
-.notification-modal {
-  position: absolute;
-  right: 0;
-  top: 36px;
-  width: 320px;
-  background: #fff;
-  box-shadow: 0 2px 16px rgba(0,0,0,0.13);
-  border-radius: 12px;
-  padding: 12px 0 8px 0;
-  z-index: 2000;
-  opacity: 1;
-  transform: translateY(0);
-  transition: opacity 0.25s, transform 0.25s;
-}
-.notification-modal .modal-header {
-  font-weight: bold;
-  font-size: 1.1rem;
-  padding: 0 20px 10px 20px;
-  border-bottom: 1px solid #eee;
-  margin-bottom: 8px;
-}
-.notification-modal ul {
-  list-style: none;
-  margin: 0;
-  padding: 0 8px;
-}
-.notification-modal li {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 0.98rem;
-  color: var(--color-text);
-  padding: 10px 8px 10px 8px;
-  border-bottom: 1px solid #f3f3f3;
-  min-height: 48px;
-}
-.notification-modal li:last-child {
-  border-bottom: none;
-}
-.notification-avatar {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  object-fit: cover;
-  background: #f3f3f3;
-  flex-shrink: 0;
-  border: 1.5px solid #eee;
-}
-.notification-content {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  flex: 1;
-}
-.notification-sender {
-  font-weight: 600;
-  font-size: 1.02rem;
-  color: var(--color-primary);
-  margin-bottom: 2px;
-  text-overflow: ellipsis;
-  overflow: hidden;
-  white-space: nowrap;
-}
-.notification-message {
-  font-size: 0.97rem;
-  color: var(--color-text);
-  text-overflow: ellipsis;
-  overflow: hidden;
-  white-space: nowrap;
-  max-width: 180px;
-}
+
 .cart-wrapper {
   position: relative;
 }
