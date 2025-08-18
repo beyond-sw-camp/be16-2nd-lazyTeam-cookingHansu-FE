@@ -177,8 +177,22 @@ export const useChatStore = defineStore('chat', {
       
       console.log(`👥 채팅방 ${roomId} 온라인 사용자 업데이트:`, onlineUserIds);
       
-      // 상대방이 온라인되어도 자동으로 읽음처리하지 않음
-      // 읽음처리는 실제로 메시지를 읽었을 때만 해야 함
+      // ✅ 추가: 상대방이 온라인이 되면 lastReadTimestamp 업데이트
+      if (!wasOnline && nowOnline) {
+        console.log(`🟢 상대방이 온라인이 되었습니다. lastReadTimestamp 업데이트`);
+        // ✅ 수정: 한국 시간으로 lastReadTimestamp 설정
+        const now = new Date();
+        const koreaTime = new Date(now.getTime() + (9 * 60 * 60 * 1000)); // UTC+9
+        const koreaTimeString = koreaTime.toISOString();
+        this.lastReadTimestamps[roomId] = koreaTimeString;
+        console.log(`✅ 상대방 온라인으로 lastReadTimestamp 업데이트: ${roomId} -> ${koreaTimeString}`);
+        
+        // unreadCount 재계산을 위해 UI 갱신
+        if (roomId === this.currentRoomId) {
+          this.$patch({});
+        }
+      }
+      
       console.log(`ℹ️ 상대방 온라인 상태 변경: ${wasOnline} → ${nowOnline}`);
       
       if (roomId === this.currentRoomId) {
@@ -669,16 +683,34 @@ export const useChatStore = defineStore('chat', {
         return;
       }
       
+      // ✅ 추가: 마지막 메시지가 상대방 메시지인지 확인
+      const messages = this.messages[roomId] || [];
+      
+      if (messages.length === 0) {
+        console.log(`⏭️ 채팅방 ${roomId}에 메시지가 없어서 읽음 처리 스킵`);
+        return;
+      }
+      
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.senderId === MY_ID) {
+        console.log(`⏭️ 채팅방 ${roomId}의 마지막 메시지가 내 메시지라서 읽음 처리 스킵`);
+        return;
+      }
+      
+      console.log(`✅ 채팅방 ${roomId}의 마지막 메시지가 상대방 메시지라서 읽음 처리 진행`);
+      
       this._readingRooms.add(roomId);
       
       try {
         // 백엔드에 읽음 처리 요청
         await readMessages(roomId, MY_ID);
         
-        // ✅ 추가: 현재 시간으로 lastReadTimestamp 업데이트
-        const now = new Date().toISOString();
-        this.lastReadTimestamps[roomId] = now;
-        console.log(`✅ 읽음 처리 후 lastReadTimestamp 업데이트: ${roomId} -> ${now}`);
+        // ✅ 수정: 한국 시간으로 lastReadTimestamp 설정
+        const now = new Date();
+        const koreaTime = new Date(now.getTime() + (9 * 60 * 60 * 1000)); // UTC+9
+        const koreaTimeString = koreaTime.toISOString();
+        this.lastReadTimestamps[roomId] = koreaTimeString;
+        console.log(`✅ 읽음 처리 후 lastReadTimestamp 업데이트: ${roomId} -> ${koreaTimeString}`);
         
         // 로컬 상태 업데이트
         const room = this.rooms.find(r => r.roomId === roomId);

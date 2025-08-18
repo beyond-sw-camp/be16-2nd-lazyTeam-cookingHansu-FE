@@ -445,15 +445,24 @@ const chatMessages = computed(() => {
   
   return list.map((msg) => {
     let unreadCount = 0;
-    const msgTime = new Date(msg.createdAt).getTime();
     
-    // ✅ 핵심 로직: createdAt과 lastReadTimestamp 비교
+    // ✅ 수정: 시간대 통일 (한국 시간으로 변환)
+    // 백엔드는 한국 시간, 프론트는 UTC 시간이므로 9시간 차이 보정
+    const msgTime = new Date(msg.createdAt).getTime();
+    const lastReadTime = new Date(lastReadTimestamp).getTime();
+    
+    // 한국 시간대 보정 (UTC+9)
+    const koreaTimeOffset = 9 * 60 * 60 * 1000; // 9시간을 밀리초로
+    const adjustedMsgTime = msgTime + koreaTimeOffset;
+    const adjustedLastReadTime = lastReadTime + koreaTimeOffset;
+    
+    // ✅ 핵심 로직: 보정된 시간으로 비교
     if (msg.senderId === myId) {
       // 내 메시지: 상대방이 읽었으면 0, 읽지 않았으면 1
-      unreadCount = msgTime > lastReadTime ? 1 : 0;
+      unreadCount = adjustedMsgTime > adjustedLastReadTime ? 1 : 0;
     } else {
       // 상대방 메시지: 내가 읽었으면 0, 읽지 않았으면 1
-      unreadCount = msgTime > lastReadTime ? 1 : 0;
+      unreadCount = adjustedMsgTime > adjustedLastReadTime ? 1 : 0;
     }
     
     // 디버깅: 개별 메시지 unreadCount 계산 결과
