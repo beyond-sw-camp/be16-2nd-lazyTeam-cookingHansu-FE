@@ -1,14 +1,22 @@
 <template>
   <div class="lecture-list-page">
     <Header />
-    <!-- 상단 탭 -->
+    <!-- 상단 탭과 강의 등록 버튼 -->
     <div class="nav-tabs">
-      <button :class="{ active: currentTab === 'recipe' }" @click="goToRecipe">
-        레시피 게시글
-      </button>
-      <button :class="{ active: currentTab === 'lecture' }" @click="currentTab = 'lecture'">
-        강의 목록
-      </button>
+      <div class="nav-buttons">
+        <button :class="{ active: currentTab === 'recipe' }" @click="goToRecipe">
+          레시피 게시글
+        </button>
+        <button :class="{ active: currentTab === 'lecture' }" @click="currentTab = 'lecture'">
+          강의 목록
+        </button>
+      </div>
+      <!-- 강의 등록하기 버튼 - CHEF, OWNER 역할일 때만 표시 -->
+      <div v-if="role === 'CHEF' || role === 'OWNER'" class="lecture-create-btn-container">
+        <button class="lecture-create-btn" @click="goToLectureCreate">
+          강의 등록하기
+        </button>
+      </div>
     </div>
 
     <!-- 필터 -->
@@ -103,6 +111,9 @@ export default {
       selectedSort: 'latest',
       selectedLecture: null,
       showClickEffect: false,
+      // 로그인 기능 미구현으로 인해 임시로 설정 (추후 실제 로그인 상태로 변경 예정)
+      role: 'CHEF', // 'CHEF', 'OWNER', 'USER' 중 하나로 설정하여 테스트 가능
+      // role: 'USER', // 일반 사용자로 테스트하려면 이 줄을 활성화
       lectures: [
         {
           id: '550e8400-e29b-41d4-a716-446655440001',
@@ -958,15 +969,70 @@ export default {
       // 모든 강의 상세보기 가능
       this.$router.push({ name: 'LectureDetail', params: { id: lecture.id } });
     },
+    goToLectureCreate() {
+      console.log('강의 등록 페이지로 이동');
+      this.$router.push({ name: 'LectureCreate' });
+    },
   },
 };
 </script>
 
 <style scoped>
 .lecture-list-page { background: #fafbfc; min-height: 100vh; margin-top: 64px; }
-.nav-tabs { display: flex; justify-content: center; margin: 16px 0 24px 0; gap: 12px; }
-.nav-tabs button { padding: 10px 24px; border: none; background: #fff; color: #ff7a00; font-weight: 600; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
+.nav-tabs { 
+  display: flex; 
+  justify-content: center; 
+  align-items: center;
+  margin: 16px 0 24px 0; 
+  max-width: 1040px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0 20px;
+  position: relative;
+}
+
+.nav-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.nav-tabs button { 
+  padding: 10px 24px; 
+  border: none; 
+  background: #fff; 
+  color: #ff7a00; 
+  font-weight: 600; 
+  border-radius: 6px; 
+  cursor: pointer; 
+  transition: background 0.2s; 
+}
 .nav-tabs button.active { background: #ff7a00; color: #fff; }
+
+.lecture-create-btn-container {
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.lecture-create-btn {
+  padding: 10px 20px;
+  background: #ff7a00;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(255, 122, 0, 0.2);
+}
+
+.lecture-create-btn:hover {
+  background: #e66a00;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(255, 122, 0, 0.3);
+}
 
 .filter-card { background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); padding: 10px 14px 6px 14px; max-width: 1040px; margin: 0 auto 16px auto; }
 .filter-title { font-size: 15px; font-weight: 700; margin-bottom: 8px; color: #222; }
