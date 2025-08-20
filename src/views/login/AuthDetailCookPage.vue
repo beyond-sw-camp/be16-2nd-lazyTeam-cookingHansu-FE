@@ -8,34 +8,34 @@
       <div class="section-title">요식업 종사자 인증</div>
 
       <FormSelect
-        v-model="form.type"
+        v-model="form.cuisineType"
         label="요식업 종류"
         placeholder="요식업 종류를 선택하세요"
-        :options="typeOptions"
+        :options="cuisineTypeOptions"
         :required="true"
-        :has-error="errors.type"
+        :has-error="errors.cuisineType"
         error-message="요식업 종류를 선택해 주세요!"
-        @input="onTypeSelect"
+        @input="onCuisineTypeSelect"
       />
 
       <FileUpload
-        v-model="form.certFile"
+        v-model="form.licenseUrl"
         label="요리사 자격증"
         placeholder="자격증 파일을 선택하세요"
         :required="true"
-        :has-error="errors.certFile"
+        :has-error="errors.licenseUrl"
         error-message="자격증 파일을 선택해 주세요!"
         @update:modelValue="onFileSelect"
       />
 
       <FormInput
-        v-model="form.certNum"
+        v-model="form.licenseNumber"
         label="자격증 관리번호"
         placeholder="자격증 관리번호를 입력하세요"
         :required="true"
-        :has-error="errors.certNum"
+        :has-error="errors.licenseNumber"
         error-message="자격증 관리번호를 입력해 주세요!"
-        @input="onCertNumInput"
+        @input="onLicenseNumberInput"
       />
     </form>
 
@@ -66,7 +66,7 @@ const authStore = useAuthStore();
 const showBox = ref(true);
 
 // 백엔드 엔티티에 맞는 요식업 종류
-const typeOptions = [
+const cuisineTypeOptions = [
   { value: "KOREAN", label: "한식" },
   { value: "JAPANESE", label: "일식" },
   { value: "CHINESE", label: "중식" },
@@ -75,29 +75,29 @@ const typeOptions = [
 ];
 
 const form = ref({
-  type: "",
-  certFile: null,
-  certNum: "",
+  cuisineType: "",
+  licenseUrl: null,
+  licenseNumber: "",
 });
 
 const errors = ref({
-  type: false,
-  certFile: false,
-  certNum: false,
+  cuisineType: false,
+  licenseUrl: false,
+  licenseNumber: false,
 });
 
 onMounted(() => {
   // 이전에 저장된 데이터가 있으면 불러오기
   const savedData = getStepData("authDetail");
   if (savedData) {
-    form.value.type = savedData.type || "";
-    form.value.certNum = savedData.certNum || "";
+    form.value.cuisineType = savedData.cuisineType || "";
+    form.value.licenseNumber = savedData.licenseNumber || "";
   }
 
   // 초기 에러 상태 초기화
-  errors.value.type = false;
-  errors.value.certFile = false;
-  errors.value.certNum = false;
+  errors.value.cuisineType = false;
+  errors.value.licenseUrl = false;
+  errors.value.licenseNumber = false;
 });
 
 function onPrev() {
@@ -108,31 +108,46 @@ async function onSubmit() {
   try {
     // localStorage에 현재 단계 데이터 저장
     saveStepData("authDetail", {
-      type: form.value.type,
-      certNum: form.value.certNum,
-      certFile: form.value.certFile ? form.value.certFile.name : null,
+      cuisineType: form.value.cuisineType,
+      licenseNumber: form.value.licenseNumber,
+      licenseUrl: form.value.licenseUrl ? form.value.licenseUrl.name : null,
+    });
+
+    // 인증 스토어의 사용자 정보 업데이트
+    authStore.updateUserInfo({
+      chef: {
+        cuisineType: form.value.cuisineType,
+        licenseNumber: form.value.licenseNumber,
+        licenseUrl: form.value.licenseUrl ? form.value.licenseUrl.name : null,
+      }
     });
 
     // 현재 사용자 ID 가져오기
     const currentUser = authStore.user;
+    console.log(currentUser, authStore.user);
     if (!currentUser || !currentUser.id) {
       throw new Error("사용자 정보를 찾을 수 없습니다.");
     }
 
-    // 최종 회원가입 완료 - 통합 API 사용
-    const registrationData = getCompleteRegistrationData();
-    const response = await authService.addUserInfo(
-      currentUser.id,
-      registrationData
-    );
+    // setTimeout(async () => {
+      // 최종 회원가입 완료 - 통합 API 사용
+      const registrationData = getCompleteRegistrationData();
+      const response = await authService.addUserInfo(
+        currentUser.id,
+        registrationData
+      );
+      console.log(registrationData, response);
 
-    if (response.isSuccess()) {
-      // 성공 시 localStorage 데이터 초기화
-      clearRegistrationData();
-      router.push("/complete");
-    } else {
-      throw new Error(response.getMessage() || "회원가입에 실패했습니다.");
-    }
+      setTimeout(() => {
+        if (response.isSuccess()) {
+        // 성공 시 localStorage 데이터 초기화
+        clearRegistrationData();
+        router.push("/complete");
+      } else {
+        throw new Error(response.getMessage() || "회원가입에 실패했습니다.");
+      }
+      }, 1000);
+    // }, 1000);
   } catch (error) {
     console.error("회원가입 오류:", error);
     alert(
@@ -142,30 +157,30 @@ async function onSubmit() {
 }
 
 function validate() {
-  errors.value.type = !form.value.type;
-  errors.value.certFile = !form.value.certFile;
-  errors.value.certNum = !form.value.certNum;
-  return !errors.value.type && !errors.value.certFile && !errors.value.certNum;
+  errors.value.cuisineType = !form.value.cuisineType;
+  errors.value.licenseUrl = !form.value.licenseUrl;
+  errors.value.licenseNumber = !form.value.licenseNumber;
+  return !errors.value.cuisineType && !errors.value.licenseUrl && !errors.value.licenseNumber;
 }
 
 // 요식업 종류 선택 시 에러 제거
-function onTypeSelect() {
-  if (form.value.type && errors.value.type) {
-    errors.value.type = false;
+function onCuisineTypeSelect() {
+  if (form.value.cuisineType && errors.value.cuisineType) {
+    errors.value.cuisineType = false;
   }
 }
 
 // 파일 선택 시 에러 제거
 function onFileSelect() {
-  if (form.value.certFile && errors.value.certFile) {
-    errors.value.certFile = false;
+  if (form.value.licenseUrl && errors.value.licenseUrl) {
+    errors.value.licenseUrl = false;
   }
 }
 
 // 자격증 번호 입력 시 에러 제거
-function onCertNumInput() {
-  if (form.value.certNum && errors.value.certNum) {
-    errors.value.certNum = false;
+function onLicenseNumberInput() {
+  if (form.value.licenseNumber && errors.value.licenseNumber) {
+    errors.value.licenseNumber = false;
   }
 }
 </script>

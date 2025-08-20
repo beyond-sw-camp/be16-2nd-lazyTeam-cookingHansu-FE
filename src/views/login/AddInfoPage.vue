@@ -136,15 +136,21 @@ function onNext() {
     role: form.value.role,
   });
 
+  // 인증 스토어의 사용자 정보 업데이트
+  authStore.updateUserInfo({
+    nickname: form.value.nickname,
+    role: form.value.role,
+  });
+
   progressAnimate.value = true;
   showBox.value = false;
   setTimeout(() => {
     if (form.value.role === "GENERAL") {
-      router.push("/auth-detail-user");
+      router.push("/detail-user");
     } else if (form.value.role === "CHEF") {
-      router.push("/auth-detail-cook");
+      router.push("/detail-cook");
     } else if (form.value.role === "OWNER") {
-      router.push("/auth-detail-owner");
+      router.push("/detail-owner");
     } else {
       router.push("/");
     }

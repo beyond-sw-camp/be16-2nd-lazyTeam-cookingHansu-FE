@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { API_CONFIG } from '@/constants/oauth';
 import { authService } from '@/services/auth/authService';
+import { apiGet } from '@/utils/api';
 
 // Auth 관련 상태 관리 스토어
 // OAuth2 소셜 로그인 기반의 토큰 관리, 로그인 상태 관리, 사용자 정보 관리
@@ -63,11 +64,110 @@ export const useAuthStore = defineStore('auth', {
       // 사용자의 기본 프로필 정보가 완성되었는지 여부로 판단
       if (!state.user) return false;
       
-      // // 기본 프로필 정보가 누락된 경우 신규 사용자로 간주
-      // // 닉네임, 프로필 이미지, 전화번호, 주소 중 하나라도 없으면 신규 사용자
-      const hasBasicProfile = state.user.nickname != null;
-      console.log(hasBasicProfile);
-      return !hasBasicProfile;
+      // getRegistrationStep과 일치하도록 수정
+      // getter 내에서 다른 getter를 호출할 때는 this를 사용해야 함
+      // 하지만 state 파라미터만 사용할 수 있으므로 직접 로직을 구현
+      if (!state.user.nickname || !state.user.role) {
+        return true; // add-info 단계
+      }
+      
+      // 역할별 상세 정보 확인
+      switch (state.user.role) {
+        case 'GENERAL':
+          if (!state.user.generalType) {
+            return true; // detail-user 단계
+          }
+          break;
+        case 'CHEF':
+          if (!state.user.chef || 
+              !state.user.chef.licenseNumber || 
+              !state.user.chef.cuisineType || 
+              !state.user.chef.licenseUrl) {
+            return true; // detail-cook 단계
+          }
+          break;
+        case 'OWNER':
+          if (!state.user.business || 
+              !state.user.business.businessNumber || 
+              !state.user.business.businessUrl || 
+              !state.user.business.businessName || 
+              !state.user.business.businessAddress || 
+              !state.user.business.shopCategory) {
+            return true; // detail-owner 단계
+          }
+          break;
+      }
+      
+      return false; // 등록 완료
+    },
+
+    // 사용자 등록 완료 상태 확인
+    isRegistrationComplete: (state) => {
+      if (!state.user) return false;
+      
+      // 공통 필수 정보 확인
+      if (!state.user.nickname || !state.user.role) {
+        return false;
+      }
+      
+      // 역할별 필수 정보 확인
+      switch (state.user.role) {
+        case 'GENERAL':
+          return state.user.generalType != null;
+        case 'CHEF':
+          return state.user.chef && 
+                 state.user.chef.licenseNumber && 
+                 state.user.chef.cuisineType && 
+                 state.user.chef.licenseUrl;
+        case 'OWNER':
+          return state.user.business && 
+                 state.user.business.businessNumber && 
+                 state.user.business.businessUrl && 
+                 state.user.business.businessName && 
+                 state.user.business.businessAddress && 
+                 state.user.business.shopCategory;
+        default:
+          return false;
+      }
+    },
+
+    // 사용자가 어느 단계까지 등록했는지 확인
+    getRegistrationStep: (state) => {
+      if (!state.user) return 'none';
+      
+      // 기본 정보가 없으면 add-info 단계
+      if (!state.user.nickname || !state.user.role) {
+        return 'add-info';
+      }
+      
+      // 역할별 상세 정보 확인
+      switch (state.user.role) {
+        case 'GENERAL':
+          if (!state.user.generalType) {
+            return 'detail-user';
+          }
+          break;
+        case 'CHEF':
+          if (!state.user.chef || 
+              !state.user.chef.licenseNumber || 
+              !state.user.chef.cuisineType || 
+              !state.user.chef.licenseUrl) {
+            return 'detail-cook';
+          }
+          break;
+        case 'OWNER':
+          if (!state.user.business || 
+              !state.user.business.businessNumber || 
+              !state.user.business.businessUrl || 
+              !state.user.business.businessName || 
+              !state.user.business.businessAddress || 
+              !state.user.business.shopCategory) {
+            return 'detail-owner';
+          }
+          break;
+      }
+      
+      return 'complete';
     },
 
     // 헤더에 렌더링할 사용자 정보 getter
@@ -93,6 +193,13 @@ export const useAuthStore = defineStore('auth', {
           
           // 토큰 및 사용자 정보 저장 
           this.setAuthData(accessToken, refreshToken, user, expiresIn, 'local');
+          
+          // 최신 사용자 정보 조회
+          try {
+            await this.getCurrentUser();
+          } catch (error) {
+            console.error('Failed to get current user after local login:', error);
+          }
           
           return user;
         } else {
@@ -128,6 +235,14 @@ export const useAuthStore = defineStore('auth', {
             this.user = JSON.parse(savedUser);
             this.provider = savedProvider || 'local';
             this.isAuthenticated = true;
+            
+            // 최신 사용자 정보 조회
+            try {
+              await this.getCurrentUser();
+            } catch (error) {
+              console.error('Failed to get current user during initialization:', error);
+              // 사용자 정보 조회 실패 시에도 기본 정보는 유지
+            }
           } else {
             // 토큰이 만료된 경우 자동 갱신 시도
             await this.refreshToken();
@@ -163,6 +278,13 @@ export const useAuthStore = defineStore('auth', {
         // 토큰 및 사용자 정보 저장 (Google 제공자로 설정)
         this.setAuthData(accessToken, refreshToken, user, expiresIn, 'google');
         
+        // 최신 사용자 정보 조회
+        try {
+          await this.getCurrentUser();
+        } catch (error) {
+          console.error('Failed to get current user after Google login:', error);
+        }
+        
         return user;
       } catch (error) {
         console.error('Google login failed:', error);
@@ -197,6 +319,13 @@ export const useAuthStore = defineStore('auth', {
         // 토큰 및 사용자 정보 저장 (Kakao 제공자로 설정)
         this.setAuthData(accessToken, refreshToken, user, expiresIn, 'kakao');
         
+        // 최신 사용자 정보 조회
+        try {
+          await this.getCurrentUser();
+        } catch (error) {
+          console.error('Failed to get current user after Kakao login:', error);
+        }
+        
         return user;
       } catch (error) {
         console.error('Kakao login failed:', error);
@@ -230,6 +359,13 @@ export const useAuthStore = defineStore('auth', {
 
         // 토큰 및 사용자 정보 저장 (Naver 제공자로 설정)
         this.setAuthData(accessToken, refreshToken, user, expiresIn, 'naver');
+        
+        // 최신 사용자 정보 조회
+        try {
+          await this.getCurrentUser();
+        } catch (error) {
+          console.error('Failed to get current user after Naver login:', error);
+        }
         
         return user;
       } catch (error) {
@@ -400,6 +536,42 @@ export const useAuthStore = defineStore('auth', {
       } catch (error) {
         console.error('Error fetching profile info:', error);
         return null;
+      }
+    },
+
+    // 현재 로그인한 사용자 정보 조회 (/user/me 엔드포인트)
+    async getCurrentUser() {
+      try {
+        if (!this.accessToken) {
+          console.warn('Access token not available');
+          return null;
+        }
+
+        const response = await apiGet('/user/me');
+        
+        if (!response.ok) {
+          if (response.status === 401) {
+            // 토큰이 유효하지 않은 경우
+            this.clearAuth();
+            throw new Error('인증이 만료되었습니다. 다시 로그인해주세요.');
+          }
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const responseData = await response.json();
+        
+        if (responseData.success && responseData.data) {
+          // 사용자 정보 업데이트
+          this.user = responseData.data;
+          localStorage.setItem('user', JSON.stringify(this.user));
+          return responseData.data;
+        } else {
+          console.error('Failed to get current user:', responseData.message);
+          return null;
+        }
+      } catch (error) {
+        console.error('Error getting current user:', error);
+        throw error;
       }
     },
   },

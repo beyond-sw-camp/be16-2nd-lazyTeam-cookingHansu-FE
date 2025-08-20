@@ -14,6 +14,7 @@ const API_ENDPOINTS = {
   PROFILE_INFO: "/user/profile",
   ADD_INFO: "/user/add-info",
   REFRESH: "/user/refresh",
+  CURRENT_USER_INFO: "/user/me", 
 };
 
 export const authService = {
@@ -104,4 +105,10 @@ export const authService = {
     const response = await apiGet(endpoint);
     return handleApiResponse(response);
   },
+
+  // 현재 로그인된 사용자 정보 조회
+  async getCurrentUserInfo() {
+    const response = await apiGet(API_ENDPOINTS.CURRENT_USER_INFO);
+    return handleApiResponse(response); 
+  }
 };

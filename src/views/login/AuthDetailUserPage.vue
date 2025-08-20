@@ -6,13 +6,13 @@
 
     <form class="form-content" @submit.prevent="onSubmit">
       <FormSelect
-        v-model="form.extra"
+        v-model="form.generalType"
         label="추가 정보"
         placeholder="추가 정보를 선택하세요"
-        :options="extraOptions"
-        :has-error="errors.extra"
+        :options="generalTypeOptions"
+        :has-error="errors.generalType"
         error-message="추가 정보를 입력해 주세요!"
-        @input="onExtraSelect"
+        @input="onGeneralTypeSelect"
       />
     </form>
 
@@ -40,12 +40,12 @@ const router = useRouter();
 const authStore = useAuthStore();
 const showBox = ref(true);
 const form = ref({
-  extra: "",
+  generalType: "",
 });
-const errors = ref({ extra: false });
+const errors = ref({ generalType: false });
 
 // 백엔드 엔티티에 맞는 일반 사용자 유형
-const extraOptions = [
+const generalTypeOptions = [
   { value: "STUDENT", label: "학생" },
   { value: "HOUSEWIFE", label: "주부" },
   { value: "LIVINGALONE", label: "자취생" },
@@ -56,11 +56,11 @@ onMounted(() => {
   // 이전에 저장된 데이터가 있으면 불러오기
   const savedData = getStepData("authDetail");
   if (savedData) {
-    form.value.extra = savedData.extra || "";
+    form.value.generalType = savedData.generalType || "";
   }
 
   // 초기 에러 상태 초기화
-  errors.value.extra = false;
+  errors.value.generalType = false;
 });
 
 function onPrev() {
@@ -68,14 +68,14 @@ function onPrev() {
 }
 
 function validate() {
-  errors.value.extra = !form.value.extra;
-  return !errors.value.extra;
+  errors.value.generalType = !form.value.generalType;
+  return !errors.value.generalType;
 }
 
 // 추가 정보 선택 시 에러 제거
-function onExtraSelect() {
-  if (form.value.extra && errors.value.extra) {
-    errors.value.extra = false;
+function onGeneralTypeSelect() {
+  if (form.value.generalType && errors.value.generalType) {
+    errors.value.generalType = false;
   }
 }
 
@@ -85,7 +85,12 @@ async function onSubmit() {
   try {
     // localStorage에 현재 단계 데이터 저장
     saveStepData("authDetail", {
-      extra: form.value.extra,
+      generalType: form.value.generalType,
+    });
+
+    // 인증 스토어의 사용자 정보 업데이트
+    authStore.updateUserInfo({
+      generalType: form.value.generalType,
     });
 
     // 현재 사용자 ID 가져오기
@@ -95,19 +100,20 @@ async function onSubmit() {
     }
 
     // 최종 회원가입 완료 - 통합 API 사용
-    const registrationData = getCompleteRegistrationData();
-    const response = await authService.addUserInfo(
-      currentUser.id,
-      registrationData
-    );
-
-    if (response.isSuccess()) {
-      // 성공 시 localStorage 데이터 초기화
-      clearRegistrationData();
-      router.push("/complete");
-    } else {
-      throw new Error(response.getMessage() || "회원가입에 실패했습니다.");
-    }
+    setTimeout(async () => {
+      const registrationData = getCompleteRegistrationData();
+      const response = await authService.addUserInfo(
+        currentUser.id,
+        registrationData
+      );
+      if (response.isSuccess()) {
+        // 성공 시 localStorage 데이터 초기화
+        clearRegistrationData();
+        router.push("/complete");  
+      } else {
+        throw new Error(response.getMessage() || "회원가입에 실패했습니다.");
+      }
+    }, 1000);
   } catch (error) {
     console.error("회원가입 오류:", error);
     alert(

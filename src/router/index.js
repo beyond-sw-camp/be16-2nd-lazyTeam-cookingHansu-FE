@@ -105,19 +105,19 @@ const routes = [
     meta: { requiresAuth: true, requiresNewUser: true },
   },
   {
-    path: "/auth-detail-user",
+    path: "/detail-user",
     name: "AuthDetailUser",
     component: AuthDetailUserPage,
     meta: { requiresAuth: true },
   },
   {
-    path: "/auth-detail-cook",
+    path: "/detail-cook",
     name: "AuthDetailCook",
     component: AuthDetailCookPage,
     meta: { requiresAuth: true },
   },
   {
-    path: "/auth-detail-owner",
+    path: "/detail-owner",
     name: "AuthDetailOwner",
     component: AuthDetailOwnerPage,
     meta: { requiresAuth: true },
@@ -180,10 +180,12 @@ router.beforeEach(async (to, from, next) => {
   // 인증 상태 확인 (access token이 있지만 사용자 정보가 없는 경우)
   if (authStore.isAuthenticated && !authStore.user) {
     try {
-      // 사용자 정보가 없는 경우 로그아웃 처리
-      authStore.clearAuth();
+      // 사용자 정보가 없는 경우 /user/me 엔드포인트로 최신 정보 조회
+      await authStore.getCurrentUser();
     } catch (error) {
       console.error("Auth check failed:", error);
+      // 사용자 정보 조회 실패 시 로그아웃 처리
+      authStore.clearAuth();
     }
   }
 
@@ -211,10 +213,105 @@ router.beforeEach(async (to, from, next) => {
     return;
   }
 
+  // 추가 정보 입력 페이지들에 대한 접근 제어
+  if (authStore.isAuthenticated && authStore.user) {
+    const registrationStep = authStore.getRegistrationStep;
+    
+    // 이미 등록이 완료된 사용자가 추가 정보 입력 페이지에 접근하려는 경우
+    if (registrationStep === 'complete') {
+      if (to.path === '/add-info' || to.path === '/detail-user' || 
+          to.path === '/detail-cook' || to.path === '/detail-owner') {
+        next('/');
+        return;
+      }
+    }
+    
+    // 각 단계별 페이지에 대한 접근 제어
+    if (to.path === '/add-info' && registrationStep !== 'add-info') {
+      // add-info 단계가 아닌 사용자가 접근하려는 경우
+      if (registrationStep === 'complete') {
+        next('/');
+        return;
+      } else {
+        // 해당하는 단계로 리다이렉트
+        next(`/${registrationStep.replace('detail-', 'detail-')}`);
+        return;
+      }
+    }
+    
+    if (to.path === '/detail-user' && registrationStep !== 'detail-user') {
+      if (registrationStep === 'add-info') {
+        next('/add-info');
+        return;
+      } else if (registrationStep === 'complete') {
+        next('/');
+        return;
+      }
+    }
+    
+    if (to.path === '/detail-cook' && registrationStep !== 'detail-cook') {
+      if (registrationStep === 'add-info') {
+        next('/add-info');
+        return;
+      } else if (registrationStep === 'complete') {
+        next('/');
+        return;
+      }
+    }
+    
+    if (to.path === '/detail-owner' && registrationStep !== 'detail-owner') {
+      if (registrationStep === 'add-info') {
+        next('/add-info');
+        return;
+      } else if (registrationStep === 'complete') {
+        next('/');
+        return;
+      }
+    }
+  }
+
   // 게스트만 접근 가능한 페이지 (로그인 페이지)
   if (to.meta.requiresGuest && authStore.isAuthenticated) {
     next("/");
     return;
+  }
+
+  // 로그인된 사용자가 메인 페이지나 다른 페이지로 이동할 때 등록 상태 확인
+  if (authStore.isAuthenticated && authStore.user && 
+      (to.path === "/" || to.path === "/recipes" || to.path === "/lectures" || to.path === "/mypage")) {
+    
+    // 사용자 등록 상태 확인
+    const registrationStep = authStore.getRegistrationStep;
+    
+    // 등록이 완료되지 않은 경우 해당 단계로 리다이렉트
+    if (registrationStep !== 'complete') {
+      switch (registrationStep) {
+        case 'add-info':
+          if (to.path !== '/add-info') {
+            next('/add-info');
+            return;
+          }
+          break;
+        case 'detail-user':
+          if (to.path !== '/detail-user') {
+            next('/detail-user');
+            return;
+          }
+          break;
+        case 'detail-cook':
+          if (to.path !== '/detail-cook') {
+            next('/detail-cook');
+            return;
+          }
+          break;
+        case 'detail-owner':
+          if (to.path !== '/detail-owner') {
+            next('/detail-owner');
+            return;
+          }
+          break;
+      }
+    }
   }
 
   next();

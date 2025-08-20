@@ -46,17 +46,17 @@ export const getCompleteRegistrationData = () => {
   
   // 역할별 추가 정보
   if (data.addInfo?.role === 'GENERAL') {
-    userData.generalType = data.authDetail?.extra;
+    userData.generalType = data.authDetail?.generalType;
   } else if (data.addInfo?.role === 'CHEF') {
-    userData.licenseNumber = data.authDetail?.certNum;
-    userData.cuisineType = data.authDetail?.type;
-    userData.licenseUrl = data.authDetail?.certFile;
+    userData.licenseNumber = data.authDetail?.licenseNumber;
+    userData.cuisineType = data.authDetail?.cuisineType;
+    userData.licenseUrl = data.authDetail?.licenseUrl;
   } else if (data.addInfo?.role === 'OWNER') {
-    userData.businessNumber = data.authDetail?.bizNum;
-    userData.businessName = data.authDetail?.shopName;
-    userData.businessAddress = data.authDetail?.shopAddr;
-    userData.shopCategory = data.authDetail?.type;
-    userData.businessUrl = data.authDetail?.bizFile;
+    userData.businessNumber = data.authDetail?.businessNumber;
+    userData.businessName = data.authDetail?.businessName;
+    userData.businessAddress = data.authDetail?.businessAddress;
+    userData.shopCategory = data.authDetail?.shopCategory;
+    userData.businessUrl = data.authDetail?.businessUrl;
   }
   
   return userData;
