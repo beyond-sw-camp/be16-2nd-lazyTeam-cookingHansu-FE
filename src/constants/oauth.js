@@ -26,9 +26,9 @@ export const API_CONFIG = {
   BASE_URL: import.meta.env.VITE_API_BASE_URL,
   ENDPOINTS: {
     LOGIN: "/user/login",
-    GOOGLE_LOGIN: "/user/google/login",
-    KAKAO_LOGIN: "/user/kakao/login",
-    NAVER_LOGIN: "/user/naver/login",
+    GOOGLE_LOGIN: "/user/login/google",
+    KAKAO_LOGIN: "/user/login/kakao",
+    NAVER_LOGIN: "/user/login/naver",
     LOGOUT: "/user/logout",
     REFRESH: "/user/refresh",
   },

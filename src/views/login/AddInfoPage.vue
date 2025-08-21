@@ -78,7 +78,7 @@ onMounted(() => {
     userInfo.value = {
       name: currentUser.name,
       email: currentUser.email,
-      profileImage: currentUser.profileImage,
+      picture: currentUser.picture,
     };
 
     // localStorage에 사용자 기본 정보 저장
@@ -86,7 +86,7 @@ onMounted(() => {
       userInfo: {
         email: currentUser.email,
         name: currentUser.name,
-        picture: currentUser.profileImage,
+        picture: currentUser.picture,
         oauthType: currentUser.oauthType,
         socialId: currentUser.socialId,
       },

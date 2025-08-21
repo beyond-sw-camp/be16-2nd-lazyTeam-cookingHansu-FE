@@ -39,7 +39,41 @@
       />
     </form>
 
-    <FormButtons @prev="onPrev" @next="onSubmit" next-text="가입 완료" />
+    <FormButtons @prev="onPrev" @next="showConfirmationModal" next-text="가입 완료" />
+
+    <!-- 확인 모달 -->
+    <v-dialog v-model="showModal" max-width="400" persistent>
+      <v-card class="confirmation-modal">
+        <v-card-title class="text-h6 text-center pa-4">
+          요식업 종사자 회원 등록
+        </v-card-title>
+        <v-card-text class="text-center pa-4">
+          <p class="mb-4">
+            요식업 종사자로 회원 등록하시겠습니까?
+          </p>
+          <p class="text-caption text-medium-emphasis">
+            등록 후에는 관리자 승인까지 권한이 제한됩니다.
+          </p>
+        </v-card-text>
+        <v-card-actions class="pa-4">
+          <v-spacer></v-spacer>
+          <v-btn
+            color="grey-darken-1"
+            variant="text"
+            @click="showModal = false"
+          >
+            취소
+          </v-btn>
+          <v-btn
+            color="primary"
+            @click="confirmRegistration"
+            :loading="isSubmitting"
+          >
+            확인
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </LoginLayout>
 </template>
 
@@ -64,6 +98,8 @@ import {
 const router = useRouter();
 const authStore = useAuthStore();
 const showBox = ref(true);
+const showModal = ref(false);
+const isSubmitting = ref(false);
 
 // 백엔드 엔티티에 맞는 요식업 종류
 const cuisineTypeOptions = [
@@ -104,8 +140,16 @@ function onPrev() {
   router.push("/add-info");
 }
 
-async function onSubmit() {
+function showConfirmationModal() {
+  if (validate()) {
+    showModal.value = true;
+  }
+}
+
+async function confirmRegistration() {
   try {
+    isSubmitting.value = true;
+    
     // localStorage에 현재 단계 데이터 저장
     saveStepData("authDetail", {
       cuisineType: form.value.cuisineType,
@@ -129,30 +173,29 @@ async function onSubmit() {
       throw new Error("사용자 정보를 찾을 수 없습니다.");
     }
 
-    // setTimeout(async () => {
-      // 최종 회원가입 완료 - 통합 API 사용
-      const registrationData = getCompleteRegistrationData();
-      const response = await authService.addUserInfo(
-        currentUser.id,
-        registrationData
-      );
-      console.log(registrationData, response);
+    // 최종 회원가입 완료 - 통합 API 사용
+    const registrationData = getCompleteRegistrationData();
+    const response = await authService.addUserInfo(
+      currentUser.id,
+      registrationData
+    );
+    console.log(registrationData, response);
 
-      setTimeout(() => {
-        if (response.isSuccess()) {
-        // 성공 시 localStorage 데이터 초기화
-        clearRegistrationData();
-        router.push("/complete");
-      } else {
-        throw new Error(response.getMessage() || "회원가입에 실패했습니다.");
-      }
-      }, 1000);
-    // }, 1000);
+    if (response.isSuccess()) {
+      // 성공 시 localStorage 데이터 초기화
+      clearRegistrationData();
+      showModal.value = false;
+      router.push("/complete");
+    } else {
+      throw new Error(response.getMessage() || "회원가입에 실패했습니다.");
+    }
   } catch (error) {
     console.error("회원가입 오류:", error);
     alert(
       error.message || "회원가입 중 오류가 발생했습니다. 다시 시도해주세요."
     );
+  } finally {
+    isSubmitting.value = false;
   }
 }
 
@@ -203,5 +246,19 @@ function onLicenseNumberInput() {
   font-weight: 600;
   margin-bottom: 10px;
   margin-top: 2px;
+}
+
+.confirmation-modal {
+  border-radius: 12px;
+}
+
+.confirmation-modal .v-card-title {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.confirmation-modal .v-card-text p {
+  margin: 0;
+  line-height: 1.5;
 }
 </style>

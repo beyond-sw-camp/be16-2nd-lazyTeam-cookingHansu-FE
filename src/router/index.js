@@ -227,6 +227,15 @@ router.beforeEach(async (to, from, next) => {
     }
     
     // 각 단계별 페이지에 대한 접근 제어
+    // 상세 입력 페이지들에서 '이전' 버튼으로 '/add-info'로 돌아가는 경우는 허용
+    if (
+      to.path === '/add-info' &&
+      (from.path === '/detail-user' || from.path === '/detail-cook' || from.path === '/detail-owner')
+    ) {
+      next();
+      return;
+    }
+
     if (to.path === '/add-info' && registrationStep !== 'add-info') {
       // add-info 단계가 아닌 사용자가 접근하려는 경우
       if (registrationStep === 'complete') {

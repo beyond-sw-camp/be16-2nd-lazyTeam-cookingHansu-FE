@@ -4,12 +4,9 @@ import { handleApiResponse } from "../../models/common/ApiResponse";
 // API 엔드포인트 상수
 const API_ENDPOINTS = {
   LOGIN: "/user/login",
-  GOOGLE_LOGIN: "/user/google/login",
-  GOOGLE_REFRESH: "/user/google/refresh",
-  KAKAO_LOGIN: "/user/kakao/login",
-  KAKAO_REFRESH: "/user/kakao/refresh",
-  NAVER_LOGIN: "/user/naver/login",
-  NAVER_REFRESH: "/user/naver/refresh",
+  GOOGLE_LOGIN: "/user/login/google",
+  KAKAO_LOGIN: "/user/login/kakao",
+  NAVER_LOGIN: "/user/login/naver",
   LOGOUT: "/user/logout",
   PROFILE_INFO: "/user/profile",
   ADD_INFO: "/user/add-info",

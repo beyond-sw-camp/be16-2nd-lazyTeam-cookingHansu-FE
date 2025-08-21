@@ -1,7 +1,7 @@
 <template>
   <div v-if="userInfo" class="user-info-display">
     <div class="profile-section">
-      <img :src="userInfo.profileImage" alt="프로필" class="profile-image" />
+      <img :src="userInfo.picture" alt="프로필" class="profile-image" />
       <div class="user-details">
         <div class="user-name">{{ userInfo.name }}</div>
         <div class="user-email">{{ userInfo.email }}</div>
