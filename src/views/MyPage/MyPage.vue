@@ -24,7 +24,7 @@
         </div>
         <div class="profile-actions">
           <button class="edit-profile-btn" @click="showProfileModal = true">프로필 수정</button>
-          <button class="withdraw-btn">회원탈퇴</button>
+          <button class="withdraw-btn" @click="showWithdrawModal = true">회원탈퇴</button>
         </div>
       </div>
     </div>
@@ -59,6 +59,18 @@
       @update="updateUserProfile"
       @showMessage="showMessage"
     />
+
+    <!-- 회원탈퇴 확인 모달 -->
+    <WithdrawConfirmModal
+      :visible="showWithdrawModal"
+      @close="showWithdrawModal = false"
+      @withdraw-success="handleWithdrawSuccess"
+      @withdraw-error="handleWithdrawError"
+    />
+
+    <div v-if="message" class="message-snackbar" :class="messageType">
+      {{ message }}
+    </div>
   </div>
 </template>
 
@@ -70,6 +82,7 @@ import PurchasedLectures from '@/components/mypage/PurchasedLectures.vue';
 import Bookmarks from '@/components/mypage/Bookmarks.vue';
 import Likes from '@/components/mypage/Likes.vue';
 import ProfileEditModal from '@/models/mypage/ProfileEditModal.vue';
+import WithdrawConfirmModal from '@/components/common/WithdrawConfirmModal.vue';
 
 export default {
   name: 'MyPage',
@@ -80,12 +93,14 @@ export default {
     PurchasedLectures,
     Bookmarks,
     Likes,
-    ProfileEditModal
+    ProfileEditModal,
+    WithdrawConfirmModal
   },
   data() {
     return {
       currentTab: 'recipes',
       showProfileModal: false,
+      showWithdrawModal: false,
       userProfile: {
         nickname: '',
         email: '',
@@ -152,6 +167,17 @@ export default {
         this.message = null;
         this.messageType = null;
       }, 3000);
+    },
+    
+    // 회원탈퇴 성공 처리
+    handleWithdrawSuccess() {
+      // 로그인 페이지로 리다이렉트
+      this.$router.push('/login');
+    },
+    
+    // 회원탈퇴 실패 처리
+    handleWithdrawError(errorMessage) {
+      alert('회원탈퇴에 실패했습니다: ' + errorMessage);
     }
   }
 };
@@ -196,7 +222,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: none;
+  border: 1px solid #222;
 }
 
 .avatar-image {
@@ -240,7 +266,7 @@ export default {
 
 .edit-profile-btn {
   background: white;
-  border: none;
+  border: 1px solid #222;
   color: #222;
   padding: 10px 20px;
   border-radius: 12px;
@@ -255,8 +281,8 @@ export default {
 
 .withdraw-btn {
   background: white;
-  border: none;
-  color: #222;
+  border: 1px solid #222;
+  color: #dc3545;
   padding: 10px 16px;
   border-radius: 12px;
   font-weight: 600;
@@ -265,7 +291,8 @@ export default {
 }
 
 .withdraw-btn:hover {
-  background: #f0f0f0;
+  background: #dc3545;
+  color: white;
 }
 
 .tab-navigation {
@@ -487,6 +514,38 @@ export default {
   .modal-body,
   .modal-footer {
     padding: 16px;
+  }
+}
+
+.message-snackbar {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 24px;
+  border-radius: 8px;
+  color: white;
+  font-weight: 600;
+  z-index: 1001;
+  animation: slideUp 0.3s ease-out;
+}
+
+.message-snackbar.success {
+  background-color: #28a745;
+}
+
+.message-snackbar.error {
+  background-color: #dc3545;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateX(-50%) translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
   }
 }
 </style> 
