@@ -6,8 +6,14 @@
         <p class="cart-subtitle">선택한 강의들을 확인하고 결제하세요</p>
       </div>
 
+      <!-- 로딩 상태 -->
+      <div v-if="loading" class="loading-container">
+        <div class="loading-spinner"></div>
+        <p>장바구니를 불러오는 중...</p>
+      </div>
+
       <!-- 장바구니가 비어있을 때 -->
-      <div v-if="cartStore.cartCount === 0" class="empty-cart">
+      <div v-else-if="cartItems.length === 0" class="empty-cart">
         <div class="empty-cart-icon">🛒</div>
         <h2>장바구니가 비어있습니다</h2>
         <p>강의를 선택하여 장바구니에 추가해보세요</p>
@@ -16,51 +22,66 @@
         </button>
       </div>
 
-      <!-- 장바구니 아이템 목록 -->
-      <div v-else class="cart-content">
+             <!-- 장바구니 아이템 목록 -->
+       <div v-else-if="cartItems.length > 0" class="cart-content">
         <div class="cart-items">
           <!-- 전체 선택 체크박스 -->
           <div class="select-all-section">
-            <label class="select-all-checkbox">
-              <input 
-                type="checkbox" 
-                :checked="isAllSelected" 
-                @change="toggleSelectAll"
-              />
-              <span class="checkmark"></span>
-              전체 선택 ({{ selectedItems.length }}/{{ cartStore.items.length }})
-            </label>
-          </div>
-          
-          <div 
-            v-for="item in cartStore.items" 
-            :key="item.id" 
-            class="cart-item"
-          >
-            <div class="item-checkbox">
-              <label class="checkbox">
+            <div class="select-all-left">
+              <label class="select-all-checkbox">
                 <input 
                   type="checkbox" 
-                  :value="item.id"
-                  v-model="selectedItems"
-                  @change="updateSelectAll"
+                  :checked="isAllSelected" 
+                  @change="toggleSelectAll"
                 />
+                <span class="checkmark"></span>
+                전체 선택 ({{ selectedItems.length }}/{{ cartItems.length }})
+              </label>
+            </div>
+            <div class="select-all-right">
+                                            <button 
+                  class="clear-all-btn" 
+                  @click="showClearCartConfirm"
+                  :disabled="cartItems.length === 0"
+                >
+                 모두 비우기
+               </button>
+            </div>
+          </div>
+          
+                     <div 
+             v-for="item in cartItems" 
+             :key="item.lectureId" 
+             class="cart-item"
+           >
+            <div class="item-checkbox">
+              <label class="checkbox">
+                                 <input 
+                   type="checkbox" 
+                   :value="item.lectureId"
+                   v-model="selectedItems"
+                   @change="updateSelectAll"
+                 />
                 <span class="checkmark"></span>
               </label>
             </div>
-            <div class="item-thumbnail">
-              <img :src="item.thumbnailUrl" :alt="item.title" />
-            </div>
-            <div class="item-info">
-              <h3 class="item-title">{{ item.title }}</h3>
-              <p class="item-instructor">{{ item.instructor }}</p>
-              <p class="item-price">{{ formatPrice(item.price) }}원</p>
-            </div>
-            <button 
-              class="remove-btn" 
-              @click="removeFromCart(item.id)"
-              title="장바구니에서 제거"
-            >
+                         <div class="item-thumbnail">
+               <img 
+                 :src="getThumbnailUrl(item.thumbnailUrl)" 
+                 :alt="item.lectureTitle"
+                 @error="handleImageError"
+               />
+             </div>
+             <div class="item-info">
+               <h3 class="item-title">{{ item.lectureTitle }}</h3>
+               <p class="item-instructor">{{ item.writerNickName }}</p>
+               <p class="item-price">{{ formatPrice(item.price) }}원</p>
+             </div>
+                           <button 
+                class="remove-btn" 
+                @click="showRemoveItemConfirm(item.lectureId)"
+                title="장바구니에서 제거"
+              >
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -92,36 +113,83 @@
             선택한 강의 결제하기
           </button>
         </div>
-      </div>
+             </div>
+     </div>
+
+           
     </div>
-  </div>
-</template>
+
+    <!-- 장바구니 전체 비우기 확인 모달 -->
+    <CommonModal
+      v-model="showClearCartModal"
+      title="장바구니 비우기"
+      message="장바구니의 모든 강의를 삭제하시겠습니까?"
+      confirm-text="모두 삭제"
+      cancel-text="취소"
+      @confirm="clearAllItems"
+    />
+
+    <!-- 개별 아이템 삭제 확인 모달 -->
+    <CommonModal
+      v-model="showRemoveItemModal"
+      title="장바구니에서 제거"
+      message="이 강의를 장바구니에서 제거하시겠습니까?"
+      confirm-text="제거하기"
+      cancel-text="취소"
+      @confirm="removeFromCart(itemToRemove)"
+    />
+  </template>
 
 <script>
 import { useCartStore } from '@/views/cart/cart.js'
+import { lectureService } from '@/views/home/lectureService'
+import CommonModal from '@/components/common/CommonModal.vue'
 
 export default {
   name: 'CartPage',
+  components: {
+    CommonModal
+  },
+
   data() {
     return {
       cartStore: useCartStore(),
-      selectedItems: [] // 선택된 아이템들의 ID 배열
+      selectedItems: [], // 선택된 아이템들의 ID 배열
+      cartItems: [], // 백엔드에서 가져온 장바구니 아이템들
+      loading: false,
+      // 모달 관련 상태
+      showClearCartModal: false,
+      showRemoveItemModal: false,
+      itemToRemove: null
     }
   },
   computed: {
     // 선택된 아이템들의 총 금액
     selectedTotalAmount() {
-      return this.cartStore.items
-        .filter(item => this.selectedItems.includes(item.id))
+      return this.cartItems
+        .filter(item => this.selectedItems.includes(item.lectureId))
         .reduce((total, item) => total + item.price, 0)
     },
     // 전체 선택 여부
     isAllSelected() {
-      return this.cartStore.items.length > 0 && 
-             this.selectedItems.length === this.cartStore.items.length
+      return this.cartItems.length > 0 && 
+             this.selectedItems.length === this.cartItems.length
     }
   },
   methods: {
+  // 썸네일 URL 처리 (없거나 깨진 경우 기본 이미지 반환)
+  getThumbnailUrl(thumbnailUrl) {
+    if (!thumbnailUrl || thumbnailUrl === 'undefined' || thumbnailUrl === 'null') {
+      return '/src/assets/images/smu_mascort1.jpg'
+    }
+    return thumbnailUrl
+  },
+
+  // 이미지 로드 에러 처리
+  handleImageError(event) {
+    event.target.src = '/src/assets/images/smu_mascort1.jpg'
+  },
+
   // 가격 포맷 (예: 20000 → 20,000)
   formatPrice(price) {
     return price.toLocaleString()
@@ -132,7 +200,7 @@ export default {
     if (this.isAllSelected) {
       this.selectedItems = []
     } else {
-      this.selectedItems = this.cartStore.items.map(item => item.id)
+      this.selectedItems = this.cartItems.map(item => item.lectureId)
     }
   },
 
@@ -141,12 +209,84 @@ export default {
     // 별도 처리 필요 없음 (computed에서 자동 계산)
   },
 
-  // 장바구니에서 강의 제거
-  removeFromCart(lectureId) {
-    if (this.cartStore.removeFromCart(lectureId)) {
-      // 선택된 아이템에서도 제거
-      this.selectedItems = this.selectedItems.filter(id => id !== lectureId)
-      console.log('강의가 장바구니에서 제거되었습니다.')
+  // 장바구니에서 강의 제거 확인 모달 표시
+  showRemoveItemConfirm(lectureId) {
+    this.itemToRemove = lectureId;
+    this.showRemoveItemModal = true;
+  },
+
+  // 장바구니에서 강의 제거 (단건)
+  async removeFromCart(lectureId) {
+    try {
+      // 백엔드 API로 장바구니 삭제 요청
+      const response = await lectureService.removeFromCart(lectureId);
+      
+      if (response.success) {
+        // 백엔드 성공 시 장바구니 목록 새로고침
+        await this.fetchCartItems();
+        // 선택된 아이템에서도 제거
+        this.selectedItems = this.selectedItems.filter(id => id !== lectureId)
+        console.log('강의가 장바구니에서 제거되었습니다.');
+        // 모달 닫기
+        this.showRemoveItemModal = false;
+      } else {
+        console.error('장바구니 삭제 실패:', response.message);
+        alert('장바구니에서 제거에 실패했습니다. 다시 시도해주세요.');
+      }
+    } catch (error) {
+      console.error('장바구니 삭제 오류:', error);
+      alert('장바구니에서 제거에 실패했습니다. 다시 시도해주세요.');
+    }
+  },
+
+  // 장바구니 전체 비우기 확인 모달 표시
+  showClearCartConfirm() {
+    if (this.cartItems.length === 0) {
+      return;
+    }
+    this.showClearCartModal = true;
+  },
+
+  // 장바구니 전체 비우기
+  async clearAllItems() {
+    try {
+      // 백엔드 API로 장바구니 전체 삭제 요청
+      const response = await lectureService.clearCart();
+      
+      if (response.success) {
+        // 백엔드 성공 시 장바구니 목록 새로고침
+        await this.fetchCartItems();
+        this.selectedItems = [];
+        console.log('장바구니가 모두 비워졌습니다.');
+        // 모달 닫기
+        this.showClearCartModal = false;
+      } else {
+        console.error('장바구니 전체 삭제 실패:', response.message);
+        alert('장바구니 비우기에 실패했습니다. 다시 시도해주세요.');
+      }
+    } catch (error) {
+      console.error('장바구니 전체 삭제 오류:', error);
+      alert('장바구니 비우기에 실패했습니다. 다시 시도해주세요.');
+    }
+  },
+
+  // 장바구니 데이터 가져오기
+  async fetchCartItems() {
+    this.loading = true;
+    try {
+      const response = await lectureService.getCartItems();
+      if (response.success) {
+        this.cartItems = response.data;
+        console.log('장바구니 데이터 로드 완료:', this.cartItems);
+      } else {
+        console.error('장바구니 조회 실패:', response.message);
+        this.cartItems = [];
+      }
+    } catch (error) {
+      console.error('장바구니 조회 오류:', error);
+      this.cartItems = [];
+    } finally {
+      this.loading = false;
     }
   },
 
@@ -247,9 +387,14 @@ export default {
       })
     })
   }
-}
+   },
 
-}
+   mounted() {
+     // 페이지 로드 시 장바구니 데이터 가져오기
+     this.fetchCartItems();
+   }
+ 
+ }
 </script>
 
 <style scoped>
@@ -337,6 +482,19 @@ export default {
   padding: 15px 0;
   border-bottom: 1px solid #eee;
   margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.select-all-left {
+  display: flex;
+  align-items: center;
+}
+
+.select-all-right {
+  display: flex;
+  align-items: center;
 }
 
 .select-all-checkbox {
@@ -390,6 +548,29 @@ export default {
 .checkbox:hover .checkmark,
 .select-all-checkbox:hover .checkmark {
   border-color: #FF6B35;
+}
+
+.clear-all-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.clear-all-btn:hover {
+  background: #c82333;
+  transform: translateY(-1px);
+}
+
+.clear-all-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .cart-item {
@@ -556,8 +737,36 @@ export default {
     margin-right: 15px;
   }
 
-  .item-title {
-    font-size: 1rem;
-  }
-}
+     .item-title {
+     font-size: 1rem;
+   }
+ }
+
+ .loading-container {
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   justify-content: center;
+   min-height: 60vh;
+   gap: 20px;
+ }
+
+ .loading-spinner {
+   width: 40px;
+   height: 40px;
+   border: 4px solid #f3f3f3;
+   border-top: 4px solid #FF6B35;
+   border-radius: 50%;
+   animation: spin 1s linear infinite;
+ }
+
+ @keyframes spin {
+   0% { transform: rotate(0deg); }
+   100% { transform: rotate(360deg); }
+ }
+
+ .loading-container p {
+   color: #666;
+   font-size: 16px;
+ }
 </style> 

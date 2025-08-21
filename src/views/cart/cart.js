@@ -29,8 +29,8 @@ export const useCartStore = defineStore('cart', {
         id: lecture.id,
         title: lecture.title,
         price: lecture.price,
-        thumbnailUrl: lecture.image, // image 필드를 thumbnailUrl로 저장
-        instructor: lecture.teacher // teacher 필드를 instructor로 저장
+        thumbnailUrl: lecture.image || lecture.thumbUrl, // image 또는 thumbUrl 필드를 thumbnailUrl로 저장
+        instructor: lecture.teacher || lecture.instructor?.name || '강사명' // teacher 또는 instructor.name 필드를 instructor로 저장
       })
 
       // localStorage에 저장
