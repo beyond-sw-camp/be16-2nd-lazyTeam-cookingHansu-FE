@@ -613,6 +613,13 @@ export default {
           this.showModalDialog('warning', '입력 오류', `강의 ${i + 1}의 제목을 입력해주세요.`, '확인', '', false);
           return false;
         }
+        
+        // 제목 길이 검증 (50자 제한)
+        if (this.formData.videos[i].title.length > 50) {
+          this.showModalDialog('warning', '입력 오류', `강의 ${i + 1}의 제목은 50자 이하여야 합니다.`, '확인', '', false);
+          return false;
+        }
+        
         if (!this.videoFiles[i]) {
           this.showModalDialog('warning', '입력 오류', `강의 ${i + 1}의 비디오 파일을 등록해주세요.`, '확인', '', false);
           return false;

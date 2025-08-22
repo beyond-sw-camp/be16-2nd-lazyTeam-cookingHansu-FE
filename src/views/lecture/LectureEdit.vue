@@ -689,28 +689,35 @@ export default {
           return false;
         }
         
-                 // 비디오와 제목 일관성 검증
-         for (let i = 0; i < this.formData.videos.length; i++) {
-           const video = this.formData.videos[i];
-           const videoInput = this.$refs[`videoInput-${i}`];
-           // $refs가 존재하지 않거나 배열이 아닌 경우 처리
-           const hasNewVideo = videoInput && Array.isArray(videoInput) && videoInput[0] && videoInput[0].files[0];
-           const hasExistingVideo = video.videoUrl && video.videoUrl.trim();
-           const hasVideo = hasNewVideo || hasExistingVideo; // 새 파일 또는 기존 영상 URL
-           const hasTitle = video.title.trim();
-           
-           // 둘 중 하나라도 있으면 다른 하나도 무조건 있어야 함
-           if ((hasVideo && !hasTitle) || (hasTitle && !hasVideo)) {
-             if (hasVideo && !hasTitle) {
-               console.log(`비디오 ${i + 1} 제목 검증 실패`);
-               this.showError(`${i + 1}번째 강의의 제목을 입력해주세요.`);
-             } else {
-               console.log(`비디오 ${i + 1} 파일 검증 실패`);
-               this.showError(`${i + 1}번째 강의의 영상을 업로드해주세요.`);
-             }
-             return false;
-           }
-         }
+                          // 비디오와 제목 일관성 검증
+          for (let i = 0; i < this.formData.videos.length; i++) {
+            const video = this.formData.videos[i];
+            const videoInput = this.$refs[`videoInput-${i}`];
+            // $refs가 존재하지 않거나 배열이 아닌 경우 처리
+            const hasNewVideo = videoInput && Array.isArray(videoInput) && videoInput[0] && videoInput[0].files[0];
+            const hasExistingVideo = video.videoUrl && video.videoUrl.trim();
+            const hasVideo = hasNewVideo || hasExistingVideo; // 새 파일 또는 기존 영상 URL
+            const hasTitle = video.title.trim();
+            
+            // 제목 길이 검증 (50자 제한)
+            if (hasTitle && video.title.length > 50) {
+              console.log(`비디오 ${i + 1} 제목 길이 검증 실패`);
+              this.showError(`${i + 1}번째 강의의 제목은 50자 이하여야 합니다.`);
+              return false;
+            }
+            
+            // 둘 중 하나라도 있으면 다른 하나도 무조건 있어야 함
+            if ((hasVideo && !hasTitle) || (hasTitle && !hasVideo)) {
+              if (hasVideo && !hasTitle) {
+                console.log(`비디오 ${i + 1} 제목 검증 실패`);
+                this.showError(`${i + 1}번째 강의의 제목을 입력해주세요.`);
+              } else {
+                console.log(`비디오 ${i + 1} 파일 검증 실패`);
+                this.showError(`${i + 1}번째 강의의 영상을 업로드해주세요.`);
+              }
+              return false;
+            }
+          }
        
        console.log('모든 유효성 검사 통과');
        return true;
