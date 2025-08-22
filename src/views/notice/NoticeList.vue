@@ -1,7 +1,25 @@
 <template>
   <div class="notice-list-container">
+
+    <Header />
+    
     <div class="notice-header">
-      <h1 class="notice-title">공지사항</h1>
+      <div class="notice-header-left">
+        <!-- 테스트용 채팅방 생성 버튼 -->
+        <v-btn
+          color="success"
+          variant="outlined"
+          prepend-icon="mdi-chat-plus"
+          @click="createTestChatRoom"
+          :loading="creatingChatRoom"
+          class="test-chat-btn"
+        >
+          테스트용 채팅방 생성
+        </v-btn>
+        
+        <h1 class="notice-title">공지사항</h1>
+      </div>
+      
       <div class="notice-actions">
         <v-btn
           v-if="isAdmin"
@@ -14,15 +32,12 @@
       </div>
     </div>
 
-    <!-- 로딩 상태 -->
-    <div v-if="noticeStore.isLoading" class="loading-container">
-      <v-progress-circular
-        indeterminate
-        color="primary"
-        size="64"
-      ></v-progress-circular>
-      <p class="loading-text">공지사항을 불러오는 중...</p>
-    </div>
+    <!-- 로딩 상태 (데이터가 없을 때만) -->
+    <LoadingScreen 
+      v-if="noticeStore.isLoading && noticeStore.getNotices.length === 0"
+      title="공지사항을 준비하고 있어요"
+      description="잠시만 기다려주세요..."
+    />
 
     <!-- 에러 상태 -->
     <div v-else-if="noticeStore.getError" class="error-container">
@@ -81,9 +96,12 @@ import { useNoticeStore } from '../../store/notice/notice';
 import { formatDateTime } from '../../utils/timeUtils';
 import Pagination from '../../components/common/Pagination.vue';
 import ErrorAlert from '../../components/common/ErrorAlert.vue';
+import LoadingScreen from '../../components/common/LoadingScreen.vue';
+import { useChatStore } from '../../store/chat/chat';
 
 const router = useRouter();
 const noticeStore = useNoticeStore();
+const chatStore = useChatStore();
 
 // 관리자 여부 확인 (테스팅용)
 const isAdmin = computed(() => {
@@ -91,6 +109,9 @@ const isAdmin = computed(() => {
   localStorage.setItem('userRole', 'ADMIN');
   return true;
 });
+
+// 테스트용 채팅방 생성 상태
+const creatingChatRoom = ref(false);
 
 // 페이지네이션 정보
 const paginationInfo = computed(() => noticeStore.getPaginationInfo);
@@ -119,6 +140,31 @@ const goToNoticeDetail = (id) => {
 // 공지사항 작성 페이지로 이동
 const goToCreateNotice = () => {
   router.push('/notice/create');
+};
+
+// 테스트용 채팅방 생성
+const createTestChatRoom = async () => {
+  try {
+    creatingChatRoom.value = true;
+    
+    // 테스트용 사용자 ID (고정)
+    const myId = '550e8400-e29b-41d4-a716-446655440001';
+    const inviteeId = '550e8400-e29b-41d4-a716-446655440002';
+    
+    console.log('테스트용 채팅방 생성 시작:', { myId, inviteeId });
+    
+    const roomId = await chatStore.createRoom(myId, inviteeId);
+    console.log('채팅방 생성 성공, roomId:', roomId);
+    
+    // 생성된 roomId를 URL에 포함시켜서 정확한 채팅방을 자동 선택하도록 함
+    router.push(`/chat?autoSelect=true&roomId=${roomId}`);
+    
+  } catch (error) {
+    console.error('테스트용 채팅방 생성 실패:', error);
+    alert('채팅방 생성에 실패했습니다: ' + (error.message || '알 수 없는 오류'));
+  } finally {
+    creatingChatRoom.value = false;
+  }
 };
 
 // 날짜 포맷팅은 timeUtils의 formatDateTime 사용
@@ -153,7 +199,7 @@ onMounted(() => {
 
 <style scoped>
 .notice-list-container {
-  max-width: 800px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 20px;
   margin-top: 60px;
@@ -172,6 +218,24 @@ onMounted(() => {
   backdrop-filter: blur(10px);
 }
 
+.notice-header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.test-chat-btn {
+  font-size: 0.9rem;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border-color: var(--color-success);
+  color: var(--color-success);
+}
+
+.test-chat-btn:hover {
+  background-color: rgba(40, 167, 69, 0.1);
+}
+
 .notice-title {
   font-size: 1.8rem;
   font-weight: 700;
@@ -185,20 +249,6 @@ onMounted(() => {
 .notice-actions {
   display: flex;
   gap: 10px;
-}
-
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-}
-
-.loading-text {
-  margin-top: 20px;
-  color: #666;
-  font-size: 1.1rem;
 }
 
 .error-container {
@@ -344,6 +394,16 @@ onMounted(() => {
     flex-direction: column;
     gap: 15px;
     align-items: flex-start;
+  }
+
+  .notice-header-left {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .test-chat-btn {
+    width: 100%;
   }
 
   .notice-title {

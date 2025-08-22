@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import { validateFile, validateMessageAndFiles } from '@/utils/fileValidation';
+import { getFileTypeFromFile, validateFile } from '../utils/fileValidation';
 
 export function useFileUpload() {
   const selectedFiles = ref([]);
@@ -10,7 +10,7 @@ export function useFileUpload() {
   const handleFileChange = (e, messageRef) => {
     const files = Array.from(e.target.files);
     
-    // 텍스트가 입력되어 있으면 자동으로 텍스트 지우기
+    // 파일이 선택되면 텍스트 입력을 막기 위해 텍스트 지우기
     if (messageRef.value.trim()) {
       messageRef.value = '';
     }
@@ -90,34 +90,19 @@ export function useFileUpload() {
     }
   };
 
-  // 파일로부터 파일 타입 추정
-  const getFileTypeFromFile = (file) => {
-    if (!file || !file.name) {
-      console.error('파일 또는 파일 이름이 없습니다:', file);
-      return 'UNKNOWN';
-    }
-    
-    const fileName = file.name;
-    const lastDotIndex = fileName.lastIndexOf(".");
-    
-    if (lastDotIndex === -1) {
-      console.error('파일 확장자가 없습니다:', fileName);
-      return 'UNKNOWN';
-    }
-    
-    const extension = fileName.substring(lastDotIndex + 1).toLowerCase();
-    
-    const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-    const videoExtensions = ['mp4', 'avi', 'mov'];
-    
-    if (imageExtensions.includes(extension)) {
-      return 'IMAGE';
-    } else if (videoExtensions.includes(extension)) {
-      return 'VIDEO';
-    } else {
-      console.error('지원하지 않는 파일 형식입니다:', extension);
-      return 'UNKNOWN';
-    }
+  // 파일이 선택되어 있는지 확인
+  const hasFiles = () => {
+    return selectedFiles.value.length > 0;
+  };
+
+  // 텍스트 입력이 가능한지 확인 (파일이 없을 때만)
+  const canInputText = () => {
+    return selectedFiles.value.length === 0;
+  };
+
+  // 추가 파일 선택이 가능한지 확인 (10개 미만일 때)
+  const canAddMoreFiles = () => {
+    return selectedFiles.value.length < 10;
   };
 
   return {
@@ -129,6 +114,9 @@ export function useFileUpload() {
     removeSelectedFile,
     removeAllFiles,
     triggerFileInput,
-    onTextInput
+    onTextInput,
+    hasFiles,
+    canInputText,
+    canAddMoreFiles
   };
-} 
+}; 

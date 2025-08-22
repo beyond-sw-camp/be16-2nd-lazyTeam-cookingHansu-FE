@@ -26,6 +26,13 @@
       </div>
     </div>
 
+    <!-- 로딩 상태 (데이터가 없을 때만) -->
+    <LoadingScreen 
+      v-if="noticeStore.isLoading && !noticeStore.getCurrentNotice"
+      title="공지사항을 준비하고 있어요"
+      description="잠시만 기다려주세요..."
+    />
+
     <!-- 수정 폼 -->
     <div v-else-if="noticeStore.getCurrentNotice" class="notice-edit-content">
       <v-form ref="form" v-model="valid" @submit.prevent="submitNotice">
@@ -172,6 +179,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { useNoticeStore } from '../../store/notice/notice';
 import { validateFile } from '../../utils/fileValidation';
 import ErrorAlert from '../../components/common/ErrorAlert.vue';
+import LoadingScreen from '../../components/common/LoadingScreen.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -325,7 +333,11 @@ onMounted(async () => {
   }
 
   if (route.params.id) {
-    await noticeStore.fetchNoticeDetail(route.params.id);
+    // 이미 해당 공지사항 데이터가 있으면 API 호출하지 않음
+    const currentNotice = noticeStore.getCurrentNotice;
+    if (!currentNotice || currentNotice.id !== parseInt(route.params.id)) {
+      await noticeStore.fetchNoticeDetail(route.params.id);
+    }
     initializeForm();
   }
 });
@@ -369,20 +381,6 @@ onMounted(async () => {
   -webkit-text-fill-color: transparent;
   background-clip: text;
   margin: 0;
-}
-
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-}
-
-.loading-text {
-  margin-top: 20px;
-  color: #666;
-  font-size: 1.1rem;
 }
 
 .error-container {

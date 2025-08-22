@@ -120,7 +120,7 @@
                 <span class="value">₩{{ orderDetails.total.toLocaleString() }}</span>
               </div>
             </div>
-            <button class="study-btn">강의 수강하기</button>
+            <button class="study-btn" @click="goToStudy">강의 수강하기</button>
           </div>
         </div>
       </div>
@@ -170,8 +170,14 @@ export default {
   },
   methods: {
     goToStudy() {
-      // 강의 수강 페이지로 이동
-      this.$router.push('/lectures');
+      // 구매한 강의의 상세 페이지로 이동
+      if (this.orderDetails.courses && this.orderDetails.courses.length > 0) {
+        const courseId = this.orderDetails.courses[0].id;
+        this.$router.push(`/lectures/${courseId}`);
+      } else {
+        // 구매한 강의가 없는 경우 강의 목록으로 이동
+        this.$router.push('/lectures');
+      }
     }
   }
 };

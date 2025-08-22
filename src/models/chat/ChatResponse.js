@@ -1,67 +1,70 @@
-// 채팅 관련 응답 모델
-
-// 채팅방 목록 응답 모델
+// 채팅방 목록 응답 모델 (ChatRoomListDto 기반)
 export class ChatRoomResponse {
-  constructor(chatRoomId, customRoomName, otherUserName, otherUserNickname, otherUserProfileImage, lastMessage, lastMessageTime, unreadCount) {
-    this.chatRoomId = chatRoomId;
+  constructor(
+    roomId,
+    customRoomName,
+    otherUserName,
+    otherUserNickname,
+    otherUserProfileImage,
+    lastMessage,
+    lastMessageTime,
+    newMessageCount
+  ) {
+    this.roomId = roomId;
     this.customRoomName = customRoomName;
     this.otherUserName = otherUserName;
     this.otherUserNickname = otherUserNickname;
     this.otherUserProfileImage = otherUserProfileImage;
     this.lastMessage = lastMessage;
     this.lastMessageTime = lastMessageTime;
-    this.unreadCount = unreadCount;
+    this.newMessageCount = newMessageCount;
   }
 
   static fromJson(json) {
     return new ChatRoomResponse(
-      json.chatRoomId,
+      json.roomId,
       json.customRoomName,
       json.otherUserName,
       json.otherUserNickname,
       json.otherUserProfileImage,
       json.lastMessage,
       json.lastMessageTime,
-      json.unreadCount
+      json.newMessageCount
     );
+  }
+
+  // lastMessageId 기반으로 unread count 계산 (백엔드에서 이미 계산된 값 사용)
+  getUnreadCount() {
+    return this.newMessageCount || 0;
   }
 }
 
-// 채팅 파일 응답 모델
+// 채팅 파일 응답 모델 (ChatFileUploadResDto.FileInfo 기반)
 export class ChatFileResponse {
-  constructor(id, fileName, fileUrl, fileType, fileSize) {
-    this.id = id;
+  constructor(fileId, fileUrl, fileName, fileType, fileSize) {
+    this.id = fileId;
+    this.fileId = fileId; // 기존 호환
     this.fileName = fileName;
     this.fileUrl = fileUrl;
-    this.fileType = fileType;
+    this.fileType = fileType; // 'IMAGE' | 'VIDEO' | 'OTHER'
     this.fileSize = fileSize;
   }
 
   static fromJson(json) {
     return new ChatFileResponse(
-      json.id,
-      json.fileName,
+      json.fileId,
       json.fileUrl,
+      json.fileName,
       json.fileType,
       json.fileSize
     );
   }
 
-  // 파일이 이미지인지 확인
-  isImage() {
-    return this.fileType && this.fileType.startsWith('image/');
-  }
-
-  // 파일 확장자로 이미지인지 확인
-  isImageByExtension() {
-    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
-    return imageExtensions.some(ext => 
-      this.fileName && this.fileName.toLowerCase().endsWith(ext)
-    );
-  }
+  isImage() { return this.fileType === 'IMAGE'; }
+  isVideo() { return this.fileType === 'VIDEO'; }
 }
 
-// 채팅 메시지 응답 모델
+// 채팅 메시지 응답 모델 (ChatMessageResDto 기반)
 export class ChatMessageResponse {
   constructor(id, roomId, senderId, message, files, createdAt, updatedAt) {
     this.id = id;
@@ -81,27 +84,7 @@ export class ChatMessageResponse {
       json.message,
       json.files,
       json.createdAt,
-      json.updatedAt
+      json.updatedAt,
     );
   }
-
-  // 메시지가 있는지 확인
-  hasMessage() {
-    return this.message && this.message.trim().length > 0;
-  }
-
-  // 파일이 있는지 확인
-  hasFiles() {
-    return this.files && this.files.length > 0;
-  }
-
-  // 이미지 파일들만 가져오기
-  getImageFiles() {
-    return this.files.filter(file => file.isImage() || file.isImageByExtension());
-  }
-
-  // 일반 파일들만 가져오기 (이미지 제외)
-  getNonImageFiles() {
-    return this.files.filter(file => !file.isImage() && !file.isImageByExtension());
-  }
-} 
+}

@@ -14,7 +14,16 @@
       <h1 class="notice-create-title">공지사항 작성</h1>
     </div>
 
-    <div class="notice-create-content">
+    <!-- 네트워크 연결 오류 -->
+    <div v-if="noticeStore.getError" class="error-container">
+      <ErrorAlert
+        title="연결 오류"
+        :message="noticeStore.getError"
+        @close="noticeStore.clearError"
+      />
+    </div>
+
+    <div v-else class="notice-create-content">
       <v-form ref="form" v-model="valid" @submit.prevent="submitNotice">
         <div class="form-section">
           <v-text-field
@@ -139,6 +148,7 @@ import { ref, reactive, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useNoticeStore } from '../../store/notice/notice';
 import { validateFile } from '../../utils/fileValidation';
+import ErrorAlert from '../../components/common/ErrorAlert.vue';
 
 const router = useRouter();
 const noticeStore = useNoticeStore();
@@ -290,7 +300,10 @@ onMounted(() => {
   padding: 20px;
   margin-top: 60px;
   min-height: calc(100vh - 60px);
+}
 
+.error-container {
+  margin: 20px 0;
 }
 
 .notice-create-header {

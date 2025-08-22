@@ -1,15 +1,12 @@
 <template>
   <div class="notice-detail-container">
 
-    <!-- 로딩 상태 -->
-    <div v-if="noticeStore.isLoading" class="loading-container">
-      <v-progress-circular
-        indeterminate
-        color="primary"
-        size="64"
-      ></v-progress-circular>
-      <p class="loading-text">상세페이지 불러오는 중...</p>
-    </div>
+    <!-- 로딩 상태 (데이터가 없을 때만) -->
+    <LoadingScreen 
+      v-if="noticeStore.isLoading && !noticeStore.getCurrentNotice"
+      title="공지사항을 준비하고 있어요"
+      description="잠시만 기다려주세요..."
+    />
 
     <!-- 에러 상태 -->
     <div v-else-if="noticeStore.getError" class="error-container">
@@ -118,6 +115,7 @@ import { useNoticeStore } from '../../store/notice/notice';
 import { formatDateTime } from '../../utils/timeUtils';
 import ErrorAlert from '../../components/common/ErrorAlert.vue';
 import DeleteConfirmModal from '../../components/common/DeleteConfirmModal.vue';
+import LoadingScreen from '../../components/common/LoadingScreen.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -185,7 +183,11 @@ const formatContent = (content) => {
 // 컴포넌트 마운트 시 공지사항 상세 정보 로드
 onMounted(() => {
   if (route.params.id) {
-    noticeStore.fetchNoticeDetail(route.params.id);
+    // 이미 해당 공지사항 데이터가 있으면 API 호출하지 않음
+    const currentNotice = noticeStore.getCurrentNotice;
+    if (!currentNotice || currentNotice.id !== parseInt(route.params.id)) {
+      noticeStore.fetchNoticeDetail(route.params.id);
+    }
     // 상세 페이지 진입 시 맨 위로 스크롤
     window.scrollTo(0, 0);
   }
@@ -199,20 +201,6 @@ onMounted(() => {
   padding: 20px;
   margin-top: 60px;
   min-height: calc(100vh - 60px);
-}
-
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-}
-
-.loading-text {
-  margin-top: 20px;
-  color: #666;
-  font-size: 1.1rem;
 }
 
 .error-container {
