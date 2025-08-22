@@ -39,7 +39,7 @@
 
 <script>
 import Header from '@/components/Header.vue'
-import { useCartStore } from '@/views/cart/cart.js'
+import { useCartStore } from '@/store/cart/cart.js'
 
 export default {
   name: 'PaymentSuccess',

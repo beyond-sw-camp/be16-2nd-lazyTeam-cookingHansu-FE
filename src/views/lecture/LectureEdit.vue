@@ -270,7 +270,7 @@
 <script>
 import Header from '@/components/Header.vue';
 import CommonModal from '@/components/common/CommonModal.vue';
-import { lectureService } from '@/views/home/lectureService';
+import { lectureService } from '@/store/lecture/lectureService';
 
 export default {
   name: 'LectureEdit',

@@ -141,8 +141,8 @@
   </template>
 
 <script>
-import { useCartStore } from '@/views/cart/cart.js'
-import { lectureService } from '@/views/home/lectureService'
+import { useCartStore } from '@/store/cart/cart.js'
+import { lectureService } from '@/store/lecture/lectureService'
 import CommonModal from '@/components/common/CommonModal.vue'
 
 export default {
