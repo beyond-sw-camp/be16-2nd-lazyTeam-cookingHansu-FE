@@ -1,5 +1,8 @@
 <template>
   <div class="notice-list-container">
+
+    <Header />
+    
     <div class="notice-header">
       <h1 class="notice-title">공지사항</h1>
       <div class="notice-actions">
@@ -81,6 +84,7 @@ import { useNoticeStore } from '../../store/notice/notice';
 import { formatDateTime } from '../../utils/timeUtils';
 import Pagination from '../../components/common/Pagination.vue';
 import ErrorAlert from '../../components/common/ErrorAlert.vue';
+import Header from '@/components/Header.vue';
 
 const router = useRouter();
 const noticeStore = useNoticeStore();

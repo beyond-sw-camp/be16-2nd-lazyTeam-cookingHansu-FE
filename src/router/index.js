@@ -34,6 +34,7 @@ import NoticeList from '@/views/notice/NoticeList.vue'
 import NoticeDetail from '@/views/notice/NoticeDetail.vue'
 import NoticeCreate from '@/views/notice/NoticeCreate.vue'
 import NoticeEdit from '@/views/notice/NoticeEdit.vue'
+import NotificationPage from '@/views/notification/NotificationPage.vue'
 
 const routes = [
   {
@@ -108,6 +109,7 @@ const routes = [
       { path: '', redirect: '/recipes' },
       { path: 'landing', name: 'LandingPage', component: LandingPage },
       { path: 'recipes', name: 'RecipeMainPage', component: RecipeMainPage },
+      { path: 'recipes/:id', name: 'RecipeDetail', component: RecipeMainPage },
       { path: 'lectures', name: 'LectureList', component: LectureList },
       { path: 'lectures/:id', name: 'LectureDetail', component: LectureDetail },
       { path: 'lectures/create', name: 'LectureCreate', component: LectureCreate },
@@ -123,6 +125,7 @@ const routes = [
       { path: 'notice/:id', name: 'NoticeDetail', component: NoticeDetail },
       { path: 'notice/create', name: 'NoticeCreate', component: NoticeCreate },
       { path: 'notice/edit/:id', name: 'NoticeEdit', component: NoticeEdit },
+      { path: 'notifications', name: 'NotificationPage', component: NotificationPage },
     ],
   },
 ]
