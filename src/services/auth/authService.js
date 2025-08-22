@@ -96,6 +96,13 @@ export const authService = {
     return handleApiResponse(response);
   },
 
+  // 추가 정보 입력 (FormData - multipart 방식)
+  async addUserInfoFormData(userId, formData) {
+    const endpoint = `${API_ENDPOINTS.ADD_INFO}?userId=${userId}`;
+    const response = await apiPostFormData(endpoint, formData);
+    return handleApiResponse(response);
+  },
+
   // 회원가입 상태 확인
   async getUserRegistrationStatus(userId) {
     const endpoint = `${API_ENDPOINTS.ADD_INFO}/status?userId=${userId}`;

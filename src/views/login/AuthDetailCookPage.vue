@@ -19,11 +19,11 @@
       />
 
       <FileUpload
-        v-model="form.licenseUrl"
+        v-model="form.licenseFile"
         label="요리사 자격증"
         placeholder="자격증 파일을 선택하세요"
         :required="true"
-        :has-error="errors.licenseUrl"
+        :has-error="errors.licenseFile"
         error-message="자격증 파일을 선택해 주세요!"
         @update:modelValue="onFileSelect"
       />
@@ -112,13 +112,13 @@ const cuisineTypeOptions = [
 
 const form = ref({
   cuisineType: "",
-  licenseUrl: null,
+  licenseFile: null, // licenseUrl에서 licenseFile로 변경
   licenseNumber: "",
 });
 
 const errors = ref({
   cuisineType: false,
-  licenseUrl: false,
+  licenseFile: false, // licenseUrl에서 licenseFile로 변경
   licenseNumber: false,
 });
 
@@ -132,7 +132,7 @@ onMounted(() => {
 
   // 초기 에러 상태 초기화
   errors.value.cuisineType = false;
-  errors.value.licenseUrl = false;
+  errors.value.licenseFile = false; // licenseUrl에서 licenseFile로 변경
   errors.value.licenseNumber = false;
 });
 
@@ -154,7 +154,7 @@ async function confirmRegistration() {
     saveStepData("authDetail", {
       cuisineType: form.value.cuisineType,
       licenseNumber: form.value.licenseNumber,
-      licenseUrl: form.value.licenseUrl ? form.value.licenseUrl.name : null,
+      licenseFile: form.value.licenseFile ? form.value.licenseFile.name : null, // licenseUrl에서 licenseFile로 변경
     });
 
     // 인증 스토어의 사용자 정보 업데이트
@@ -162,7 +162,7 @@ async function confirmRegistration() {
       chef: {
         cuisineType: form.value.cuisineType,
         licenseNumber: form.value.licenseNumber,
-        licenseUrl: form.value.licenseUrl ? form.value.licenseUrl.name : null,
+        licenseFile: form.value.licenseFile ? form.value.licenseFile.name : null, // licenseUrl에서 licenseFile로 변경
       }
     });
 
@@ -173,11 +173,27 @@ async function confirmRegistration() {
       throw new Error("사용자 정보를 찾을 수 없습니다.");
     }
 
-    // 최종 회원가입 완료 - 통합 API 사용
+    // 최종 회원가입 완료 - FormData를 사용하여 multipart 방식으로 전송
     const registrationData = getCompleteRegistrationData();
-    const response = await authService.addUserInfo(
+    
+    // FormData 생성
+    const formData = new FormData();
+    
+    // 텍스트 데이터 추가
+    Object.keys(registrationData).forEach(key => {
+      if (key !== 'licenseFile' && registrationData[key] !== null && registrationData[key] !== undefined) {
+        formData.append(key, registrationData[key]);
+      }
+    });
+    
+    // 파일 데이터 추가 (요리사 자격증) - 백엔드 필드명과 일치
+    if (form.value.licenseFile && form.value.licenseFile instanceof File) {
+      formData.append('licenseFile', form.value.licenseFile); // licenseFile로 변경
+    }
+    
+    const response = await authService.addUserInfoFormData(
       currentUser.id,
-      registrationData
+      formData
     );
     console.log(registrationData, response);
 
@@ -201,9 +217,9 @@ async function confirmRegistration() {
 
 function validate() {
   errors.value.cuisineType = !form.value.cuisineType;
-  errors.value.licenseUrl = !form.value.licenseUrl;
+  errors.value.licenseFile = !form.value.licenseFile; // licenseUrl에서 licenseFile로 변경
   errors.value.licenseNumber = !form.value.licenseNumber;
-  return !errors.value.cuisineType && !errors.value.licenseUrl && !errors.value.licenseNumber;
+  return !errors.value.cuisineType && !errors.value.licenseFile && !errors.value.licenseNumber;
 }
 
 // 요식업 종류 선택 시 에러 제거
@@ -215,8 +231,8 @@ function onCuisineTypeSelect() {
 
 // 파일 선택 시 에러 제거
 function onFileSelect() {
-  if (form.value.licenseUrl && errors.value.licenseUrl) {
-    errors.value.licenseUrl = false;
+  if (form.value.licenseFile && errors.value.licenseFile) { // licenseUrl에서 licenseFile로 변경
+    errors.value.licenseFile = false; // licenseUrl에서 licenseFile로 변경
   }
 }
 

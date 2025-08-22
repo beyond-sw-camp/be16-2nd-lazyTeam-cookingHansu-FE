@@ -87,8 +87,16 @@ const subMessage = computed(() => {
   }
 });
 
-function goHome() {
-  router.push('/');
+async function goHome() {
+  try {
+    // 메인 페이지로 이동하기 전에 최신 사용자 정보를 가져와서 등록 상태를 업데이트
+    await authStore.getCurrentUser();
+    router.push('/');
+  } catch (error) {
+    console.error('Failed to get current user:', error);
+    // 에러가 발생해도 메인 페이지로 이동
+    router.push('/');
+  }
 }
 </script>
 

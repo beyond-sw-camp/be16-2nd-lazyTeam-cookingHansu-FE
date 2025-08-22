@@ -289,6 +289,12 @@ router.beforeEach(async (to, from, next) => {
   if (authStore.isAuthenticated && authStore.user && 
       (to.path === "/" || to.path === "/recipes" || to.path === "/lectures" || to.path === "/mypage")) {
     
+    // /complete 페이지에서 메인 페이지로 이동하는 경우는 등록 상태 확인을 건너뛰기
+    if (from.path === '/complete') {
+      next();
+      return;
+    }
+    
     // 사용자 등록 상태 확인
     const registrationStep = authStore.getRegistrationStep;
     

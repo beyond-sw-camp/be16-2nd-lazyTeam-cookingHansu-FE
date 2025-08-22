@@ -176,6 +176,18 @@ export const apiPostFormData = async (endpoint, formData) => {
   console.log('API POST FormData 요청 URL:', `${API_BASE_URL}${endpoint}`);
   console.log('API 요청 FormData:', formData);
   
+  // FormData 내용 상세 로깅
+  if (formData instanceof FormData) {
+    console.log('FormData 상세 내용:');
+    for (let [key, value] of formData.entries()) {
+      if (value instanceof File) {
+        console.log(`- ${key}: File(${value.name}, ${value.size} bytes, ${value.type})`);
+      } else {
+        console.log(`- ${key}: ${value}`);
+      }
+    }
+  }
+  
   try {
     const headers = {};
     const token = localStorage.getItem('accessToken');
@@ -189,6 +201,7 @@ export const apiPostFormData = async (endpoint, formData) => {
       body: formData,
     });
     
+    console.log('API 응답 상태:', response.status, response.statusText);
     return response;
   } catch (error) {
     console.error('API POST FormData 요청 실패:', error);

@@ -99,12 +99,23 @@ async function onSubmit() {
       throw new Error("사용자 정보를 찾을 수 없습니다.");
     }
 
-    // 최종 회원가입 완료 - 통합 API 사용
+    // 최종 회원가입 완료 - FormData를 사용하여 multipart 방식으로 전송
     setTimeout(async () => {
       const registrationData = getCompleteRegistrationData();
-      const response = await authService.addUserInfo(
+      
+      // FormData 생성 (파일이 없어도 multipart 형식으로 전송)
+      const formData = new FormData();
+      
+      // 텍스트 데이터 추가
+      Object.keys(registrationData).forEach(key => {
+        if (registrationData[key] !== null && registrationData[key] !== undefined) {
+          formData.append(key, registrationData[key]);
+        }
+      });
+      
+      const response = await authService.addUserInfoFormData(
         currentUser.id,
-        registrationData
+        formData
       );
       if (response.isSuccess()) {
         // 성공 시 localStorage 데이터 초기화

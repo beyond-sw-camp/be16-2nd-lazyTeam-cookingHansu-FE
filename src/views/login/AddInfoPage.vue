@@ -13,7 +13,8 @@
         placeholder="닉네임을 입력하세요"
         :required="true"
         :has-error="errors.nickname"
-        error-message="닉네임을 입력해 주세요!"
+        :error-message="getNicknameErrorMessage()"
+        :maxlength="50"
         @input="onNicknameInput"
       />
 
@@ -116,8 +117,25 @@ function onPrev() {
 }
 
 function validate() {
-  errors.value.nickname = !form.value.nickname;
-  return !errors.value.nickname;
+  const nickname = form.value.nickname.trim();
+  
+  if (!nickname) {
+    errors.value.nickname = true;
+    return false;
+  }
+  
+  if (nickname.length < 2) {
+    errors.value.nickname = true;
+    return false;
+  }
+  
+  if (nickname.length > 50) {
+    errors.value.nickname = true;
+    return false;
+  }
+  
+  errors.value.nickname = false;
+  return true;
 }
 
 // 닉네임 입력 시 에러 제거
@@ -125,6 +143,25 @@ function onNicknameInput() {
   if (form.value.nickname && errors.value.nickname) {
     errors.value.nickname = false;
   }
+}
+
+// 닉네임 에러 메시지 생성
+function getNicknameErrorMessage() {
+  const nickname = form.value.nickname.trim();
+  
+  if (!nickname) {
+    return "닉네임을 입력해 주세요!";
+  }
+  
+  if (nickname.length < 2) {
+    return "닉네임은 2자 이상이어야 합니다!";
+  }
+  
+  if (nickname.length > 50) {
+    return "닉네임은 50자 이하여야 합니다!";
+  }
+  
+  return "닉네임을 입력해 주세요!";
 }
 
 function onNext() {

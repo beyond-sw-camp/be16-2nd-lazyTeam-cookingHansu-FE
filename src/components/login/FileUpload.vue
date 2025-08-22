@@ -36,11 +36,18 @@
     <div v-if="errorMessage && hasError" class="input-error">
       <span class="error-icon">&#10006;</span> {{ errorMessage }}
     </div>
+    <!-- 파일 정보 표시 -->
+    <div v-if="fileInfo" class="file-info">
+      <small class="text-caption text-medium-emphasis">
+        파일 크기: {{ formatFileSize(fileInfo.size) }} | 
+        형식: {{ fileInfo.type || '알 수 없음' }}
+      </small>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 
 const props = defineProps({
   modelValue: {
@@ -83,10 +90,65 @@ const fileName = computed(() => {
   return props.modelValue ? props.modelValue.name : "";
 });
 
+const fileInfo = computed(() => {
+  return props.modelValue;
+});
+
 function handleFileChange(event) {
   const file = event.target.files[0];
-  emit("update:modelValue", file);
+  
+  if (file) {
+    // 파일 유효성 검증
+    if (!validateFile(file)) {
+      // 파일 선택을 초기화
+      event.target.value = '';
+      emit("update:modelValue", null);
+      return;
+    }
+    
+    console.log('파일 선택됨:', file.name, file.size, file.type);
+    emit("update:modelValue", file);
+  } else {
+    emit("update:modelValue", null);
+  }
 }
+
+function validateFile(file) {
+  // 파일 크기 검증 (100MB 제한)
+  const maxSize = 100 * 1024 * 1024; // 100MB
+  if (file.size > maxSize) {
+    alert("파일 크기는 100MB를 초과할 수 없습니다.");
+    return false;
+  }
+  
+  // 파일 형식 검증
+  const allowedTypes = [
+    'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 
+    'image/webp', 'application/pdf'
+  ];
+  
+  if (!allowedTypes.includes(file.type) && !file.name.match(/\.(jpg|jpeg|png|gif|webp|pdf)$/i)) {
+    alert("지원하지 않는 파일 형식입니다. (jpg, jpeg, png, gif, webp, pdf만 허용)");
+    return false;
+  }
+  
+  return true;
+}
+
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// 파일 변경 감지
+watch(() => props.modelValue, (newFile) => {
+  if (newFile && !(newFile instanceof File)) {
+    console.warn('FileUpload: modelValue는 File 객체여야 합니다.');
+  }
+});
 </script>
 
 <style scoped>
@@ -154,5 +216,11 @@ function handleFileChange(event) {
 .error-icon {
   font-size: 1.1em;
   margin-right: 2px;
+}
+
+.file-info {
+  margin-top: 4px;
+  margin-left: 2px;
+  color: #666;
 }
 </style>

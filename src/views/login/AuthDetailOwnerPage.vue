@@ -19,11 +19,11 @@
       />
 
       <FileUpload
-        v-model="form.businessUrl"
+        v-model="form.businessFile"
         label="사업자 등록증"
         placeholder="사업자 등록증을 선택하세요"
         :required="true"
-        :has-error="errors.businessUrl"
+        :has-error="errors.businessFile"
         error-message="사업자 등록증을 선택해 주세요!"
         @update:modelValue="onFileSelect"
       />
@@ -125,7 +125,7 @@ const shopCategoryOptions = [
 
 const form = ref({
   shopCategory: "",
-  businessUrl: null,
+  businessFile: null, // businessUrl에서 businessFile로 변경
   businessNumber: "",
   businessName: "",
   businessAddress: "",
@@ -133,7 +133,7 @@ const form = ref({
 
 const errors = ref({
   shopCategory: false,
-  businessUrl: false,
+  businessFile: false, // businessUrl에서 businessFile로 변경
   businessNumber: false,
   businessName: false,
 });
@@ -150,7 +150,7 @@ onMounted(() => {
 
   // 초기 에러 상태 초기화
   errors.value.shopCategory = false;
-  errors.value.businessUrl = false;
+  errors.value.businessFile = false; // businessUrl에서 businessFile로 변경
   errors.value.businessNumber = false;
   errors.value.businessName = false;
 });
@@ -175,7 +175,7 @@ async function confirmRegistration() {
       businessNumber: form.value.businessNumber,
       businessName: form.value.businessName,
       businessAddress: form.value.businessAddress,
-      businessUrl: form.value.businessUrl ? form.value.businessUrl.name : null,
+      businessFile: form.value.businessFile ? form.value.businessFile.name : null, // businessUrl에서 businessFile로 변경
     });
 
     // 인증 스토어의 사용자 정보 업데이트
@@ -185,7 +185,7 @@ async function confirmRegistration() {
         businessNumber: form.value.businessNumber,
         businessName: form.value.businessName,
         businessAddress: form.value.businessAddress,
-        businessUrl: form.value.businessUrl ? form.value.businessUrl.name : null,
+        businessFile: form.value.businessFile ? form.value.businessFile.name : null, // businessUrl에서 businessFile로 변경
       }
     });
 
@@ -195,11 +195,27 @@ async function confirmRegistration() {
       throw new Error("사용자 정보를 찾을 수 없습니다.");
     }
 
-    // 최종 회원가입 완료 - 통합 API 사용
+    // 최종 회원가입 완료 - FormData를 사용하여 multipart 방식으로 전송
     const registrationData = getCompleteRegistrationData();
-    const response = await authService.addUserInfo(
+    
+    // FormData 생성
+    const formData = new FormData();
+    
+    // 텍스트 데이터 추가
+    Object.keys(registrationData).forEach(key => {
+      if (key !== 'businessFile' && registrationData[key] !== null && registrationData[key] !== undefined) {
+        formData.append(key, registrationData[key]);
+      }
+    });
+    
+    // 파일 데이터 추가 (사업자 등록증) - 백엔드 필드명과 일치
+    if (form.value.businessFile && form.value.businessFile instanceof File) {
+      formData.append('businessFile', form.value.businessFile); // businessFile로 변경
+    }
+    
+    const response = await authService.addUserInfoFormData(
       currentUser.id,
-      registrationData
+      formData
     );
 
     if (response.isSuccess()) {
@@ -222,12 +238,12 @@ async function confirmRegistration() {
 
 function validate() {
   errors.value.shopCategory = !form.value.shopCategory;
-  errors.value.businessUrl = !form.value.businessUrl;
+  errors.value.businessFile = !form.value.businessFile; // businessUrl에서 businessFile로 변경
   errors.value.businessNumber = !form.value.businessNumber;
   errors.value.businessName = !form.value.businessName;
   return (
     !errors.value.shopCategory &&
-    !errors.value.businessUrl &&
+    !errors.value.businessFile &&
     !errors.value.businessNumber &&
     !errors.value.businessName
   );
@@ -242,8 +258,8 @@ function onShopCategorySelect() {
 
 // 파일 선택 시 에러 제거
 function onFileSelect() {
-  if (form.value.businessUrl && errors.value.businessUrl) {
-    errors.value.businessUrl = false;
+  if (form.value.businessFile && errors.value.businessFile) { // businessUrl에서 businessFile로 변경
+    errors.value.businessFile = false; // businessUrl에서 businessFile로 변경
   }
 }
 

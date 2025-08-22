@@ -50,13 +50,13 @@ export const getCompleteRegistrationData = () => {
   } else if (data.addInfo?.role === 'CHEF') {
     userData.licenseNumber = data.authDetail?.licenseNumber;
     userData.cuisineType = data.authDetail?.cuisineType;
-    userData.licenseUrl = data.authDetail?.licenseUrl;
+    // 파일은 FormData로 별도 전송되므로 여기서는 제외
   } else if (data.addInfo?.role === 'OWNER') {
     userData.businessNumber = data.authDetail?.businessNumber;
     userData.businessName = data.authDetail?.businessName;
     userData.businessAddress = data.authDetail?.businessAddress;
     userData.shopCategory = data.authDetail?.shopCategory;
-    userData.businessUrl = data.authDetail?.businessUrl;
+    // 파일은 FormData로 별도 전송되므로 여기서는 제외
   }
   
   return userData;

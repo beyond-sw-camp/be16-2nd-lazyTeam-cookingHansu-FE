@@ -10,8 +10,12 @@
       :placeholder="placeholder"
       :class="['form-input', { error: hasError }]"
       :required="required"
+      :maxlength="maxlength"
       v-bind="$attrs"
     />
+    <div v-if="maxlength" class="char-count">
+      {{ (modelValue || '').length }}/{{ maxlength }}
+    </div>
     <div v-if="errorMessage && hasError" class="input-error">
       <span class="error-icon">&#10006;</span> {{ errorMessage }}
     </div>
@@ -47,6 +51,10 @@ defineProps({
   errorMessage: {
     type: String,
     default: "",
+  },
+  maxlength: {
+    type: Number,
+    default: null,
   },
 });
 
@@ -95,6 +103,14 @@ defineEmits(["update:modelValue"]);
 
 .form-input.error {
   border: 1.5px solid #e53935;
+}
+
+.char-count {
+  text-align: right;
+  font-size: 0.85rem;
+  color: #6c757d;
+  margin-bottom: 4px;
+  margin-right: 2px;
 }
 
 .input-error {
