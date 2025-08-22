@@ -100,6 +100,11 @@ export function useFileUpload() {
     return selectedFiles.value.length === 0;
   };
 
+  // 추가 파일 선택이 가능한지 확인 (10개 미만일 때)
+  const canAddMoreFiles = () => {
+    return selectedFiles.value.length < 10;
+  };
+
   return {
     selectedFiles,
     selectedFileNames,
@@ -111,6 +116,7 @@ export function useFileUpload() {
     triggerFileInput,
     onTextInput,
     hasFiles,
-    canInputText
+    canInputText,
+    canAddMoreFiles
   };
 }; 

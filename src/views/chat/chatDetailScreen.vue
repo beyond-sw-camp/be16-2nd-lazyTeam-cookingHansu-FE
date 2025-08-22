@@ -248,9 +248,9 @@
         <v-btn 
           icon 
           @click="triggerFileInput" 
-          :disabled="loading || (hasFiles() && message.trim())" 
+          :disabled="loading || !canAddMoreFiles()" 
           color="primary"
-          :title="hasFiles() && message.trim() ? '텍스트를 입력하려면 파일을 제거하세요' : '파일 첨부'"
+          :title="!canAddMoreFiles() ? '최대 10개까지 선택 가능합니다' : '파일 첨부'"
           class="file-attach-btn"
         >
           <v-icon>mdi-paperclip</v-icon>
@@ -291,6 +291,8 @@ const props = defineProps({
 const router = useRouter();
 const chatStore = useChatStore();
 const { messages, currentRoomId, loading, error } = storeToRefs(chatStore);
+
+
 
 const showSkeleton = ref(false);
 const skeletonTimer = ref(null);
@@ -431,25 +433,7 @@ const chatMessages = computed(() => {
       displayUnreadCount = 0;
     }
     
-    // 디버깅: 개별 메시지 unreadCount 계산 결과
-    if (displayUnreadCount === 1) {
-      console.log(`📝 메시지 ${msg.id} unreadCount: 1`, {
-        senderId: msg.senderId,
-        isMyMessage: msg.senderId === myId,
-        totalUnreadCount: totalUnreadCount,
-        isOtherOnline: isOtherOnline,
-        reason: '내가 보낸 메시지이고 상대방이 읽지 않음'
-      });
-    } else if (msg.senderId === myId) {
-      // 내 메시지인데 unreadCount가 0인 경우 디버깅
-      console.log(`✅ 메시지 ${msg.id} unreadCount: 0`, {
-        senderId: msg.senderId,
-        isMyMessage: true,
-        totalUnreadCount: totalUnreadCount,
-        isOtherOnline: isOtherOnline,
-        reason: '내가 보낸 메시지이고 상대방이 읽음 또는 상대방 온라인'
-      });
-    }
+
     
     return {
       ...msg,
@@ -468,9 +452,7 @@ watch(
       // 메시지가 로드될 때까지 잠시 대기
       await nextTick();
       
-      // ✅ 수정: Store의 실시간 unread count 계산 사용
-      const unreadCount = chatStore.getUnreadCount(newRoomId);
-      console.log(`✅ Store에서 unread count 확인: ${unreadCount}`);
+
     }
   }
 );
@@ -481,12 +463,7 @@ watch(
   (newMessages, oldMessages) => {
     if (!newMessages || !currentRoomId.value) return;
     
-    // ✅ 수정: Store의 실시간 unread count 계산 사용
-    // 메시지가 처음 로드되었거나 새로 추가된 경우
-    if (!oldMessages || newMessages.length !== oldMessages.length) {
-      const unreadCount = chatStore.getUnreadCount(currentRoomId.value);
-      console.log(`✅ Store에서 unread count 확인: ${unreadCount}`);
-    }
+
     
     // 새로운 메시지가 추가되었는지 확인
     if (oldMessages && newMessages.length > oldMessages.length) {
@@ -667,7 +644,7 @@ const isSending = ref(false);
 const {
   selectedFiles, selectedFileNames, selectedFileTypes, fileInput,
   handleFileChange, removeSelectedFile, removeAllFiles, triggerFileInput, onTextInput,
-  hasFiles, canInputText
+  hasFiles, canInputText, canAddMoreFiles
 } = useFileUpload();
 
 const {
@@ -808,14 +785,7 @@ const testUnreadCount = () => {
     const unreadCount = chatStore.getUnreadCount(currentRoomId.value);
     console.log(`🧪 실시간 unread count 테스트: ${unreadCount}`);
     
-    // 각 메시지별 unread count도 확인
-    const messages = chatMessages.value;
-    messages.forEach((msg, index) => {
-      if (msg.senderId === myId) {
-        const msgUnreadCount = chatStore.getMessageUnreadCount(currentRoomId.value, msg.id);
-        console.log(`📝 메시지 ${index + 1} (ID: ${msg.id}): unreadCount = ${msgUnreadCount}`);
-      }
-    });
+
   }
 };
 
