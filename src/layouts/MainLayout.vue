@@ -11,6 +11,6 @@
   </v-app>
 </template>
 <script setup>
-import Header from '@/components/Header.vue'
+import Header from '@/components/Header1.vue'
 import Footer from '@/components/Footer.vue'
 </script> 
