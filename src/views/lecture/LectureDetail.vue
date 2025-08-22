@@ -582,8 +582,8 @@
 
 <script>
 import Header from '@/components/Header.vue';
-import { useCartStore } from '@/views/cart/cart.js';
-import { lectureService } from '@/views/home/lectureService';
+import { useCartStore } from '@/store/cart/cart.js';
+import { lectureService } from '@/store/lecture/lectureService';
 
 export default {
   name: 'LectureDetail',

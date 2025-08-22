@@ -87,7 +87,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useCartStore } from '@/views/cart/cart.js'
+import { useCartStore } from '@/store/cart/cart.js'
 import { useNotificationStore } from '@/store/notification/notification.js'
 import { useNotifications } from '@/composables/useNotifications.js'
 

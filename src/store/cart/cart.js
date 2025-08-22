@@ -70,4 +70,4 @@ export const useCartStore = defineStore('cart', {
       localStorage.setItem('cartItems', JSON.stringify(this.items))
     }
   }
-}) 
+})
