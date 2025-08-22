@@ -116,7 +116,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useCartStore } from '@/views/cart/cart.js'
+import { useCartStore } from '@/store/cart/cart.js'
 
 const router = useRouter()
 // const cartStore = useCartStore()
