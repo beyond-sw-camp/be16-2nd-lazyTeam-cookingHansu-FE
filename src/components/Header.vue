@@ -87,7 +87,6 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-
 import { useCartStore } from '@/store/cart/cart.js'
 import { useNotificationStore } from '@/store/notification/notification.js'
 import { useNotifications } from '@/composables/useNotifications.js'
@@ -113,10 +112,10 @@ const isMobile = ref(false)
 const showMobileMenu = ref(false)
 
 const menuItems = [
+  { text: '공지사항', route: '/notice' },
   { text: '레시피 공유 게시글', route: '/recipes' },
   { text: '판매중인 강의', route: '/lectures' },
   { text: '1:1채팅', route: '/chat' },
-  { text: '공지사항', route: '/notice' },
   { text: '마이페이지', route: '/mypage' }
 ]
 

@@ -60,66 +60,17 @@ export function validateFile(file, fileType) {
   return { isValid: true, error: null };
 }
 
-/**
- * 메시지와 파일 전송 유효성 검사
- * @param {string} message - 메시지 내용
- * @param {Array} files - 파일 배열
- * @returns {object} - 검증 결과 {isValid: boolean, error: string}
- */
-export function validateMessageAndFiles(message, files) {
-  const hasMessage = message && message.trim().length > 0;
-  const hasFiles = files && files.length > 0;
 
-  // 둘 다 없는 경우
-  if (!hasMessage && !hasFiles) {
-    return { isValid: false, error: '메시지 또는 파일 중 하나는 반드시 있어야 합니다.' };
-  }
 
-  // 둘 다 있는 경우 (허용하지 않음)
-  if (hasMessage && hasFiles) {
-    return { isValid: false, error: '메시지와 파일을 동시에 전송할 수 없습니다. 메시지 또는 파일 중 하나만 전송해주세요.' };
-  }
-
-  // 메시지만 있는 경우
-  if (hasMessage && !hasFiles) {
-    if (message.trim().length === 0) {
-      return { isValid: false, error: '메시지 내용은 비어있을 수 없습니다.' };
-    }
-  }
-
-  // 파일만 있는 경우
-  if (!hasMessage && hasFiles) {
-    if (files.length === 0) {
-      return { isValid: false, error: '파일은 최소 1개 이상 있어야 합니다.' };
-    }
-
-    // 각 파일 검증
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const fileType = getFileTypeFromFile(file);
-      
-      // UNKNOWN 타입은 거부
-      if (fileType === 'UNKNOWN') {
-        return { isValid: false, error: `파일 ${i + 1}: 지원하지 않는 파일 형식입니다. 이미지는 jpg, jpeg, png, gif, webp, 비디오는 mp4, avi, mov 형식만 허용됩니다.` };
-      }
-      
-      const validation = validateFile(file, fileType);
-      
-      if (!validation.isValid) {
-        return { isValid: false, error: `파일 ${i + 1}: ${validation.error}` };
-      }
-    }
-  }
-
-  return { isValid: true, error: null };
-}
 
 /**
  * 파일로부터 파일 타입 추정
  * @param {File} file - 파일
  * @returns {string} - 파일 타입 ('IMAGE' 또는 'VIDEO')
  */
-function getFileTypeFromFile(file) {
+export function getFileTypeFromFile(file) {
+  if (!file || !file.name) return 'UNKNOWN';
+  
   const fileName = file.name;
   const extension = fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase();
   

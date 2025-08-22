@@ -125,10 +125,11 @@
     </v-card>
 
     <!-- 로딩 상태 -->
-    <div v-if="noticeStore.isLoading" class="text-center pa-8">
-      <v-progress-circular indeterminate color="orange"></v-progress-circular>
-      <p class="mt-4">공지사항을 불러오는 중...</p>
-    </div>
+    <LoadingScreen 
+      v-if="noticeStore.isLoading"
+      title="공지사항을 불러오는 중"
+      description="공지사항 목록을 확인하고 있어요..."
+    />
 
     <!-- 에러 상태 -->
     <div v-else-if="noticeStore.getError" class="text-center pa-8">
@@ -232,6 +233,7 @@ import DeleteConfirmModal from '../../components/common/DeleteConfirmModal.vue';
 import Pagination from '../../components/common/Pagination.vue';
 import ErrorAlert from '../../components/common/ErrorAlert.vue';
 import CommonSnackbar from '../../components/common/CommonSnackbar.vue';
+import LoadingScreen from '../../components/common/LoadingScreen.vue';
 
 const noticeStore = useNoticeStore();
 
