@@ -1,5 +1,8 @@
 <template>
   <div class="notice-list-container">
+
+    <Header />
+    
     <div class="notice-header">
       <div class="notice-header-left">
         <!-- 테스트용 채팅방 생성 버튼 -->
