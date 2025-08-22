@@ -16,6 +16,9 @@ import AuthDetailOwnerPage from '@/views/login/AuthDetailOwnerPage.vue'
 import AuthDetailUserPage from '@/views/login/AuthDetailUserPage.vue'
 import RegistrationCompletePage from '@/views/login/RegistrationCompletePage.vue'
 import RecipeMainPage from '@/views/home/RecipeMainPage.vue'
+import RecipeDetailPage from '@/views/recipe/RecipeDetailPage.vue'
+import RecipeWritePage from '@/views/recipe/RecipeWritePage.vue'
+import RecipePostWritePage from '@/views/recipe/RecipePostWritePage.vue'
 import LectureList from '@/views/home/LectureList.vue'
 import LectureDetail from '@/views/lecture/LectureDetail.vue'
 import CartPage from '@/views/cart/CartPage.vue'
@@ -107,7 +110,9 @@ const routes = [
       { path: '', redirect: '/recipes' },
       { path: 'landing', name: 'LandingPage', component: LandingPage },
       { path: 'recipes', name: 'RecipeMainPage', component: RecipeMainPage },
-      { path: 'recipes/:id', name: 'RecipeDetail', component: RecipeMainPage },
+      { path: 'recipes/:id', name: 'RecipeDetail', component: RecipeDetailPage },
+      { path: 'recipe/write', name: 'RecipeWrite', component: RecipeWritePage },
+      { path: 'recipe/post-write', name: 'RecipePostWrite', component: RecipePostWritePage },
       { path: 'lectures', name: 'LectureList', component: LectureList },
       { path: 'lectures/:id', name: 'LectureDetail', component: LectureDetail },
       { path: 'cart', name: 'CartPage', component: CartPage },

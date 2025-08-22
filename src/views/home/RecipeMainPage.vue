@@ -15,7 +15,7 @@
     <div class="filter-card">
       <div class="filter-title-row">
         <div class="filter-title">레시피 필터</div>
-        <button class="write-btn">게시글 등록하기</button>
+        <button class="write-btn" @click="goToPostWrite">게시글 등록하기</button>
       </div>
       <div class="filter-row">
         <div class="filter-col">
@@ -428,16 +428,12 @@ export default {
       }
     },
     handleCardClick(recipe) {
-      // 카드 클릭 이벤트 처리 -> 추후 상태관리..
-      console.log('레시피 클릭:', recipe.id, recipe.title);
-      
-      // 클릭된 레시피 정보
-      this.selectedRecipe = recipe;
-        // 클릭 효과
-      this.showClickEffect = true;
-      setTimeout(() => {
-        this.showClickEffect = false;
-      }, 200);
+      // 레시피 상세 페이지로 이동
+      this.$router.push(`/recipes/${recipe.id}`);
+    },
+    goToPostWrite() {
+      // 레시피 게시글 작성 페이지로 이동
+      this.$router.push('/recipe/post-write');
     },
   },
 };
