@@ -29,12 +29,12 @@
           <input 
             ref="fileInput" 
             type="file" 
-            accept="image/*" 
+            accept=".png,.jpg,.jpeg" 
             @change="handleImageUpload" 
             style="display: none"
           />
           <p class="image-hint">클릭하여 프로필 이미지 변경</p>
-          <p class="image-requirements">JPG, PNG, GIF (최대 5MB)</p>
+          <p class="image-requirements">PNG, JPG, JPEG (최대 5MB)</p>
         </div>
 
         <div class="form-group">
@@ -43,9 +43,12 @@
             id="nickname"
             v-model="formData.nickname" 
             type="text" 
-            placeholder="닉네임을 입력하세요"
+            placeholder="닉네임을 입력하세요 (2-20자)"
+            minlength="2"
             maxlength="20"
+            @input="validateNickname"
           />
+          <small v-if="nicknameError" class="nickname-error">{{ nicknameError }}</small>
         </div>
 
         <div class="form-group">
@@ -102,6 +105,7 @@ export default {
       loading: false,
       profileImagePreview: null,
       selectedFile: null,
+      nicknameError: '',
       formData: {
         nickname: '',
         email: '',
@@ -133,6 +137,18 @@ export default {
       };
       this.profileImagePreview = null;
       this.selectedFile = null;
+      this.nicknameError = '';
+    },
+    
+    validateNickname() {
+      const nickname = this.formData.nickname.trim();
+      if (nickname.length < 2) {
+        this.nicknameError = '닉네임은 2자 이상 입력해주세요';
+      } else if (nickname.length > 20) {
+        this.nicknameError = '닉네임은 20자 이하로 입력해주세요';
+      } else {
+        this.nicknameError = '';
+      }
     },
     
     closeModal() {
@@ -157,12 +173,12 @@ export default {
         }
         
         // 파일 타입 검증
-        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+        const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg'];
         if (!allowedTypes.includes(file.type)) {
           this.$emit('showMessage', {
             type: 'error',
             title: '지원하지 않는 파일 형식',
-            message: 'JPG, PNG, GIF 파일만 업로드 가능합니다.'
+            message: 'PNG, JPG, JPEG 파일만 업로드 가능합니다.'
           });
           return;
         }
@@ -179,6 +195,17 @@ export default {
     },
     
     async saveProfile() {
+      // 닉네임 유효성 검사
+      this.validateNickname();
+      if (this.nicknameError) {
+        this.$emit('showMessage', {
+          type: 'error',
+          title: '입력 오류',
+          message: this.nicknameError
+        });
+        return;
+      }
+      
       if (!this.formData.nickname.trim()) {
         this.$emit('showMessage', {
           type: 'error',
@@ -424,6 +451,20 @@ export default {
   margin-top: 4px;
   font-size: 12px;
   color: #999;
+}
+
+.nickname-hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #666;
+}
+
+.nickname-error {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #dc3545;
 }
 
 .char-count {

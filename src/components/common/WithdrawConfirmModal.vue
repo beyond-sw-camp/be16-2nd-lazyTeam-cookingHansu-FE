@@ -2,6 +2,7 @@
   <div v-if="visible" class="modal-overlay" @click="closeModal">
     <div class="modal-content" @click.stop>
       <div class="modal-header">
+        <div class="header-spacer"></div>
         <h3>회원 탈퇴</h3>
         <button class="close-btn" @click="closeModal">&times;</button>
       </div>
@@ -124,6 +125,12 @@ export default {
   padding: 24px 24px 0 24px;
   border-bottom: 1px solid #eee;
   padding-bottom: 16px;
+  position: relative;
+}
+
+.header-spacer {
+  width: 32px;
+  height: 32px;
 }
 
 .modal-header h3 {
@@ -131,6 +138,9 @@ export default {
   font-size: 20px;
   font-weight: 600;
   color: #333;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .close-btn {
