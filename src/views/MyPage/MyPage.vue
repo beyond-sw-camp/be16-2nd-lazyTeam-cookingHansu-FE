@@ -301,6 +301,9 @@ export default {
   display: flex;
   justify-content: center;
   gap: 0;
+  max-width: 1040px;
+  margin: 0 auto;
+  border-radius: 0 0 8px 8px;
 }
 
 .tab-button {
