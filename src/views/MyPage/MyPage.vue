@@ -98,7 +98,7 @@ export default {
   },
   data() {
     return {
-      currentTab: 'recipes',
+      currentTab: this.getInitialTab(),
       showProfileModal: false,
       showWithdrawModal: false,
       userProfile: {
@@ -124,6 +124,10 @@ export default {
     await this.fetchUserProfile();
   },
   watch: {
+    currentTab(newTab) {
+      // 탭이 변경될 때 URL 쿼리 파라미터 업데이트
+      this.updateUrlWithTab(newTab);
+    },
     showProfileModal(newVal) {
       if (newVal) {
         // 모달이 열릴 때 배경 스크롤 비활성화 (더 확실한 방법)
@@ -143,6 +147,20 @@ export default {
     document.body.style.overflow = 'auto';
   },
   methods: {
+    getInitialTab() {
+      // URL 쿼리 파라미터에서 탭 정보 가져오기
+      const urlParams = new URLSearchParams(window.location.search);
+      const tab = urlParams.get('tab');
+      const validTabs = ['recipes', 'posts', 'lectures', 'bookmarks', 'likes'];
+      return tab && validTabs.includes(tab) ? tab : 'recipes';
+    },
+    
+    updateUrlWithTab(tab) {
+      const url = new URL(window.location);
+      url.searchParams.set('tab', tab);
+      window.history.replaceState({}, '', url);
+    },
+    
     async fetchUserProfile() {
       try {
         const response = await fetch('http://localhost:8080/api/my/profile');
