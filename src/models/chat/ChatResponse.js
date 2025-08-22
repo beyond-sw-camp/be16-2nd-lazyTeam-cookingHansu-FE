@@ -32,6 +32,11 @@ export class ChatRoomResponse {
       json.newMessageCount
     );
   }
+
+  // lastMessageId 기반으로 unread count 계산 (백엔드에서 이미 계산된 값 사용)
+  getUnreadCount() {
+    return this.newMessageCount || 0;
+  }
 }
 
 // 채팅 파일 응답 모델 (ChatFileUploadResDto.FileInfo 기반)

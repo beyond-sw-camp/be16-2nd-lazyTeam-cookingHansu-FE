@@ -391,146 +391,74 @@ const loadMoreMessages = async () => {
 /* -----------------------------
  * 메시지/읽음 계산
  * ----------------------------- */
-// ✅ 수정: Store의 lastReadTimestamps 사용
-
-// 각 메시지별 unreadCount 계산 (Store의 lastReadTimestamps 사용)
+// 각 메시지별 unreadCount 계산 (Store의 실시간 계산 사용)
 const chatMessages = computed(() => {
-  // Store의 lastReadTimestamp 사용
-  const lastReadTimestamp = chatStore.lastReadTimestamps[currentRoomId.value];
-  
-  // onlineUsers 상태도 의존성에 추가하여 온라인 상태 변경 감지
-  const onlineUsers = chatStore.onlineUsers[currentRoomId.value];
-  const isOtherOnline = onlineUsers && onlineUsers.some(user => user.userId !== myId);
-  
   const list = chatStore.messages[currentRoomId.value] || [];
   if (list.length === 0) return [];
   
-  // 디버깅: lastReadTimestamp 상태 확인
+  // Store의 실시간 unread count 계산 사용
+  const totalUnreadCount = chatStore.getUnreadCount(currentRoomId.value);
+  
+  // 디버깅: unread count 상태 확인
   console.log(`🔍 chatMessages computed 실행:`, {
     roomId: currentRoomId.value,
     messageCount: list.length,
-    lastReadTimestamp: lastReadTimestamp,
-    hasLastReadTimestamp: !!lastReadTimestamp,
-    onlineUsers: onlineUsers,
-    isOtherOnline: isOtherOnline,
+    totalUnreadCount: totalUnreadCount,
     currentTime: new Date().toISOString()
   });
   
-  // lastReadTimestamp가 없으면 모든 메시지를 읽지 않음
-  if (!lastReadTimestamp) {
-    console.log(`⚠️ lastReadTimestamp가 설정되지 않음 - 모든 메시지를 읽지 않은 상태로 표시`);
-    return list.map(msg => ({
-      ...msg,
-      unreadCount: 1
-    }));
-  }
-  
-  const lastReadTime = new Date(lastReadTimestamp).getTime();
-  console.log(`✅ lastReadTimestamp 기준 시간: ${lastReadTimestamp} (원본)`);
-  
-  // 상대방이 온라인이고 lastReadTimestamp가 현재 시간에 가깝다면 모든 메시지를 읽은 것으로 간주
-  if (isOtherOnline) {
-    const currentTime = new Date().getTime();
-    const timeDiff = currentTime - lastReadTime;
-    const isRecent = timeDiff < 60000; // 1분 이내
-    
-    if (isRecent) {
-      console.log(`🟢 상대방이 온라인이고 최근 시간: 모든 메시지를 읽은 상태로 표시`);
-      return list.map(msg => ({
-        ...msg,
-        unreadCount: 0
-      }));
-    }
-  }
-  
   return list.map((msg) => {
+    // ✅ 수정: 각 메시지별로 개별 unread count 계산
     let unreadCount = 0;
     
-    // ✅ 수정: 시간대 통일 (한국 시간으로 변환)
-    // 백엔드는 한국 시간, 프론트는 UTC 시간이므로 9시간 차이 보정
-    const msgTime = new Date(msg.createdAt).getTime();
-    const lastReadTime = new Date(lastReadTimestamp).getTime();
-    
-    // 한국 시간대 보정 (UTC+9)
-    const koreaTimeOffset = 9 * 60 * 60 * 1000; // 9시간을 밀리초로
-    const adjustedMsgTime = msgTime + koreaTimeOffset;
-    const adjustedLastReadTime = lastReadTime + koreaTimeOffset;
-    
-    // ✅ 핵심 로직: 보정된 시간으로 비교
     if (msg.senderId === myId) {
       // 내 메시지: 상대방이 읽었으면 0, 읽지 않았으면 1
-      unreadCount = adjustedMsgTime > adjustedLastReadTime ? 1 : 0;
+      // ✅ 수정: Store의 개별 메시지 unread count 계산 함수 사용
+      unreadCount = chatStore.getMessageUnreadCount(currentRoomId.value, msg.id);
     } else {
       // 상대방 메시지: 내가 읽었으면 0, 읽지 않았으면 1
-      unreadCount = adjustedMsgTime > adjustedLastReadTime ? 1 : 0;
+      // ✅ 수정: 상대방 메시지는 항상 0 (내가 읽은 상태)
+      unreadCount = 0;
+    }
+    
+    // ✅ UI 표시: 상대방 온라인일 때는 읽음 처리된 것처럼 보임
+    let displayUnreadCount = unreadCount;
+    const onlineUsers = chatStore.onlineUsers[currentRoomId.value];
+    const isOtherOnline = onlineUsers && onlineUsers.some(user => user.userId !== myId);
+    
+    if (isOtherOnline && msg.senderId === myId) {
+      // 상대방이 온라인이고 내 메시지일 때: UI에서만 읽음 처리
+      displayUnreadCount = 0;
     }
     
     // 디버깅: 개별 메시지 unreadCount 계산 결과
-    if (unreadCount === 1) {
+    if (displayUnreadCount === 1) {
       console.log(`📝 메시지 ${msg.id} unreadCount: 1`, {
         senderId: msg.senderId,
         isMyMessage: msg.senderId === myId,
-        messageTime: msg.createdAt,
-        lastReadTime: lastReadTimestamp,
-        diff: msgTime - lastReadTime,
-        isOtherOnline: isOtherOnline
+        totalUnreadCount: totalUnreadCount,
+        isOtherOnline: isOtherOnline,
+        reason: '내가 보낸 메시지이고 상대방이 읽지 않음'
+      });
+    } else if (msg.senderId === myId) {
+      // 내 메시지인데 unreadCount가 0인 경우 디버깅
+      console.log(`✅ 메시지 ${msg.id} unreadCount: 0`, {
+        senderId: msg.senderId,
+        isMyMessage: true,
+        totalUnreadCount: totalUnreadCount,
+        isOtherOnline: isOtherOnline,
+        reason: '내가 보낸 메시지이고 상대방이 읽음 또는 상대방 온라인'
       });
     }
     
     return {
       ...msg,
-      unreadCount
+      unreadCount: displayUnreadCount
     };
   });
 });
 
-// ✅ 수정: Store의 lastReadTimestamps 변경 감지
-watch(
-  () => chatStore.lastReadTimestamps[currentRoomId.value],
-  (newTimestamp, oldTimestamp) => {
-    if (newTimestamp && newTimestamp !== oldTimestamp) {
-      console.log(`🔄 lastReadTimestamp 변경됨: ${oldTimestamp} → ${newTimestamp}`);
-      
-      // 강제로 computed 재계산을 위해 $forceUpdate와 유사한 효과
-      // Vue 3에서는 nextTick으로 처리
-      nextTick(() => {
-        console.log(`✅ unreadCount 재계산 완료`);
-      });
-    }
-  }
-);
-
-// ✅ 추가: 상대방 온라인 상태 변경 감지하여 자동 읽음 처리
-watch(
-  () => chatStore.onlineUsers[currentRoomId.value],
-  (newOnlineUsers, oldOnlineUsers) => {
-    if (!currentRoomId.value || !newOnlineUsers) return;
-    
-    const prev = Array.isArray(oldOnlineUsers) ? oldOnlineUsers : [];
-    const wasOnline = prev.some((user) => user.userId !== myId);
-    const nowOnline = newOnlineUsers.some((user) => user.userId !== myId);
-    
-    console.log(`🔍 온라인 상태 변경 감지:`, {
-      roomId: currentRoomId.value,
-      wasOnline,
-      nowOnline
-    });
-    
-    // 상대방이 오프라인에서 온라인으로 변경된 경우
-    if (!wasOnline && nowOnline) {
-      console.log(`🟢 상대방이 온라인되었습니다. 자동 읽음 처리 시작`);
-      
-      // 상대방이 온라인이 되면 자동으로 읽음 처리
-      setTimeout(async () => {
-        await chatStore.markMessagesAsRead(currentRoomId.value);
-        console.log(`✅ 상대방 온라인으로 인한 자동 읽음 처리 완료`);
-      }, 100);
-    }
-  },
-  { deep: true, immediate: true }
-);
-
-// 채팅방 입장 시 lastMessageTimestamp 초기화
+// ✅ 수정: Store의 실시간 unread count 계산 사용
 watch(
   currentRoomId,
   async (newRoomId, oldRoomId) => {
@@ -540,33 +468,24 @@ watch(
       // 메시지가 로드될 때까지 잠시 대기
       await nextTick();
       
-      // ✅ 수정: Store에서 lastReadTimestamp 확인
-      const lastReadTimestamp = chatStore.lastReadTimestamps[newRoomId];
-      if (lastReadTimestamp) {
-        console.log(`✅ Store에서 lastReadTimestamp 확인: ${lastReadTimestamp}`);
-      } else {
-        console.log(`⚠️ Store에 lastReadTimestamp가 없음`);
-      }
+      // ✅ 수정: Store의 실시간 unread count 계산 사용
+      const unreadCount = chatStore.getUnreadCount(newRoomId);
+      console.log(`✅ Store에서 unread count 확인: ${unreadCount}`);
     }
   }
 );
 
-// 메시지 로드 완료 후 lastMessageTimestamp 설정
+// 메시지 로드 완료 후 unread count 확인
 watch(
   () => chatStore.messages[currentRoomId.value],
   (newMessages, oldMessages) => {
     if (!newMessages || !currentRoomId.value) return;
     
-    // ✅ 수정: Store의 lastReadTimestamps 사용하므로 별도 설정 불필요
+    // ✅ 수정: Store의 실시간 unread count 계산 사용
     // 메시지가 처음 로드되었거나 새로 추가된 경우
     if (!oldMessages || newMessages.length !== oldMessages.length) {
-      // Store에서 lastReadTimestamp 확인
-      const lastReadTimestamp = chatStore.lastReadTimestamps[currentRoomId.value];
-      if (lastReadTimestamp) {
-        console.log(`✅ Store에서 lastReadTimestamp 확인: ${lastReadTimestamp}`);
-      } else {
-        console.log(`⚠️ Store에 lastReadTimestamp가 없음`);
-      }
+      const unreadCount = chatStore.getUnreadCount(currentRoomId.value);
+      console.log(`✅ Store에서 unread count 확인: ${unreadCount}`);
     }
     
     // 새로운 메시지가 추가되었는지 확인
@@ -577,13 +496,9 @@ watch(
       if (newMessage.senderId !== myId && newMessage.roomId === currentRoomId.value) {
         console.log(`📥 상대방 메시지 수신: 자동 읽음 처리`);
         
-        // 약간의 지연 후 읽음 처리 (UI 렌더링 완료 후)
-        setTimeout(async () => {
-          await chatStore.markMessagesAsRead(currentRoomId.value);
-          
-          // ✅ 수정: Store에서 자동으로 lastReadTimestamp 업데이트됨
-          console.log(`✅ 상대방 메시지 수신 후 읽음 처리 완료`);
-        }, 100);
+        // ✅ 수정: Store의 디바운스된 읽음 처리 사용
+        chatStore.queueReadForRoom(currentRoomId.value, newMessage.id);
+        console.log(`✅ 상대방 메시지 수신 후 읽음 처리 큐에 추가`);
       }
     }
   },
@@ -651,32 +566,21 @@ watch(currentRoomId, (n, o) => {
  * ----------------------------- */
 onBeforeRouteLeave(async (_to, _from, next) => {
   if (currentRoomId.value) {
+    // ✅ 제거: 라우트 이탈 전 읽음 처리 제거 (상대방 기준으로 관리)
     await chatStore.disconnectWebSocket(currentRoomId.value);
   }
   next();
 });
 
-// 채팅방을 나갈 때 정리
-onBeforeUnmount(() => {
-  // lastMessageTimestamp 정리
-  // lastMessageTimestamp.value = null; // 로컬 상태 제거
-  
-  // WebSocket 연결 해제
-  if (currentRoomId.value) {
-    chatStore.disconnectWebSocket(currentRoomId.value);
-  }
-  
-  // 스크롤 타이머 정리
-  if (scrollTimeout.value) clearTimeout(scrollTimeout.value);
-  
-  console.log(`🧹 채팅방 상세 컴포넌트 정리 완료`);
-});
+// 채팅방을 나갈 때 정리 (onBeforeUnmount에서 통합 처리)
 
 /* -----------------------------
  * 마운트: 프리로드 옵저버 세팅
  * ----------------------------- */
 onMounted(() => {
   chatStore.initPresenceLifecycle();
+
+  // ✅ 제거: 페이지 가시성 변경 시 읽음 처리 제거 (상대방 기준으로 관리)
 
   const mountObserver = () => {
     if (!chatContainer.value || !topSentinel.value) return;
@@ -709,6 +613,17 @@ onMounted(() => {
   if (currentRoomId.value && chatMessages.value.length === 0) {
     startSkeletonTimer();
   }
+
+  // ✅ 추가: 개발자 도구에서 테스트할 수 있도록 전역 함수로 노출
+  if (import.meta.env.DEV) {
+    window.debugChatRoom = debugRoomState;
+    window.testUnreadCount = testUnreadCount;
+    console.log('🧪 채팅 디버깅 함수가 전역에 노출되었습니다:');
+    console.log('  - debugChatRoom(): 현재 채팅방 상태 출력');
+    console.log('  - testUnreadCount(): 실시간 unread count 테스트');
+  }
+
+  // ✅ 제거: 컴포넌트 언마운트 시 이벤트 리스너 정리 (읽음 처리 제거)
 });
 
 // 메시지가 새로 도착했을 때 자동 스크롤
@@ -879,6 +794,64 @@ const sendMessage = async (event) => {
     isSending.value = false;
   }
 };
+
+// ✅ 추가: 디버깅용 - 현재 채팅방 상태 출력
+const debugRoomState = () => {
+  if (currentRoomId.value) {
+    chatStore.debugRoomState(currentRoomId.value);
+  }
+};
+
+// ✅ 추가: 실시간 unread count 테스트
+const testUnreadCount = () => {
+  if (currentRoomId.value) {
+    const unreadCount = chatStore.getUnreadCount(currentRoomId.value);
+    console.log(`🧪 실시간 unread count 테스트: ${unreadCount}`);
+    
+    // 각 메시지별 unread count도 확인
+    const messages = chatMessages.value;
+    messages.forEach((msg, index) => {
+      if (msg.senderId === myId) {
+        const msgUnreadCount = chatStore.getMessageUnreadCount(currentRoomId.value, msg.id);
+        console.log(`📝 메시지 ${index + 1} (ID: ${msg.id}): unreadCount = ${msgUnreadCount}`);
+      }
+    });
+  }
+};
+
+// ✅ 추가: 테스트용 - 상대방이 메시지를 읽은 상황 시뮬레이션
+const simulateOtherUserRead = (messageId) => {
+  if (currentRoomId.value) {
+    if (messageId) {
+      return chatStore.simulateOtherUserReadMessage(currentRoomId.value, messageId);
+    } else {
+      return chatStore.simulateOtherUserReadAllMessages(currentRoomId.value);
+    }
+  }
+};
+
+// 개발자 도구에서 테스트할 수 있도록 전역 함수로 노출 (onMounted에서 통합 처리)
+
+// ✅ 추가: 컴포넌트 언마운트 시 전역 함수 제거
+onBeforeUnmount(() => {
+  if (import.meta.env.DEV) {
+    delete window.debugChatRoom;
+    delete window.testUnreadCount;
+    delete window.simulateOtherUserRead;
+  }
+  
+  // ✅ 제거: 컴포넌트 언마운트 전 읽음 처리 제거 (상대방 기준으로 관리)
+  
+  // WebSocket 연결 해제
+  if (currentRoomId.value) {
+    chatStore.disconnectWebSocket(currentRoomId.value);
+  }
+  
+  // 스크롤 타이머 정리
+  if (scrollTimeout.value) clearTimeout(scrollTimeout.value);
+  
+  console.log(`🧹 채팅방 상세 컴포넌트 정리 완료`);
+});
 </script>
 
 <style scoped>

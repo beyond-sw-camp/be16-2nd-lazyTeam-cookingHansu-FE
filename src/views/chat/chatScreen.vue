@@ -140,7 +140,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch, onBeforeUnmount } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { storeToRefs } from 'pinia';
 import { useChatStore } from '@/store/chat/chat';
 import ChatDetailView from "@/views/chat/chatDetailScreen.vue";
@@ -148,11 +149,21 @@ import { formatChatTime } from '@/utils/timeUtils';
 import LoadingScreen from '@/components/common/LoadingScreen.vue';
 import ErrorAlert from '@/components/common/ErrorAlert.vue';
 
+const route = useRoute();
+const router = useRouter();
 const chatStore = useChatStore();
 const { rooms, currentRoomId, loading, totalUnreadCount, error } = storeToRefs(chatStore);
 const hasRooms = computed(() => chatStore.hasRooms);
 
-const selectChat = (roomId) => {
+// ✅ 추가: 채팅방 선택 시 읽음 처리
+const selectChat = async (roomId) => {
+  // 채팅방 선택 시 URL을 깔끔하게 정리 (autoSelect 파라미터 제거)
+  if (route.query.autoSelect || route.query.roomId) {
+    router.replace('/chat');
+  }
+  
+  // ✅ 제거: 이전 채팅방 읽음 처리 제거 (상대방 기준으로 관리)
+  
   chatStore.selectRoom(roomId);
 };
 
@@ -190,9 +201,57 @@ const loadMoreChatRooms = async () => {
   }
 };
 
-onMounted(() => {
-  chatStore.fetchMyChatRooms();
+// ✅ [NEW] autoSelect 파라미터 감지하여 새로 생성된 채팅방 자동 선택
+const checkAutoSelect = () => {
+  if (route.query.autoSelect === 'true' && rooms.value.length > 0) {
+    console.log('🔍 autoSelect 감지: 새로 생성된 채팅방 자동 선택');
+    
+    // roomId 파라미터가 있으면 해당 ID의 채팅방을 선택
+    if (route.query.roomId) {
+      const targetRoomId = parseInt(route.query.roomId);
+      const targetRoom = rooms.value.find(room => room.roomId === targetRoomId);
+      
+      if (targetRoom) {
+        console.log('✅ roomId로 정확한 채팅방 자동 선택:', targetRoom.roomId, targetRoom.otherUserName);
+        chatStore.selectRoom(targetRoom.roomId);
+        
+        // 자동 선택 완료 후 URL을 깔끔하게 정리 (autoSelect 파라미터 제거)
+        router.replace('/chat');
+      } else {
+        console.log('⚠️ 지정된 roomId의 채팅방을 찾을 수 없음:', targetRoomId);
+        // 에러가 있어도 URL은 정리
+        router.replace('/chat');
+      }
+    } else {
+      // roomId가 없으면 첫 번째 채팅방을 선택 (fallback)
+      const firstRoom = rooms.value[0];
+      if (firstRoom) {
+        console.log('✅ 첫 번째 채팅방 자동 선택 (fallback):', firstRoom.roomId, firstRoom.otherUserName);
+        chatStore.selectRoom(firstRoom.roomId);
+        
+        // 자동 선택 완료 후 URL을 깔끔하게 정리
+        router.replace('/chat');
+      }
+    }
+  }
+};
+
+// ✅ 추가: 채팅방 목록이 변경될 때마다 autoSelect 체크
+watch(rooms, (newRooms) => {
+  if (newRooms.length > 0) {
+    checkAutoSelect();
+  }
+}, { immediate: false });
+
+// ✅ 추가: onMounted 복원
+onMounted(async () => {
+  await chatStore.fetchMyChatRooms();
+  
+  // 채팅방 목록 로드 완료 후 autoSelect 체크
+  checkAutoSelect();
 });
+
+// ✅ 제거: 현재 선택된 채팅방 변경 시 읽음 처리 제거 (상대방 기준으로 관리)
 </script>
 
 <style scoped>

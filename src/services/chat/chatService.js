@@ -5,11 +5,11 @@ import { ChatRoomResponse, ChatMessageResponse } from '../../models/chat/ChatRes
 const API_ENDPOINTS = {
   MY_CHAT_ROOMS: '/chat/my/rooms',
   CHAT_HISTORY: (roomId) => `/chat/room/${roomId}/history`,
-  CREATE_ROOM: (otherUserId) => `/chat/room/create/${otherUserId}`,
+  CHAT_ROOM_PARTICIPANTS: (roomId) => `/chat/room/${roomId}/participants`,
+  CREATE_ROOM: '/chat/room/create',
   UPDATE_ROOM_NAME: (roomId) => `/chat/room/${roomId}/name`,
   LEAVE_ROOM: (roomId) => `/chat/room/${roomId}/leave`,
   UPLOAD_FILES: (roomId) => `/chat/room/${roomId}/upload`,
-  READ_MESSAGES: (roomId) => `/chat/room/${roomId}/read`,
 };
 
 export const chatService = {
@@ -28,8 +28,6 @@ export const chatService = {
       data: (paginatedData.data || []).map(room => ChatRoomResponse.fromJson(room)),
       hasNext: paginatedData.hasNext || false,
       nextCursor: paginatedData.nextCursor || null,
-      // ✅ 추가: lastReadTimestamp 반환
-      lastReadTimestamp: paginatedData.lastReadTimestamp || null
     };
   },
 
@@ -48,13 +46,27 @@ export const chatService = {
       data: (paginatedData.data || []).map(message => ChatMessageResponse.fromJson(message)),
       hasNext: paginatedData.hasNext || false,
       nextCursor: paginatedData.nextCursor || null,
-      // ✅ 추가: lastReadTimestamp 반환
-      lastReadTimestamp: paginatedData.lastReadTimestamp || null
     };
   },
 
-  async createChatRoom(otherUserId) {
-    const response = await apiGet(API_ENDPOINTS.CREATE_ROOM(otherUserId));
+  async getChatRoomParticipants(roomId) {
+    const response = await apiGet(API_ENDPOINTS.CHAT_ROOM_PARTICIPANTS(roomId));
+    const apiResponse = await handleApiResponse(response);
+    const participants = apiResponse.getData();
+    
+    return participants.map(participant => ({
+      id: participant.id,
+      roomId: participant.roomId,
+      lastMessageId: participant.lastMessageId
+    }));
+  },
+
+  async createChatRoom(myId, inviteeId) {
+    const requestData = {
+      myId: myId,
+      inviteeId: inviteeId
+    };
+    const response = await apiPost(API_ENDPOINTS.CREATE_ROOM, requestData);
     const apiResponse = await handleApiResponse(response);
     return apiResponse.getData();
   },
@@ -80,28 +92,15 @@ export const chatService = {
     const apiResponse = await handleApiResponse(response);
     return apiResponse.getData();
   },
-
-  // ✅ 개선된 읽음 처리 API
-  async readMessages(roomId, userId) {
-    try {
-      const response = await apiPost(API_ENDPOINTS.READ_MESSAGES(roomId), { userId });
-      const apiResponse = await handleApiResponse(response);
-      console.log(`✅ 읽음 처리 API 호출 성공: roomId=${roomId}, userId=${userId}`);
-      return apiResponse.getData();
-    } catch (error) {
-      console.error(`❌ 읽음 처리 API 호출 실패: roomId=${roomId}, userId=${userId}`, error);
-      throw error;
-    }
-  }
 };
 
 // 주요 함수들만 export (개별 함수 export 제거)
 export const {
   getMyChatRooms,
   getChatHistory,
+  getChatRoomParticipants,
   createChatRoom,
   updateChatRoomName,
   leaveChatRoom,
-  uploadFiles,
-  readMessages
+  uploadFiles
 } = chatService;
