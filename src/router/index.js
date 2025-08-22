@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/store/auth/auth';
 import AdminLayout from '@/layouts/admin/AdminLayout.vue' 
 import Dashboard from '@/views/admin/Dashboard.vue'
 import LectureApproval from '@/views/admin/LectureApproval.vue'
@@ -9,6 +10,9 @@ import ReportManagement from '@/views/admin/reportManagement.vue'
 import MainLayout from '@/layouts/MainLayout.vue'
 import LandingPage from '@/views/landing/LandingPage.vue'
 import LoginPage from '@/views/login/LoginPage.vue'
+import GoogleRedirect from '@/views/login/oauth/GoogleRedirect.vue'
+import KakaoRedirect from '@/views/login/oauth/KakaoRedirect.vue'
+import NaverRedirect from '@/views/login/oauth/NaverRedirect.vue'
 import AddInfoPage from '@/views/login/AddInfoPage.vue'
 import AdminLoginPage from '@/views/admin/AdminLoginPage.vue'
 import AuthDetailCookPage from '@/views/login/AuthDetailCookPage.vue'
@@ -91,7 +95,7 @@ const routes = [
     meta: { requiresAuth: true, requiresNewUser: true },
   },
   {
-    path: '/auth-detail-user', 
+    path: '/detail-user', 
     name: 'AuthDetailUser', 
     component: AuthDetailUserPage, 
   },
@@ -106,7 +110,7 @@ const routes = [
     component: PaymentFail 
   },
   {
-    path: '/auth-detail-cook',
+    path: '/detail-cook',
     name: 'AuthDetailCook',
     component: AuthDetailCookPage,
     meta: { requiresAuth: true },

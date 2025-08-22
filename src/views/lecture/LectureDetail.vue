@@ -581,14 +581,9 @@
 </template>
 
 <script>
-<<<<<<< HEAD
-import Header from '@/components/Header1.vue';
-// import { useCartStore } from '@/store/cart.js';
-=======
 import Header from '@/components/Header.vue';
 import { useCartStore } from '@/store/cart/cart.js';
 import { lectureService } from '@/store/lecture/lectureService';
->>>>>>> origin/develop
 
 export default {
   name: 'LectureDetail',
