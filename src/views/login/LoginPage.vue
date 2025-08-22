@@ -10,27 +10,29 @@
 
     <div class="login-content">
       <div class="login-label">로그인</div>
-      <button class="social-btn google" @click="socialLogin('google')">
-        <img
-          src="@/assets/images/loginbtn/web_light_sq_SI@4x.png"
-          alt="Google Login"
-          class="social_btn_img"
-        />
-      </button>
-      <button class="social-btn kakao" @click="socialLogin('kakao')">
-        <img
-          src="@/assets/images/loginbtn/kakao_login_large_wide.png"
-          alt="Kakao Login"
-          class="social_btn_img"
-        />
-      </button>
-      <button class="social-btn naver" @click="socialLogin('naver')">
-        <img
-          src="@/assets/images/loginbtn/btnG_완성형.png"
-          alt="Naver Login"
-          class="social_btn_img"
-        />
-      </button>
+        <div class="login-btn-container">
+        <button class="social-btn google" @click="socialLogin('google')">
+          <img
+            src="@/assets/images/loginbtn/web_light_sq_SI@2x.png"
+            alt="Google Login"
+            class="social_btn_img"
+          />
+        </button>
+        <button class="social-btn kakao" @click="socialLogin('kakao')">
+          <img
+            src="@/assets/images/loginbtn/kakao_login_large_narrow.png"
+            alt="Kakao Login"
+            class="social_btn_img"
+          />
+        </button>
+        <button class="social-btn naver" @click="socialLogin('naver')">
+          <img
+            src="@/assets/images/loginbtn/btnG_완성형.png"
+            alt="Naver Login"
+            class="social_btn_img"
+          />
+        </button>
+      </div>
       <div class="admin-login">
         <button class="admin-link" @click="goAdmin">관리자 로그인</button>
       </div>
@@ -83,7 +85,6 @@ function goAdmin() {
 @import "../../assets/styles/layout.css";
 
 .login-content {
-  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -96,16 +97,20 @@ function goAdmin() {
   margin-bottom: 24px;
 }
 
+.login-btn-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
 .social-btn {
   border: none;
-  max-width: 80%;
   border-radius: 8px;
   font-size: 1.08rem;
   font-weight: 500;
   margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   cursor: pointer;
   transition: filter 0.15s;
 }
@@ -115,6 +120,7 @@ function goAdmin() {
 }
 
 .social_btn_img {
+  width: 20rem;
   max-height: 70px;
 }
 
