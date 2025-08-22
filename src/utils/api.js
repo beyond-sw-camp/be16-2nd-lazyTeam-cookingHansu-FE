@@ -85,13 +85,15 @@ export const apiPatch = async (endpoint, data = null) => {
 };
 
 // DELETE 요청
-export const apiDelete = async (endpoint) => {
+export const apiDelete = async (endpoint, data = null) => {
   console.log('API DELETE 요청 URL:', `${API_BASE_URL}${endpoint}`);
+  console.log('API 요청 데이터:', data);
   
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'DELETE',
       headers: getHeaders(),
+      body: data ? JSON.stringify(data) : null,
     });
     
     return response;
