@@ -353,6 +353,13 @@ export default {
             return;
           }
           
+          // 파일명 길이 검증
+          if (file.name.length > 20) {
+            this.showModalDialog('error', '파일명 오류', '파일명은 20자 이하여야 합니다.', '확인', '', false);
+            event.target.value = '';
+            return;
+          }
+          
           // 파일 크기 검증
           if (file.size > 5 * 1024 * 1024) {
             this.showModalDialog('error', '파일 크기 오류', '파일 크기는 5MB 이하여야 합니다.', '확인', '', false);
@@ -371,6 +378,12 @@ export default {
           const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/bmp'];
           if (!allowedTypes.includes(file.type)) {
             this.showModalDialog('error', '파일 타입 오류', '썸네일은 PNG, JPG, JPEG, BMP 파일만 업로드 가능합니다.', '확인', '', false);
+            return;
+          }
+          
+          // 파일명 길이 검증
+          if (file.name.length > 20) {
+            this.showModalDialog('error', '파일명 오류', '파일명은 20자 이하여야 합니다.', '확인', '', false);
             return;
           }
           
@@ -411,6 +424,13 @@ export default {
           const allowedTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo'];
           if (!allowedTypes.includes(file.type)) {
             this.showModalDialog('error', '파일 타입 오류', '동영상은 MP4, MOV, AVI 파일만 업로드 가능합니다.', '확인', '', false);
+            event.target.value = '';
+            return;
+          }
+          
+          // 파일명 길이 검증
+          if (file.name.length > 20) {
+            this.showModalDialog('error', '파일명 오류', '파일명은 20자 이하여야 합니다.', '확인', '', false);
             event.target.value = '';
             return;
           }
