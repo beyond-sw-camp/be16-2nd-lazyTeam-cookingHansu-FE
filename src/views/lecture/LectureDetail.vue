@@ -5,15 +5,26 @@
     <div v-if="lecture" class="detail-container">
       <!-- 메인 콘텐츠 영역 -->
       <div class="main-content">
-        <!-- 강의 제목 및 설명 -->
-        <div class="lecture-header">
-          <div class="tags">
-            <span class="tag cuisine">{{ lecture.category }}</span>
-            <span class="tag level">{{ lecture.level }}</span>
-          </div>
-          <h1 class="lecture-title">{{ lecture.title }}</h1>
-          <p class="lecture-description">{{ lecture.description }}</p>
-        </div>
+                 <!-- 강의 제목 및 설명 -->
+         <div class="lecture-header">
+           <div class="tags">
+             <span class="tag cuisine">{{ lecture.category }}</span>
+             <span class="tag level">{{ lecture.level }}</span>
+           </div>
+           <div class="title-section">
+             <h1 class="lecture-title">{{ lecture.title }}</h1>
+             <!-- 강의 상단 수정 버튼 -->
+             <div v-if="showEditButton" class="top-edit-button">
+               <button 
+                 class="edit-lecture-btn" 
+                 @click="editLecture"
+               >
+                 ✏️ 강의 수정하기
+               </button>
+             </div>
+           </div>
+           <p class="lecture-description">{{ lecture.description }}</p>
+         </div>
 
                            <!-- 비디오 미리보기 -->
           <div class="video-preview">
@@ -96,15 +107,16 @@
                :title="getLessonTitle(lesson, index)"
              >
                              <div class="lesson-info">
-                 <div class="lesson-icon">
-                   <span v-if="!lesson.videoUrl" class="no-video-icon">⚠️</span>
-                   <span v-else-if="lesson.isPreview" class="play-icon">▶</span>
-                   <span v-else class="lock-icon">🔒</span>
-                 </div>
-                                                   <div class="lesson-content">
-                    <h3>{{ lesson.title }}</h3>
-                    <p>{{ lesson.description }}</p>
+                                   <div class="lesson-icon">
+                    <span v-if="!lesson.videoUrl" class="no-video-icon">⚠️</span>
+                    <span v-else-if="lesson.isPreview" class="play-icon">▶</span>
+                    <span v-else-if="showLockIcon" class="lock-icon">🔒</span>
+                    <span v-else class="play-icon">▶</span>
                   </div>
+                                                                      <div class="lesson-content">
+                     <h3>{{ lesson.description }}</h3>
+                     <p>{{ lesson.title }}</p>
+                   </div>
               </div>
               <div class="lesson-meta">
                 <span class="duration">{{ lesson.duration }}</span>
@@ -145,31 +157,40 @@
             </button>
           </div>
           
-          <div v-if="activeTab === 'reviews'" class="reviews-content">
-            <div v-if="isPurchased" class="review-actions">
-              <button class="write-review-btn" @click="showReviewModal = true">리뷰 작성하기</button>
-            </div>
-            <div v-else class="purchase-notice">
-              <p>리뷰를 작성하려면 강의를 구매해주세요.</p>
-              <button class="purchase-btn" @click="purchaseLecture">강의 구매하기</button>
-            </div>
+                     <div v-if="activeTab === 'reviews'" class="reviews-content">
+             <!-- 리뷰 작성 가능한 사용자 -->
+             <div v-if="canWriteReview" class="review-actions">
+               <button class="write-review-btn" @click="showReviewModal = true">리뷰 작성하기</button>
+             </div>
+                        <!-- 일반 사용자: 구매 안내 -->
+           <div v-else-if="isGuest" class="purchase-notice">
+             <p>리뷰를 작성하려면 강의를 구매해주세요.</p>
+             <button class="purchase-btn" @click="purchaseLecture">강의 구매하기</button>
+           </div>
             
             <!-- 리뷰 목록 -->
             <div v-if="lecture.reviews.length > 0" class="reviews-list">
-              <div v-for="review in paginatedReviews" :key="review.id" class="review-item">
-                                 <div class="review-header">
-                   <div class="reviewer-info">
-                     <span class="reviewer-name">{{ review.writer }}</span>
-                     <div class="rating">
-                       <span v-for="i in 5" :key="i" class="star" :class="{ filled: i <= review.rating }">★</span>
-                     </div>
-                   </div>
-                   <span class="review-date">{{ review.date }}</span>
+                             <div v-for="review in paginatedReviews" :key="review.id" class="review-item">
+                                  <div class="review-header">
+                    <div class="reviewer-info">
+                      <span class="reviewer-name">{{ review.writer }}</span>
+                      <div class="rating">
+                        <span v-for="i in 5" :key="i" class="star" :class="{ filled: i <= review.rating }">★</span>
+                      </div>
+                    </div>
+                    <div class="review-actions">
+                      <span class="review-date">{{ review.date }}</span>
+                      <!-- 자신이 작성한 리뷰인 경우 수정/삭제 버튼 표시 -->
+                      <div v-if="canEditReview(review)" class="review-edit-actions">
+                        <button class="edit-btn" @click="editReview(review)">수정</button>
+                        <button class="delete-btn" @click="deleteReview(review)">삭제</button>
+                      </div>
+                    </div>
+                  </div>
+                 <div class="review-content">
+                   <p>{{ review.content }}</p>
                  </div>
-                <div class="review-content">
-                  <p>{{ review.content }}</p>
-                </div>
-              </div>
+               </div>
               
               <!-- 더 보기 버튼 -->
               <div v-if="showReviewsMoreButton" class="more-button-container">
@@ -185,23 +206,38 @@
             </div>
           </div>
           
-          <div v-if="activeTab === 'qa'" class="qa-content">
-            <button class="write-qa-btn" @click="showQAModal = true">질문하기</button>
+                     <div v-if="activeTab === 'qa'" class="qa-content">
+             <!-- Q&A 작성 가능한 사용자 -->
+             <div v-if="canWriteQA" class="qa-actions">
+               <button class="write-qa-btn" @click="showQAModal = true">질문하기</button>
+             </div>
+                        <!-- 일반 사용자: 구매 안내 -->
+           <div v-else-if="isGuest" class="purchase-notice">
+             <p>질문을 작성하려면 강의를 구매해주세요.</p>
+             <button class="purchase-btn" @click="purchaseLecture">강의 구매하기</button>
+           </div>
             
                          <!-- Q&A 목록 -->
              <div v-if="lecture.qa.length > 0" class="qa-list">
-               <div v-for="qa in paginatedQA" :key="qa.id" class="qa-item">
-                 <div class="question">
-                   <div class="question-header">
-                     <div class="questioner-info">
-                       <span class="questioner-name">{{ qa.questionerId }}</span>
-                     </div>
-                     <span class="question-date">{{ qa.questionDate }}</span>
-                   </div>
-                   <div class="question-content">
-                     <p>{{ qa.question }}</p>
-                   </div>
-                 </div>
+                               <div v-for="qa in paginatedQA" :key="qa.id" class="qa-item">
+                  <div class="question">
+                    <div class="question-header">
+                      <div class="questioner-info">
+                        <span class="questioner-name">{{ qa.questionerId }}</span>
+                      </div>
+                      <div class="question-actions">
+                        <span class="question-date">{{ qa.questionDate }}</span>
+                        <!-- 자신이 작성한 질문인 경우 수정/삭제 버튼 표시 -->
+                        <div v-if="canEditQA(qa)" class="qa-edit-actions">
+                          <button class="edit-btn" @click="editQA(qa)">수정</button>
+                          <button class="delete-btn" @click="deleteQA(qa)">삭제</button>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="question-content">
+                      <p>{{ qa.question }}</p>
+                    </div>
+                  </div>
                  
                  <!-- 답글이 있는 경우에만 표시 -->
                  <div v-if="qa.hasAnswer" class="answer">
@@ -235,13 +271,32 @@
         <!-- 구매 정보 -->
         <div class="purchase-section">
           <div class="price">{{ lecture.price.toLocaleString() }}원</div>
-          <button 
-            class="enroll-btn" 
-            :class="{ 'in-cart': isInCart }"
-            @click="enrollLecture"
-          >
-                          {{ isInCart ? '장바구니에 추가됨' : '장바구니에 담기' }}
-          </button>
+                     <!-- 일반 사용자: 장바구니 버튼 -->
+           <button 
+             v-if="showCartButton"
+             class="enroll-btn" 
+             @click="enrollLecture"
+           >
+             장바구니에 담기
+           </button>
+           
+           <!-- 일반 사용자: 장바구니에서 제거 버튼 -->
+           <button 
+             v-if="showRemoveFromCartButton"
+             class="enroll-btn in-cart" 
+             @click="enrollLecture"
+           >
+             장바구니에서 제거
+           </button>
+           
+                       <!-- 구매자: 강의 시청 버튼 -->
+            <button 
+              v-if="isPurchaser"
+              class="enroll-btn watch-btn" 
+              @click="goToLecturePlayer"
+            >
+              강의 시청하기
+            </button>
           <div class="share-section" @click="showShareModal = true">
             <span class="share-icon">📤</span>
             <span>공유하기</span>
@@ -282,23 +337,15 @@
         <!-- 레시피 -->
         <div class="recipe-section">
           <h3>레시피 📖</h3>
-          <div class="recipe-card">
-            <h4>{{ lecture.recipe.title }}</h4>
-            <p>{{ lecture.recipe.description }}</p>
-            <div class="recipe-meta">
-              <span>{{ lecture.recipe.servings }}</span>
-              <span>{{ lecture.recipe.cookTime }}</span>
-              <span>{{ lecture.recipe.difficulty }}</span>
-            </div>
-            
-            <div class="ingredients">
-              <h5>재료 ({{ lecture.recipe.servings }})</h5>
-              <ul>
-                <li v-for="ingredient in lecture.recipe.ingredients" :key="ingredient.name">
-                  {{ ingredient.name }}: {{ ingredient.amount }}
-                </li>
-              </ul>
-            </div>
+                     <div class="recipe-card">
+             <div class="ingredients">
+               <h5>재료</h5>
+               <ul>
+                 <li v-for="ingredient in lecture.recipe.ingredients" :key="ingredient.name">
+                   {{ ingredient.name }}: {{ ingredient.amount }}
+                 </li>
+               </ul>
+             </div>
             
             <div class="cooking-steps">
               <h5>조리 과정</h5>
@@ -567,6 +614,9 @@ export default {
       },
       // 구매 상태 (실제로는 API에서 확인)
       isPurchased: false,
+      // 사용자 역할 관련 상태
+      currentUserId: null, // 현재 로그인한 사용자 ID
+      userRole: 'GENERAL', // GENERAL, CHEF, OWNER, PURCHASER, ADMIN
              // 페이지네이션 설정
        reviewsPerPage: 5,
        qaPerPage: 5,
@@ -610,9 +660,112 @@ export default {
     showQAMoreButton() {
       if (!this.lecture || !this.lecture.qa) return false;
       return this.currentQAPage * this.qaPerPage < this.lecture.qa.length;
+    },
+    
+    // 사용자 역할별 화면 제어 computed 속성들
+    // 강의 작성자인지 확인 (CHEF, OWNER)
+    isAuthor() {
+      return (this.userRole === 'CHEF' || this.userRole === 'OWNER') && this.currentUserId === this.lecture?.instructor?.id;
+    },
+    
+    // 강의 구매자인지 확인
+    isPurchaser() {
+      return this.userRole === 'PURCHASER' || this.isPurchased;
+    },
+    
+    // 관리자인지 확인
+    isAdmin() {
+      return this.userRole === 'ADMIN';
+    },
+    
+    // 일반 사용자(미구매자)인지 확인
+    isGuest() {
+      return this.userRole === 'GENERAL' && !this.isPurchased;
+    },
+    
+    // 장바구니 버튼 표시 여부 (일반 사용자만)
+    showCartButton() {
+      return this.isGuest && !this.isInCart;
+    },
+    
+    // 장바구니에서 제거 버튼 표시 여부 (일반 사용자만)
+    showRemoveFromCartButton() {
+      return this.isGuest && this.isInCart;
+    },
+    
+    // 강의 수정 버튼 표시 여부 (모든 사용자에게 표시)
+    showEditButton() {
+      return true;
+    },
+    
+    // 강의 삭제 버튼 표시 여부 (자영업자/요리사, 관리자)
+    showDeleteButton() {
+      return this.isAuthor || this.isAdmin;
+    },
+    
+    // 리뷰 작성 가능 여부 (구매자, 자영업자/요리사, 관리자)
+    canWriteReview() {
+      return this.isPurchaser || this.isAuthor || this.isAdmin;
+    },
+    
+    // Q&A 작성 가능 여부 (구매자, 자영업자/요리사, 관리자)
+    canWriteQA() {
+      return this.isPurchaser || this.isAuthor || this.isAdmin;
+    },
+    
+    // 강의 시청 가능 여부 (구매자, 자영업자/요리사, 관리자)
+    canWatchLecture() {
+      return this.isPurchaser || this.isAuthor || this.isAdmin;
+    },
+    
+    // 자물쇠 표시 여부 (일반 사용자만)
+    showLockIcon() {
+      return this.isGuest;
+    },
+    
+    // 구매 완료 버튼 표시 여부 (일반 사용자만)
+    showPurchaseButton() {
+      return this.isGuest;
     }
   },
   methods: {
+    // 사용자 역할 확인 메서드
+    async checkUserRole(lectureId) {
+      try {
+        // TODO: 실제 로그인 API에서 사용자 정보 가져오기
+        // 현재는 localStorage에서 임시로 가져옴
+        const userInfo = localStorage.getItem('userInfo');
+        if (userInfo) {
+          const user = JSON.parse(userInfo);
+          this.currentUserId = user.id;
+          
+                     // 강의 작성자인지 확인 (CHEF, OWNER 모두 자영업자/요리사)
+           if (this.lecture && this.lecture.instructor && user.id === this.lecture.instructor.id) {
+             this.userRole = user.role === 'OWNER' ? 'OWNER' : 'CHEF';
+           }
+           // 관리자인지 확인
+           else if (user.role === 'ADMIN') {
+             this.userRole = 'ADMIN';
+           }
+           // 구매자인지 확인
+           else if (this.isPurchased) {
+             this.userRole = 'PURCHASER';
+           }
+           // 일반 사용자
+           else {
+             this.userRole = 'GENERAL';
+           }
+                 } else {
+           this.userRole = 'GENERAL';
+         }
+        
+        console.log('사용자 역할 확인:', this.userRole);
+             } catch (error) {
+         console.error('사용자 역할 확인 실패:', error);
+         this.userRole = 'GENERAL';
+       }
+    },
+    
     // 장바구니 상태 확인 (백엔드 API 사용)
     async checkCartStatus(lectureId) {
       try {
@@ -674,8 +827,9 @@ export default {
           this.showError('강의 정보를 불러오는데 실패했습니다.');
         }
         
-                 // 장바구니 상태 확인
-         await this.checkCartStatus(lectureId);
+                                   // 사용자 역할 및 장바구니 상태 확인
+          await this.checkUserRole(lectureId);
+          await this.checkCartStatus(lectureId);
          
                    // 미리보기 비디오 URL 설정
           const previewLesson = this.lecture.lessons.find(lesson => lesson.isPreview && lesson.videoUrl);
@@ -724,9 +878,11 @@ export default {
     // 난이도 이름 변환
     getLevelName(level) {
       const levelMap = {
-        'LOW': '초급',
-        'MEDIUM': '중급',
-        'HIGH': '고급'
+        'VERY_LOW': '매우쉬움',
+        'LOW': '쉬움',
+        'MEDIUM': '보통',
+        'HIGH': '어려움',
+        'VERY_HIGH': '매우어려움'
       };
       return levelMap[level] || level;
     },
@@ -763,14 +919,14 @@ export default {
         const seconds = durationSeconds % 60;
         const durationText = minutes > 0 ? `${minutes}분 ${seconds}초` : `${seconds}초`;
         
-        return {
-          title: video.title || `강의 ${index + 1}`,
-          description: `강의 ${index + 1}입니다.`,
-          duration: durationText,
-          isPreview: video.preview || false,
-          videoUrl: video.videoUrl,
-          sequence: video.sequence || index + 1
-        };
+                 return {
+           title: video.title || `강의 ${index + 1}`,
+           description: `강의 ${index + 1}`,
+           duration: durationText,
+           isPreview: video.preview || false,
+           videoUrl: video.videoUrl,
+           sequence: video.sequence || index + 1
+         };
       });
     },
     
@@ -814,11 +970,6 @@ export default {
     // 레시피 데이터 변환
     convertRecipe(ingredients, steps) {
       return {
-        title: '레시피',
-        description: '강의에서 배우는 레시피입니다.',
-        servings: '2인분',
-        cookTime: '30분',
-        difficulty: '초급',
         ingredients: ingredients ? ingredients.map(ing => ({
           name: ing.ingredientsName,
           amount: ing.amount
@@ -1054,17 +1205,158 @@ export default {
       this.lecture.ratingCount = this.lecture.reviews.length;
     },
 
-    // 강의 구매
-    purchaseLecture() {
-      // 실제로는 결제 API 호출
-      this.isPurchased = true;
-      this.showNotification({
-        title: '구매 완료',
-        icon: '🎉',
-        message: '강의가 구매되었습니다!',
-        submessage: '이제 리뷰를 작성할 수 있습니다.'
-      });
-    },
+          // 강의 구매
+      purchaseLecture() {
+               // 실제로는 결제 API 호출
+       this.isPurchased = true;
+       this.userRole = 'PURCHASER';
+        this.showNotification({
+          title: '구매 완료',
+          icon: '🎉',
+          message: '강의가 구매되었습니다!',
+          submessage: '이제 리뷰를 작성할 수 있습니다.'
+        });
+      },
+      
+      // 강의 시청 페이지로 이동
+      goToLecturePlayer() {
+        // TODO: 강의 시청 페이지로 라우팅
+        this.$router.push(`/lecture/${this.lecture.id}/player`);
+      },
+      
+             // 강의 수정
+       editLecture() {
+         // 강의 수정 페이지로 라우팅
+         this.$router.push(`/lectures/edit/${this.lecture.id}`);
+       },
+      
+      // 강의 삭제
+      deleteLecture() {
+        this.showConfirm({
+          title: '강의 삭제',
+          icon: '🗑️',
+          message: '정말로 이 강의를 삭제하시겠습니까?',
+          submessage: '삭제된 강의는 복구할 수 없습니다.',
+          confirmText: '삭제하기',
+          callback: async () => {
+            try {
+              // TODO: 실제 삭제 API 호출
+              await this.deleteLectureFromServer();
+              this.showSuccess('강의가 삭제되었습니다.');
+              this.$router.push('/lectures');
+            } catch (error) {
+              this.showError('강의 삭제에 실패했습니다.');
+            }
+          }
+        });
+      },
+      
+      // 서버에서 강의 삭제
+      async deleteLectureFromServer() {
+        // TODO: 실제 API 호출 구현
+        console.log('강의 삭제 API 호출:', this.lecture.id);
+        return new Promise((resolve) => {
+          setTimeout(resolve, 1000);
+        });
+      },
+      
+      // 리뷰 수정 가능 여부 확인
+      canEditReview(review) {
+        return this.currentUserId && (
+          review.writerId === this.currentUserId || 
+          this.isAuthor || 
+          this.isAdmin
+        );
+      },
+      
+      // Q&A 수정 가능 여부 확인
+      canEditQA(qa) {
+        return this.currentUserId && (
+          qa.questionerId === this.currentUserId || 
+          this.isAuthor || 
+          this.isAdmin
+        );
+      },
+      
+      // 리뷰 수정
+      editReview(review) {
+        // TODO: 리뷰 수정 모달 또는 페이지로 이동
+        console.log('리뷰 수정:', review);
+        this.showNotification({
+          title: '리뷰 수정',
+          icon: '✏️',
+          message: '리뷰 수정 기능은 준비 중입니다.'
+        });
+      },
+      
+      // 리뷰 삭제
+      deleteReview(review) {
+        this.showConfirm({
+          title: '리뷰 삭제',
+          icon: '🗑️',
+          message: '정말로 이 리뷰를 삭제하시겠습니까?',
+          confirmText: '삭제하기',
+          callback: async () => {
+            try {
+              // TODO: 실제 삭제 API 호출
+              await this.deleteReviewFromServer(review.id);
+              this.lecture.reviews = this.lecture.reviews.filter(r => r.id !== review.id);
+              this.showSuccess('리뷰가 삭제되었습니다.');
+            } catch (error) {
+              this.showError('리뷰 삭제에 실패했습니다.');
+            }
+          }
+        });
+      },
+      
+      // Q&A 수정
+      editQA(qa) {
+        // TODO: Q&A 수정 모달 또는 페이지로 이동
+        console.log('Q&A 수정:', qa);
+        this.showNotification({
+          title: 'Q&A 수정',
+          icon: '✏️',
+          message: 'Q&A 수정 기능은 준비 중입니다.'
+        });
+      },
+      
+      // Q&A 삭제
+      deleteQA(qa) {
+        this.showConfirm({
+          title: 'Q&A 삭제',
+          icon: '🗑️',
+          message: '정말로 이 질문을 삭제하시겠습니까?',
+          confirmText: '삭제하기',
+          callback: async () => {
+            try {
+              // TODO: 실제 삭제 API 호출
+              await this.deleteQAFromServer(qa.id);
+              this.lecture.qa = this.lecture.qa.filter(q => q.id !== qa.id);
+              this.showSuccess('질문이 삭제되었습니다.');
+            } catch (error) {
+              this.showError('질문 삭제에 실패했습니다.');
+            }
+          }
+        });
+      },
+      
+      // 서버에서 리뷰 삭제
+      async deleteReviewFromServer(reviewId) {
+        // TODO: 실제 API 호출 구현
+        console.log('리뷰 삭제 API 호출:', reviewId);
+        return new Promise((resolve) => {
+          setTimeout(resolve, 1000);
+        });
+      },
+      
+      // 서버에서 Q&A 삭제
+      async deleteQAFromServer(qaId) {
+        // TODO: 실제 API 호출 구현
+        console.log('Q&A 삭제 API 호출:', qaId);
+        return new Promise((resolve) => {
+          setTimeout(resolve, 1000);
+        });
+      },
 
     // 장바구니에 강의 추가/제거 (토글 기능)
     async enrollLecture() {
@@ -1234,40 +1526,47 @@ export default {
           console.error('비디오 로드 실패');
         },
 
-     // 강의 클릭 처리 (구매 상태 확인)
-     handleLessonClick(lesson, index) {
-       // 첫 번째 강의(인덱스 0)는 미리보기 가능
-       if (index === 0) {
-         this.playVideo(lesson);
-         return;
-       }
-       
-       // 구매하지 않은 사용자는 첫 번째 강의 외에는 접근 불가
-       if (!this.isPurchased) {
-         this.showPurchaseRequiredModal = true;
-         return;
-       }
-       
-       // 구매한 사용자는 모든 강의 접근 가능
-       this.playVideo(lesson);
-     },
+           // 강의 클릭 처리 (역할별 접근 제어)
+      handleLessonClick(lesson, index) {
+        // 첫 번째 강의(인덱스 0)는 미리보기 가능
+        if (index === 0) {
+          this.playVideo(lesson);
+          return;
+        }
+        
+        // 강의 시청 가능한 사용자 (구매자, 작성자, 관리자)
+        if (this.canWatchLecture) {
+          this.playVideo(lesson);
+          return;
+        }
+        
+                 // 일반 사용자: 구매 필요 안내
+         if (this.isGuest) {
+           this.showPurchaseRequiredModal = true;
+           return;
+         }
+      },
 
-     // 강의 제목 툴팁 생성
-     getLessonTitle(lesson, index) {
-       if (!lesson.videoUrl) {
-         return '비디오를 사용할 수 없습니다';
-       }
-       
-       if (index === 0) {
-         return '클릭하여 비디오 재생 (미리보기)';
-       }
-       
-       if (!this.isPurchased) {
-         return '구매 후 시청 가능';
-       }
-       
-       return '클릭하여 비디오 재생';
-     },
+           // 강의 제목 툴팁 생성 (역할별)
+      getLessonTitle(lesson, index) {
+        if (!lesson.videoUrl) {
+          return '비디오를 사용할 수 없습니다';
+        }
+        
+        if (index === 0) {
+          return '클릭하여 비디오 재생 (미리보기)';
+        }
+        
+        if (this.canWatchLecture) {
+          return '클릭하여 비디오 재생';
+        }
+        
+        if (this.isGuest) {
+          return '구매 후 시청 가능';
+        }
+        
+        return '클릭하여 비디오 재생';
+      },
 
      
   },
@@ -1312,9 +1611,40 @@ export default {
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-.lecture-header {
-  margin-bottom: 40px;
-}
+ .lecture-header {
+   margin-bottom: 40px;
+ }
+ 
+ .title-section {
+   display: flex;
+   justify-content: space-between;
+   align-items: flex-start;
+   gap: 20px;
+   margin-bottom: 16px;
+ }
+ 
+ .top-edit-button {
+   flex-shrink: 0;
+ }
+ 
+ .edit-lecture-btn {
+   background: #17a2b8;
+   color: white;
+   border: none;
+   padding: 10px 16px;
+   border-radius: 6px;
+   font-size: 14px;
+   font-weight: 600;
+   cursor: pointer;
+   transition: all 0.2s ease;
+   white-space: nowrap;
+ }
+ 
+ .edit-lecture-btn:hover {
+   background: #138496;
+   transform: translateY(-1px);
+   box-shadow: 0 2px 8px rgba(23, 162, 184, 0.3);
+ }
 
 .tags {
   display: flex;
@@ -2492,18 +2822,93 @@ export default {
 
 
 
- /* 구매하지 않은 강의 스타일 */
- .lesson-item:not(.preview) {
-   opacity: 0.8;
-   position: relative;
- }
+   /* 구매하지 않은 강의 스타일 */
+  .lesson-item:not(.preview) {
+    opacity: 0.8;
+    position: relative;
+  }
 
- .lesson-item:not(.preview)::after {
-   content: '🔒';
-   position: absolute;
-   top: 10px;
-   right: 10px;
-   font-size: 16px;
-   color: #999;
- }
+  .lesson-item:not(.preview)::after {
+    content: '🔒';
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 16px;
+    color: #999;
+  }
+  
+  /* 역할별 버튼 스타일 */
+  .watch-btn {
+    background: #28a745 !important;
+  }
+  
+  .watch-btn:hover {
+    background: #218838 !important;
+  }
+  
+  .author-actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  
+  .edit-btn {
+    background: #17a2b8 !important;
+  }
+  
+  .edit-btn:hover {
+    background: #138496 !important;
+  }
+  
+  .delete-btn {
+    background: #dc3545 !important;
+  }
+  
+  .delete-btn:hover {
+    background: #c82333 !important;
+  }
+  
+  /* 리뷰/Q&A 수정/삭제 버튼 스타일 */
+  .review-actions, .question-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .review-edit-actions, .qa-edit-actions {
+    display: flex;
+    gap: 5px;
+  }
+  
+  .review-edit-actions .edit-btn,
+  .qa-edit-actions .edit-btn {
+    background: #17a2b8;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  
+  .review-edit-actions .delete-btn,
+  .qa-edit-actions .delete-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  
+  .review-edit-actions .edit-btn:hover,
+  .qa-edit-actions .edit-btn:hover {
+    background: #138496;
+  }
+  
+  .review-edit-actions .delete-btn:hover,
+  .qa-edit-actions .delete-btn:hover {
+    background: #c82333;
+  }
 </style> 

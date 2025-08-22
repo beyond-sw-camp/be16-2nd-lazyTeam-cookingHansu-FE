@@ -577,7 +577,6 @@ export default {
   display: flex;
   align-items: center;
   padding: 20px 0;
-  border-bottom: 1px solid #eee;
   position: relative;
 }
 
@@ -669,7 +668,6 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 10px 0;
-  border-bottom: 1px solid #eee;
 }
 
 .summary-row:last-child {

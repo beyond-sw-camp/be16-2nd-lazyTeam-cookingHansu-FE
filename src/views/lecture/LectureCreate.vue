@@ -93,14 +93,14 @@
                 @dragover.prevent
                 @drop.prevent="handleThumbnailDrop"
               >
-                <input
-                  ref="thumbnailInput"
-                  type="file"
-                  accept="image/*"
-                  @change="handleThumbnailChange"
-                  style="display: none"
-                  required
-                />
+                                                   <input
+                    ref="thumbnailInput"
+                    type="file"
+                    accept=".png,.jpg,.jpeg,.bmp"
+                    @change="handleThumbnailChange"
+                    style="display: none"
+                    required
+                  />
                 <div v-if="!thumbnailPreview" class="upload-placeholder">
                   <div class="upload-icon">📷</div>
                   <p>이미지를 클릭하여 등록</p>
@@ -148,13 +148,13 @@
                     </div>
                     <div class="form-group video-file-group">
                       <label class="form-label">비디오 파일 *</label>
-                      <input
-                        type="file"
-                        accept="video/*"
-                        @change="handleVideoFileChange($event, index)"
-                        class="form-input"
-                        required
-                      />
+                                                                     <input
+                          type="file"
+                          accept=".mp4,.mov,.avi"
+                          @change="handleVideoFileChange($event, index)"
+                          class="form-input"
+                          required
+                        />
                     </div>
                   </div>
                 </div>
@@ -342,20 +342,48 @@ export default {
     triggerThumbnailUpload() {
       this.$refs.thumbnailInput.click();
     },
-    handleThumbnailChange(event) {
-      const file = event.target.files[0];
-      if (file) {
-        this.thumbnailFile = file;
-        this.createThumbnailPreview(file);
-      }
-    },
-    handleThumbnailDrop(event) {
-      const file = event.dataTransfer.files[0];
-      if (file && file.type.startsWith('image/')) {
-        this.thumbnailFile = file;
-        this.createThumbnailPreview(file);
-      }
-    },
+                   handleThumbnailChange(event) {
+        const file = event.target.files[0];
+        if (file) {
+          // 파일 타입 검증
+          const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/bmp'];
+          if (!allowedTypes.includes(file.type)) {
+            this.showModalDialog('error', '파일 타입 오류', '썸네일은 PNG, JPG, JPEG, BMP 파일만 업로드 가능합니다.', '확인', '', false);
+            event.target.value = '';
+            return;
+          }
+          
+          // 파일 크기 검증
+          if (file.size > 5 * 1024 * 1024) {
+            this.showModalDialog('error', '파일 크기 오류', '파일 크기는 5MB 이하여야 합니다.', '확인', '', false);
+            event.target.value = '';
+            return;
+          }
+          
+          this.thumbnailFile = file;
+          this.createThumbnailPreview(file);
+        }
+      },
+                   handleThumbnailDrop(event) {
+        const file = event.dataTransfer.files[0];
+        if (file) {
+          // 파일 타입 검증
+          const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/bmp'];
+          if (!allowedTypes.includes(file.type)) {
+            this.showModalDialog('error', '파일 타입 오류', '썸네일은 PNG, JPG, JPEG, BMP 파일만 업로드 가능합니다.', '확인', '', false);
+            return;
+          }
+          
+          // 파일 크기 검증
+          if (file.size > 5 * 1024 * 1024) {
+            this.showModalDialog('error', '파일 크기 오류', '파일 크기는 5MB 이하여야 합니다.', '확인', '', false);
+            return;
+          }
+          
+          this.thumbnailFile = file;
+          this.createThumbnailPreview(file);
+        }
+      },
     createThumbnailPreview(file) {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -376,12 +404,27 @@ export default {
       this.formData.videos.splice(index, 1);
       this.videoFiles.splice(index, 1);
     },
-    handleVideoFileChange(event, index) {
-      const file = event.target.files[0];
-      if (file) {
-        this.videoFiles[index] = file;
-      }
-    },
+                   handleVideoFileChange(event, index) {
+        const file = event.target.files[0];
+        if (file) {
+          // 파일 타입 검증
+          const allowedTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo'];
+          if (!allowedTypes.includes(file.type)) {
+            this.showModalDialog('error', '파일 타입 오류', '동영상은 MP4, MOV, AVI 파일만 업로드 가능합니다.', '확인', '', false);
+            event.target.value = '';
+            return;
+          }
+          
+          // 파일 크기 검증
+          if (file.size > 100 * 1024 * 1024) {
+            this.showModalDialog('error', '파일 크기 오류', '파일 크기는 100MB 이하여야 합니다.', '확인', '', false);
+            event.target.value = '';
+            return;
+          }
+          
+          this.videoFiles[index] = file;
+        }
+      },
 
     // 재료 관련 메서드
     addIngredient() {
@@ -409,62 +452,69 @@ export default {
       });
     },
 
-    // 폼 제출
-    async submitForm() {
-      if (!this.validateForm()) {
-        return;
-      }
+         // 폼 제출
+     async submitForm() {
+       if (!this.validateForm()) {
+         return;
+       }
 
-      this.isSubmitting = true;
+       this.isSubmitting = true;
 
-      try {
-        const formData = new FormData();
+       try {
+         const formData = new FormData();
 
-        // 기본 강의 정보
-        formData.append('lectureCreateDto', new Blob([JSON.stringify({
-          title: this.formData.title,
-          description: this.formData.description,
-          level: this.formData.level,
-          category: this.formData.category,
-          price: this.formData.price
-        })], { type: 'application/json' }));
+         // ✅ JSON은 반드시 Blob(application/json)으로
+         const lectureCreateDto = {
+           title: this.formData.title,
+           description: this.formData.description,
+           level: this.formData.level,
+           category: this.formData.category,
+           price: this.formData.price
+         };
+         
+                   const lectureIngredientsListDto = this.formData.ingredients.filter(ing => ing.ingredientsName && ing.amount).length > 0
+            ? this.formData.ingredients.filter(ing => ing.ingredientsName && ing.amount)
+            : [];
+          const lectureStepDto = this.formData.steps.filter(step => step.content).length > 0
+            ? this.formData.steps.filter(step => step.content)
+            : [];
+          const lectureVideoDto = this.formData.videos.filter(video => video.title).length > 0
+            ? this.formData.videos.filter(video => video.title)
+            : [];
 
-        // 재료 목록
-        formData.append('lectureIngredientsListDto', new Blob([JSON.stringify(
-          this.formData.ingredients.filter(ing => ing.ingredientsName && ing.amount)
-        )], { type: 'application/json' }));
+                   formData.append('lectureCreateDto',
+            new Blob([JSON.stringify(lectureCreateDto)], { type: 'application/json' })
+          );
 
-        // 조리 순서
-        formData.append('lectureStepDto', new Blob([JSON.stringify(
-          this.formData.steps.filter(step => step.content)
-        )], { type: 'application/json' }));
+          formData.append('lectureIngredientsListDto',
+            new Blob([JSON.stringify(lectureIngredientsListDto)], { type: 'application/json' })
+          );
 
-        // 비디오 정보
-        formData.append('lectureVideoDto', new Blob([JSON.stringify(
-          this.formData.videos.filter(video => video.title)
-        )], { type: 'application/json' }));
+          formData.append('lectureStepDto',
+            new Blob([JSON.stringify(lectureStepDto)], { type: 'application/json' })
+          );
 
-        // 비디오 파일들
-        this.videoFiles.forEach((file, index) => {
-          if (file) {
-            formData.append('lectureVideoFiles', file);
+          formData.append('lectureVideoDto',
+            new Blob([JSON.stringify(lectureVideoDto)], { type: 'application/json' })
+          );
+
+          // 파일 배열 (같은 키로 여러 번 append)
+          (this.videoFiles || []).forEach(file => {
+            if (file) {
+              formData.append('lectureVideoFiles', file, file.name);
+            }
+          });
+
+          // 썸네일(선택)
+          if (this.thumbnailFile) {
+            formData.append('multipartFile', this.thumbnailFile, this.thumbnailFile.name);
           }
-        });
 
-        // 썸네일 파일
-        if (this.thumbnailFile) {
-          formData.append('multipartFile', this.thumbnailFile);
-        }
-
-        // API 호출
-        const response = await fetch('http://localhost:8080/lecture/post', {
-          method: 'POST',
-          body: formData,
-          headers: {
-            // Authorization 헤더는 필요에 따라 추가
-            // 'Authorization': `Bearer ${token}`
-          }
-        });
+         // ❌ 헤더는 넣지 말기 (브라우저가 boundary 포함해서 자동 설정)
+         const response = await fetch('http://localhost:8080/lecture/post', {
+           method: 'POST',
+           body: formData
+         });
 
         if (response.ok) {
           const result = await response.json();
@@ -474,12 +524,18 @@ export default {
         } else {
           throw new Error('강의 등록에 실패했습니다.');
         }
-      } catch (error) {
-        console.error('강의 등록 오류:', error);
-        this.showModalDialog('error', '등록 실패', '강의 등록 중 오류가 발생했습니다.', '확인', '', false);
-      } finally {
-        this.isSubmitting = false;
-      }
+             } catch (error) {
+         console.error('강의 등록 오류:', error);
+         
+         // 415 에러 처리 (파일 타입 불일치)
+         if (error.status === 415 || error.message?.includes('415')) {
+           this.showModalDialog('error', '파일 타입 오류', '업로드한 파일의 타입이 서버에서 지원하지 않는 형식입니다. 썸네일은 PNG, JPG, JPEG, BMP, 동영상은 MP4, MOV, AVI 파일만 업로드 가능합니다.', '확인', '', false);
+         } else {
+           this.showModalDialog('error', '등록 실패', '강의 등록 중 오류가 발생했습니다.', '확인', '', false);
+         }
+       } finally {
+         this.isSubmitting = false;
+       }
     },
 
     // 모달 관련 메서드

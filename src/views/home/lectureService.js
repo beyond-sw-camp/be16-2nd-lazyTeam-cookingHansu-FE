@@ -101,5 +101,37 @@ export const lectureService = {
       console.error('장바구니 전체 삭제 실패:', error);
       throw error;
     }
+  },
+
+  // 강의 수정
+  async updateLecture(lectureId, formData) {
+    try {
+      // 토큰 가져오기
+      const token = localStorage.getItem('accessToken');
+      
+      const headers = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      // ❌ Content-Type 헤더는 제거 (브라우저가 자동으로 multipart/form-data 설정)
+      const response = await fetch(`http://localhost:8080/lecture/update/${lectureId}`, {
+        method: 'PATCH',
+        headers: headers,
+        body: formData
+      });
+      
+      console.log('강의 수정 응답:', response);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('강의 수정 실패:', error);
+      throw error;
+    }
   }
 };
