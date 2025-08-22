@@ -292,16 +292,16 @@ export default {
       modalLoading: false,
       modalCallback: null,
 
-      formData: {
-        title: '',
-        description: '',
-        category: '',
-        level: '',
-        price: 0,
-        ingredients: [],
-        steps: [],
-        videos: []
-      }
+             formData: {
+         title: '',
+         description: '',
+         category: '',
+         level: '',
+         price: 0,
+         ingredients: [],
+         steps: [],
+         videos: []
+               }
     };
   },
   async mounted() {
@@ -332,15 +332,16 @@ export default {
             steps: lectureData.lectureStepResDtoList?.map(step => ({
               content: step.content || ''
             })) || [],
-            videos: lectureData.lectureVideoResDtoList?.map(video => ({
-              title: video.title || '',
-              videoUrl: video.videoUrl || '',
-              preview: video.preview || false
-            })) || []
+                         videos: lectureData.lectureVideoResDtoList?.map(video => ({
+               title: video.title || '',
+               videoUrl: video.videoUrl || '',
+               duration: video.duration || 0,
+               preview: video.preview || false
+             })) || []
           };
           
-          // 현재 썸네일 설정
-          this.currentThumbnail = lectureData.thumbUrl;
+                     // 현재 썸네일 설정
+           this.currentThumbnail = lectureData.thumbUrl;
         }
       } catch (error) {
         console.error('강의 데이터 로드 실패:', error);
@@ -382,10 +383,10 @@ export default {
       });
     },
     
-    // 강의 삭제
-    removeVideo(index) {
-      this.formData.videos.splice(index, 1);
-    },
+         // 강의 삭제
+     removeVideo(index) {
+       this.formData.videos.splice(index, 1);
+     },
     
     // 파일 입력 트리거
     triggerFileInput(type) {
@@ -409,12 +410,19 @@ export default {
             return;
           }
           
-          // 파일 크기 검증
-          if (file.size > 5 * 1024 * 1024) {
-            this.showModalDialog('error', '파일 크기 오류', '파일 크기는 5MB 이하여야 합니다.', '확인', '', false);
-            event.target.value = '';
-            return;
-          }
+                     // 파일명 길이 검증
+           if (file.name.length > 20) {
+             this.showModalDialog('error', '파일명 오류', '파일명은 20자 이하여야 합니다.', '확인', '', false);
+             event.target.value = '';
+             return;
+           }
+           
+           // 파일 크기 검증
+           if (file.size > 5 * 1024 * 1024) {
+             this.showModalDialog('error', '파일 크기 오류', '파일 크기는 5MB 이하여야 합니다.', '확인', '', false);
+             event.target.value = '';
+             return;
+           }
           
           // 미리보기 생성
           const reader = new FileReader();
@@ -437,12 +445,19 @@ export default {
             return;
           }
           
-          // 파일 크기 검증
-          if (file.size > 100 * 1024 * 1024) {
-            this.showModalDialog('error', '파일 크기 오류', '파일 크기는 100MB 이하여야 합니다.', '확인', '', false);
-            event.target.value = '';
-            return;
-          }
+                     // 파일명 길이 검증
+           if (file.name.length > 20) {
+             this.showModalDialog('error', '파일명 오류', '파일명은 20자 이하여야 합니다.', '확인', '', false);
+             event.target.value = '';
+             return;
+           }
+           
+           // 파일 크기 검증
+           if (file.size > 100 * 1024 * 1024) {
+             this.showModalDialog('error', '파일 크기 오류', '파일 크기는 100MB 이하여야 합니다.', '확인', '', false);
+             event.target.value = '';
+             return;
+           }
           
           // 미리보기 URL 생성
           const videoUrl = URL.createObjectURL(file);
@@ -450,20 +465,28 @@ export default {
         }
       },
     
-         // 폼 제출
-     async submitForm() {
-       if (this.isSubmitting) return;
+                   // 폼 제출
+      async submitForm() {
+        console.log('=== submitForm 시작 ===');
+        if (this.isSubmitting) {
+          console.log('이미 제출 중입니다.');
+          return;
+        }
+        
+        console.log('유효성 검사 시작');
+        // 유효성 검사
+        if (!this.validateForm()) {
+          console.log('유효성 검사 실패');
+          return;
+        }
+        console.log('유효성 검사 통과');
        
-       // 유효성 검사
-       if (!this.validateForm()) {
-         return;
-       }
-       
-       this.isSubmitting = true;
-       
-       try {
-         // FormData 생성
-         const formData = new FormData();
+               this.isSubmitting = true;
+        
+        // FormData 생성
+        const formData = new FormData();
+        
+        try {
          
          // ✅ JSON은 반드시 Blob(application/json)으로
          const lectureUpdateDto = {
@@ -488,12 +511,27 @@ export default {
               }))
             : [];
           
-          const lectureVideoDto = this.formData.videos.length > 0
-            ? this.formData.videos.map((video, index) => ({
-                title: video.title,
-                sequence: index + 1
-              }))
-            : [];
+                                          // 현재 화면에 있는 강의들만 새로 생성
+           const lectureVideoDto = this.formData.videos.length > 0
+             ? this.formData.videos.map((video, index) => {
+                 const videoInput = this.$refs[`videoInput-${index}`];
+                 const hasNewVideo = videoInput && Array.isArray(videoInput) && videoInput[0] && videoInput[0].files[0];
+                 const hasExistingVideo = video.videoUrl && video.videoUrl.trim();
+                 const hasVideo = hasNewVideo || hasExistingVideo; // 새 파일 또는 기존 영상 URL
+                 const hasTitle = video.title.trim();
+                 
+                 // 비디오와 제목이 모두 있는 경우만 DTO에 포함
+                 if (hasVideo && hasTitle) {
+                   return {
+                     title: video.title,
+                     sequence: index + 1,
+                     videoUrl: hasNewVideo ? '' : video.videoUrl, // 새 파일이면 빈 문자열, 기존 영상이면 URL
+                     duration: video.duration || 0 // 기존 영상의 길이 (새 파일이면 0)
+                   };
+                 }
+                 return null;
+               }).filter(item => item !== null) // null 값 제거
+             : [];
 
                    formData.append('lectureUpdateDto',
             new Blob([JSON.stringify(lectureUpdateDto)], { type: 'application/json' })
@@ -517,25 +555,74 @@ export default {
             formData.append('multipartFile', thumbnailInput.files[0], thumbnailInput.files[0].name);
           }
           
-          // 영상 파일들 추가
-          this.formData.videos.forEach((video, index) => {
-            const videoInput = this.$refs[`videoInput-${index}`];
-            if (videoInput && videoInput[0] && videoInput[0].files[0]) {
-              formData.append('lectureVideoFiles', videoInput[0].files[0], videoInput[0].files[0].name);
+                     // 새로 업로드된 파일만 추가
+           let videoFilesCount = 0;
+           this.formData.videos.forEach((video, index) => {
+             const videoInput = this.$refs[`videoInput-${index}`];
+             const hasNewVideo = videoInput && Array.isArray(videoInput) && videoInput[0] && videoInput[0].files[0];
+             const hasTitle = video.title.trim();
+             
+             // 새로 업로드된 파일이 있는 경우만 파일을 추가
+             if (hasNewVideo && hasTitle) {
+               formData.append('lectureVideoFiles', videoInput[0].files[0], videoInput[0].files[0].name);
+               videoFilesCount++;
+             }
+           });
+          
+          console.log('lectureVideoDto 사이즈:', lectureVideoDto.length);
+          console.log('lectureVideoFiles 사이즈:', videoFilesCount);
+         
+                   // 백엔드로 보내는 데이터 콘솔 출력
+          console.log('=== 강의 수정 데이터 ===');
+          console.log('lectureId:', this.lectureId);
+          console.log('lectureUpdateDto:', lectureUpdateDto);
+          console.log('lectureIngredientsListDto:', lectureIngredientsListDto);
+          console.log('lectureStepDto:', lectureStepDto);
+          console.log('lectureVideoDto:', lectureVideoDto);
+          console.log('FormData 내용:');
+          for (let [key, value] of formData.entries()) {
+            if (value instanceof Blob) {
+              try {
+                const text = await value.text();
+                console.log(`${key}:`, JSON.parse(text));
+              } catch (parseError) {
+                console.log(`${key}:`, 'Blob (파싱 실패)');
+              }
+            } else {
+              console.log(`${key}:`, value);
             }
-          });
+          }
+          console.log('전체 FormData 객체:', formData);
+          console.log('=====================');
          
          // API 호출
+         console.log('lectureService.updateLecture 호출 직전');
+         console.log('this.lectureId:', this.lectureId);
+         console.log('formData:', formData);
+         console.log('lectureService:', lectureService);
+         
          const response = await lectureService.updateLecture(this.lectureId, formData);
         
-                 if (response.success) {
-           this.showModalDialog('success', '수정 완료', '강의가 성공적으로 수정되었습니다!', '확인', '', false, () => {
-             this.$router.push(`/lectures/${this.lectureId}`);
-           });
-         } else {
+                           if (response.success) {
+            this.showModalDialog('success', '수정 완료', '강의가 성공적으로 수정되었습니다!', '확인', '', false, () => {
+              this.$router.push(`/lectures/${this.lectureId}`).then(() => {
+                // 라우터 이동 완료 후 스크롤
+                this.$nextTick(() => {
+                  window.scrollTo(0, 0);
+                });
+              });
+            });
+          } else {
            this.showError(response.message || '강의 수정에 실패했습니다.');
          }
              } catch (error) {
+                 console.log('=== 에러 발생 시 FormData ===');
+                 console.log('FormData 객체:', formData);
+                 console.log('FormData entries:');
+                 for (let [key, value] of formData.entries()) {
+                   console.log(`${key}:`, value);
+                 }
+                 console.log('=====================');
          console.error('강의 수정 실패:', error);
          
          // 415 에러 처리 (파일 타입 불일치)
@@ -549,49 +636,91 @@ export default {
        }
     },
     
-    // 폼 유효성 검사
-    validateForm() {
-      if (!this.formData.title.trim()) {
-        this.showError('강의 제목을 입력해주세요.');
-        return false;
-      }
+         // 폼 유효성 검사
+     validateForm() {
+       console.log('=== validateForm 시작 ===');
+       console.log('formData:', this.formData);
+       
+       if (!this.formData.title.trim()) {
+         console.log('제목 검증 실패');
+         this.showError('강의 제목을 입력해주세요.');
+         return false;
+       }
       
-      if (!this.formData.description.trim()) {
-        this.showError('강의 설명을 입력해주세요.');
-        return false;
-      }
-      
-      if (!this.formData.category) {
-        this.showError('카테고리를 선택해주세요.');
-        return false;
-      }
-      
-      if (!this.formData.level) {
-        this.showError('난이도를 선택해주세요.');
-        return false;
-      }
-      
-      if (!this.formData.price || this.formData.price <= 0) {
-        this.showError('올바른 가격을 입력해주세요.');
-        return false;
-      }
-      
-      if (this.formData.ingredients.length === 0) {
-        this.showError('최소 하나의 재료를 추가해주세요.');
-        return false;
-      }
-      
-      if (this.formData.steps.length === 0) {
-        this.showError('최소 하나의 조리 과정을 추가해주세요.');
-        return false;
-      }
-      
-      if (this.formData.videos.length === 0) {
-        this.showError('최소 하나의 강의 영상을 추가해주세요.');
-        return false;
-      }
-      
-      return true;
+             if (!this.formData.description.trim()) {
+         console.log('설명 검증 실패');
+         this.showError('강의 설명을 입력해주세요.');
+         return false;
+       }
+       
+       if (!this.formData.category) {
+         console.log('카테고리 검증 실패');
+         this.showError('카테고리를 선택해주세요.');
+         return false;
+       }
+       
+       if (!this.formData.level) {
+         console.log('난이도 검증 실패');
+         this.showError('난이도를 선택해주세요.');
+         return false;
+       }
+       
+       if (!this.formData.price || this.formData.price <= 0) {
+         console.log('가격 검증 실패');
+         this.showError('올바른 가격을 입력해주세요.');
+         return false;
+       }
+       
+       if (this.formData.ingredients.length === 0) {
+         console.log('재료 검증 실패');
+         this.showError('최소 하나의 재료를 추가해주세요.');
+         return false;
+       }
+       
+       if (this.formData.steps.length === 0) {
+         console.log('조리과정 검증 실패');
+         this.showError('최소 하나의 조리 과정을 추가해주세요.');
+         return false;
+       }
+       
+               if (this.formData.videos.length === 0) {
+          console.log('비디오 검증 실패');
+          this.showError('최소 하나의 강의 영상을 추가해주세요.');
+          return false;
+        }
+        
+                          // 비디오와 제목 일관성 검증
+          for (let i = 0; i < this.formData.videos.length; i++) {
+            const video = this.formData.videos[i];
+            const videoInput = this.$refs[`videoInput-${i}`];
+            // $refs가 존재하지 않거나 배열이 아닌 경우 처리
+            const hasNewVideo = videoInput && Array.isArray(videoInput) && videoInput[0] && videoInput[0].files[0];
+            const hasExistingVideo = video.videoUrl && video.videoUrl.trim();
+            const hasVideo = hasNewVideo || hasExistingVideo; // 새 파일 또는 기존 영상 URL
+            const hasTitle = video.title.trim();
+            
+            // 제목 길이 검증 (50자 제한)
+            if (hasTitle && video.title.length > 50) {
+              console.log(`비디오 ${i + 1} 제목 길이 검증 실패`);
+              this.showError(`${i + 1}번째 강의의 제목은 50자 이하여야 합니다.`);
+              return false;
+            }
+            
+            // 둘 중 하나라도 있으면 다른 하나도 무조건 있어야 함
+            if ((hasVideo && !hasTitle) || (hasTitle && !hasVideo)) {
+              if (hasVideo && !hasTitle) {
+                console.log(`비디오 ${i + 1} 제목 검증 실패`);
+                this.showError(`${i + 1}번째 강의의 제목을 입력해주세요.`);
+              } else {
+                console.log(`비디오 ${i + 1} 파일 검증 실패`);
+                this.showError(`${i + 1}번째 강의의 영상을 업로드해주세요.`);
+              }
+              return false;
+            }
+          }
+       
+       console.log('모든 유효성 검사 통과');
+       return true;
     },
     
     // 뒤로 가기
@@ -626,6 +755,7 @@ export default {
      
      // 에러 표시
      showError(message) {
+       console.log('showError 호출:', message);
        alert(message);
      },
      

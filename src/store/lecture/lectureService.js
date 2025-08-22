@@ -106,31 +106,46 @@ export const lectureService = {
   // 강의 수정
   async updateLecture(lectureId, formData) {
     try {
+      console.log('=== updateLecture 시작 ===');
+      console.log('lectureId:', lectureId);
+      console.log('formData:', formData);
+      
       // 토큰 가져오기
       const token = localStorage.getItem('accessToken');
+      console.log('token:', token);
       
       const headers = {};
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
       
-      // ❌ Content-Type 헤더는 제거 (브라우저가 자동으로 multipart/form-data 설정)
-      const response = await fetch(`http://localhost:8080/lecture/update/${lectureId}`, {
+      const url = `http://localhost:8080/lecture/update/${lectureId}`;
+      console.log('요청 URL:', url);
+      console.log('요청 헤더:', headers);
+      
+      // multipart/form-data에서는 Content-Type 헤더를 설정하지 않음 (브라우저가 자동 설정)
+      const response = await fetch(url, {
         method: 'PATCH',
-        headers: headers,
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         body: formData
       });
       
       console.log('강의 수정 응답:', response);
+      console.log('응답 상태:', response.status);
+      console.log('응답 헤더:', response.headers);
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.log('에러 응답 내용:', errorText);
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
       }
       
       const data = await response.json();
+      console.log('응답 데이터:', data);
       return data;
     } catch (error) {
       console.error('강의 수정 실패:', error);
+      console.error('에러 상세:', error.message);
       throw error;
     }
   }
