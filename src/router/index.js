@@ -36,6 +36,7 @@ import NoticeDetail from '@/views/notice/NoticeDetail.vue'
 import NoticeCreate from '@/views/notice/NoticeCreate.vue'
 import NoticeEdit from '@/views/notice/NoticeEdit.vue'
 import NotificationPage from '@/views/notification/NotificationPage.vue'
+import PostDetailPage from '../views/recipe/PostDetailPage.vue'
 
 const routes = [
   {
@@ -113,6 +114,7 @@ const routes = [
       { path: 'recipes/:id', name: 'RecipeDetail', component: RecipeDetailPage },
       { path: 'recipe/write', name: 'RecipeWrite', component: RecipeWritePage },
       { path: 'recipe/post-write', name: 'RecipePostWrite', component: RecipePostWritePage },
+      { path: 'recipe/post-detail/:id', name: 'PostDetail', component: PostDetailPage },
       { path: 'lectures', name: 'LectureList', component: LectureList },
       { path: 'lectures/:id', name: 'LectureDetail', component: LectureDetail },
       { path: 'cart', name: 'CartPage', component: CartPage },

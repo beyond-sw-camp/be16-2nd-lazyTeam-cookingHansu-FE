@@ -11,18 +11,9 @@
     </div>
 
     <div class="recipes-grid">
-      <div v-for="recipe in pagedRecipes" :key="recipe.id" class="recipe-card">
+      <div v-for="recipe in pagedRecipes" :key="recipe.id" class="recipe-card" @click="goToRecipeDetail(recipe)">
         <div class="recipe-image">
           <img :src="recipe.image" :alt="recipe.title" />
-          <!-- 액션 버튼들 -->
-          <div class="recipe-actions">
-            <button class="action-btn edit-btn" @click="editRecipe(recipe)">
-              <span class="action-icon">✏️</span>
-            </button>
-            <button class="action-btn delete-btn" @click="confirmDelete(recipe)">
-              <span class="action-icon">🗑️</span>
-            </button>
-          </div>
         </div>
         <div class="recipe-content">
           <h3 class="recipe-title">{{ recipe.title }}</h3>
@@ -32,17 +23,7 @@
       </div>
     </div>
 
-    <!-- 삭제 확인 모달 -->
-    <div v-if="showDeleteModal" class="modal-overlay">
-      <div class="delete-modal">
-        <h3>레시피 삭제</h3>
-        <p>"{{ recipeToDelete?.title }}" 레시피를 삭제하시겠습니까?</p>
-        <div class="modal-actions">
-          <button class="cancel-btn" @click="showDeleteModal = false">취소</button>
-          <button class="delete-confirm-btn" @click="deleteRecipe">삭제</button>
-        </div>
-      </div>
-    </div>
+    <!-- 삭제 확인 모달 제거 -->
 
     <!-- 페이지네이션 -->
     <Pagination 
@@ -79,8 +60,6 @@ const router = useRouter()
 // 상태 관리
 const currentPage = ref(1)
 const recipesPerPage = ref(6)
-const showDeleteModal = ref(false)
-const recipeToDelete = ref(null)
 
 // 레시피 데이터
 const recipes = ref([
@@ -121,38 +100,10 @@ const recipes = ref([
   },
   {
     id: 6,
-    title: '닭볶음탕',
-    description: '닭고기 1kg, 감자 2개, 당근 1개, 양파 1개, 간장, 설탕, 고춧가루.',
+    title: '계란볶음밥',
+    description: '밥 2공기, 계란 2개, 대파 1대, 간장 2스푼, 참기름 1스푼, 깨소금.',
     image: '/src/assets/images/smu_mascort2.jpg',
-    date: '2024.01.03'
-  },
-  {
-    id: 7,
-    title: '된장국',
-    description: '된장 3스푼, 애호박, 두부, 파, 마늘, 참기름. 끓이는 시간 10분.',
-    image: '/src/assets/images/smu_mascort3.jpg',
-    date: '2024.01.01'
-  },
-  {
-    id: 8,
-    title: '김밥',
-    description: '밥, 김, 단무지, 당근, 오이, 계란, 햄, 참기름, 깨소금.',
-    image: '/src/assets/images/smu_mascort4.jpg',
-    date: '2023.12.30'
-  },
-  {
-    id: 9,
-    title: '떡볶이',
-    description: '떡볶이 떡, 어묵, 고추장, 고춧가루, 설탕, 간장. 끓이는 시간 15분.',
-    image: '/src/assets/images/smu_mascort1.jpg',
-    date: '2023.12.28'
-  },
-  {
-    id: 10,
-    title: '순두부찌개',
-    description: '순두부 1팩, 돼지고기 100g, 양파, 대파, 고추장, 고춧가루.',
-    image: '/src/assets/images/smu_mascort2.jpg',
-    date: '2023.12.25'
+    date: '2024.01.02'
   }
 ])
 
@@ -176,30 +127,12 @@ const goToRecipePostWrite = () => {
   router.push('/recipe/post-write')
 }
 
+const goToRecipeDetail = (recipe) => {
+  router.push({ path: `/recipes/${recipe.id}` })
+}
+
 const changePage = (page) => {
-  if (page >= 1 && page <= totalPages.value) {
-    currentPage.value = page
-  }
-}
-
-const editRecipe = (recipe) => {
-  router.push({ path: '/recipe/write', query: { id: recipe.id } })
-}
-
-const confirmDelete = (recipe) => {
-  recipeToDelete.value = recipe
-  showDeleteModal.value = true
-}
-
-const deleteRecipe = () => {
-  if (recipeToDelete.value) {
-    const index = recipes.value.findIndex(r => r.id === recipeToDelete.value.id)
-    if (index !== -1) {
-      recipes.value.splice(index, 1)
-    }
-    showDeleteModal.value = false
-    recipeToDelete.value = null
-  }
+  currentPage.value = page
 }
 
 onMounted(() => {
@@ -239,7 +172,7 @@ onMounted(() => {
   border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
-  display: flex;
+  display: flex; 
   align-items: center;
   gap: 8px;
   transition: background 0.2s;
@@ -296,8 +229,9 @@ onMounted(() => {
 
 .recipe-image {
   width: 100%;
-  height: 160px;
+  height: 200px;
   overflow: hidden;
+  border-radius: 8px 8px 0 0;
 }
 
 .recipe-image img {
@@ -306,39 +240,9 @@ onMounted(() => {
   object-fit: cover;
 }
 
-.recipe-actions {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  display: flex;
-  gap: 8px;
-  z-index: 10; /* Ensure buttons are above other content */
-}
-
-.action-btn {
-  background: rgba(0, 0, 0, 0.6);
-  color: white;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 18px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.2s;
-}
-
-.action-btn:hover {
-  background: rgba(0, 0, 0, 0.8);
-}
-
-.action-icon {
-  font-size: 18px;
-}
-
 .recipe-content {
   padding: 16px;
+  flex-grow: 1;
 }
 
 .recipe-title {
@@ -440,103 +344,22 @@ onMounted(() => {
 }
 
 .write-first-post-btn:hover {
-  background: #0056cc;
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.delete-modal {
-  background: white;
-  border-radius: 12px;
-  padding: 32px;
-  text-align: center;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-  width: 90%;
-  max-width: 400px;
-}
-
-.delete-modal h3 {
-  font-size: 24px;
-  font-weight: 700;
-  color: #222;
-  margin-bottom: 16px;
-}
-
-.delete-modal p {
-  font-size: 18px;
-  color: #666;
-  margin-bottom: 32px;
-  line-height: 1.6;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: center;
-  gap: 20px;
-}
-
-.cancel-btn {
-  background: #f0f0f0;
-  color: #333;
-  border: 1px solid #ccc;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 16px;
-  cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
-}
-
-.cancel-btn:hover {
-  background: #e0e0e0;
-  border-color: #bbb;
-}
-
-.delete-confirm-btn {
-  background: #ff4d4f;
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 16px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.delete-confirm-btn:hover {
-  background: #d9363e;
+  background: #e66a00;
 }
 
 @media (max-width: 768px) {
-  .section-header {
-    flex-direction: column;
-    gap: 16px;
-    align-items: stretch;
-  }
-  
-  .header-actions {
-    justify-content: center;
-  }
-  
   .recipes-grid {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
   
-  .empty-actions {
-    flex-direction: column;
-    align-items: center;
+  .section-header {
+    padding: 0 16px;
+  }
+  
+  .write-recipe-btn {
+    padding: 8px 16px;
+    font-size: 14px;
   }
 }
 </style> 

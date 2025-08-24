@@ -9,18 +9,9 @@
     </div>
 
     <div class="posts-grid">
-      <div v-for="post in pagedPosts" :key="post.id" class="post-card">
+      <div v-for="post in pagedPosts" :key="post.id" class="post-card" @click="goToPostDetail(post)">
         <div class="post-image">
           <img :src="post.image" :alt="post.title" />
-          <!-- 액션 버튼들 -->
-          <div class="post-actions">
-            <button class="action-btn edit-btn" @click="editPost(post)">
-              <span class="action-icon">✏️</span>
-            </button>
-            <button class="action-btn delete-btn" @click="confirmDelete(post)">
-              <span class="action-icon">🗑️</span>
-            </button>
-          </div>
         </div>
         <div class="post-content">
           <h3 class="post-title">{{ post.title }}</h3>
@@ -42,17 +33,7 @@
       </div>
     </div>
 
-    <!-- 삭제 확인 모달 -->
-    <div v-if="showDeleteModal" class="modal-overlay">
-      <div class="delete-modal">
-        <h3>게시글 삭제</h3>
-        <p>"{{ postToDelete?.title }}" 게시글을 삭제하시겠습니까?</p>
-        <div class="modal-actions">
-          <button class="cancel-btn" @click="showDeleteModal = false">취소</button>
-          <button class="delete-confirm-btn" @click="deletePost">삭제</button>
-        </div>
-      </div>
-    </div>
+    <!-- 삭제 확인 모달 제거 -->
 
     <!-- 페이지네이션 -->
     <Pagination 
@@ -83,8 +64,6 @@ const router = useRouter()
 // 상태 관리
 const currentPage = ref(1)
 const postsPerPage = ref(6)
-const showDeleteModal = ref(false)
-const postToDelete = ref(null)
 
 // 게시글 데이터
 const posts = ref([
@@ -121,44 +100,26 @@ const posts = ref([
     content: '한 달간 집밥만 해먹기 도전 후기. 건강과 경제적 효과, 그리고 의외의 발견들...',
     image: '/src/assets/images/smu_mascort4.jpg',
     date: '2023.12.28',
-    views: 11,
-    likes: 29
+    views: 22,
+    likes: 51
   },
   {
     id: 5,
-    title: '요리 초보자를 위한 기초 팁',
-    content: '요리를 처음 시작하는 분들을 위한 기본적인 팁들을 모아봤어요...',
+    title: '계절별 제철 요리 가이드',
+    content: '봄, 여름, 가을, 겨울 제철 식재료와 요리법. 계절의 맛을 제대로 즐기는 방법...',
     image: '/src/assets/images/smu_mascort1.jpg',
     date: '2023.12.25',
-    views: 15,
-    likes: 31
+    views: 16,
+    likes: 38
   },
   {
     id: 6,
-    title: '집에서 만드는 간단한 디저트',
-    content: '집에서 쉽게 만들 수 있는 디저트 레시피를 공유해요...',
+    title: '요리 실패담과 극복기',
+    content: '처음 요리할 때 겪은 실패담들과 그걸 극복한 방법들. 실패는 성공의 어머니...',
     image: '/src/assets/images/smu_mascort2.jpg',
     date: '2023.12.22',
     views: 12,
-    likes: 26
-  },
-  {
-    id: 7,
-    title: '건강한 아침 식사 아이디어',
-    content: '바쁜 아침에도 건강하게 먹을 수 있는 식사 아이디어...',
-    image: '/src/assets/images/smu_mascort3.jpg',
-    date: '2023.12.20',
-    views: 8,
-    likes: 19
-  },
-  {
-    id: 8,
-    title: '계절별 요리 재료 활용법',
-    content: '계절에 맞는 재료를 활용한 요리 팁들을 정리해봤어요...',
-    image: '/src/assets/images/smu_mascort4.jpg',
-    date: '2023.12.18',
-    views: 10,
-    likes: 22
+    likes: 29
   }
 ])
 
@@ -178,27 +139,12 @@ const goToRecipePostWrite = () => {
   router.push('/recipe/post-write')
 }
 
+const goToPostDetail = (post) => {
+  router.push({ path: `/recipe/post-detail/${post.id}` })
+}
+
 const changePage = (page) => {
-  if (page >= 1 && page <= totalPages.value) {
-    currentPage.value = page
-  }
-}
-
-const editPost = (post) => {
-  router.push({ path: '/recipe/post-write', query: { id: post.id } })
-}
-
-const confirmDelete = (post) => {
-  postToDelete.value = post
-  showDeleteModal.value = true
-}
-
-const deletePost = () => {
-  if (postToDelete.value) {
-    posts.value = posts.value.filter(p => p.id !== postToDelete.value.id)
-    showDeleteModal.value = false
-    postToDelete.value = null
-  }
+  currentPage.value = page
 }
 
 onMounted(() => {
@@ -262,7 +208,8 @@ onMounted(() => {
   border: 1px solid #f0f0f0;
   transition: transform 0.2s, box-shadow 0.2s;
   cursor: pointer;
-  position: relative; /* Added for action buttons positioning */
+  display: flex; /* Added for flex layout */
+  flex-direction: column; /* Added for flex layout */
 }
 
 .post-card:hover {
@@ -272,8 +219,9 @@ onMounted(() => {
 
 .post-image {
   width: 100%;
-  height: 160px;
+  height: 200px;
   overflow: hidden;
+  border-radius: 8px 8px 0 0;
 }
 
 .post-image img {
@@ -284,6 +232,7 @@ onMounted(() => {
 
 .post-content {
   padding: 16px;
+  flex-grow: 1;
 }
 
 .post-title {
@@ -339,36 +288,6 @@ onMounted(() => {
   font-size: 14px;
 }
 
-.post-actions {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  display: flex;
-  gap: 8px;
-  z-index: 10; /* Ensure buttons are above other content */
-}
-
-.action-btn {
-  background: rgba(0, 0, 0, 0.6);
-  color: white;
-  border: none;
-  padding: 8px;
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.2s;
-}
-
-.action-btn:hover {
-  background: rgba(0, 0, 0, 0.8);
-}
-
-.action-icon {
-  font-size: 16px;
-}
-
 .empty-state {
   text-align: center;
   padding: 80px 20px;
@@ -410,78 +329,6 @@ onMounted(() => {
 
 .write-first-post-btn:hover {
   background: #e66a00;
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.delete-modal {
-  background: white;
-  border-radius: 12px;
-  padding: 32px;
-  text-align: center;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-  width: 90%;
-  max-width: 400px;
-}
-
-.delete-modal h3 {
-  font-size: 24px;
-  font-weight: 700;
-  color: #222;
-  margin-bottom: 16px;
-}
-
-.delete-modal p {
-  font-size: 16px;
-  color: #666;
-  margin-bottom: 24px;
-  line-height: 1.6;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: space-around;
-  gap: 16px;
-}
-
-.cancel-btn, .delete-confirm-btn {
-  flex: 1;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.cancel-btn {
-  background: #f0f0f0;
-  color: #333;
-  border: 1px solid #ccc;
-}
-
-.cancel-btn:hover {
-  background: #e0e0e0;
-}
-
-.delete-confirm-btn {
-  background: #ff4d4f;
-  color: white;
-  border: none;
-}
-
-.delete-confirm-btn:hover {
-  background: #d9363e;
 }
 
 @media (max-width: 768px) {
