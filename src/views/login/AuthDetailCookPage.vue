@@ -42,38 +42,17 @@
     <FormButtons @prev="onPrev" @next="showConfirmationModal" next-text="가입 완료" />
 
     <!-- 확인 모달 -->
-    <v-dialog v-model="showModal" max-width="400" persistent>
-      <v-card class="confirmation-modal">
-        <v-card-title class="text-h6 text-center pa-4">
-          요식업 종사자 회원 등록
-        </v-card-title>
-        <v-card-text class="text-center pa-4">
-          <p class="mb-4">
-            요식업 종사자로 회원 등록하시겠습니까?
-          </p>
-          <p class="text-caption text-medium-emphasis">
-            등록 후에는 관리자 승인까지 권한이 제한됩니다.
-          </p>
-        </v-card-text>
-        <v-card-actions class="pa-4">
-          <v-spacer></v-spacer>
-          <v-btn
-            color="grey-darken-1"
-            variant="text"
-            @click="showModal = false"
-          >
-            취소
-          </v-btn>
-          <v-btn
-            color="primary"
-            @click="confirmRegistration"
-            :loading="isSubmitting"
-          >
-            확인
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <CommonModal
+      v-model="showModal"
+      type="info"
+      title="요식업 종사자 회원 등록"
+      message="요식업 종사자로 회원 등록하시겠습니까? 등록 후에는 관리자 승인까지 권한이 제한됩니다."
+      confirm-text="YES"
+      cancel-text="NO"
+      :loading="isSubmitting"
+      @confirm="confirmRegistration"
+      @cancel="showModal = false"
+    />
   </LoginLayout>
 </template>
 
@@ -87,6 +66,7 @@ import FormSelect from "@/components/login/FormSelect.vue";
 import FormInput from "@/components/login/FormInput.vue";
 import FileUpload from "@/components/login/FileUpload.vue";
 import FormButtons from "@/components/login/FormButtons.vue";
+import CommonModal from "@/components/common/CommonModal.vue";
 import { authService } from "@/services/auth/authService";
 import {
   saveStepData,
@@ -262,19 +242,5 @@ function onLicenseNumberInput() {
   font-weight: 600;
   margin-bottom: 10px;
   margin-top: 2px;
-}
-
-.confirmation-modal {
-  border-radius: 12px;
-}
-
-.confirmation-modal .v-card-title {
-  color: var(--color-primary);
-  font-weight: 600;
-}
-
-.confirmation-modal .v-card-text p {
-  margin: 0;
-  line-height: 1.5;
 }
 </style>

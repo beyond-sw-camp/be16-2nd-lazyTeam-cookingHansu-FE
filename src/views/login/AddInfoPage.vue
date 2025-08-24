@@ -22,6 +22,18 @@
     </form>
 
     <FormButtons @prev="onPrev" @next="onNext" next-text="다음" />
+
+    <!-- 처음으로 돌아가기 확인 모달 -->
+    <CommonModal
+      v-model="showGoBackModal"
+      type="warning"
+      title="처음으로 돌아가기"
+      message="처음으로 돌아가시겠습니까? 모든 임시 기록이 삭제됩니다."
+      confirm-text="네"
+      cancel-text="아니오"
+      @confirm="handleGoBackConfirm"
+      @cancel="showGoBackModal = false"
+    />
   </LoginLayout>
 </template>
 
@@ -35,10 +47,12 @@ import UserInfoDisplay from "@/components/login/UserInfoDisplay.vue";
 import FormInput from "@/components/login/FormInput.vue";
 import RoleSelector from "@/components/login/RoleSelector.vue";
 import FormButtons from "@/components/login/FormButtons.vue";
+import CommonModal from "@/components/common/CommonModal.vue";
 import {
   saveStepData,
   getStepData,
   saveRegistrationData,
+  clearRegistrationData,
 } from "@/utils/userRegistration";
 
 const router = useRouter();
@@ -52,6 +66,7 @@ const errors = ref({ nickname: false });
 const userInfo = ref(null);
 const showBox = ref(true);
 const progressAnimate = ref(false);
+const showGoBackModal = ref(false);
 
 // 백엔드 엔티티에 맞는 역할 옵션
 const roles = [
@@ -109,11 +124,29 @@ onMounted(() => {
 });
 
 function onPrev() {
-  progressAnimate.value = true;
-  showBox.value = false;
-  setTimeout(() => {
+  // 모달 표시
+  showGoBackModal.value = true;
+}
+
+// 처음으로 돌아가기 확인 처리
+async function handleGoBackConfirm() {
+  try {
+    // 모달 닫기
+    showGoBackModal.value = false;
+    
+    // 모든 임시 기록 삭제
+    clearRegistrationData();
+    
+    // 로그아웃 처리
+    await authStore.logout();
+    
+    // 로그인 페이지로 이동
     router.push("/login");
-  }, 350);
+  } catch (error) {
+    console.error("로그아웃 처리 중 오류 발생:", error);
+    // 에러가 발생해도 로그인 페이지로 이동
+    router.push("/login");
+  }
 }
 
 function validate() {

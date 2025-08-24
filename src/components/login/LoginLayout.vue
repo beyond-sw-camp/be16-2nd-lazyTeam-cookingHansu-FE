@@ -1,7 +1,7 @@
 <template>
   <div class="login-layout">
     <div class="top-bar" v-if="showBackLink">
-      <span class="back-link" @click="goHome">&lt; 홈으로 돌아가기</span>
+      <span class="back-link" @click="showGoHomeModal">&lt; 홈으로 돌아가기</span>
     </div>
     <slot name="progress" />
     <transition name="box-slide" mode="out-in">
@@ -11,13 +11,29 @@
         <slot />
       </div>
     </transition>
+
+    <!-- 홈으로 돌아가기 확인 모달 -->
+    <CommonModal
+      v-model="showModal"
+      type="warning"
+      title="메인 페이지로 이동"
+      message="메인 페이지로 이동하시겠습니까? 지금까지 작성된 정보들은 사라집니다."
+      confirm-text="YES"
+      cancel-text="NO"
+      @confirm="handleGoHome"
+      @cancel="showModal = false"
+    />
   </div>
 </template>
 
 <script setup>
+import { ref } from "vue";
 import { useRouter } from "vue-router";
+import { useAuthStore } from "@/store/auth/auth";
+import CommonModal from "@/components/common/CommonModal.vue";
 
 const router = useRouter();
+const authStore = useAuthStore();
 
 const props = defineProps({
   title: {
@@ -38,8 +54,30 @@ const props = defineProps({
   },
 });
 
-function goHome() {
-  router.push("/");
+// 모달 표시 상태
+const showModal = ref(false);
+
+// 홈으로 돌아가기 모달 표시
+function showGoHomeModal() {
+  showModal.value = true;
+}
+
+// 홈으로 돌아가기 처리 (로그아웃 및 임시 정보 제거)
+async function handleGoHome() {
+  try {
+    // 로그아웃 처리
+    await authStore.logout();
+    
+    // 모달 닫기
+    showModal.value = false;
+    
+    // 메인 페이지로 이동
+    router.push("/");
+  } catch (error) {
+    console.error("홈으로 돌아가기 처리 중 오류 발생:", error);
+    // 에러가 발생해도 메인 페이지로 이동
+    router.push("/");
+  }
 }
 </script>
 

@@ -39,8 +39,7 @@
     <!-- 파일 정보 표시 -->
     <div v-if="fileInfo" class="file-info">
       <small class="text-caption text-medium-emphasis">
-        파일 크기: {{ formatFileSize(fileInfo.size) }} | 
-        형식: {{ fileInfo.type || '알 수 없음' }}
+        파일 크기: {{ formatFileSize(fileInfo.size) }}
       </small>
     </div>
   </div>
