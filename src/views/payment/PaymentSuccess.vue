@@ -1,6 +1,5 @@
 <template>
   <div class="payment-success-page">
-    <Header />
     
     <div class="success-container">
       <div class="success-card">

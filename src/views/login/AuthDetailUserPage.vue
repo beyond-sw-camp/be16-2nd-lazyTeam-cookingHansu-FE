@@ -16,7 +16,13 @@
       />
     </form>
 
-    <FormButtons @prev="onPrev" @next="onSubmit" next-text="가입 완료" />
+    <FormButtons 
+      @prev="onPrev" 
+      @next="onSubmit" 
+      next-text="가입 완료" 
+      :loading="isLoading"
+      :disabled="isLoading"
+    />
   </LoginLayout>
 </template>
 
@@ -39,6 +45,7 @@ import {
 const router = useRouter();
 const authStore = useAuthStore();
 const showBox = ref(true);
+const isLoading = ref(false);
 const form = ref({
   generalType: "",
 });
@@ -82,6 +89,9 @@ function onGeneralTypeSelect() {
 async function onSubmit() {
   if (!validate()) return;
 
+  // 로딩 상태 시작
+  isLoading.value = true;
+
   try {
     // localStorage에 현재 단계 데이터 저장
     saveStepData("authDetail", {
@@ -100,36 +110,38 @@ async function onSubmit() {
     }
 
     // 최종 회원가입 완료 - FormData를 사용하여 multipart 방식으로 전송
-    setTimeout(async () => {
-      const registrationData = getCompleteRegistrationData();
-      
-      // FormData 생성 (파일이 없어도 multipart 형식으로 전송)
-      const formData = new FormData();
-      
-      // 텍스트 데이터 추가
-      Object.keys(registrationData).forEach(key => {
-        if (registrationData[key] !== null && registrationData[key] !== undefined) {
-          formData.append(key, registrationData[key]);
-        }
-      });
-      
-      const response = await authService.addUserInfoFormData(
-        currentUser.id,
-        formData
-      );
-      if (response.isSuccess()) {
-        // 성공 시 localStorage 데이터 초기화
-        clearRegistrationData();
-        router.push("/complete");  
-      } else {
-        throw new Error(response.getMessage() || "회원가입에 실패했습니다.");
+    const registrationData = getCompleteRegistrationData();
+    
+    // FormData 생성 (파일이 없어도 multipart 형식으로 전송)
+    const formData = new FormData();
+    
+    // 텍스트 데이터 추가
+    Object.keys(registrationData).forEach(key => {
+      if (registrationData[key] !== null && registrationData[key] !== undefined) {
+        formData.append(key, registrationData[key]);
       }
-    }, 1000);
+    });
+    
+    const response = await authService.addUserInfoFormData(
+      currentUser.id,
+      formData
+    );
+    
+    if (response.isSuccess()) {
+      // 성공 시 localStorage 데이터 초기화
+      clearRegistrationData();
+      router.push("/complete");  
+    } else {
+      throw new Error(response.getMessage() || "회원가입에 실패했습니다.");
+    }
   } catch (error) {
     console.error("회원가입 오류:", error);
     alert(
       error.message || "회원가입 중 오류가 발생했습니다. 다시 시도해주세요."
     );
+  } finally {
+    // 로딩 상태 종료
+    isLoading.value = false;
   }
 }
 </script>

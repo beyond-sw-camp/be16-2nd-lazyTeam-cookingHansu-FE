@@ -98,7 +98,7 @@
 </template>
 
 <script>
-import Header from '@/components/Header1.vue';
+import Header from '@/components/Header.vue';
 import Pagination from '@/components/common/Pagination.vue';
 import { lectureService } from '@/store/lecture/lectureService';
 

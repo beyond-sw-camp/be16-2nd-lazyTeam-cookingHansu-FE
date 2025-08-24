@@ -132,7 +132,7 @@ const routes = [
     component: MainLayout,
     children: [
       // 여기에 유저용 페이지 라우트 추가
-      { path: '', redirect: '/recipes' },
+      { path: '', name: 'Home' },
       { path: 'landing', name: 'LandingPage', component: LandingPage },
       { path: 'recipes', name: 'RecipeMainPage', component: RecipeMainPage },
       { path: 'recipes/:id', name: 'RecipeDetail', component: RecipeMainPage },
@@ -172,6 +172,19 @@ router.beforeEach(async (to, from, next) => {
       to.name === "NaverOAuthRedirect") {
     next();
     return;
+  }
+
+  // 루트 경로('/')에 대한 처리
+  if (to.path === '/' && to.name === 'Home') {
+    if (authStore.isAuthenticated) {
+      // 로그인된 사용자는 recipes 페이지로 리다이렉트
+      next('/recipes');
+      return;
+    } else {
+      // 비로그인 사용자는 landing 페이지로 리다이렉트
+      next('/landing');
+      return;
+    }
   }
 
   // 인증 상태 확인 (access token이 있지만 사용자 정보가 없는 경우)

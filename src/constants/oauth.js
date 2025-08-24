@@ -58,8 +58,12 @@ export const generateOAuthUrl = (provider) => {
         response_type: GOOGLE_RESPONSE_TYPE,
         scope: GOOGLE_SCOPE,
         access_type: "offline",
-        prompt: "consent",
+        prompt: "select_account consent", // 계정 선택과 동의 화면을 항상 표시
         state: generateRandomState(),
+        // 추가 파라미터로 브라우저 캐싱 문제 해결
+        include_granted_scopes: "true",
+        // 로그아웃 후 재로그인 시에도 계정 선택 강제
+        force_confirm: "true"
       });
       return `${GOOGLE_URL}?${params.toString()}`;
       
@@ -81,6 +85,7 @@ export const generateOAuthUrl = (provider) => {
         client_id: KAKAO_CLIENT_ID,
         redirect_uri: KAKAO_REDIRECT_URL,
         response_type: KAKAO_RESPONSE_TYPE,
+        prompt: "login", 
         state: generateRandomState(),
       });
       return `${KAKAO_URL}?${kakaoParams.toString()}`;
@@ -103,6 +108,7 @@ export const generateOAuthUrl = (provider) => {
         client_id: NAVER_CLIENT_ID,
         redirect_uri: NAVER_REDIRECT_URL,
         response_type: NAVER_RESPONSE_TYPE,
+        auth_type: "reauthenticate", 
         state: generateRandomState(),
       });
       return `${NAVER_URL}?${naverParams.toString()}`;
@@ -112,10 +118,12 @@ export const generateOAuthUrl = (provider) => {
   }
 };
 
-// CSRF 방지를 위한 랜덤 state 생성
+// CSRF 방지를 위한 랜덤 state 생성 (강화된 버전)
 function generateRandomState() {
-  return (
-    Math.random().toString(36).substring(2, 15) +
-    Math.random().toString(36).substring(2, 15)
-  );
+  const timestamp = Date.now().toString(36);
+  const random1 = Math.random().toString(36).substring(2, 15);
+  const random2 = Math.random().toString(36).substring(2, 15);
+  const random3 = Math.random().toString(36).substring(2, 15);
+  
+  return `${timestamp}_${random1}_${random2}_${random3}`;
 }

@@ -138,6 +138,9 @@ export default {
         isLoading.value = true;
         error.value = null;
         
+        // 구글 세션 정리 (중복 로그인 방지)
+        clearGoogleSession();
+        
         // 인가 코드 추출
         authorizationCode.value = extractAuthorizationCode();
         
@@ -173,6 +176,8 @@ export default {
         await handleGoogleLogin();
       } else {
         // 인가 코드가 없는 경우 Google 로그인 페이지로 다시 이동
+        // 세션 정리 후 로그인 페이지로 이동
+        clearGoogleSession();
         window.location.href = '/login';
       }
     };
@@ -180,6 +185,42 @@ export default {
     // 홈으로 이동
     const goHome = () => {
       router.push('/');
+    };
+    
+    // 구글 세션 정리 함수
+    const clearGoogleSession = () => {
+      try {
+        // 구글 관련 쿠키 정리
+        const cookies = document.cookie.split(';');
+        cookies.forEach(cookie => {
+          const [name] = cookie.trim().split('=');
+          if (name.includes('google') || name.includes('oauth') || name.includes('gsi')) {
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+          }
+        });
+        
+        // 로컬 스토리지 및 세션 스토리지 정리
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.includes('google') || key.includes('oauth') || key.includes('gsi'))) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+        
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const key = sessionStorage.key(i);
+          if (key && (key.includes('google') || key.includes('oauth') || key.includes('gsi'))) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach(key => sessionStorage.removeItem(key));
+        
+        console.log('Google 세션 정리 완료');
+      } catch (error) {
+        console.warn('Google 세션 정리 중 오류:', error);
+      }
     };
     
     // 컴포넌트 마운트 시 로그인 처리 시작
@@ -195,6 +236,7 @@ export default {
       getDetailMessage,
       retryLogin,
       goHome,
+      clearGoogleSession,
     };
   },
 };

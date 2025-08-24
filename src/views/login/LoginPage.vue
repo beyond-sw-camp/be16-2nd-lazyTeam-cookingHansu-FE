@@ -60,8 +60,19 @@ async function socialLogin(provider) {
   try {
     if (provider === "google") {
       // Google OAuth URL로 리다이렉트 (인가 코드 방식)
+      // 브라우저 캐싱 문제 해결을 위한 추가 처리
       const oauthUrl = generateOAuthUrl("google");
-      window.location.href = oauthUrl;
+      
+      // 구글 계정 선택 문제 해결을 위한 추가 처리
+      // 1. 기존 구글 관련 쿠키/세션 정리
+      clearGoogleSession();
+      
+      // 2. OAuth URL에 타임스탬프 추가하여 캐시 무효화
+      const timestamp = Date.now();
+      const finalUrl = `${oauthUrl}&_t=${timestamp}`;
+      
+      // 3. 새 창에서 열거나 기존 창에서 이동
+      window.location.href = finalUrl;
     } else if (provider === "kakao") {
       const oauthUrl = generateOAuthUrl("kakao");
       window.location.href = oauthUrl;
@@ -72,6 +83,42 @@ async function socialLogin(provider) {
   } catch (error) {
     console.error(`${provider} 로그인 오류:`, error);
     alert(error.message || "로그인 중 오류가 발생했습니다. 다시 시도해주세요.");
+  }
+}
+
+// 구글 세션 정리 함수
+function clearGoogleSession() {
+  try {
+    // 구글 관련 쿠키 정리
+    const cookies = document.cookie.split(';');
+    cookies.forEach(cookie => {
+      const [name] = cookie.trim().split('=');
+      if (name.includes('google') || name.includes('oauth') || name.includes('gsi')) {
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+      }
+    });
+    
+    // 로컬 스토리지 및 세션 스토리지 정리
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.includes('google') || key.includes('oauth') || key.includes('gsi'))) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+    
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i);
+      if (key && (key.includes('google') || key.includes('oauth') || key.includes('gsi'))) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(key => sessionStorage.removeItem(key));
+    
+    console.log('Google 세션 정리 완료');
+  } catch (error) {
+    console.warn('Google 세션 정리 중 오류:', error);
   }
 }
 

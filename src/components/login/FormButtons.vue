@@ -4,6 +4,7 @@
       v-if="showPrev"
       type="button"
       class="btn prev"
+      :disabled="disabled"
       @click="$emit('prev')"
       @mousedown="btnActive('prev')"
       @mouseup="btnInactive('prev')"
@@ -14,12 +15,14 @@
     <button
       type="submit"
       class="btn next"
+      :disabled="disabled"
       @click="$emit('next')"
       @mousedown="btnActive('next')"
       @mouseup="btnInactive('next')"
       @mouseleave="btnInactive('next')"
     >
-      {{ nextText }}
+      <span v-if="loading" class="loading-spinner"></span>
+      <span v-else>{{ nextText }}</span>
     </button>
   </div>
 </template>
@@ -37,6 +40,14 @@ defineProps({
   nextText: {
     type: String,
     default: '다음'
+  },
+  loading: {
+    type: Boolean,
+    default: false
+  },
+  disabled: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -94,5 +105,31 @@ function btnInactive(type) {
   filter: brightness(0.93);
   background: #ff884d !important;
   color: #fff !important;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  filter: none;
+}
+
+.btn:disabled:hover {
+  filter: none;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+}
+
+.loading-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 </style>
