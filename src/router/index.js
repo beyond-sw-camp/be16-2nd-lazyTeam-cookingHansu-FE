@@ -21,7 +21,7 @@ import AuthDetailUserPage from '@/views/login/AuthDetailUserPage.vue'
 import RegistrationCompletePage from '@/views/login/RegistrationCompletePage.vue'
 import RecipeMainPage from '@/views/home/RecipeMainPage.vue'
 import RecipeDetailPage from '@/views/recipe/RecipeDetailPage.vue'
-import RecipeWritePage from '@/views/recipe/RecipeWritePage.vue'
+
 import RecipePostWritePage from '@/views/recipe/RecipePostWritePage.vue'
 import LectureList from '@/views/home/LectureList.vue'
 import LectureDetail from '@/views/lecture/LectureDetail.vue'
@@ -43,6 +43,7 @@ import NoticeCreate from '@/views/notice/NoticeCreate.vue'
 import NoticeEdit from '@/views/notice/NoticeEdit.vue'
 import NotificationPage from '@/views/notification/NotificationPage.vue'
 import PostDetailPage from '../views/recipe/PostDetailPage.vue'
+import PostListPage from '../views/recipe/PostListPage.vue'
 
 const routes = [
   {
@@ -140,7 +141,9 @@ const routes = [
       { path: 'landing', name: 'LandingPage', component: LandingPage },
       { path: 'recipes', name: 'RecipeMainPage', component: RecipeMainPage },
       { path: 'recipes/:id', name: 'RecipeDetail', component: RecipeDetailPage },
-      { path: 'recipe/write', name: 'RecipeWrite', component: RecipeWritePage },
+      { path: 'posts', name: 'PostList', component: PostListPage },
+      { path: 'posts/:id', name: 'PostDetail', component: PostDetailPage },
+
       { path: 'recipe/post-write', name: 'RecipePostWrite', component: RecipePostWritePage },
       { path: 'recipe/post-detail/:id', name: 'PostDetail', component: PostDetailPage },
       { path: 'lectures', name: 'LectureList', component: LectureList },
