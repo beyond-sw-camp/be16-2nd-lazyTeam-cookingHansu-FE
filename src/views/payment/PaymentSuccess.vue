@@ -78,10 +78,12 @@ export default {
         const cartItems = JSON.parse(localStorage.getItem('cartItems') || '[]')
         const lectureIds = selectedItems.length > 0 ? selectedItems : cartItems.map(item => item.id)
 
+        const token = localStorage.getItem('accessToken');
         const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/purchase/confirm`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify({
             paymentKey,

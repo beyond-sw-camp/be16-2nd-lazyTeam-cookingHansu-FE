@@ -12,7 +12,7 @@
         </button>
       </div>
       <!-- 강의 등록하기 버튼 - CHEF, OWNER 역할일 때만 표시 -->
-      <div v-if="role === 'CHEF' || role === 'OWNER'" class="lecture-create-btn-container">
+      <div v-if="userRole === 'CHEF' || userRole === 'OWNER'" class="lecture-create-btn-container">
         <button class="lecture-create-btn" @click="goToLectureCreate">
           강의 등록하기
         </button>
@@ -59,7 +59,7 @@
     </div>
 
     <!-- 강의 카드 리스트 -->
-    <div v-else class="lecture-grid">
+    <div v-else-if="pagedLectures.length > 0" class="lecture-grid">
       <div v-for="lecture in pagedLectures" :key="lecture.id" class="lecture-card" @click="handleCardClick(lecture)">
         <img :src="lecture.thumbUrl || '/src/assets/images/smu_mascort1.jpg'" class="lecture-img" />
         <div class="card-content">
@@ -88,7 +88,12 @@
       </div>
     </div>
     
-    <!-- 페이지네이션 -->
+         <!-- 강의가 없을 때 메시지 -->
+     <div v-else class="no-lectures-container">
+       <div class="no-lectures-message">아직 강의가 등록되지 않았습니다.</div>
+     </div>
+     
+     <!-- 페이지네이션 -->
     <Pagination
       :current-page="currentPage"
       :total-pages="totalPages"
@@ -101,6 +106,7 @@
 import Header from '@/components/Header.vue';
 import Pagination from '@/components/common/Pagination.vue';
 import { lectureService } from '@/store/lecture/lectureService';
+import { getUserRoleFromToken } from '@/utils/api';
 
 export default {
   name: 'LectureList',
@@ -114,10 +120,9 @@ export default {
       selectedSort: 'latest',
       selectedLecture: null,
       showClickEffect: false,
-      // 로그인 기능 미구현으로 인해 임시로 설정 (추후 실제 로그인 상태로 변경 예정)
-      role: 'CHEF', // 'CHEF', 'OWNER', 'USER' 중 하나로 설정하여 테스트 가능
-      // role: 'USER', // 일반 사용자로 테스트하려면 이 줄을 활성화
+      // 사용자 역할은 토큰에서 동적으로 가져옴
       lectures: [],
+      totalLectures: 0,
       loading: false,
       error: null
     };
@@ -147,12 +152,17 @@ export default {
       return filtered;
     },
     pagedLectures() {
-      const start = (this.currentPage - 1) * this.lecturesPerPage;
-      const end = start + this.lecturesPerPage;
-      return this.filteredLectures.slice(start, end);
+      // 백엔드에서 페이지네이션을 처리하므로 전체 강의 목록을 반환
+      return this.filteredLectures;
     },
     totalPages() {
-      return Math.max(1, Math.ceil(this.filteredLectures.length / this.lecturesPerPage));
+      const pages = Math.ceil(this.totalLectures / this.lecturesPerPage);
+      console.log('totalPages 계산:', this.totalLectures, '/', this.lecturesPerPage, '=', pages);
+      return Math.max(1, pages);
+    },
+    // 사용자 역할 (토큰에서 동적으로 가져옴)
+    userRole() {
+      return getUserRoleFromToken();
     },
   },
   watch: {
@@ -172,23 +182,53 @@ export default {
       this.error = null;
       
       try {
-        const response = await lectureService.getLectureList();
+        // 페이지 정보를 포함하여 API 호출
+        const response = await lectureService.getLectureList(this.currentPage - 1, this.lecturesPerPage);
         
         if (response.success) {
+          console.log('전체 백엔드 응답:', response);
           console.log('백엔드 응답 데이터:', response.data);
+          console.log('응답 데이터 타입:', typeof response.data);
+          console.log('응답 데이터 키들:', Object.keys(response.data));
+          console.log('response.data.content 존재 여부:', !!response.data.content);
+          console.log('response.data.totalElements 존재 여부:', !!response.data.totalElements);
+          
           // 백엔드 응답 데이터를 프론트엔드 형식으로 변환
-          this.lectures = response.data.map(lecture => {
-            console.log('개별 강의 데이터:', lecture);
-            
-            return {
-              ...lecture,
-              // 좋아요 수는 더미 값으로 설정 (추후 구현 예정)
-              likesCount: Math.floor(Math.random() * 500) + 50,
-              // 백엔드에서 제공하는 평균 평점 사용
-              rating: lecture.reviewAvg || 0,
-            };
-          });
+          let lectureData = [];
+          
+          if (response.data.content && Array.isArray(response.data.content)) {
+            // Spring Boot Page 객체 구조
+            lectureData = response.data.content;
+            this.totalLectures = response.data.totalElements || 0;
+            console.log('Page 객체 구조 감지 - content:', response.data.content.length, 'totalElements:', this.totalLectures);
+          } else if (Array.isArray(response.data)) {
+            // 배열 구조 (페이지네이션 없이 전체 데이터 반환)
+            lectureData = response.data;
+            this.totalLectures = response.data.length;
+            console.log('배열 구조 감지 - length:', this.totalLectures);
+          } else {
+            console.error('예상치 못한 응답 구조:', response.data);
+            this.error = '데이터 구조 오류';
+            return;
+          }
+          
+                     this.lectures = lectureData.map(lecture => {
+             console.log('개별 강의 데이터:', lecture);
+             
+             return {
+               ...lecture,
+               // 백엔드에서 제공하는 실제 좋아요 수 사용
+               likesCount: lecture.likeCount || 0,
+               // 백엔드에서 제공하는 평균 평점 사용
+               rating: lecture.reviewAvg || 0,
+             };
+           });
+          
           console.log('변환된 강의 데이터:', this.lectures);
+          console.log('총 강의 수:', this.totalLectures);
+          console.log('현재 페이지:', this.currentPage);
+          console.log('페이지당 강의 수:', this.lecturesPerPage);
+          console.log('총 페이지 수:', this.totalPages);
         } else {
           this.error = '강의 목록을 불러오는데 실패했습니다.';
         }
@@ -202,11 +242,13 @@ export default {
     goToRecipe() { 
       this.$router.push({ name: 'RecipeMainPage' }); 
     },
-    changePage(page) {
+    async changePage(page) {
       if (page >= 1) {
         this.currentPage = page;
+        await this.fetchLectures();
       } else {
         this.currentPage = 1;
+        await this.fetchLectures();
       }
     },
     categoryClass(category) {
@@ -280,7 +322,7 @@ export default {
   max-width: 1040px;
   margin-left: auto;
   margin-right: auto;
-  padding: 0 20px;
+  padding: 20px 20px 0 20px; /* 상단에 20px 여백 추가 */
   position: relative;
 }
 
@@ -526,5 +568,20 @@ export default {
   font-size: 12px;
 }
 
+/* 강의가 없을 때 메시지 스타일 */
+.no-lectures-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+  padding: 40px 20px;
+}
+
+.no-lectures-message {
+  color: #ff7a00;
+  font-size: 18px;
+  font-weight: 600;
+  text-align: center;
+}
 
 </style>

@@ -157,15 +157,10 @@
           </div>
           
                      <div v-if="activeTab === 'reviews'" class="reviews-content">
-             <!-- 리뷰 작성 가능한 사용자 -->
-             <div v-if="canWriteReview" class="review-actions">
-               <button class="write-review-btn" @click="showReviewModal = true">리뷰 작성하기</button>
+             <!-- 리뷰 작성 버튼 (로그인한 사용자만 표시) -->
+             <div v-if="!isGuest" class="review-actions">
+               <button class="write-review-btn" @click="handleReviewWrite">리뷰 작성하기</button>
              </div>
-                        <!-- 일반 사용자: 구매 안내 -->
-           <div v-else-if="isGuest" class="purchase-notice">
-             <p>리뷰를 작성하려면 강의를 구매해주세요.</p>
-             <button class="purchase-btn" @click="purchaseLecture">강의 구매하기</button>
-           </div>
             
             <!-- 리뷰 목록 -->
             <div v-if="lecture.reviews.length > 0" class="reviews-list">
@@ -206,15 +201,10 @@
           </div>
           
                      <div v-if="activeTab === 'qa'" class="qa-content">
-             <!-- Q&A 작성 가능한 사용자 -->
-             <div v-if="canWriteQA" class="qa-actions">
-               <button class="write-qa-btn" @click="showQAModal = true">질문하기</button>
+             <!-- Q&A 작성 버튼 (로그인한 사용자만 표시) -->
+             <div v-if="!isGuest" class="qa-actions">
+               <button class="write-qa-btn" @click="handleQAWrite">질문하기</button>
              </div>
-                        <!-- 일반 사용자: 구매 안내 -->
-           <div v-else-if="isGuest" class="purchase-notice">
-             <p>질문을 작성하려면 강의를 구매해주세요.</p>
-             <button class="purchase-btn" @click="purchaseLecture">강의 구매하기</button>
-           </div>
             
                          <!-- Q&A 목록 -->
              <div v-if="lecture.qa.length > 0" class="qa-list">
@@ -296,9 +286,18 @@
             >
               강의 시청하기
             </button>
-          <div class="share-section" @click="showShareModal = true">
-            <span class="share-icon">📤</span>
-            <span>공유하기</span>
+          <div class="action-buttons">
+            <div class="share-section" @click="showShareModal = true">
+              <span class="share-icon">📤</span>
+              <span>공유하기</span>
+            </div>
+                         <!-- 좋아요 버튼 -->
+             <div class="like-section">
+               <button class="like-button" :class="{ 'liked': isLiked }" @click="toggleLike">
+                 <span class="like-icon">❤️</span>
+                 <span class="like-count">{{ lecture.likeCount || 0 }}</span>
+               </button>
+             </div>
           </div>
         </div>
 
@@ -559,20 +558,59 @@
        </div>
      </div>
 
-     <!-- 구매 제한 모달 -->
+     <!-- 구매 필요 모달 -->
      <div v-if="showPurchaseRequiredModal" class="modal-overlay" @click="showPurchaseRequiredModal = false">
        <div class="cart-modal" @click.stop>
          <div class="modal-header">
-           <h3>구매 필요</h3>
+           <h3>강의 구매 필요</h3>
            <button class="close-btn" @click="showPurchaseRequiredModal = false">×</button>
          </div>
          <div class="modal-content">
-           <div class="modal-icon">🔒</div>
-           <p class="modal-message">이 강의를 시청하려면 구매가 필요합니다.</p>
-           <p class="modal-submessage">첫 번째 강의만 미리보기가 가능합니다.</p>
+           <div class="modal-icon">🛒</div>
+           <p class="modal-message">이 기능을 사용하려면 강의를 구매해야 합니다.</p>
+           <p class="modal-submessage">강의를 구매하시면 리뷰 작성과 Q&A 참여가 가능합니다.</p>
          </div>
          <div class="modal-actions">
-           <button class="btn-primary" @click="showPurchaseRequiredModal = false">확인</button>
+           <button class="btn-primary" @click="goToPurchase">강의 구매하기</button>
+           <button class="btn-secondary" @click="showPurchaseRequiredModal = false">취소</button>
+         </div>
+       </div>
+     </div>
+
+     <!-- 구매 필요 모달 -->
+     <div v-if="showPurchaseRequiredModal" class="modal-overlay" @click="showPurchaseRequiredModal = false">
+       <div class="cart-modal" @click.stop>
+         <div class="modal-header">
+           <h3>강의 구매 필요</h3>
+           <button class="close-btn" @click="showPurchaseRequiredModal = false">×</button>
+         </div>
+         <div class="modal-content">
+           <div class="modal-icon">🛒</div>
+           <p class="modal-message">이 기능을 사용하려면 강의를 구매해야 합니다.</p>
+           <p class="modal-submessage">강의를 구매하시면 리뷰 작성과 Q&A 참여가 가능합니다.</p>
+         </div>
+         <div class="modal-actions">
+           <button class="btn-primary" @click="goToPurchase">강의 구매하기</button>
+           <button class="btn-secondary" @click="showPurchaseRequiredModal = false">취소</button>
+         </div>
+       </div>
+     </div>
+
+     <!-- 로그인 필요 모달 -->
+     <div v-if="showLoginRequiredModal" class="modal-overlay" @click="showLoginRequiredModal = false">
+       <div class="cart-modal" @click.stop>
+         <div class="modal-header">
+           <h3>로그인 필요</h3>
+           <button class="close-btn" @click="showLoginRequiredModal = false">×</button>
+         </div>
+         <div class="modal-content">
+           <div class="modal-icon">🔐</div>
+           <p class="modal-message">로그인이 필요한 서비스입니다.</p>
+           <p class="modal-submessage">로그인 후 리뷰 작성과 Q&A 참여가 가능합니다.</p>
+         </div>
+         <div class="modal-actions">
+           <button class="btn-primary" @click="goToLogin">로그인하기</button>
+           <button class="btn-secondary" @click="showLoginRequiredModal = false">취소</button>
          </div>
        </div>
      </div>
@@ -583,6 +621,7 @@
 import Header from '@/components/Header.vue';
 import { useCartStore } from '@/store/cart/cart.js';
 import { lectureService } from '@/store/lecture/lectureService';
+import { getUserIdFromToken } from '@/utils/api';
 
 export default {
   name: 'LectureDetail',
@@ -600,6 +639,7 @@ export default {
        showSuccessModal: false,
        showConfirmModal: false,
        showPurchaseRequiredModal: false,
+      showLoginRequiredModal: false,
       notificationData: {},
       errorMessage: '',
       successMessage: '',
@@ -629,7 +669,9 @@ export default {
        // 백엔드에서 확인한 장바구니 상태
        isInCart: false,
                // 비디오 썸네일 관련
-        videoThumb: null   // 생성된 영상 썸네일
+        videoThumb: null,   // 생성된 영상 썸네일
+        // 좋아요 상태 (실제로는 API에서 확인)
+        isLiked: false
     };
   },
   computed: {
@@ -677,9 +719,9 @@ export default {
       return this.userRole === 'ADMIN';
     },
     
-    // 일반 사용자(미구매자)인지 확인
+    // 로그인하지 않은 사용자인지 확인
     isGuest() {
-      return this.userRole === 'GENERAL' && !this.isPurchased;
+      return !this.currentUserId;
     },
     
     // 장바구니 버튼 표시 여부 (일반 사용자만)
@@ -692,9 +734,18 @@ export default {
       return this.isGuest && this.isInCart;
     },
     
-    // 강의 수정 버튼 표시 여부 (모든 사용자에게 표시)
+    // 강의 수정 버튼 표시 여부 (등록자만 표시)
     showEditButton() {
-      return true;
+      // 토큰에서 현재 사용자 ID 가져오기
+      const currentUserId = getUserIdFromToken();
+      
+      // 강의 정보가 없거나 등록자 정보가 없으면 false
+      if (!this.lecture || !this.lecture.instructor || !currentUserId) {
+        return false;
+      }
+      
+      // 현재 사용자 ID와 강의 등록자 ID가 일치하는지 확인
+      return currentUserId === this.lecture.instructor.id;
     },
     
     // 강의 삭제 버튼 표시 여부 (자영업자/요리사, 관리자)
@@ -704,17 +755,17 @@ export default {
     
     // 리뷰 작성 가능 여부 (구매자, 자영업자/요리사, 관리자)
     canWriteReview() {
-      return this.isPurchaser || this.isAuthor || this.isAdmin;
+      return this.isPurchased || this.isAuthor || this.isAdmin;
     },
     
     // Q&A 작성 가능 여부 (구매자, 자영업자/요리사, 관리자)
     canWriteQA() {
-      return this.isPurchaser || this.isAuthor || this.isAdmin;
+      return this.isPurchased || this.isAuthor || this.isAdmin;
     },
     
     // 강의 시청 가능 여부 (구매자, 자영업자/요리사, 관리자)
     canWatchLecture() {
-      return this.isPurchaser || this.isAuthor || this.isAdmin;
+      return this.isPurchased || this.isAuthor || this.isAdmin;
     },
     
     // 자물쇠 표시 여부 (일반 사용자만)
@@ -746,7 +797,7 @@ export default {
            else if (user.role === 'ADMIN') {
              this.userRole = 'ADMIN';
            }
-           // 구매자인지 확인
+           // 구매자인지 확인 (구매 상태는 별도로 확인)
            else if (this.isPurchased) {
              this.userRole = 'PURCHASER';
            }
@@ -765,20 +816,49 @@ export default {
        }
     },
     
-    // 장바구니 상태 확인 (백엔드 API 사용)
-    async checkCartStatus(lectureId) {
-      try {
-        const response = await lectureService.getCartItems();
-        if (response.success) {
-          // 현재 강의가 장바구니에 있는지 확인
-          this.isInCart = response.data.some(item => item.lectureId === lectureId);
-          console.log('장바구니 상태 확인:', this.isInCart);
-        }
-      } catch (error) {
-        console.error('장바구니 상태 확인 실패:', error);
-        this.isInCart = false;
-      }
-    },
+         // 장바구니 상태 확인 (백엔드 API 사용)
+     async checkCartStatus(lectureId) {
+       try {
+         const response = await lectureService.getCartItems();
+         if (response.success) {
+           // 현재 강의가 장바구니에 있는지 확인
+           this.isInCart = response.data.some(item => item.lectureId === lectureId);
+           console.log('장바구니 상태 확인:', this.isInCart);
+         }
+       } catch (error) {
+         console.error('장바구니 상태 확인 실패:', error);
+         this.isInCart = false;
+       }
+     },
+
+     // 좋아요 상태 확인 (백엔드 API 사용)
+     async checkLikeStatus(lectureId) {
+       try {
+         const response = await lectureService.checkLectureLikeStatus(lectureId);
+         if (response.success) {
+           this.isLiked = response.data.liked || false;
+           console.log('좋아요 상태 확인:', this.isLiked);
+         }
+       } catch (error) {
+         console.error('좋아요 상태 확인 실패:', error);
+         this.isLiked = false;
+       }
+     },
+
+     // 구매 여부 확인 (백엔드 API 사용)
+     async checkPurchaseStatus(lectureId) {
+       try {
+         const response = await lectureService.getPurchasedLectures();
+         if (response.success) {
+           // 구매한 강의 목록에서 현재 강의 ID가 있는지 확인
+           this.isPurchased = response.data.content.some(purchase => purchase.id === lectureId);
+           console.log('구매 상태 확인:', this.isPurchased);
+         }
+       } catch (error) {
+         console.error('구매 상태 확인 실패:', error);
+         this.isPurchased = false;
+       }
+     },
 
          // 강의 데이터를 받아오는 메서드 (백엔드 API 호출)
      async fetchLectureData(lectureId) {
@@ -826,9 +906,15 @@ export default {
           this.showError('강의 정보를 불러오는데 실패했습니다.');
         }
         
-                                   // 사용자 역할 및 장바구니 상태 확인
-          await this.checkUserRole(lectureId);
-          await this.checkCartStatus(lectureId);
+                                              // 사용자 역할 및 장바구니 상태 확인
+           await this.checkUserRole(lectureId);
+           await this.checkCartStatus(lectureId);
+           
+           // 구매 상태 확인
+           await this.checkPurchaseStatus(lectureId);
+           
+           // 좋아요 상태 확인
+           await this.checkLikeStatus(lectureId);
          
                    // 미리보기 비디오 URL 설정
           const previewLesson = this.lecture.lessons.find(lesson => lesson.isPreview && lesson.videoUrl);
@@ -1130,7 +1216,7 @@ export default {
     },
 
     // 리뷰 제출
-    submitReview() {
+    async submitReview() {
       if (this.newReview.rating === 0) {
         this.showError('평점을 선택해주세요.');
         return;
@@ -1141,54 +1227,53 @@ export default {
         return;
       }
 
-      // 새로운 리뷰 객체 생성
-      const review = {
-        id: Date.now(),
-        reviewerId: 'user123', // 실제로는 로그인된 사용자 ID
-        rating: this.newReview.rating,
-        content: this.newReview.content,
-        date: new Date().toLocaleDateString('ko-KR')
-      };
+      try {
+        // API 요청 데이터 준비
+        const reviewData = {
+          rating: this.newReview.rating,
+          content: this.newReview.content,
+          lectureId: this.lecture.id
+        };
 
-      // 리뷰 추가
-      this.lecture.reviews.push(review);
+        console.log('리뷰 등록 요청:', reviewData);
 
-      // 평점 업데이트
-      this.updateLectureRating();
+        // API 호출
+        const response = await lectureService.createReview(reviewData);
+        console.log('리뷰 등록 응답:', response);
 
-      // 모달 닫기 및 폼 초기화
-      this.showReviewModal = false;
-      this.newReview = { rating: 0, content: '' };
+        // 성공 처리
+        this.showSuccess('리뷰가 성공적으로 등록되었습니다.');
+        
+        // 모달 닫기 및 폼 초기화
+        this.showReviewModal = false;
+        this.newReview = { rating: 0, content: '' };
 
-      this.showSuccess('리뷰가 등록되었습니다!');
+        // 강의 상세 정보 새로고침 (리뷰 목록 업데이트)
+        await this.fetchLectureDetail();
+        
+      } catch (error) {
+        console.error('리뷰 등록 실패:', error);
+        this.showError('리뷰 등록에 실패했습니다. 다시 시도해주세요.');
+      }
     },
 
-    // Q&A 제출
+    // Q&A 제출 (API 연동 전 임시 처리)
     submitQuestion() {
       if (!this.newQuestion.content.trim()) {
         this.showError('질문 내용을 작성해주세요.');
         return;
       }
 
-      // 새로운 Q&A 객체 생성
-      const qa = {
-        id: Date.now(),
-        questionerId: 'user123', // 실제로는 로그인된 사용자 ID
-        question: this.newQuestion.content,
-        questionDate: new Date().toLocaleDateString('ko-KR'),
-        answer: null,
-        answererId: null,
-        answerDate: null
-      };
-
-      // Q&A 추가
-      this.lecture.qa.push(qa);
+      // TODO: API 연동 후 실제 질문 등록 로직 구현
+      console.log('질문 등록 예정:', {
+        content: this.newQuestion.content
+      });
 
       // 모달 닫기 및 폼 초기화
       this.showQAModal = false;
       this.newQuestion = { content: '' };
 
-      this.showSuccess('질문이 등록되었습니다!');
+      this.showSuccess('질문 등록 기능은 준비 중입니다.');
     },
 
     // 강의 평점 업데이트
@@ -1252,11 +1337,28 @@ export default {
       
       // 서버에서 강의 삭제
       async deleteLectureFromServer() {
-        // TODO: 실제 API 호출 구현
-        console.log('강의 삭제 API 호출:', this.lecture.id);
-        return new Promise((resolve) => {
-          setTimeout(resolve, 1000);
-        });
+        try {
+          const token = localStorage.getItem('accessToken');
+          const response = await fetch(`http://localhost:8080/lecture/delete/${this.lecture.id}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            console.log('강의 삭제 성공:', result);
+            return result;
+          } else {
+            const errorText = await response.text();
+            console.error('강의 삭제 실패:', errorText);
+            throw new Error('강의 삭제에 실패했습니다.');
+          }
+        } catch (error) {
+          console.error('강의 삭제 오류:', error);
+          throw error;
+        }
       },
       
       // 리뷰 수정 가능 여부 확인
@@ -1357,6 +1459,74 @@ export default {
         });
       },
 
+      // 리뷰 작성 처리 (로그인 및 구매 확인)
+      handleReviewWrite() {
+        // 로그인하지 않은 경우
+        if (this.isGuest) {
+          this.showLoginRequiredModal = true;
+          return;
+        }
+        
+        // 로그인했지만 구매하지 않은 경우
+        if (!this.isPurchased && !this.isAuthor && !this.isAdmin) {
+          this.showPurchaseRequiredModal = true;
+          return;
+        }
+        
+        // 구매했거나 작성자/관리자인 경우 바로 작성 모달 열기
+        this.showReviewModal = true;
+      },
+
+      // Q&A 작성 처리 (로그인 및 구매 확인)
+      handleQAWrite() {
+        // 로그인하지 않은 경우
+        if (this.isGuest) {
+          this.showLoginRequiredModal = true;
+          return;
+        }
+        
+        // 로그인했지만 구매하지 않은 경우
+        if (!this.isPurchased && !this.isAuthor && !this.isAdmin) {
+          this.showPurchaseRequiredModal = true;
+          return;
+        }
+        
+        // 구매했거나 작성자/관리자인 경우 바로 작성 모달 열기
+        this.showQAModal = true;
+      },
+
+      // 강의 구매 페이지로 이동
+      goToPurchase() {
+        this.showPurchaseRequiredModal = false;
+        // 장바구니에 추가 후 장바구니 페이지로 이동
+        this.enrollLecture();
+      },
+
+      // 로그인 페이지로 이동
+      goToLogin() {
+        this.showLoginRequiredModal = false;
+        this.$router.push('/login');
+      },
+
+      // 강의 구매 처리 (기존 purchaseLecture 메서드 수정)
+      async purchaseLecture() {
+        try {
+          // 장바구니에 추가
+          const response = await lectureService.addToCart([this.lecture.id]);
+          
+          if (response.success) {
+            this.isInCart = true;
+            // 장바구니 페이지로 이동
+            this.$router.push('/cart');
+          } else {
+            this.showError(response.message || '장바구니 추가에 실패했습니다.');
+          }
+        } catch (error) {
+          console.error('강의 구매 처리 오류:', error);
+          this.showError('강의 구매 처리에 실패했습니다.');
+        }
+      },
+
     // 장바구니에 강의 추가/제거 (토글 기능)
     async enrollLecture() {
       console.log('enrollLecture 메서드 호출됨');
@@ -1416,11 +1586,44 @@ export default {
       }
     },
 
-    // 장바구니로 이동
-    goToCart() {
-      this.showCartModal = false;
-      this.$router.push('/cart');
-    },
+         // 장바구니로 이동
+     goToCart() {
+       this.showCartModal = false;
+       this.$router.push('/cart');
+     },
+
+     // 좋아요 토글
+     async toggleLike() {
+       if (!this.lecture) {
+         this.showError('강의 정보를 불러오는 중입니다.');
+         return;
+       }
+
+       try {
+         const response = await lectureService.toggleLectureLike(this.lecture.id);
+         
+         if (response.success) {
+           // 좋아요 상태 토글
+           this.isLiked = !this.isLiked;
+           
+           // 좋아요 수 업데이트
+           if (this.isLiked) {
+             this.lecture.likeCount = (this.lecture.likeCount || 0) + 1;
+           } else {
+             this.lecture.likeCount = Math.max(0, (this.lecture.likeCount || 0) - 1);
+           }
+           
+           // 성공 메시지 표시
+           const message = this.isLiked ? '좋아요를 눌렀습니다!' : '좋아요를 취소했습니다.';
+           this.showSuccess(message);
+         } else {
+           this.showError(response.message || '좋아요 처리에 실패했습니다.');
+         }
+       } catch (error) {
+         console.error('좋아요 토글 오류:', error);
+         this.showError('좋아요 처리에 실패했습니다. 다시 시도해주세요.');
+       }
+     },
     
     // 리뷰 더 보기 버튼 클릭
     loadMoreReviews() {
@@ -1572,6 +1775,9 @@ export default {
   mounted() {
     // 장바구니 스토어 초기화
     this.cartStore = useCartStore();
+    
+    // 현재 사용자 ID 설정
+    this.currentUserId = getUserIdFromToken();
     
     // URL 파라미터에서 강의 ID를 가져와서 데이터 로드
     const lectureId = this.$route.params.id;
@@ -1992,6 +2198,9 @@ export default {
   font-weight: 600;
   cursor: pointer;
   margin-bottom: 24px;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .reviews-list, .qa-list {
@@ -2177,6 +2386,13 @@ export default {
   transform: none;
 }
 
+.action-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+
 .share-section {
   display: flex;
   align-items: center;
@@ -2185,6 +2401,17 @@ export default {
   color: #666;
   font-size: 14px;
   cursor: pointer;
+  padding: 8px 16px;
+  background: #f8f9fa;
+  border-radius: 25px;
+  border: 2px solid #e9ecef;
+  transition: all 0.3s ease;
+}
+
+.share-section:hover {
+  background: #e9ecef;
+  border-color: #dee2e6;
+  transform: translateY(-2px);
 }
 
 
@@ -2901,10 +3128,67 @@ export default {
     cursor: pointer;
   }
   
-  .review-edit-actions .edit-btn:hover,
-  .qa-edit-actions .edit-btn:hover {
-    background: #138496;
-  }
+   .review-edit-actions .edit-btn:hover,
+ .qa-edit-actions .edit-btn:hover {
+   background: #138496;
+ }
+ 
+ /* 좋아요 버튼 스타일 */
+ .like-section {
+   display: flex;
+   align-items: center;
+ }
+ 
+ .like-button {
+   display: flex;
+   align-items: center;
+   gap: 6px;
+   padding: 8px 16px;
+   background: #fff;
+   border: 2px solid #ff6b6b;
+   border-radius: 25px;
+   color: #ff6b6b;
+   font-weight: 600;
+   font-size: 14px;
+   cursor: pointer;
+   transition: all 0.3s ease;
+   box-shadow: 0 2px 4px rgba(255, 107, 107, 0.2);
+   min-width: 80px;
+   justify-content: center;
+ }
+ 
+ .like-button:hover {
+   background: #ff6b6b;
+   color: #fff;
+   transform: translateY(-2px);
+   box-shadow: 0 4px 8px rgba(255, 107, 107, 0.3);
+ }
+ 
+ .like-button.liked {
+   background: #ff6b6b;
+   color: #fff;
+   border-color: #ff6b6b;
+ }
+ 
+ .like-button.liked:hover {
+   background: #ff5252;
+   border-color: #ff5252;
+ }
+ 
+ .like-icon {
+   font-size: 16px;
+   transition: transform 0.3s ease;
+ }
+ 
+ .like-button:hover .like-icon {
+   transform: scale(1.1);
+ }
+ 
+  .like-count {
+   font-weight: 700;
+   min-width: 20px;
+   text-align: center;
+ }
   
   .review-edit-actions .delete-btn:hover,
   .qa-edit-actions .delete-btn:hover {

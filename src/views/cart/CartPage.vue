@@ -342,9 +342,13 @@ export default {
   // prepay: 백엔드에 주문 정보 저장
   async saveOrderToBackend(orderId, amount, lectureIds) {
     try {
+      const token = localStorage.getItem('accessToken');
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/purchase/prepay`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ orderId, amount, lectureIds })
       })
 

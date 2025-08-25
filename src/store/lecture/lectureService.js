@@ -2,9 +2,9 @@ import { apiGet, apiPost, apiDelete } from '@/utils/api';
 
 export const lectureService = {
   // 강의 목록 조회
-  async getLectureList() {
+  async getLectureList(page = 0, size = 8) {
     try {
-      const response = await apiGet('/lecture/list');
+      const response = await apiGet(`/lecture/list?page=${page}&size=${size}`);
       console.log(response);
       
       // response가 fetch Response 객체이므로 JSON으로 파싱
@@ -95,6 +95,51 @@ export const lectureService = {
     }
   },
 
+  // 강의 좋아요 토글
+  async toggleLectureLike(lectureId) {
+    try {
+      const response = await apiPost(`/api/interactions/lectures/${lectureId}/likes`);
+      console.log('좋아요 토글 응답:', response);
+      
+      // response가 fetch Response 객체이므로 JSON으로 파싱
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('좋아요 토글 실패:', error);
+      throw error;
+    }
+  },
+
+  // 강의 좋아요 상태 확인
+  async checkLectureLikeStatus(lectureId) {
+    try {
+      const response = await apiGet(`/api/interactions/lectures/${lectureId}/likes/status`);
+      console.log('좋아요 상태 확인 응답:', response);
+      
+      // response가 fetch Response 객체이므로 JSON으로 파싱
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('좋아요 상태 확인 실패:', error);
+      throw error;
+    }
+  },
+
+  // 구매한 강의 목록 조회
+  async getPurchasedLectures() {
+    try {
+      const response = await apiGet('/api/my/lectures');
+      console.log('구매한 강의 목록 응답:', response);
+      
+      // response가 fetch Response 객체이므로 JSON으로 파싱
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('구매한 강의 목록 조회 실패:', error);
+      throw error;
+    }
+  },
+
   // 강의 수정
   async updateLecture(lectureId, formData) {
     try {
@@ -138,6 +183,21 @@ export const lectureService = {
     } catch (error) {
       console.error('강의 수정 실패:', error);
       console.error('에러 상세:', error.message);
+      throw error;
+    }
+  },
+
+  // 리뷰 등록
+  async createReview(reviewData) {
+    try {
+      const response = await apiPost('/review/post', reviewData);
+      console.log('리뷰 등록 응답:', response);
+      
+      // response가 fetch Response 객체이므로 JSON으로 파싱
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('리뷰 등록 실패:', error);
       throw error;
     }
   }

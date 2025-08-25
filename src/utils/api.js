@@ -3,6 +3,48 @@
 // API 기본 URL
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
+// JWT 토큰에서 사용자 ID 추출
+export const getUserIdFromToken = () => {
+  try {
+    const token = localStorage.getItem('accessToken');
+    if (!token) return null;
+    
+    // JWT 토큰의 payload 부분 추출 (두 번째 부분)
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+    
+    // Base64 디코딩
+    const decodedPayload = JSON.parse(atob(payload));
+    
+    // 사용자 ID 반환 (백엔드에서 설정한 필드명에 따라 조정 필요)
+    return decodedPayload.sub || decodedPayload.userId || decodedPayload.id;
+  } catch (error) {
+    console.error('토큰에서 사용자 ID 추출 실패:', error);
+    return null;
+  }
+};
+
+// JWT 토큰에서 사용자 역할 추출
+export const getUserRoleFromToken = () => {
+  try {
+    const token = localStorage.getItem('accessToken');
+    if (!token) return null;
+    
+    // JWT 토큰의 payload 부분 추출 (두 번째 부분)
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+    
+    // Base64 디코딩
+    const decodedPayload = JSON.parse(atob(payload));
+    
+    // 사용자 역할 반환 (백엔드에서 설정한 필드명에 따라 조정 필요)
+    return decodedPayload.role || decodedPayload.authorities || decodedPayload.userRole;
+  } catch (error) {
+    console.error('토큰에서 사용자 역할 추출 실패:', error);
+    return null;
+  }
+};
+
 // API 헤더 설정
 export const getHeaders = () => {
   const headers = {
