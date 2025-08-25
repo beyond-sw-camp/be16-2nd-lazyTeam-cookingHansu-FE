@@ -162,7 +162,10 @@ export default {
     },
     // 사용자 역할 (토큰에서 동적으로 가져옴)
     userRole() {
-      return getUserRoleFromToken();
+      const role = getUserRoleFromToken();
+      console.log('🎭 LectureList에서 userRole 확인:', role);
+      console.log('🎭 강의 등록 버튼 표시 조건:', role === 'CHEF' || role === 'OWNER');
+      return role;
     },
   },
   watch: {

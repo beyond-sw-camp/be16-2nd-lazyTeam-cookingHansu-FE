@@ -174,15 +174,16 @@
                     </div>
                     <div class="review-actions">
                       <span class="review-date">{{ review.date }}</span>
-                      <!-- 자신이 작성한 리뷰인 경우 수정/삭제 버튼 표시 -->
-                      <div v-if="canEditReview(review)" class="review-edit-actions">
-                        <button class="edit-btn" @click="editReview(review)">수정</button>
-                        <button class="delete-btn" @click="deleteReview(review)">삭제</button>
-                      </div>
                     </div>
                   </div>
                  <div class="review-content">
                    <p>{{ review.content }}</p>
+                   <!-- 자신이 작성한 리뷰인 경우 수정/삭제 텍스트 표시 -->
+                   <div v-if="canEditReview(review)" class="review-edit-actions">
+                     <span class="edit-text" @click="editReview(review)">수정</span>
+                     <span class="separator">|</span>
+                     <span class="delete-text" @click="deleteReview(review)">삭제</span>
+                   </div>
                  </div>
                </div>
               
@@ -216,17 +217,23 @@
                       </div>
                       <div class="question-actions">
                         <span class="question-date">{{ qa.questionDate }}</span>
-                        <!-- 자신이 작성한 질문인 경우 수정/삭제 버튼 표시 -->
-                        <div v-if="canEditQA(qa)" class="qa-edit-actions">
-                          <button class="edit-btn" @click="editQA(qa)">수정</button>
-                          <button class="delete-btn" @click="deleteQA(qa)">삭제</button>
-                        </div>
                       </div>
                     </div>
                     <div class="question-content">
                       <p>{{ qa.question }}</p>
+                      <!-- 자신이 작성한 질문인 경우 수정/삭제 텍스트 표시 -->
+                      <div v-if="canEditQA(qa)" class="qa-edit-actions">
+                        <span class="edit-text" @click="editQA(qa)">수정</span>
+                        <span class="separator">|</span>
+                        <span class="delete-text" @click="deleteQA(qa)">삭제</span>
+                      </div>
                     </div>
                   </div>
+                 
+                 <!-- 답변하기 버튼 (강의 작성자만 표시, 답변이 없는 경우) -->
+                 <div v-if="isAuthor && !qa.hasAnswer" class="qa-answer-action">
+                   <button class="answer-btn" @click="handleAnswerQA(qa)">답변하기</button>
+                 </div>
                  
                  <!-- 답글이 있는 경우에만 표시 -->
                  <div v-if="qa.hasAnswer" class="answer">
@@ -249,7 +256,8 @@
             </div>
             
             <div v-if="lecture.qa.length === 0" class="no-qa">
-              <p>아직 Q&A가 없습니다.</p>
+              <p>아직 질문이 없습니다.</p>
+              <p class="no-qa-sub">첫 번째 질문을 남겨보세요!</p>
             </div>
           </div>
         </div>
@@ -260,7 +268,17 @@
         <!-- 구매 정보 -->
         <div class="purchase-section">
           <div class="price">{{ lecture.price.toLocaleString() }}원</div>
-                     <!-- 일반 사용자: 장바구니 버튼 -->
+          
+          <!-- 로그인한 사용자: 강의 구매하기 버튼 -->
+          <button 
+            v-if="showPurchaseButton"
+            class="enroll-btn purchase-btn" 
+            @click="purchaseLecture"
+          >
+            강의 구매하기
+          </button>
+          
+          <!-- 일반 사용자: 장바구니 버튼 -->
            <button 
              v-if="showCartButton"
              class="enroll-btn" 
@@ -420,12 +438,12 @@
       </div>
     </div>
 
-    <!-- 리뷰 작성 모달 -->
-    <div v-if="showReviewModal" class="modal-overlay" @click="showReviewModal = false">
+    <!-- 리뷰 작성/수정 모달 -->
+    <div v-if="showReviewModal" class="modal-overlay" @click="closeReviewModal">
       <div class="modal" @click.stop>
         <div class="modal-header">
-          <h3>리뷰 작성</h3>
-          <button class="close-btn" @click="showReviewModal = false">×</button>
+          <h3>{{ isEditingReview ? '리뷰 수정' : '리뷰 작성' }}</h3>
+          <button class="close-btn" @click="closeReviewModal">×</button>
         </div>
         <div class="modal-content">
           <div class="rating-section">
@@ -436,7 +454,9 @@
                 :key="i" 
                 class="star-input" 
                 :class="{ filled: i <= newReview.rating }"
-                @click="newReview.rating = i"
+                @click="handleStarClick(i)"
+                @mouseenter="handleStarHover(i)"
+                @mouseleave="handleStarLeave"
               >★</span>
             </div>
           </div>
@@ -450,17 +470,17 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button class="cancel-btn" @click="showReviewModal = false">취소</button>
-          <button class="submit-btn" @click="submitReview">리뷰 등록</button>
+          <button class="cancel-btn" @click="closeReviewModal">취소</button>
+          <button class="submit-btn" @click="submitReview">{{ isEditingReview ? '리뷰 수정' : '리뷰 등록' }}</button>
         </div>
       </div>
     </div>
 
-    <!-- Q&A 작성 모달 -->
+    <!-- Q&A 작성/수정 모달 -->
     <div v-if="showQAModal" class="modal-overlay" @click="showQAModal = false">
       <div class="modal" @click.stop>
         <div class="modal-header">
-          <h3>질문하기</h3>
+          <h3>{{ isEditingQA ? '질문 수정하기' : '질문하기' }}</h3>
           <button class="close-btn" @click="showQAModal = false">×</button>
         </div>
         <div class="modal-content">
@@ -475,7 +495,7 @@
         </div>
         <div class="modal-footer">
           <button class="cancel-btn" @click="showQAModal = false">취소</button>
-          <button class="submit-btn" @click="submitQuestion">질문 등록</button>
+          <button class="submit-btn" @click="submitQuestion">{{ isEditingQA ? '질문 수정' : '질문 등록' }}</button>
         </div>
       </div>
     </div>
@@ -614,18 +634,30 @@
          </div>
        </div>
      </div>
+
+    <!-- 삭제 확인 모달 -->
+    <DeleteConfirmModal
+      v-model="showDeleteConfirmModal"
+      :title="deleteConfirmData.title"
+      :message="deleteConfirmData.message"
+      :item-info="deleteConfirmData.itemInfo"
+      @confirm="handleDeleteConfirm"
+      @cancel="handleDeleteCancel"
+    />
   </div>
 </template>
 
 <script>
 import Header from '@/components/Header.vue';
+import DeleteConfirmModal from '@/components/common/DeleteConfirmModal.vue';
 import { useCartStore } from '@/store/cart/cart.js';
 import { lectureService } from '@/store/lecture/lectureService';
 import { getUserIdFromToken } from '@/utils/api';
 
+
 export default {
   name: 'LectureDetail',
-  components: { Header },
+  components: { Header, DeleteConfirmModal },
   data() {
     return {
       activeTab: 'reviews',
@@ -640,6 +672,8 @@ export default {
        showConfirmModal: false,
        showPurchaseRequiredModal: false,
       showLoginRequiredModal: false,
+      showDeleteConfirmModal: false,
+      deleteConfirmData: {},
       notificationData: {},
       errorMessage: '',
       successMessage: '',
@@ -648,8 +682,16 @@ export default {
         rating: 0,
         content: ''
       },
+      selectedRating: 0, // 클릭으로 선택된 별점 저장용
+      // 리뷰 수정 관련 상태
+      isEditingReview: false, // 리뷰 수정 모드인지 여부
+      editingReviewId: null, // 수정 중인 리뷰 ID
+      // Q&A 수정 관련 상태
+      isEditingQA: false, // Q&A 수정 모드인지 여부
+      editingQAId: null, // 수정 중인 Q&A ID
       newQuestion: {
-        content: ''
+        content: '',
+        parentId: null
       },
       // 구매 상태 (실제로는 API에서 확인)
       isPurchased: false,
@@ -724,14 +766,19 @@ export default {
       return !this.currentUserId;
     },
     
-    // 장바구니 버튼 표시 여부 (일반 사용자만)
-    showCartButton() {
-      return this.isGuest && !this.isInCart;
+    // 강의 구매하기 버튼 표시 여부 (로그인하지 않은 사용자만)
+    showPurchaseButton() {
+      return !this.currentUserId;
     },
     
-    // 장바구니에서 제거 버튼 표시 여부 (일반 사용자만)
+    // 장바구니에 담기 버튼 표시 여부 (로그인한 사용자 중 구매하지 않은 사용자, 장바구니에 없는 경우)
+    showCartButton() {
+      return this.currentUserId && !this.isPurchased && !this.isInCart;
+    },
+    
+    // 장바구니에서 제거 버튼 표시 여부 (로그인한 사용자 중 구매하지 않은 사용자)
     showRemoveFromCartButton() {
-      return this.isGuest && this.isInCart;
+      return this.currentUserId && !this.isPurchased && this.isInCart;
     },
     
     // 강의 수정 버튼 표시 여부 (등록자만 표시)
@@ -770,11 +817,6 @@ export default {
     
     // 자물쇠 표시 여부 (일반 사용자만)
     showLockIcon() {
-      return this.isGuest;
-    },
-    
-    // 구매 완료 버튼 표시 여부 (일반 사용자만)
-    showPurchaseButton() {
       return this.isGuest;
     }
   },
@@ -845,6 +887,8 @@ export default {
        }
      },
 
+     
+
      // 구매 여부 확인 (백엔드 API 사용)
      async checkPurchaseStatus(lectureId) {
        try {
@@ -874,33 +918,39 @@ export default {
           const lectureData = response.data;
           console.log('백엔드에서 받은 강의 데이터:', lectureData);
           
-                     // 백엔드 데이터를 프론트엔드 형식으로 변환
-           this.lecture = {
-             id: lectureData.lectureId,
-             title: lectureData.title,
-             description: lectureData.description,
-             category: this.getCategoryName(lectureData.category),
-             level: this.getLevelName(lectureData.level),
-             price: lectureData.price,
-             reviewCount: lectureData.reviewCount,
-             qnaCount: lectureData.qnaCount,
-             totalDuration: this.calculateTotalDuration(lectureData.lectureVideoResDtoList),
-             instructor: {
-               name: lectureData.name,
-               title: '요리 전문가'
-             },
-             lessons: this.convertVideosToLessons(lectureData.lectureVideoResDtoList),
-             reviews: this.convertReviews(lectureData.lectureReviewResDtoList),
-             qa: this.convertQA(lectureData.qnaList),
-             recipe: this.convertRecipe(lectureData.ingredResDtoList, lectureData.lectureStepResDtoList),
-             // 백엔드에서 제공하는 평균 평점 사용
-             rating: lectureData.reviewAvg || 0,
-             ratingCount: lectureData.reviewCount,
-                           students: lectureData.purchaseCount || 0, // 구매한 수강생 수
-             // 장바구니용 필드들
-             image: lectureData.thumbUrl || '/src/assets/images/smu_mascort1.jpg', // 썸네일 URL
-             teacher: lectureData.name // 강사명
-           };
+          try {
+            // 백엔드 데이터를 프론트엔드 형식으로 변환
+            this.lecture = {
+              id: lectureData.lectureId,
+              title: lectureData.title,
+              description: lectureData.description,
+              category: this.getCategoryName(lectureData.category),
+              level: this.getLevelName(lectureData.level),
+              price: lectureData.price,
+              reviewCount: lectureData.reviewCount,
+              qnaCount: lectureData.qnaCount,
+              totalDuration: this.calculateTotalDuration(lectureData.lectureVideoResDtoList),
+              instructor: {
+                name: lectureData.name,
+                title: '요리 전문가'
+              },
+              lessons: this.convertVideosToLessons(lectureData.lectureVideoResDtoList),
+              reviews: this.convertReviews(lectureData.lectureReviewResDtoList || []),
+              qa: this.convertQA(lectureData.qnaList || []),
+              recipe: this.convertRecipe(lectureData.ingredResDtoList, lectureData.lectureStepResDtoList),
+              // 백엔드에서 제공하는 평균 평점 사용
+              rating: lectureData.reviewAvg || 0,
+              ratingCount: lectureData.reviewCount,
+              students: lectureData.purchaseCount || 0, // 구매한 수강생 수
+              // 장바구니용 필드들
+              image: lectureData.thumbUrl || '/src/assets/images/smu_mascort1.jpg', // 썸네일 URL
+              teacher: lectureData.name // 강사명
+            };
+          } catch (error) {
+            console.error('강의 데이터 변환 오류:', error);
+            this.showError('강의 데이터를 처리하는 중 오류가 발생했습니다.');
+            return;
+          }
         } else {
           console.error('강의 상세 조회 실패:', response.message);
           this.showError('강의 정보를 불러오는데 실패했습니다.');
@@ -1015,34 +1065,71 @@ export default {
       });
     },
     
-         // 리뷰 데이터 변환
-     convertReviews(reviews) {
-       if (!reviews || reviews.length === 0) return [];
-       
-       return reviews.map(review => ({
-         id: Math.random().toString(36).substr(2, 9),
-         writer: review.writer,
-         rating: review.rating,
-         content: review.content,
-         date: new Date().toLocaleDateString('ko-KR')
-       }));
-     },
+             // 리뷰 데이터 변환
+    convertReviews(reviews) {
+      if (!reviews || reviews.length === 0) return [];
+      
+      const self = this; // this 컨텍스트를 명시적으로 저장
+      
+      return reviews.map((review, index) => {
+        try {
+          const convertedReview = {
+            id: Math.random().toString(36).substr(2, 9),
+            writer: review.writer || '익명',
+            rating: review.rating || 0,
+            content: review.content || '',
+            date: self.formatReviewDate(review.updateAt, review.createAt),
+            reviewerId: review.reviewerId || null
+          };
+          
+          return convertedReview;
+        } catch (error) {
+          console.error(`리뷰 ${index + 1} 변환 오류:`, error, '리뷰 데이터:', review);
+          // 오류가 발생해도 기본값으로 반환
+          return {
+            id: Math.random().toString(36).substr(2, 9),
+            writer: '익명',
+            rating: 0,
+            content: '리뷰를 불러오는 중 오류가 발생했습니다.',
+            date: '',
+            reviewerId: null
+          };
+        }
+      });
+    },
     
          // Q&A 데이터 변환 (질문-답글 구조)
      convertQA(qaList) {
-       if (!qaList || qaList.length === 0) return [];
+       console.log('=== convertQA 시작 ===');
+       console.log('qaList:', qaList);
        
-       return qaList.map(qa => ({
-         id: Math.random().toString(36).substr(2, 9),
+       if (!qaList || qaList.length === 0) {
+         console.log('QnA 목록이 비어있습니다.');
+         return [];
+       }
+       
+       const convertedQA = qaList.map(qa => ({
+         id: qa.qnaId || qa.parentId, // Use qnaId if available, fallback to parentId
+         qnaId: qa.qnaId, // Store the actual qnaId for API calls
          questionerId: qa.parentName || '익명',
+         questionerUUID: qa.parentId, // Add UUID for comparison
          question: qa.parentContent,
-         questionDate: this.formatDate(qa.parentCreatedAt),
+         questionDate: this.formatQADate(qa.parentCreatedAt),
+         questionUpdatedAt: qa.questionUpdatedAt ? this.formatQADate(qa.questionUpdatedAt) : null,
          // 답글이 있는 경우에만 답글 정보 포함
          hasAnswer: !!(qa.answerContent && qa.answerName),
          answer: qa.answerContent || null,
          answererId: qa.answerName || null,
-         answerDate: qa.answerCreatedAt ? this.formatDate(qa.answerCreatedAt) : null
+         answererUUID: qa.answerId || null, // Add UUID for comparison
+         answerDate: qa.answerCreatedAt ? this.formatQADate(qa.answerCreatedAt) : null,
+         answerUpdatedAt: qa.answerUpdatedAt ? this.formatQADate(qa.answerUpdatedAt) : null,
+         // 상태 정보
+         parentStatus: qa.parentStatus,
+         answerStatus: qa.answerStatus
        }));
+       
+       console.log('변환된 QnA 데이터:', convertedQA);
+       return convertedQA;
      },
      
      // 날짜 포맷팅 메서드
@@ -1050,6 +1137,76 @@ export default {
        if (!dateString) return '';
        const date = new Date(dateString);
        return date.toLocaleDateString('ko-KR');
+     },
+     
+     // Q&A 날짜 포맷팅 메서드 (updateAt 우선, 없으면 createAt 사용)
+     formatQADate(updateAt, createAt) {
+       try {
+         const dateString = updateAt || createAt;
+         if (!dateString) return '';
+         
+         // LocalDateTime 객체인 경우 처리
+         if (typeof dateString === 'object' && dateString !== null) {
+           // 객체에서 날짜 정보 추출 시도
+           if (dateString.year && dateString.month && dateString.day) {
+             const date = new Date(dateString.year, dateString.month - 1, dateString.day);
+             return date.toLocaleDateString('ko-KR');
+           }
+           // 다른 형식의 객체인 경우 JSON으로 변환 시도
+           return '';
+         }
+         
+         // 문자열인 경우
+         if (typeof dateString === 'string') {
+           const date = new Date(dateString);
+           if (isNaN(date.getTime())) {
+             console.warn('유효하지 않은 날짜 문자열:', dateString);
+             return '';
+           }
+           return date.toLocaleDateString('ko-KR');
+         }
+         
+         console.warn('지원하지 않는 날짜 형식:', dateString);
+         return '';
+       } catch (error) {
+         console.error('Q&A 날짜 포맷팅 오류:', error, '입력값:', updateAt, createAt);
+         return '';
+       }
+     },
+     
+     // 리뷰 날짜 포맷팅 메서드 (updateAt 우선, 없으면 createAt 사용)
+     formatReviewDate(updateAt, createAt) {
+       try {
+         const dateString = updateAt || createAt;
+         if (!dateString) return '';
+         
+         // LocalDateTime 객체인 경우 처리
+         if (typeof dateString === 'object' && dateString !== null) {
+           // 객체에서 날짜 정보 추출 시도
+           if (dateString.year && dateString.month && dateString.day) {
+             const date = new Date(dateString.year, dateString.month - 1, dateString.day);
+             return date.toLocaleDateString('ko-KR');
+           }
+           // 다른 형식의 객체인 경우 JSON으로 변환 시도
+           return '';
+         }
+         
+         // 문자열인 경우
+         if (typeof dateString === 'string') {
+           const date = new Date(dateString);
+           if (isNaN(date.getTime())) {
+             console.warn('유효하지 않은 날짜 문자열:', dateString);
+             return '';
+           }
+           return date.toLocaleDateString('ko-KR');
+         }
+         
+         console.warn('지원하지 않는 날짜 형식:', dateString);
+         return '';
+       } catch (error) {
+         console.error('날짜 포맷팅 오류:', error, '입력값:', updateAt, createAt);
+         return '';
+       }
      },
     
     // 레시피 데이터 변환
@@ -1215,7 +1372,7 @@ export default {
       }
     },
 
-    // 리뷰 제출
+    // 리뷰 제출 (등록 또는 수정)
     async submitReview() {
       if (this.newReview.rating === 0) {
         this.showError('평점을 선택해주세요.');
@@ -1228,52 +1385,141 @@ export default {
       }
 
       try {
-        // API 요청 데이터 준비
+        // 디버깅: lecture 객체와 lectureId 확인
+        console.log('=== submitReview 디버깅 ===');
+        console.log('this.lecture:', this.lecture);
+        console.log('this.lecture.lectureId:', this.lecture.lectureId);
+        console.log('this.lecture.id:', this.lecture.id);
+        console.log('typeof this.lecture.lectureId:', typeof this.lecture.lectureId);
+        console.log('isEditingReview:', this.isEditingReview);
+        
+        // lectureId가 없으면 id를 사용
+        const lectureId = this.lecture.lectureId || this.lecture.id;
+        console.log('사용할 lectureId:', lectureId);
+        
+        // 리뷰 데이터 준비
         const reviewData = {
           rating: this.newReview.rating,
           content: this.newReview.content,
-          lectureId: this.lecture.id
+          lectureId: lectureId
         };
 
-        console.log('리뷰 등록 요청:', reviewData);
-
-        // API 호출
-        const response = await lectureService.createReview(reviewData);
-        console.log('리뷰 등록 응답:', response);
-
-        // 성공 처리
-        this.showSuccess('리뷰가 성공적으로 등록되었습니다.');
+        console.log('리뷰 요청:', reviewData);
+        console.log('reviewData.lectureId 타입:', typeof reviewData.lectureId);
         
-        // 모달 닫기 및 폼 초기화
-        this.showReviewModal = false;
-        this.newReview = { rating: 0, content: '' };
+        let response;
+        if (this.isEditingReview) {
+          // 리뷰 수정 API 호출
+          console.log('리뷰 수정 API 호출');
+          response = await lectureService.modifyReview(reviewData);
+          console.log('리뷰 수정 응답:', response);
+        } else {
+          // 리뷰 등록 API 호출
+          console.log('리뷰 등록 API 호출');
+          response = await lectureService.createReview(reviewData);
+          console.log('리뷰 등록 응답:', response);
+        }
 
-        // 강의 상세 정보 새로고침 (리뷰 목록 업데이트)
-        await this.fetchLectureDetail();
-        
+        // 백엔드 응답 구조에 따라 성공 여부 확인
+        // ResponseDto.ok("리뷰가 등록되었습니다.", HttpStatus.CREATED) 형태의 응답
+        if (response && (response.success === true || response.code === 201 || response.code === 200)) {
+          // 성공 메시지 표시 (상태 변경 전에 저장)
+          const successMessage = this.isEditingReview ? '리뷰가 성공적으로 수정되었습니다.' : '리뷰가 성공적으로 등록되었습니다.';
+          
+          // 모달 닫기 및 폼 초기화
+          this.closeReviewModal();
+
+          this.showSuccess(successMessage);
+
+          // 강의 상세 정보 새로고침 (리뷰 목록 업데이트)
+          await this.fetchLectureData(this.lecture.id);
+        } else {
+          // 실패 시에도 모달은 닫고 에러 메시지만 표시
+          const wasEditing = this.isEditingReview;
+          this.closeReviewModal();
+          this.showError(wasEditing ? '리뷰 수정에 실패했습니다.' : '리뷰 등록에 실패했습니다.');
+        }
       } catch (error) {
-        console.error('리뷰 등록 실패:', error);
-        this.showError('리뷰 등록에 실패했습니다. 다시 시도해주세요.');
+        console.error('리뷰 처리 오류:', error);
+        // 에러 발생 시에도 모달은 닫기
+        const wasEditing = this.isEditingReview;
+        this.closeReviewModal();
+        this.showError(wasEditing ? '리뷰 수정 중 오류가 발생했습니다.' : '리뷰 등록 중 오류가 발생했습니다.');
       }
     },
 
-    // Q&A 제출 (API 연동 전 임시 처리)
-    submitQuestion() {
+    // Q&A 제출 (API 연동)
+    async submitQuestion() {
       if (!this.newQuestion.content.trim()) {
         this.showError('질문 내용을 작성해주세요.');
         return;
       }
 
-      // TODO: API 연동 후 실제 질문 등록 로직 구현
-      console.log('질문 등록 예정:', {
-        content: this.newQuestion.content
-      });
-
-      // 모달 닫기 및 폼 초기화
-      this.showQAModal = false;
-      this.newQuestion = { content: '' };
-
-      this.showSuccess('질문 등록 기능은 준비 중입니다.');
+      try {
+        if (this.isEditingQA) {
+          // Q&A 수정
+          console.log('=== Q&A 수정 시작 ===');
+          console.log('Q&A ID:', this.editingQAId);
+          console.log('질문 내용:', this.newQuestion.content);
+          
+          // Q&A 수정 데이터 준비
+          const qnaData = {
+            content: this.newQuestion.content.trim()
+          };
+          
+          // API 호출
+          const response = await lectureService.updateQna(this.editingQAId, qnaData);
+          console.log('Q&A 수정 응답:', response);
+          
+          if (response && (response.success === true || response.code === 200)) {
+            // 성공 시 모달 닫기 및 폼 초기화
+            this.showQAModal = false;
+            this.isEditingQA = false;
+            this.editingQAId = null;
+            this.newQuestion = { content: '', parentId: null };
+            
+            // 성공 메시지 표시
+            this.showSuccess('질문이 성공적으로 수정되었습니다.');
+            
+            // 강의 데이터 새로고침 (Q&A 목록 업데이트)
+            await this.fetchLectureData(this.lecture.id);
+          } else {
+            this.showError('질문 수정에 실패했습니다.');
+          }
+        } else {
+          // Q&A 등록
+          console.log('=== Q&A 등록 시작 ===');
+          console.log('강의 ID:', this.lecture.id);
+          console.log('질문 내용:', this.newQuestion.content);
+          
+          // Q&A 데이터 준비
+          const qnaData = {
+            content: this.newQuestion.content.trim(),
+            parentId: this.newQuestion.parentId // 질문자의 경우 null, 답변자의 경우 질문 ID
+          };
+          
+          // API 호출
+          const response = await lectureService.createQna(this.lecture.id, qnaData);
+          console.log('Q&A 등록 응답:', response);
+          
+          if (response && (response.success === true || response.code === 200 || response.code === 201)) {
+            // 성공 시 모달 닫기 및 폼 초기화
+            this.showQAModal = false;
+            this.newQuestion = { content: '', parentId: null };
+            
+            // 성공 메시지 표시
+            this.showSuccess('질문이 성공적으로 등록되었습니다.');
+            
+            // 강의 데이터 새로고침 (Q&A 목록 업데이트)
+            await this.fetchLectureData(this.lecture.id);
+          } else {
+            this.showError('질문 등록에 실패했습니다.');
+          }
+        }
+      } catch (error) {
+        console.error('Q&A 처리 중 오류:', error);
+        this.showError(this.isEditingQA ? '질문 수정 중 오류가 발생했습니다.' : '질문 등록 중 오류가 발생했습니다.');
+      }
     },
 
     // 강의 평점 업데이트
@@ -1363,100 +1609,181 @@ export default {
       
       // 리뷰 수정 가능 여부 확인
       canEditReview(review) {
-        return this.currentUserId && (
-          review.writerId === this.currentUserId || 
-          this.isAuthor || 
-          this.isAdmin
-        );
+        return this.currentUserId && review.reviewerId && this.currentUserId === review.reviewerId;
       },
       
       // Q&A 수정 가능 여부 확인
       canEditQA(qa) {
-        return this.currentUserId && (
-          qa.questionerId === this.currentUserId || 
-          this.isAuthor || 
-          this.isAdmin
-        );
+        if (!this.currentUserId) { return false; }
+        if (this.isAuthor || this.isAdmin) { return true; }
+        return this.currentUserId && qa.questionerUUID && this.currentUserId === qa.questionerUUID;
       },
       
       // 리뷰 수정
       editReview(review) {
-        // TODO: 리뷰 수정 모달 또는 페이지로 이동
-        console.log('리뷰 수정:', review);
-        this.showNotification({
-          title: '리뷰 수정',
-          icon: '✏️',
-          message: '리뷰 수정 기능은 준비 중입니다.'
-        });
+        console.log('리뷰 수정 시작:', review);
+        this.isEditingReview = true;
+        this.editingReviewId = review.id;
+        this.newReview = {
+          rating: review.rating,
+          content: review.content
+        };
+        this.selectedRating = review.rating;
+        this.showReviewModal = true;
       },
       
-      // 리뷰 삭제
-      deleteReview(review) {
-        this.showConfirm({
-          title: '리뷰 삭제',
-          icon: '🗑️',
-          message: '정말로 이 리뷰를 삭제하시겠습니까?',
-          confirmText: '삭제하기',
-          callback: async () => {
-            try {
-              // TODO: 실제 삭제 API 호출
-              await this.deleteReviewFromServer(review.id);
-              this.lecture.reviews = this.lecture.reviews.filter(r => r.id !== review.id);
-              this.showSuccess('리뷰가 삭제되었습니다.');
-            } catch (error) {
+              // 리뷰 삭제
+        deleteReview(review) {
+          console.log('리뷰 삭제 시작:', review);
+          
+          // 삭제 확인 모달 표시
+          this.deleteConfirmData = {
+            title: '리뷰 삭제',
+            message: '정말로 이 리뷰를 삭제하시겠습니까?',
+            itemInfo: {
+              title: `"${review.content.substring(0, 30)}${review.content.length > 30 ? '...' : ''}"`
+            },
+            review: review
+          };
+          this.showDeleteConfirmModal = true;
+        },
+
+        // 리뷰 삭제 확인 처리
+        async confirmDeleteReview() {
+          try {
+            const review = this.deleteConfirmData.review;
+            const lectureId = this.lecture.lectureId || this.lecture.id;
+            console.log('삭제할 강의 ID:', lectureId);
+            
+            const response = await lectureService.deleteReview(lectureId);
+            console.log('리뷰 삭제 응답:', response);
+            
+            if (response && (response.success === true || response.code === 200)) {
+              // 모달 닫기
+              this.showDeleteConfirmModal = false;
+              
+              // 약간의 지연 후 성공 메시지 표시
+              setTimeout(() => {
+                this.showSuccess('리뷰가 성공적으로 삭제되었습니다.');
+              }, 300);
+              
+              // 강의 데이터 새로고침
+              await this.fetchLectureData(this.lecture.id);
+            } else {
               this.showError('리뷰 삭제에 실패했습니다.');
             }
+          } catch (error) {
+            console.error('리뷰 삭제 중 오류:', error);
+            this.showError('리뷰 삭제 중 오류가 발생했습니다.');
+          } finally {
+            this.showDeleteConfirmModal = false;
+            this.deleteConfirmData = {};
           }
-        });
-      },
+        },
+
+        // 삭제 확인 모달 취소
+        cancelDeleteReview() {
+          this.showDeleteConfirmModal = false;
+          this.deleteConfirmData = {};
+        },
+
+        // Q&A 삭제 확인 처리
+        async confirmDeleteQA() {
+          try {
+            const qa = this.deleteConfirmData.qa;
+            console.log('삭제할 Q&A ID:', qa.id);
+            
+            const response = await lectureService.deleteQna(qa.id);
+            console.log('Q&A 삭제 응답:', response);
+            
+            if (response && (response.success === true || response.code === 200)) {
+              // 모달 닫기
+              this.showDeleteConfirmModal = false;
+              
+              // 약간의 지연 후 성공 메시지 표시
+              setTimeout(() => {
+                this.showSuccess('질문이 성공적으로 삭제되었습니다.');
+              }, 300);
+              
+              // 강의 데이터 새로고침
+              await this.fetchLectureData(this.lecture.id);
+            } else {
+              this.showError('질문 삭제에 실패했습니다.');
+            }
+          } catch (error) {
+            console.error('Q&A 삭제 중 오류:', error);
+            this.showError('질문 삭제 중 오류가 발생했습니다.');
+          } finally {
+            this.showDeleteConfirmModal = false;
+            this.deleteConfirmData = {};
+          }
+        },
+
+        // Q&A 삭제 확인 모달 취소
+        cancelDeleteQA() {
+          this.showDeleteConfirmModal = false;
+          this.deleteConfirmData = {};
+        },
+
+        // 삭제 확인 처리 (리뷰 또는 Q&A)
+        handleDeleteConfirm() {
+          if (this.deleteConfirmData.review) {
+            this.confirmDeleteReview();
+          } else if (this.deleteConfirmData.qa) {
+            this.confirmDeleteQA();
+          }
+        },
+
+        // 삭제 취소 처리 (리뷰 또는 Q&A)
+        handleDeleteCancel() {
+          if (this.deleteConfirmData.review) {
+            this.cancelDeleteReview();
+          } else if (this.deleteConfirmData.qa) {
+            this.cancelDeleteQA();
+          }
+        },
+
+
       
       // Q&A 수정
       editQA(qa) {
-        // TODO: Q&A 수정 모달 또는 페이지로 이동
-        console.log('Q&A 수정:', qa);
-        this.showNotification({
-          title: 'Q&A 수정',
-          icon: '✏️',
-          message: 'Q&A 수정 기능은 준비 중입니다.'
-        });
+        console.log('Q&A 수정 시작:', qa);
+        this.isEditingQA = true;
+        this.editingQAId = qa.qnaId || qa.id; // Use qnaId if available, fallback to id
+        this.newQuestion = {
+          content: qa.question,
+          parentId: null
+        };
+        this.showQAModal = true;
       },
       
       // Q&A 삭제
       deleteQA(qa) {
-        this.showConfirm({
+        console.log('Q&A 삭제 시작:', qa);
+        
+        // 삭제 확인 모달 표시
+        this.deleteConfirmData = {
           title: 'Q&A 삭제',
-          icon: '🗑️',
           message: '정말로 이 질문을 삭제하시겠습니까?',
-          confirmText: '삭제하기',
-          callback: async () => {
-            try {
-              // TODO: 실제 삭제 API 호출
-              await this.deleteQAFromServer(qa.id);
-              this.lecture.qa = this.lecture.qa.filter(q => q.id !== qa.id);
-              this.showSuccess('질문이 삭제되었습니다.');
-            } catch (error) {
-              this.showError('질문 삭제에 실패했습니다.');
-            }
-          }
-        });
+          itemInfo: {
+            title: `"${qa.question.substring(0, 30)}${qa.question.length > 30 ? '...' : ''}"`
+          },
+          qa: qa
+        };
+        this.showDeleteConfirmModal = true;
       },
       
-      // 서버에서 리뷰 삭제
-      async deleteReviewFromServer(reviewId) {
-        // TODO: 실제 API 호출 구현
-        console.log('리뷰 삭제 API 호출:', reviewId);
-        return new Promise((resolve) => {
-          setTimeout(resolve, 1000);
-        });
-      },
+
       
-      // 서버에서 Q&A 삭제
-      async deleteQAFromServer(qaId) {
-        // TODO: 실제 API 호출 구현
-        console.log('Q&A 삭제 API 호출:', qaId);
-        return new Promise((resolve) => {
-          setTimeout(resolve, 1000);
-        });
+
+
+      // 리뷰 모달 닫기
+      closeReviewModal() {
+        this.showReviewModal = false;
+        this.isEditingReview = false;
+        this.editingReviewId = null;
+        this.newReview = { rating: 0, content: '' };
+        this.selectedRating = 0;
       },
 
       // 리뷰 작성 처리 (로그인 및 구매 확인)
@@ -1474,6 +1801,11 @@ export default {
         }
         
         // 구매했거나 작성자/관리자인 경우 바로 작성 모달 열기
+        // 새 리뷰 작성 모드로 설정
+        this.isEditingReview = false;
+        this.editingReviewId = null;
+        this.newReview = { rating: 0, content: '' };
+        this.selectedRating = 0;
         this.showReviewModal = true;
       },
 
@@ -1492,6 +1824,24 @@ export default {
         }
         
         // 구매했거나 작성자/관리자인 경우 바로 작성 모달 열기
+        // 새 질문 작성 모드로 설정
+        this.isEditingQA = false;
+        this.editingQAId = null;
+        this.newQuestion = { content: '', parentId: null };
+        this.showQAModal = true;
+      },
+
+      // Q&A 답변 작성 처리
+      handleAnswerQA(qa) {
+        console.log('Q&A 답변 작성 시작:', qa);
+        
+        // 답변 작성 모드로 설정
+        this.isEditingQA = false;
+        this.editingQAId = null;
+        this.newQuestion = {
+          content: '',
+          parentId: qa.id // 질문의 ID를 parentId로 설정
+        };
         this.showQAModal = true;
       },
 
@@ -1584,6 +1934,26 @@ export default {
           this.showError('장바구니 추가에 실패했습니다. 다시 시도해주세요.');
         }
       }
+    },
+
+    // 강의 구매하기
+    purchaseLecture() {
+      console.log('purchaseLecture 메서드 호출됨');
+      console.log('현재 강의:', this.lecture);
+      
+      if (!this.lecture) {
+        this.showError('강의 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+        return;
+      }
+
+      // 로그인 확인
+      if (!this.currentUserId) {
+        this.showLoginRequiredModal = true;
+        return;
+      }
+
+      // 장바구니에 추가 후 장바구니 페이지로 이동
+      this.enrollLecture();
     },
 
          // 장바구니로 이동
@@ -1770,26 +2140,46 @@ export default {
         return '클릭하여 비디오 재생';
       },
 
+      // 별점 호버 기능
+      handleStarHover(starIndex) {
+        // 호버 시 해당 별까지 모두 채우기
+        this.newReview.rating = starIndex;
+      },
+
+      // 별점 호버 해제
+      handleStarLeave() {
+        // 호버 해제 시 원래 선택된 별점으로 복원
+        // 클릭으로 선택된 별점이 있다면 그 값으로, 없다면 0으로
+        this.newReview.rating = this.selectedRating;
+      },
+
+      // 별점 클릭 시 선택된 별점 저장
+      handleStarClick(starIndex) {
+        this.newReview.rating = starIndex;
+        // 클릭으로 선택된 별점을 저장 (호버 해제 시 복원용)
+        this.selectedRating = starIndex;
+      },
+
      
   },
-  mounted() {
-    // 장바구니 스토어 초기화
-    this.cartStore = useCartStore();
-    
-    // 현재 사용자 ID 설정
-    this.currentUserId = getUserIdFromToken();
-    
-    // URL 파라미터에서 강의 ID를 가져와서 데이터 로드
-    const lectureId = this.$route.params.id;
-    if (lectureId) {
-      this.fetchLectureData(lectureId);
+      async mounted() {
+      // 장바구니 스토어 초기화
+      this.cartStore = useCartStore();
+      
+      // 현재 사용자 ID 가져오기
+      this.currentUserId = getUserIdFromToken();
+      
+      // URL 파라미터에서 강의 ID를 가져와서 데이터 로드
+      const lectureId = this.$route.params.id;
+      if (lectureId) {
+        this.fetchLectureData(lectureId);
+      }
+      
+      // Kakao SDK 초기화
+      if (typeof Kakao !== 'undefined' && !Kakao.isInitialized()) {
+        Kakao.init("3a1a982f8ee6ddbc64171c2f80850243");
+      }
     }
-    
-    // Kakao SDK 초기화
-    if (typeof Kakao !== 'undefined' && !Kakao.isInitialized()) {
-      Kakao.init("3a1a982f8ee6ddbc64171c2f80850243");
-    }
-  }
 };
 </script>
 
@@ -2291,7 +2681,79 @@ export default {
 
 .purchase-notice p {
   margin: 0 0 16px 0;
+}
+
+.no-qa {
+  text-align: center;
+  padding: 40px 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-top: 24px;
+}
+
+.no-qa p {
+  margin: 0;
   color: #666;
+}
+
+.no-qa-sub {
+  margin-top: 8px !important;
+  font-size: 14px;
+  color: #999 !important;
+}
+
+.qa-actions {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.qa-edit-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.qa-edit-actions button {
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.qa-edit-actions .edit-btn:hover {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.qa-edit-actions .delete-btn:hover {
+  background: #ffebee;
+  color: #d32f2f;
+}
+
+.qa-answer-action {
+  margin-top: 12px;
+  text-align: right;
+}
+
+.answer-btn {
+  background: #17a2b8;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.answer-btn:hover {
+  background: #138496;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(23, 162, 184, 0.3);
 }
 
 .purchase-btn {
@@ -2384,6 +2846,16 @@ export default {
 .enroll-btn.in-cart:hover {
   background: #28a745;
   transform: none;
+}
+
+.enroll-btn.purchase-btn {
+  background: #ff6b35;
+  font-weight: 700;
+}
+
+.enroll-btn.purchase-btn:hover {
+  background: #e55a2b;
+  transform: translateY(-1px);
 }
 
 .action-buttons {
@@ -3104,6 +3576,88 @@ export default {
   .review-edit-actions, .qa-edit-actions {
     display: flex;
     gap: 5px;
+  }
+  
+  /* 리뷰 콘텐츠의 수정/삭제 텍스트 스타일 (우측 하단) */
+  .review-content .review-edit-actions {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: #666;
+    z-index: 10;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 2px 4px;
+    border-radius: 4px;
+  }
+  
+  .review-content .edit-text,
+  .review-content .delete-text {
+    cursor: pointer;
+    transition: color 0.2s ease;
+  }
+  
+  .review-content .edit-text:hover {
+    color: #17a2b8;
+  }
+  
+  .review-content .delete-text:hover {
+    color: #dc3545;
+  }
+  
+  .review-content .separator {
+    color: #666;
+  }
+
+  .question-content .edit-text,
+  .question-content .delete-text {
+    cursor: pointer;
+    transition: color 0.2s ease;
+  }
+
+  .question-content .edit-text:hover {
+    color: #17a2b8;
+  }
+
+  .question-content .delete-text:hover {
+    color: #dc3545;
+  }
+
+  .question-content .separator {
+    color: #666;
+  }
+  
+  /* 리뷰 수정/삭제 텍스트 스타일 */
+  .review-content {
+    position: relative;
+    padding-bottom: 25px; /* 수정/삭제 버튼을 위한 공간 */
+    min-height: 40px; /* 최소 높이 보장 */
+  }
+
+  /* Q&A 콘텐츠의 수정/삭제 텍스트 스타일 (우측 하단) */
+  .question-content .qa-edit-actions {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: #666;
+    z-index: 10;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 2px 4px;
+    border-radius: 4px;
+  }
+
+  /* Q&A 수정/삭제 텍스트 스타일 */
+  .question-content {
+    position: relative;
+    padding-bottom: 25px; /* 수정/삭제 버튼을 위한 공간 */
+    min-height: 40px; /* 최소 높이 보장 */
   }
   
   .review-edit-actions .edit-btn,

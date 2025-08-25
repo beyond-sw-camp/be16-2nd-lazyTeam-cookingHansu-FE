@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiDelete } from '@/utils/api';
+import { apiGet, apiPost, apiDelete, apiPatch, apiPut } from '@/utils/api';
 
 export const lectureService = {
   // 강의 목록 조회
@@ -140,6 +140,8 @@ export const lectureService = {
     }
   },
 
+  
+
   // 강의 수정
   async updateLecture(lectureId, formData) {
     try {
@@ -190,6 +192,19 @@ export const lectureService = {
   // 리뷰 등록
   async createReview(reviewData) {
     try {
+      console.log('=== createReview 시작 ===');
+      console.log('reviewData:', reviewData);
+      console.log('reviewData.lectureId:', reviewData.lectureId);
+      console.log('reviewData.lectureId 타입:', typeof reviewData.lectureId);
+      console.log('reviewData.rating:', reviewData.rating);
+      console.log('reviewData.content:', reviewData.content);
+      
+      // lectureId가 없거나 빈 값인지 확인
+      if (!reviewData.lectureId) {
+        console.error('lectureId가 누락되었습니다!');
+        throw new Error('lectureId is required');
+      }
+      
       const response = await apiPost('/review/post', reviewData);
       console.log('리뷰 등록 응답:', response);
       
@@ -200,5 +215,150 @@ export const lectureService = {
       console.error('리뷰 등록 실패:', error);
       throw error;
     }
-  }
+  },
+
+  // 리뷰 수정
+  async modifyReview(reviewData) {
+    try {
+      console.log('=== modifyReview 시작 ===');
+      console.log('reviewData:', reviewData);
+      console.log('reviewData.lectureId:', reviewData.lectureId);
+      console.log('reviewData.lectureId 타입:', typeof reviewData.lectureId);
+      console.log('reviewData.rating:', reviewData.rating);
+      console.log('reviewData.content:', reviewData.content);
+      
+      // lectureId가 없거나 빈 값인지 확인
+      if (!reviewData.lectureId) {
+        console.error('lectureId가 누락되었습니다!');
+        throw new Error('lectureId is required');
+      }
+      
+      const response = await apiPatch('/review/modify', reviewData);
+      console.log('리뷰 수정 응답:', response);
+      
+      // response가 fetch Response 객체이므로 JSON으로 파싱
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('리뷰 수정 실패:', error);
+      throw error;
+    }
+  },
+
+  // 리뷰 삭제
+  async deleteReview(lectureId) {
+    try {
+      console.log('=== deleteReview 시작 ===');
+      console.log('lectureId:', lectureId);
+      console.log('lectureId 타입:', typeof lectureId);
+      
+      // lectureId가 없거나 빈 값인지 확인
+      if (!lectureId) {
+        console.error('lectureId가 누락되었습니다!');
+        throw new Error('lectureId is required');
+      }
+      
+      const response = await apiDelete(`/review/delete/${lectureId}`);
+      console.log('리뷰 삭제 응답:', response);
+      
+      // response가 fetch Response 객체이므로 JSON으로 파싱
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('리뷰 삭제 실패:', error);
+      throw error;
+    }
+  },
+
+  // Q&A 등록
+  async createQna(lectureId, qnaData) {
+    try {
+      console.log('=== createQna 시작 ===');
+      console.log('lectureId:', lectureId);
+      console.log('lectureId 타입:', typeof lectureId);
+      console.log('qnaData:', qnaData);
+      console.log('qnaData.content:', qnaData.content);
+      console.log('qnaData.parentId:', qnaData.parentId);
+      
+      // lectureId가 없거나 빈 값인지 확인
+      if (!lectureId) {
+        console.error('lectureId가 누락되었습니다!');
+        throw new Error('lectureId is required');
+      }
+      
+      // content가 없거나 빈 값인지 확인
+      if (!qnaData.content || !qnaData.content.trim()) {
+        console.error('content가 누락되었습니다!');
+        throw new Error('content is required');
+      }
+      
+      const response = await apiPost(`/lecture/qna/${lectureId}/create`, qnaData);
+      console.log('Q&A 등록 응답:', response);
+      
+      // response가 fetch Response 객체이므로 JSON으로 파싱
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Q&A 등록 실패:', error);
+      throw error;
+    }
+  },
+
+  // Q&A 수정
+  async updateQna(qnaId, qnaData) {
+    try {
+      console.log('=== updateQna 시작 ===');
+      console.log('qnaId:', qnaId);
+      console.log('qnaId 타입:', typeof qnaId);
+      console.log('qnaData:', qnaData);
+      console.log('qnaData.content:', qnaData.content);
+      
+      // qnaId가 없거나 빈 값인지 확인
+      if (!qnaId) {
+        console.error('qnaId가 누락되었습니다!');
+        throw new Error('qnaId is required');
+      }
+      
+      // content가 없거나 빈 값인지 확인
+      if (!qnaData.content || !qnaData.content.trim()) {
+        console.error('content가 누락되었습니다!');
+        throw new Error('content is required');
+      }
+      
+      const response = await apiPut(`/lecture/qna/${qnaId}/update`, qnaData);
+      console.log('Q&A 수정 응답:', response);
+      
+      // response가 fetch Response 객체이므로 JSON으로 파싱
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Q&A 수정 실패:', error);
+      throw error;
+    }
+  },
+
+  // Q&A 삭제
+  async deleteQna(qnaId) {
+    try {
+      console.log('=== deleteQna 시작 ===');
+      console.log('qnaId:', qnaId);
+      console.log('qnaId 타입:', typeof qnaId);
+      
+      // qnaId가 없거나 빈 값인지 확인
+      if (!qnaId) {
+        console.error('qnaId가 누락되었습니다!');
+        throw new Error('qnaId is required');
+      }
+      
+      const response = await apiDelete(`/lecture/qna/${qnaId}/delete`);
+      console.log('Q&A 삭제 응답:', response);
+      
+      // response가 fetch Response 객체이므로 JSON으로 파싱
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Q&A 삭제 실패:', error);
+      throw error;
+    }
+  },
 };
