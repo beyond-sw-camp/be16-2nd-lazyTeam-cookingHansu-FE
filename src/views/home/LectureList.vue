@@ -37,13 +37,13 @@
         </div>
         <div class="filter-col">
           <label>정렬</label>
-                     <select v-model="selectedSort">
-             <option value="latest">최신순</option>
-             <option value="rating">평점 높은순</option>
-             <option value="popular">인기순</option>
-             <option value="price-low">가격 낮은순</option>
-             <option value="price-high">가격 높은순</option>
-           </select>
+          <select v-model="selectedSort">
+            <option value="latest">최신순</option>
+            <option value="rating">평점 높은순</option>
+            <option value="popular">인기순</option>
+            <option value="price-low">가격 낮은순</option>
+            <option value="price-high">가격 높은순</option>
+          </select>
         </div>
       </div>
     </div>
@@ -88,12 +88,12 @@
       </div>
     </div>
     
-         <!-- 강의가 없을 때 메시지 -->
-     <div v-else class="no-lectures-container">
-       <div class="no-lectures-message">아직 강의가 등록되지 않았습니다.</div>
-     </div>
-     
-     <!-- 페이지네이션 -->
+    <!-- 강의가 없을 때 메시지 -->
+    <div v-else class="no-lectures-container">
+      <div class="no-lectures-message">아직 강의가 등록되지 않았습니다.</div>
+    </div>
+    
+    <!-- 페이지네이션 -->
     <Pagination
       :current-page="currentPage"
       :total-pages="totalPages"
@@ -107,6 +107,7 @@ import Header from '@/components/Header.vue';
 import Pagination from '@/components/common/Pagination.vue';
 import { lectureService } from '@/store/lecture/lectureService';
 import { getUserRoleFromToken } from '@/utils/api';
+import { useAuthStore } from '@/store/auth/auth';
 
 export default {
   name: 'LectureList',
@@ -155,18 +156,20 @@ export default {
       // 백엔드에서 페이지네이션을 처리하므로 전체 강의 목록을 반환
       return this.filteredLectures;
     },
-    totalPages() {
-      const pages = Math.ceil(this.totalLectures / this.lecturesPerPage);
-      console.log('totalPages 계산:', this.totalLectures, '/', this.lecturesPerPage, '=', pages);
-      return Math.max(1, pages);
-    },
-    // 사용자 역할 (토큰에서 동적으로 가져옴)
-    userRole() {
-      const role = getUserRoleFromToken();
-      console.log('🎭 LectureList에서 userRole 확인:', role);
-      console.log('🎭 강의 등록 버튼 표시 조건:', role === 'CHEF' || role === 'OWNER');
-      return role;
-    },
+         totalPages() {
+       const pages = Math.ceil(this.totalLectures / this.lecturesPerPage);
+       return Math.max(1, pages);
+     },
+         // 사용자 역할 (토큰에서 동적으로 가져옴)
+     userRole() {
+       const authStore = useAuthStore();
+       const tokenRole = getUserRoleFromToken();
+       const storeRole = authStore.getUserRole;
+       
+       // 스토어의 역할을 우선 사용, 없으면 토큰에서 추출
+       return storeRole || tokenRole;
+     },
+
   },
   watch: {
     selectedCategory() {
@@ -176,9 +179,9 @@ export default {
       this.currentPage = 1;
     },
   },
-  async created() {
-    await this.fetchLectures();
-  },
+     async created() {
+     await this.fetchLectures();
+   },
   methods: {
     async fetchLectures() {
       this.loading = true;
@@ -188,36 +191,25 @@ export default {
         // 페이지 정보를 포함하여 API 호출
         const response = await lectureService.getLectureList(this.currentPage - 1, this.lecturesPerPage);
         
-        if (response.success) {
-          console.log('전체 백엔드 응답:', response);
-          console.log('백엔드 응답 데이터:', response.data);
-          console.log('응답 데이터 타입:', typeof response.data);
-          console.log('응답 데이터 키들:', Object.keys(response.data));
-          console.log('response.data.content 존재 여부:', !!response.data.content);
-          console.log('response.data.totalElements 존재 여부:', !!response.data.totalElements);
+                 if (response.success) {
           
           // 백엔드 응답 데이터를 프론트엔드 형식으로 변환
           let lectureData = [];
           
-          if (response.data.content && Array.isArray(response.data.content)) {
-            // Spring Boot Page 객체 구조
-            lectureData = response.data.content;
-            this.totalLectures = response.data.totalElements || 0;
-            console.log('Page 객체 구조 감지 - content:', response.data.content.length, 'totalElements:', this.totalLectures);
-          } else if (Array.isArray(response.data)) {
-            // 배열 구조 (페이지네이션 없이 전체 데이터 반환)
-            lectureData = response.data;
-            this.totalLectures = response.data.length;
-            console.log('배열 구조 감지 - length:', this.totalLectures);
-          } else {
-            console.error('예상치 못한 응답 구조:', response.data);
-            this.error = '데이터 구조 오류';
-            return;
-          }
+                     if (response.data.content && Array.isArray(response.data.content)) {
+             // Spring Boot Page 객체 구조
+             lectureData = response.data.content;
+             this.totalLectures = response.data.totalElements || 0;
+           } else if (Array.isArray(response.data)) {
+             // 배열 구조 (페이지네이션 없이 전체 데이터 반환)
+             lectureData = response.data;
+             this.totalLectures = response.data.length;
+           } else {
+             this.error = '데이터 구조 오류';
+             return;
+           }
           
                      this.lectures = lectureData.map(lecture => {
-             console.log('개별 강의 데이터:', lecture);
-             
              return {
                ...lecture,
                // 백엔드에서 제공하는 실제 좋아요 수 사용
@@ -226,12 +218,6 @@ export default {
                rating: lecture.reviewAvg || 0,
              };
            });
-          
-          console.log('변환된 강의 데이터:', this.lectures);
-          console.log('총 강의 수:', this.totalLectures);
-          console.log('현재 페이지:', this.currentPage);
-          console.log('페이지당 강의 수:', this.lecturesPerPage);
-          console.log('총 페이지 수:', this.totalPages);
         } else {
           this.error = '강의 목록을 불러오는데 실패했습니다.';
         }
@@ -263,54 +249,47 @@ export default {
         default: return '';
       }
     },
-         getCategoryName(category) {
-       switch (category) {
-         case 'KOREAN': return '한식';
-         case 'WESTERN': return '양식';
-         case 'JAPANESE': return '일식';
-         case 'CHINESE': return '중식';
-         default: return category;
-       }
-     },
-     getStarClass(starIndex, rating) {
+    getCategoryName(category) {
+      switch (category) {
+        case 'KOREAN': return '한식';
+        case 'WESTERN': return '양식';
+        case 'JAPANESE': return '일식';
+        case 'CHINESE': return '중식';
+        default: return category;
+      }
+    },
+         getStarClass(starIndex, rating) {
        const numRating = parseFloat(rating);
-       
-       // 디버깅용 로그 (모든 평점 출력)
-       if (starIndex === 1) {
-         console.log(`강의 평점: ${numRating}, Math.floor: ${Math.floor(numRating)}, Math.ceil: ${Math.ceil(numRating)}`);
-       }
-       
-       if (numRating === 0) {
-         return ''; // 별 없음
-       }
-       
-       // 정수 부분만큼 완전히 채워진 별
-       if (starIndex <= Math.floor(numRating)) {
-         return 'filled';
-       }
-       
-       // 소수점이 있는 경우 부분적으로 채워진 별
-       if (starIndex === Math.ceil(numRating) && numRating % 1 !== 0) {
-         const decimal = numRating % 1;
-         if (decimal <= 0.2) return 'partially-filled-1';
-         if (decimal <= 0.4) return 'partially-filled-2';
-         if (decimal <= 0.6) return 'partially-filled-3';
-         if (decimal <= 0.8) return 'partially-filled-4';
-         return 'partially-filled-5';
-       }
-       
-       return ''; // 빈 별
-     },
-    handleCardClick(lecture) {
-      console.log('강의 클릭:', lecture.id, lecture.title);
       
-      // 모든 강의 상세보기 가능
-      this.$router.push({ name: 'LectureDetail', params: { id: lecture.id } });
+      if (numRating === 0) {
+        return ''; // 별 없음
+      }
+      
+      // 정수 부분만큼 완전히 채워진 별
+      if (starIndex <= Math.floor(numRating)) {
+        return 'filled';
+      }
+      
+      // 소수점이 있는 경우 부분적으로 채워진 별
+      if (starIndex === Math.ceil(numRating) && numRating % 1 !== 0) {
+        const decimal = numRating % 1;
+        if (decimal <= 0.2) return 'partially-filled-1';
+        if (decimal <= 0.4) return 'partially-filled-2';
+        if (decimal <= 0.6) return 'partially-filled-3';
+        if (decimal <= 0.8) return 'partially-filled-4';
+        return 'partially-filled-5';
+      }
+      
+      return ''; // 빈 별
     },
-    goToLectureCreate() {
-      console.log('강의 등록 페이지로 이동');
-      this.$router.push({ name: 'LectureCreate' });
-    },
+         handleCardClick(lecture) {
+       // 모든 강의 상세보기 가능
+       this.$router.push({ name: 'LectureDetail', params: { id: lecture.id } });
+     },
+     goToLectureCreate() {
+       this.$router.push({ name: 'LectureCreate' });
+     },
+    
   },
 };
 </script>

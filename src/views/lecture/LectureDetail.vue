@@ -917,6 +917,7 @@ export default {
         if (response.success) {
           const lectureData = response.data;
           console.log('백엔드에서 받은 강의 데이터:', lectureData);
+
           
           try {
             // 백엔드 데이터를 프론트엔드 형식으로 변환
@@ -932,7 +933,8 @@ export default {
               totalDuration: this.calculateTotalDuration(lectureData.lectureVideoResDtoList),
               instructor: {
                 name: lectureData.name,
-                title: '요리 전문가'
+                title: '요리 전문가',
+                id: lectureData.submittedById
               },
               lessons: this.convertVideosToLessons(lectureData.lectureVideoResDtoList),
               reviews: this.convertReviews(lectureData.lectureReviewResDtoList || []),

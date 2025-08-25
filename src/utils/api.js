@@ -32,39 +32,30 @@ export const getUserIdFromToken = () => {
 // JWT 토큰에서 사용자 역할 추출
 export const getUserRoleFromToken = () => {
   try {
+    // localStorage가 존재하는지 확인
+    if (typeof localStorage === 'undefined' || !localStorage) {
+      return null;
+    }
+    
     const token = localStorage.getItem('accessToken');
-    console.log('🔍 토큰 확인:', token ? '토큰 존재' : '토큰 없음');
     
     if (!token) {
-      console.log('❌ 토큰이 없습니다.');
       return null;
     }
     
     // JWT 토큰의 payload 부분 추출 (두 번째 부분)
     const payload = token.split('.')[1];
-    console.log('🔍 Payload 부분:', payload ? '존재' : '없음');
     
     if (!payload) {
-      console.log('❌ Payload가 없습니다.');
       return null;
     }
     
     // Base64 디코딩
     const decodedPayload = JSON.parse(atob(payload));
-    console.log('🔍 디코딩된 토큰 payload:', decodedPayload);
-    console.log('🔍 토큰에서 찾은 필드들:', Object.keys(decodedPayload));
     
     // 사용자 역할 반환 (백엔드에서 설정한 필드명에 따라 조정 필요)
-    const role = decodedPayload.role || decodedPayload.authorities || decodedPayload.userRole;
-    console.log('🔍 추출된 role:', role);
-    console.log('🔍 role 필드 확인:');
-    console.log('  - decodedPayload.role:', decodedPayload.role);
-    console.log('  - decodedPayload.authorities:', decodedPayload.authorities);
-    console.log('  - decodedPayload.userRole:', decodedPayload.userRole);
-    
-    return role;
+    return decodedPayload.role || decodedPayload.authorities || decodedPayload.userRole;
   } catch (error) {
-    console.error('❌ 토큰에서 사용자 역할 추출 실패:', error);
     return null;
   }
 };
@@ -76,9 +67,15 @@ export const getHeaders = () => {
   };
   
   // JWT 토큰이 있으면 헤더에 추가
-  const token = localStorage.getItem('accessToken');
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+  try {
+    if (typeof localStorage !== 'undefined' && localStorage) {
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    }
+  } catch (error) {
+    console.error('localStorage 접근 오류:', error);
   }
   
   return headers;
