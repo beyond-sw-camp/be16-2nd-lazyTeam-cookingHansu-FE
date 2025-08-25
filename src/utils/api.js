@@ -4,11 +4,19 @@
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 // API 헤더 설정
-export const getHeaders = () => ({
-  'Content-Type': 'application/json',
-  // JWT 토큰 (테스트 시 주석처리)
-  // 'Authorization': `Bearer ${localStorage.getItem('token')}`,
-});
+export const getHeaders = () => {
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  
+  // JWT 토큰이 있으면 헤더에 추가
+  const token = localStorage.getItem('accessToken');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  return headers;
+};
 
 // GET 요청
 export const apiGet = async (endpoint) => {
@@ -85,13 +93,15 @@ export const apiPatch = async (endpoint, data = null) => {
 };
 
 // DELETE 요청
-export const apiDelete = async (endpoint) => {
+export const apiDelete = async (endpoint, data = null) => {
   console.log('API DELETE 요청 URL:', `${API_BASE_URL}${endpoint}`);
+  console.log('API 요청 데이터:', data);
   
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'DELETE',
       headers: getHeaders(),
+      body: data ? JSON.stringify(data) : null,
     });
     
     return response;
@@ -138,12 +148,15 @@ export const apiPutFormData = async (endpoint, formData) => {
   console.log('API 요청 FormData:', formData);
   
   try {
+    const headers = {};
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'PUT',
-      headers: {
-        // 'Content-Type': 'multipart/form-data', // FormData 사용 시 자동 설정
-        // 'Authorization': `Bearer ${localStorage.getItem('token')}`,
-      },
+      headers: headers,
       body: formData,
     });
     
@@ -165,16 +178,32 @@ export const apiPostFormData = async (endpoint, formData) => {
   console.log('API POST FormData 요청 URL:', `${API_BASE_URL}${endpoint}`);
   console.log('API 요청 FormData:', formData);
   
+  // FormData 내용 상세 로깅
+  if (formData instanceof FormData) {
+    console.log('FormData 상세 내용:');
+    for (let [key, value] of formData.entries()) {
+      if (value instanceof File) {
+        console.log(`- ${key}: File(${value.name}, ${value.size} bytes, ${value.type})`);
+      } else {
+        console.log(`- ${key}: ${value}`);
+      }
+    }
+  }
+  
   try {
+    const headers = {};
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'POST',
-      headers: {
-        // 'Content-Type': 'multipart/form-data', // FormData 사용 시 자동 설정
-        // 'Authorization': `Bearer ${localStorage.getItem('token')}`,
-      },
+      headers: headers,
       body: formData,
     });
     
+    console.log('API 응답 상태:', response.status, response.statusText);
     return response;
   } catch (error) {
     console.error('API POST FormData 요청 실패:', error);

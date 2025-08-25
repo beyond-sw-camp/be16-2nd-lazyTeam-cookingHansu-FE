@@ -17,10 +17,11 @@
     </v-alert>
 
     <!-- 로딩 상태 -->
-    <div v-if="userManagementStore.isLoading" class="loading-container">
-      <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
-      <p class="loading-text">사용자 목록을 불러오는 중...</p>
-    </div>
+    <LoadingScreen 
+      v-if="userManagementStore.isLoading"
+      title="사용자 목록을 불러오는 중"
+      description="플랫폼 사용자 정보를 확인하고 있어요..."
+    />
 
     <!-- 사용자 목록 -->
     <v-card v-else-if="!userManagementStore.getLoadError">
@@ -132,6 +133,7 @@ import { ref, watch, onMounted } from 'vue'
 import { useUserManagementStore } from '../../store/admin/userManagement'
 import Pagination from '../../components/common/Pagination.vue'
 import CommonSnackbar from '../../components/common/CommonSnackbar.vue'
+import LoadingScreen from '../../components/common/LoadingScreen.vue'
 import { formatDate } from '../../utils/timeUtils'
 
 const userManagementStore = useUserManagementStore()
@@ -220,19 +222,5 @@ th,
 td {
   padding: 14px;
   text-align: left;
-}
-
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-}
-
-.loading-text {
-  margin-top: 20px;
-  color: #666;
-  font-size: 1.1rem;
 }
 </style>

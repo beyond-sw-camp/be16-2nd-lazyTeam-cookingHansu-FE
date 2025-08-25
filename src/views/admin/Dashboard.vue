@@ -5,10 +5,11 @@
     <p class="mb-6">요리한수 플랫폼 관리 현황</p>
 
     <!-- 로딩 상태 -->
-    <div v-if="dashboardStore.isLoading" class="loading-container">
-      <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
-      <p class="loading-text">대시보드 데이터를 불러오는 중...</p>
-    </div>
+    <LoadingScreen 
+      v-if="dashboardStore.isLoading"
+      title="대시보드 데이터를 불러오는 중"
+      description="플랫폼 현황 정보를 준비하고 있어요..."
+    />
 
     <!-- 에러 상태 -->
     <div v-else-if="dashboardStore.getError" class="error-container">
@@ -40,6 +41,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useDashboardStore } from '@/store/admin/dashboard'
 import ErrorAlert from '@/components/common/ErrorAlert.vue'
+import LoadingScreen from '@/components/common/LoadingScreen.vue'
 
 const dashboardStore = useDashboardStore()
 
@@ -84,20 +86,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-}
-
-.loading-text {
-  margin-top: 20px;
-  color: #666;
-  font-size: 1.1rem;
-}
-
 .error-container {
   margin: 20px 0;
 }
