@@ -1,6 +1,5 @@
 <template>
   <div class="lecture-detail-page">
-    <Header />
     
     <div v-if="lecture" class="detail-container">
       <!-- 메인 콘텐츠 영역 -->

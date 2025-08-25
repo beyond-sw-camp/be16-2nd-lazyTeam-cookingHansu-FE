@@ -1,6 +1,5 @@
 <template>
   <div class="lecture-create-page">
-    <Header />
     <div class="content">
       <div class="form-container">
         <h1 class="page-title">강의 등록</h1>

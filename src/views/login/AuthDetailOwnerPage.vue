@@ -1,153 +1,267 @@
 <template>
-  <div class="add-info-page">
-    <div class="top-bar">
-      <span class="back-link" @click="goHome">&lt; 홈으로 돌아가기</span>
-    </div>
-    <ProgressStep :step="3" />
-    <transition name="box-slide" mode="out-in">
-      <div class="add-info-box" v-if="showBox" key="add-info-box">
-        <div class="form-title">요리한수</div>
-        <div class="form-subtitle">추가 인증</div>
-        <form class="form-content" @submit.prevent="onSubmit">
-          <div class="section-title">요식업 자영업자 인증</div>
-          <!-- 요식업 종류 -->
-          <label class="form-label">요식업 종류 <span class="required">*</span></label>
-          <div class="select-wrapper">
-            <select class="form-input" v-model="form.type" required>
-              <option disabled value="">요식업 종류를 선택하세요</option>
-              <option v-for="opt in typeOptions" :key="opt" :value="opt">{{ opt }}</option>
-            </select>
-            <span class="select-arrow" :class="{ open: selectOpen }">
-              <svg width="18" height="18" viewBox="0 0 20 20"><path d="M5 8l5 5 5-5" stroke="#bdbdbd" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
-            </span>
-          </div>
-          <!-- 사업자 등록증 -->
-          <label class="form-label">사업자 등록증 <span class="required">*</span></label>
-          <div class="file-upload">
-            <input type="file" accept="image/*,.pdf" @change="onBizFileChange" id="bizFile" style="display:none;" />
-            <label for="bizFile" class="file-label">
-              <span v-if="form.bizFileName">{{ form.bizFileName }}</span>
-              <span v-else class="file-placeholder">
-                <svg width="20" height="20" viewBox="0 0 20 20" style="vertical-align:middle;margin-right:6px;"><path d="M10 3v10m0 0l-3-3m3 3l3-3" stroke="#bdbdbd" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
-                사업자 등록증을 선택하세요
-              </span>
-            </label>
-          </div>
-          <!-- 사업자 등록번호 -->
-          <label class="form-label">사업자 등록번호 <span class="required">*</span></label>
-          <input class="form-input" v-model="form.bizNum" placeholder="사업자 등록번호를 입력하세요" />
-          <!-- 가게 이름 -->
-          <label class="form-label">가게 이름 <span class="required">*</span></label>
-          <input class="form-input" v-model="form.shopName" placeholder="가게 이름을 입력하세요" />
-          <!-- 가게 주소 -->
-          <!-- <label class="form-label">가게 주소 <span class="required">*</span></label>
-          <input class="form-input" v-model="form.shopAddr" placeholder="가게 주소를 입력하세요" /> -->
-          <Address />
-        </form>
-        <div class="form-actions">
-            <button type="button" class="btn prev" @click="onPrev">이전</button>
-            <button type="button" class="btn next">가입 완료</button>
-        </div>
-      </div>
-    </transition>
-  </div>
-</template>
-<script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import ProgressStep from '@/components/ProgressStep.vue'
-import Address from '@/components/login/Address.vue'
+  <LoginLayout title="요리한수" subtitle="추가 인증" :show-box="showBox">
+    <template #progress>
+      <ProgressStep :step="3" />
+    </template>
 
-const router = useRouter()
-const showBox = ref(true)
-const selectOpen = ref(false)
-const typeOptions = ['한식', '일식', '중식', '양식', '기타']
+    <form class="form-content" @submit.prevent="onSubmit">
+      <div class="section-title">요식업 자영업자 인증</div>
+
+      <FormSelect
+        v-model="form.shopCategory"
+        label="요식업 종류"
+        placeholder="요식업 종류를 선택하세요"
+        :options="shopCategoryOptions"
+        :required="true"
+        :has-error="errors.shopCategory"
+        error-message="요식업 종류를 선택해 주세요!"
+        @input="onShopCategorySelect"
+      />
+
+      <FileUpload
+        v-model="form.businessFile"
+        label="사업자 등록증"
+        placeholder="사업자 등록증을 선택하세요"
+        :required="true"
+        :has-error="errors.businessFile"
+        error-message="사업자 등록증을 선택해 주세요!"
+        @update:modelValue="onFileSelect"
+      />
+
+      <FormInput
+        v-model="form.businessNumber"
+        label="사업자 등록번호"
+        placeholder="사업자 등록번호를 입력하세요"
+        :required="true"
+        :has-error="errors.businessNumber"
+        error-message="사업자 등록번호를 입력해 주세요!"
+        @input="onBusinessNumberInput"
+      />
+
+      <FormInput
+        v-model="form.businessName"
+        label="가게 이름"
+        placeholder="가게 이름을 입력하세요"
+        :required="true"
+        :has-error="errors.businessName"
+        error-message="가게 이름을 입력해 주세요!"
+        @input="onBusinessNameInput"
+      />
+
+      <Address />
+    </form>
+
+    <FormButtons @prev="onPrev" @next="showConfirmationModal" next-text="가입 완료" />
+
+    <!-- 확인 모달 -->
+    <CommonModal
+      v-model="showModal"
+      type="info"
+      title="요식업 자영업자 회원 등록"
+      message="요식업 자영업자로 회원 등록하시겠습니까? 등록 후에는 관리자 승인까지 권한이 제한됩니다."
+      confirm-text="YES"
+      cancel-text="NO"
+      :loading="isSubmitting"
+      @confirm="confirmRegistration"
+      @cancel="showModal = false"
+    />
+  </LoginLayout>
+</template>
+
+<script setup>
+import { ref, onMounted } from "vue";
+import { useRouter } from "vue-router";
+import { useAuthStore } from "@/store/auth/auth";
+import ProgressStep from "@/components/login/ProgressStep.vue";
+import LoginLayout from "@/components/login/LoginLayout.vue";
+import FormSelect from "@/components/login/FormSelect.vue";
+import FormInput from "@/components/login/FormInput.vue";
+import FileUpload from "@/components/login/FileUpload.vue";
+import FormButtons from "@/components/login/FormButtons.vue";
+import CommonModal from "@/components/common/CommonModal.vue";
+import Address from "@/components/login/Address.vue";
+import { authService } from "@/services/auth/authService";
+import {
+  saveStepData,
+  getStepData,
+  clearRegistrationData,
+  getCompleteRegistrationData,
+} from "@/utils/userRegistration";
+
+const router = useRouter();
+const authStore = useAuthStore();
+const showBox = ref(true);
+const showModal = ref(false);
+const isSubmitting = ref(false);
+
+// 백엔드 엔티티에 맞는 요식업 종류
+const shopCategoryOptions = [
+  { value: "KOREAN", label: "한식" },
+  { value: "JAPANESE", label: "일식" },
+  { value: "CHINESE", label: "중식" },
+  { value: "WESTERN", label: "양식" },
+  { value: "ETC", label: "기타" },
+];
+
 const form = ref({
-  type: '',
-  bizFile: null,
-  bizFileName: '',
-  bizNum: '',
-  shopName: '',
-  shopAddr: ''
-})
-function goHome() { router.push('/') }
-function onPrev() { router.push('/add-info') }
-function onSubmit() { router.push('/complete') }
-function onBizFileChange(e) {
-  const file = e.target.files[0]
-  if (file) {
-    form.value.bizFile = file
-    form.value.bizFileName = file.name
+  shopCategory: "",
+  businessFile: null, // businessUrl에서 businessFile로 변경
+  businessNumber: "",
+  businessName: "",
+  businessAddress: "",
+});
+
+const errors = ref({
+  shopCategory: false,
+  businessFile: false, // businessUrl에서 businessFile로 변경
+  businessNumber: false,
+  businessName: false,
+});
+
+onMounted(() => {
+  // 이전에 저장된 데이터가 있으면 불러오기
+  const savedData = getStepData("authDetail");
+  if (savedData) {
+    form.value.shopCategory = savedData.shopCategory || "";
+    form.value.businessNumber = savedData.businessNumber || "";
+    form.value.businessName = savedData.businessName || "";
+    form.value.businessAddress = savedData.businessAddress || "";
+  }
+
+  // 초기 에러 상태 초기화
+  errors.value.shopCategory = false;
+  errors.value.businessFile = false; // businessUrl에서 businessFile로 변경
+  errors.value.businessNumber = false;
+  errors.value.businessName = false;
+});
+
+function onPrev() {
+  router.push("/add-info");
+}
+
+function showConfirmationModal() {
+  if (validate()) {
+    showModal.value = true;
+  }
+}
+
+async function confirmRegistration() {
+  try {
+    isSubmitting.value = true;
+    
+    // localStorage에 현재 단계 데이터 저장
+    saveStepData("authDetail", {
+      shopCategory: form.value.shopCategory,
+      businessNumber: form.value.businessNumber,
+      businessName: form.value.businessName,
+      businessAddress: form.value.businessAddress,
+      businessFile: form.value.businessFile ? form.value.businessFile.name : null, // businessUrl에서 businessFile로 변경
+    });
+
+    // 인증 스토어의 사용자 정보 업데이트
+    authStore.updateUserInfo({
+      business: {
+        shopCategory: form.value.shopCategory,
+        businessNumber: form.value.businessNumber,
+        businessName: form.value.businessName,
+        businessAddress: form.value.businessAddress,
+        businessFile: form.value.businessFile ? form.value.businessFile.name : null, // businessUrl에서 businessFile로 변경
+      }
+    });
+
+    // 현재 사용자 ID 가져오기
+    const currentUser = authStore.user;
+    if (!currentUser || !currentUser.id) {
+      throw new Error("사용자 정보를 찾을 수 없습니다.");
+    }
+
+    // 최종 회원가입 완료 - FormData를 사용하여 multipart 방식으로 전송
+    const registrationData = getCompleteRegistrationData();
+    
+    // FormData 생성
+    const formData = new FormData();
+    
+    // 텍스트 데이터 추가
+    Object.keys(registrationData).forEach(key => {
+      if (key !== 'businessFile' && registrationData[key] !== null && registrationData[key] !== undefined) {
+        formData.append(key, registrationData[key]);
+      }
+    });
+    
+    // 파일 데이터 추가 (사업자 등록증) - 백엔드 필드명과 일치
+    if (form.value.businessFile && form.value.businessFile instanceof File) {
+      formData.append('businessFile', form.value.businessFile); // businessFile로 변경
+    }
+    
+    const response = await authService.addUserInfoFormData(
+      currentUser.id,
+      formData
+    );
+
+    if (response.isSuccess()) {
+      // 성공 시 localStorage 데이터 초기화
+      clearRegistrationData();
+      showModal.value = false;
+      router.push("/complete");
+    } else {
+      throw new Error(response.getMessage() || "회원가입에 실패했습니다.");
+    }
+  } catch (error) {
+    console.error("회원가입 오류:", error);
+    alert(
+      error.message || "회원가입 중 오류가 발생했습니다. 다시 시도해주세요."
+    );
+  } finally {
+    isSubmitting.value = false;
+  }
+}
+
+function validate() {
+  errors.value.shopCategory = !form.value.shopCategory;
+  errors.value.businessFile = !form.value.businessFile; // businessUrl에서 businessFile로 변경
+  errors.value.businessNumber = !form.value.businessNumber;
+  errors.value.businessName = !form.value.businessName;
+  return (
+    !errors.value.shopCategory &&
+    !errors.value.businessFile &&
+    !errors.value.businessNumber &&
+    !errors.value.businessName
+  );
+}
+
+// 요식업 종류 선택 시 에러 제거
+function onShopCategorySelect() {
+  if (form.value.shopCategory && errors.value.shopCategory) {
+    errors.value.shopCategory = false;
+  }
+}
+
+// 파일 선택 시 에러 제거
+function onFileSelect() {
+  if (form.value.businessFile && errors.value.businessFile) { // businessUrl에서 businessFile로 변경
+    errors.value.businessFile = false; // businessUrl에서 businessFile로 변경
+  }
+}
+
+// 사업자 번호 입력 시 에러 제거
+function onBusinessNumberInput() {
+  if (form.value.businessNumber && errors.value.businessNumber) {
+    errors.value.businessNumber = false;
+  }
+}
+
+// 가게 이름 입력 시 에러 제거
+function onBusinessNameInput() {
+  if (form.value.businessName && errors.value.businessName) {
+    errors.value.businessName = false;
   }
 }
 </script>
+
 <style scoped>
-@import '../../assets/fonts/global.scss';
-@import '../../assets/styles/layout.css';
-.add-info-page {
-  min-height: 100vh;
-  height: 100vh;
-  background: #F5F1E8;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  font-family: 'NotoSansKR', 'Noto Sans', sans-serif;
-  overflow: hidden;
-}
-.top-bar {
-  width: 100%;
-  max-width: 600px;
-  margin: 0 auto 12px auto;
-  padding-top: 32px;
-  display: flex;
-  align-items: center;
-}
-.back-link {
-  color: var(--color-text);
-  font-size: 1.05rem;
-  cursor: pointer;
-  font-weight: 500;
-  margin-left: 4px;
-  transition: color 0.18s;
-}
-.back-link:hover {
-  color: var(--color-primary);
-}
-.add-info-box {
-  background: var(--color-white);
-  border-radius: 16px;
-  box-shadow: 0 2px 16px rgba(0,0,0,0.07);
-  padding: 32px 32px 32px 32px;
-  width: 100%;
-  max-width: 600px;
-  margin: 0 auto 30px auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  overflow-y: auto;
-  max-height: calc(100vh - 40px);
-  transition: box-shadow 0.2s;
-}
-.form-title {
-  color: var(--color-primary);
-  font-weight: bold;
-  font-size: 2rem;
-  margin-bottom: 5px;
-  text-align: center;
-}
-.form-subtitle {
-  color: var(--color-text);
-  font-size: 1rem;
-  margin-bottom: 28px;
-  text-align: center;
-}
-.section-title {
-  color: var(--color-text);
-  font-size: 1.13rem;
-  font-weight: 600;
-  margin-bottom: 10px;
-  margin-top: 2px;
-}
+@import "../../assets/fonts/global.scss";
+@import "../../assets/styles/layout.css";
+
 .form-content {
   width: 100%;
   display: flex;
@@ -155,133 +269,12 @@ function onBizFileChange(e) {
   gap: 12px;
   overflow-y: auto;
 }
-.form-label {
-  font-size: 1.05rem;
+
+.section-title {
   color: var(--color-text);
-  font-weight: 500;
-  margin-bottom: 2px;
+  font-size: 1.13rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+  margin-top: 2px;
 }
-.required {
-  color: #ff884d;
-  font-size: 1.1em;
-  margin-left: 2px;
-}
-.form-input {
-  width: 100%;
-  height: 52px;
-  border: 1.5px solid #e9ecef;
-  border-radius: 8px;
-  padding: 12px 14px;
-  font-size: 1.08rem;
-  font-family: inherit;
-  margin-bottom: 4px;
-  background: var(--color-background);
-  color: var(--color-text);
-  box-sizing: border-box;
-  transition: border 0.18s;
-}
-.input-error {
-  color: #e53935;
-  font-size: 0.97rem;
-  margin-bottom: 4px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: 2px;
-}
-.file-upload {
-  display: flex;
-  align-items: center;
-  margin-bottom: 8px;
-}
-.file-label {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  min-height: 52px;
-  border-radius: 8px;
-  background: #f3f3f3;
-  border: 1.5px solid #e9ecef;
-  cursor: pointer;
-  padding: 0 14px;
-  font-size: 1.08rem;
-  color: #bdbdbd;
-  transition: border 0.18s;
-}
-.file-label:hover {
-  border: 1.5px solid var(--color-primary);
-}
-.file-placeholder {
-  color: #bdbdbd;
-  display: flex;
-  align-items: center;
-  font-size: 1.05rem;
-}
-.form-actions {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  margin-top: 18px;
-}
-.btn {
-  width: 48%;
-  height: 44px;
-  border: none;
-  border-radius: 8px;
-  font-size: 1.08rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: filter 0.15s, background 0.18s, color 0.18s, box-shadow 0.18s;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-}
-.btn.prev {
-  background: var(--color-background);
-  color: var(--color-text);
-  border: 1.5px solid #e9ecef;
-}
-.btn.next {
-  background: var(--color-primary);
-  color: var(--color-white);
-}
-.btn:hover {
-  filter: brightness(0.97);
-  box-shadow: 0 2px 8px rgba(255,107,53,0.08);
-}
-.btn.active {
-  filter: brightness(0.93);
-  background: #ff884d !important;
-  color: #fff !important;
-}
-.select-wrapper {
-  position: relative;
-  width: 100%;
-}
-.select-arrow {
-  position: absolute;
-  top: 50%;
-  right: 18px;
-  transform: translateY(-50%) rotate(0deg);
-  pointer-events: none;
-  transition: transform 0.2s;
-  width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.select-arrow.open {
-  transform: translateY(-50%) rotate(180deg);
-}
-.box-slide-enter-active, .box-slide-leave-active {
-  transition: all 0.35s cubic-bezier(.4,0,.2,1);
-}
-.box-slide-enter-from {
-  opacity: 0;
-  transform: translateX(60px);
-}
-.box-slide-leave-to {
-  opacity: 0;
-  transform: translateX(-60px);
-}
-</style> 
+</style>

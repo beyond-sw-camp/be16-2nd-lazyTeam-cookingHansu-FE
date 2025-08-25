@@ -120,6 +120,15 @@
 
 ---
 
+### 개발 서버 실행
+
+```bash
+npm install
+npm run dev
+```
+
+---
+
 ## 📄 Commit Convention
 
 | 태그       | 설명 |

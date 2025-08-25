@@ -1,6 +1,5 @@
 <template>
   <div class="lecture-edit-page">
-    <Header />
     
     <div class="edit-container">
              <div class="edit-header">
