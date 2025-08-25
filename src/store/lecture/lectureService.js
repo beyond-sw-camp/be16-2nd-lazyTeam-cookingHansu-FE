@@ -68,10 +68,7 @@ export const lectureService = {
   // 장바구니 조회
   async getCartItems() {
     try {
-      // 테스트용 유저 ID (백엔드에서 사용하는 UUID)
-      const testUserId = "00000000-0000-0000-0000-000000000000";
-      
-      const response = await apiGet(`/cart/list/${testUserId}`);
+      const response = await apiGet('/cart/list');
       console.log('장바구니 조회 응답:', response);
       
       // response가 fetch Response 객체이므로 JSON으로 파싱
@@ -86,12 +83,7 @@ export const lectureService = {
   // 장바구니 전체 비우기
   async clearCart() {
     try {
-      // 테스트용 유저 ID (백엔드에서 사용하는 UUID)
-      const testUserId = "00000000-0000-0000-0000-000000000000";
-      
-      const response = await apiDelete('/cart/deleteAll', {
-        userId: testUserId
-      });
+      const response = await apiDelete('/cart/deleteAll');
       console.log('장바구니 전체 삭제 응답:', response);
       
       // response가 fetch Response 객체이므로 JSON으로 파싱
