@@ -177,7 +177,7 @@ router.beforeEach(async (to, from, next) => {
   // 루트 경로('/')에 대한 처리
   if (to.path === '/' && to.name === 'Home') {
     if (authStore.isAuthenticated) {
-      // 로그인된 사용자는 recipes 페이지로 리다이렉트
+      // 로그인된 사용자는 recipes 페이지로 리다이렉트 (관리자 포함)
       next('/recipes');
       return;
     } else {
@@ -225,6 +225,7 @@ router.beforeEach(async (to, from, next) => {
 
   // 추가 정보 입력 페이지들에 대한 접근 제어
   if (authStore.isAuthenticated && authStore.user) {
+    // admin 사용자도 추가 정보 입력 페이지에 접근할 수 있음 (필요시)
     const registrationStep = authStore.getRegistrationStep;
     
     // 이미 등록이 완료된 사용자가 추가 정보 입력 페이지에 접근하려는 경우
@@ -279,7 +280,7 @@ router.beforeEach(async (to, from, next) => {
     }
     
     if (to.path === '/detail-owner' && registrationStep !== 'detail-owner') {
-      if (registrationStep === 'add-info') {
+      if (registrationStep === '/add-info') {
         next('/add-info');
         return;
       } else if (registrationStep === 'complete') {
