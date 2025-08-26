@@ -144,6 +144,7 @@ import { ref, computed, onMounted, watch, onBeforeUnmount } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { storeToRefs } from 'pinia';
 import { useChatStore } from '@/store/chat/chat';
+import { useAuthStore } from '@/store/auth/auth';
 import ChatDetailView from "@/views/chat/chatDetailScreen.vue";
 import { formatChatTime } from '@/utils/timeUtils';
 import LoadingScreen from '@/components/common/LoadingScreen.vue';
@@ -152,6 +153,7 @@ import ErrorAlert from '@/components/common/ErrorAlert.vue';
 const route = useRoute();
 const router = useRouter();
 const chatStore = useChatStore();
+const authStore = useAuthStore();
 const { rooms, currentRoomId, loading, totalUnreadCount, error } = storeToRefs(chatStore);
 const hasRooms = computed(() => chatStore.hasRooms);
 
@@ -245,6 +247,13 @@ watch(rooms, (newRooms) => {
 
 // ✅ 추가: onMounted 복원
 onMounted(async () => {
+  // 로그인 상태 확인
+  if (!authStore.getIsAuthenticated || !authStore.user?.id) {
+    console.log('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
+    router.push('/login');
+    return;
+  }
+  
   await chatStore.fetchMyChatRooms();
   
   // 채팅방 목록 로드 완료 후 autoSelect 체크

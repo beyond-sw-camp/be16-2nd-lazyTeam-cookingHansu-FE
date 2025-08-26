@@ -93,6 +93,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useNoticeStore } from '../../store/notice/notice';
+import { useAuthStore } from '../../store/auth/auth';
 import { formatDateTime } from '../../utils/timeUtils';
 import Pagination from '../../components/common/Pagination.vue';
 import ErrorAlert from '../../components/common/ErrorAlert.vue';
@@ -101,13 +102,13 @@ import { useChatStore } from '../../store/chat/chat';
 
 const router = useRouter();
 const noticeStore = useNoticeStore();
+const authStore = useAuthStore();
 const chatStore = useChatStore();
 
-// 관리자 여부 확인 (테스팅용)
+// 관리자 여부 확인 (실제 사용자 역할 기반)
 const isAdmin = computed(() => {
-  // 테스팅을 위해 관리자로 설정
-  localStorage.setItem('userRole', 'ADMIN');
-  return true;
+  const userRole = authStore.getUserRole;
+  return userRole === 'ADMIN';
 });
 
 // 테스트용 채팅방 생성 상태
@@ -147,9 +148,16 @@ const createTestChatRoom = async () => {
   try {
     creatingChatRoom.value = true;
     
-    // 테스트용 사용자 ID (고정)
-    const myId = '550e8400-e29b-41d4-a716-446655440001';
-    const inviteeId = '550e8400-e29b-41d4-a716-446655440002';
+    // 실제 사용자 ID 사용
+    const myId = authStore.user?.id;
+    if (!myId) {
+      alert('로그인이 필요합니다.');
+      router.push('/login');
+      return;
+    }
+    
+    // 테스트용 상대방 ID (고정) - 실제 서비스에서는 다른 사용자 ID를 사용해야 함
+    const inviteeId = 'c729b3e2-bf37-4107-936f-e64cbe60f67e';
     
     console.log('테스트용 채팅방 생성 시작:', { myId, inviteeId });
     
