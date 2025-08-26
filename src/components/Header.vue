@@ -487,13 +487,17 @@ const toggleMobileMenu = () => {
 /* Desktop Styles */
 .header-desktop {
   width: 100%;
+  display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0 24px;
+  min-height: 80px;
 }
 
 .logo-link {
   text-decoration: none;
+  flex-shrink: 0;
+  min-width: 120px;
 }
 
 .logo-text {
@@ -504,9 +508,15 @@ const toggleMobileMenu = () => {
 }
 
 .nav-menu {
+  flex: 1;
   display: flex;
-  gap: 32px;
+  justify-content: center;
   align-items: center;
+  position: absolute;
+  left: 47.5%;
+  transform: translateX(-50%);
+  gap: 32px;
+  margin: 0 24px;
 }
 
 .nav-link {
@@ -514,6 +524,7 @@ const toggleMobileMenu = () => {
   text-decoration: none;
   font-size: 14px;
   transition: color 0.3s ease;
+  white-space: nowrap;
 }
 
 .nav-link:hover {
@@ -528,7 +539,8 @@ const toggleMobileMenu = () => {
 .header-right {
   display: flex;
   align-items: center;
-  gap: 16px;
+  flex-shrink: 0;
+  min-width: 300px;
 }
 
 .login-btn {
@@ -538,30 +550,38 @@ const toggleMobileMenu = () => {
 .user-section {
   display: flex;
   align-items: center;
-  gap: 12px;
+  width: 100%;
+  justify-content: flex-end;
 }
 
 .profile-avatar {
   border: 2px solid var(--color-primary);
+  flex-shrink: 0;
 }
 
 .notification-btn {
   position: relative;
+  flex-shrink: 0;
 }
 
 .cart-btn {
   position: relative;
+  flex-shrink: 0;
+  margin-left: -12px;
 }
 
 .welcome-text {
   color: var(--color-text);
   font-size: 14px;
   white-space: nowrap;
+  flex-shrink: 0;
+  margin-right: 12px;
 }
 
 .logout-btn {
   font-size: 12px;
   font-weight: 500;
+  flex-shrink: 0;
 }
 
 .admin-logout-btn {
@@ -575,12 +595,66 @@ const toggleMobileMenu = () => {
   color: white;
 }
 
+/* 반응형 데스크탑 스타일 */
+@media (max-width: 1200px) {
+  .header-desktop {
+    padding: 0 16px;
+  }
+  
+  .nav-menu {
+    gap: 24px;
+    margin: 0 16px;
+  }
+  
+  .welcome-text {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 1150px) {
+  .welcome-text {
+    display: none;
+  }
+  
+  .user-section {
+    min-width: 250px;
+  }
+  
+  .header-right {
+    min-width: 250px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .nav-menu {
+    gap: 20px;
+    margin: 0 12px;
+  }
+  
+  .user-section {
+    min-width: 220px;
+  }
+  
+  .header-right {
+    min-width: 220px;
+  }
+}
+
+@media (max-width: 960px) {
+  .header-desktop {
+    display: none;
+  }
+}
+
 /* Mobile Styles */
 .header-mobile {
   width: 100%;
+  display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0 16px;
+  min-height: 72px;
+  position: relative;
 }
 
 .mobile-logged-out {
@@ -598,9 +672,12 @@ const toggleMobileMenu = () => {
 }
 
 .mobile-logo-center {
-  flex: 1;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   justify-content: center;
+  align-items: center;
 }
 
 .mobile-logo-center .logo-text {
@@ -608,19 +685,26 @@ const toggleMobileMenu = () => {
 }
 
 .mobile-user-section {
-    display: flex;
-    align-items: center;
-  gap: 8px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
-.mobile-notification-btn,
+.mobile-notification-btn {
+  position: relative;
+  flex-shrink: 0;
+}
+
 .mobile-cart-btn {
   position: relative;
+  flex-shrink: 0;
+  margin-left: -12px;
 }
 
 .hamburger-btn {
   color: var(--color-text);
   transition: color 0.3s ease;
+  flex-shrink: 0;
 }
 
 .hamburger-btn:hover {
@@ -631,6 +715,8 @@ const toggleMobileMenu = () => {
 .mobile-logout-btn {
   font-size: 12px;
   font-weight: 500;
+  flex-shrink: 0;
+  margin-left: 12px;
 }
 
 .mobile-logout-btn.admin-logout-btn {
@@ -642,6 +728,44 @@ const toggleMobileMenu = () => {
 .mobile-logout-btn.admin-logout-btn:hover {
   background-color: var(--color-primary);
   color: white;
+}
+
+/* 반응형 모바일 스타일 */
+@media (max-width: 600px) {
+  .header-mobile {
+    padding: 0 12px;
+  }
+  
+  .mobile-logo-center .logo-text {
+    font-size: 18px;
+  }
+  
+  .mobile-user-section {
+    gap: 8px;
+  }
+  
+  .mobile-notification-btn,
+  .mobile-cart-btn {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-mobile {
+    padding: 0 8px;
+  }
+  
+  .mobile-logo-center .logo-text {
+    font-size: 16px;
+  }
+  
+  .mobile-user-section {
+    gap: 6px;
+  }
+  
+  .welcome-text {
+    display: none;
+  }
 }
 
 .mobile-nav-drawer {
