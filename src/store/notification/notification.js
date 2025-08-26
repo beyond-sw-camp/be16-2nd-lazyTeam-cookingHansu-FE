@@ -27,7 +27,6 @@ export const useNotificationStore = defineStore('notification', () => {
   const eventSource = ref(null)
   const isConnected = ref(false)
 
-  // Getters
   const unreadNotifications = computed(() => 
     notifications.value.filter(n => !n.isRead)
   )
@@ -52,13 +51,7 @@ export const useNotificationStore = defineStore('notification', () => {
     error.value = null
     
     try {
-      const { userId } = params
-      
-      if (!userId) {
-        throw new Error('사용자 ID가 필요합니다.')
-      }
-      
-      const response = await notificationService.getNotifications({ userId })
+      const response = await notificationService.getNotifications()
       
       // 알림 정렬: 읽지 않은 알림 -> 읽은 알림 순서
       const sortedNotifications = response.notifications.sort((a, b) => {
@@ -125,16 +118,11 @@ export const useNotificationStore = defineStore('notification', () => {
   /**
    * 특정 알림을 읽음으로 표시
    * @param {number} notificationId - 알림 ID
-   * @param {string} userId - 사용자 ID
    */
-  const markAsRead = async (notificationId, userId) => {
+  const markAsRead = async (notificationId) => {
     try {
-      if (!userId) {
-        throw new Error('사용자 ID가 필요합니다.')
-      }
-      
       // 백엔드 API 호출
-      await notificationService.markAsRead(notificationId, userId)
+      await notificationService.markAsRead(notificationId)
       
       // 로컬 상태 업데이트
       const notification = notifications.value.find(n => n.id === notificationId)
@@ -183,14 +171,10 @@ export const useNotificationStore = defineStore('notification', () => {
    * 특정 알림 삭제
    * @param {number} notificationId - 알림 ID
    */
-  const deleteNotification = async (notificationId, userId) => {
+  const deleteNotification = async (notificationId) => {
     try {
-      if (!userId) {
-        throw new Error('사용자 ID가 필요합니다.')
-      }
-      
       // 백엔드 API 호출
-      await notificationService.deleteNotification(notificationId, userId)
+      await notificationService.deleteNotification(notificationId)
       
       // 로컬 상태에서 제거
       const index = notifications.value.findIndex(n => n.id === notificationId)
@@ -293,11 +277,11 @@ export const useNotificationStore = defineStore('notification', () => {
         isConnected.value = false
         
         // 재연결 시도 (3초 후)
-        setTimeout(() => {
-          if (!isConnected.value) {
-            connectToNotificationStream(userId)
-          }
-        }, 3000)
+         setTimeout(() => {
+           if (!isConnected.value) {
+             connectToNotificationStream()
+           }
+         }, 3000)
       }
     )
 
@@ -320,33 +304,35 @@ export const useNotificationStore = defineStore('notification', () => {
    * @param {Object} notification - 알림 객체
    */
   const showBrowserNotification = (notification) => {
-    if (!('Notification' in window) || Notification.permission !== 'granted') {
-      return
-    }
+    // 브라우저 알림 비활성화
+    return;
+    // if (!('Notification' in window) || Notification.permission !== 'granted') {
+    //   return
+    // }
 
-    try {
-      const browserNotification = new Notification(getNotificationTitle(notification), {
-        body: notification.content,
-        icon: '/favicon.ico',
-        badge: '/favicon.ico',
-        tag: `notification-${notification.id}`,
-        requireInteraction: false,
-        silent: false
-      })
+    // try {
+    //   const browserNotification = new Notification(getNotificationTitle(notification), {
+    //     body: notification.content,
+    //     icon: '/favicon.ico',
+    //     badge: '/favicon.ico',
+    //     tag: `notification-${notification.id}`,
+    //     requireInteraction: false,
+    //     silent: false
+    //   })
 
-      // 5초 후 자동 닫기
-      setTimeout(() => {
-        browserNotification.close()
-      }, 5000)
+    //   // 5초 후 자동 닫기
+    //   setTimeout(() => {
+    //     browserNotification.close()
+    //   }, 5000)
 
-      // 클릭 시 알림을 읽음으로 표시하고 관련 페이지로 이동
-      browserNotification.onclick = () => {
-        markAsRead(notification.id)
-        browserNotification.close()
-      }
-    } catch (error) {
-      console.error('브라우저 알림 표시 실패:', error)
-    }
+    //   // 클릭 시 알림을 읽음으로 표시하고 관련 페이지로 이동
+    //   browserNotification.onclick = () => {
+    //     markAsRead(notification.id)
+    //     browserNotification.close()
+    //   }
+    // } catch (error) {
+    //   console.error('브라우저 알림 표시 실패:', error)
+    // }
   }
 
   /**
@@ -410,7 +396,6 @@ export const useNotificationStore = defineStore('notification', () => {
   }
 
   return {
-    // State
     notifications,
     unreadCount,
     loading,
