@@ -47,7 +47,7 @@ const routes = [
     component: AdminLoginPage,
   },
   {
-    path: "/payment-details/:orderId",
+    path: "/payment-details/:lectureId",
     name: "PaymentDetails",
     component: PaymentDetails,
     meta: { requiresAuth: true },

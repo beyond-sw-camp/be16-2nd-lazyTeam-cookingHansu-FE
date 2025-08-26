@@ -1,6 +1,5 @@
 <template>
   <div class="lecture-detail-page">
-    
     <div v-if="lecture" class="detail-container">
       <!-- 메인 콘텐츠 영역 -->
       <div class="main-content">
@@ -112,12 +111,12 @@
                :title="getLessonTitle(lesson, index)"
              >
                              <div class="lesson-info">
-                                   <div class="lesson-icon">
-                    <span v-if="!lesson.videoUrl" class="no-video-icon">⚠️</span>
-                    <span v-else-if="lesson.isPreview" class="play-icon">▶</span>
-                    <span v-else-if="showLockIcon" class="lock-icon">🔒</span>
-                    <span v-else class="play-icon">▶</span>
-                  </div>
+                                                                       <div class="lesson-icon">
+                                        <span v-if="!lesson.videoUrl" class="no-video-icon">⚠️</span>
+                                        <span v-else-if="!isPurchased && !lesson.isPreview" class="lock-icon">🔒</span>
+                                        <span v-else class="play-icon">▶</span>
+                                      </div>
+
                                                                       <div class="lesson-content">
                      <h3>{{ lesson.description }}</h3>
                      <p>{{ lesson.title }}</p>
@@ -315,6 +314,11 @@
               <span class="share-icon">📤</span>
               <span>공유하기</span>
             </div>
+            <!-- 신고하기 버튼 -->
+            <div class="report-section">
+              <span class="report-icon">🚨</span>
+              <span>신고하기</span>
+            </div>
                          <!-- 좋아요 버튼 -->
              <div class="like-section">
                <button class="like-button" :class="{ 'liked': isLiked }" @click="toggleLike">
@@ -498,6 +502,9 @@
               rows="5"
             ></textarea>
           </div>
+
+
+
         </div>
         <div class="modal-footer">
           <button class="cancel-btn" @click="showQAModal = false">취소</button>
@@ -660,6 +667,38 @@
       @confirm="deleteLecture"
       @cancel="cancelLectureDelete"
     />
+
+    <!-- 비디오 재생 모달 -->
+    <div v-if="showVideoModal" class="modal-overlay video-modal-overlay" @click="closeVideoModal">
+      <div class="video-modal" @click.stop>
+        <div class="video-modal-header">
+          <h3>{{ currentVideoLesson ? currentVideoLesson.title : '강의 영상' }}</h3>
+          <button class="close-btn" @click="closeVideoModal">×</button>
+        </div>
+        <div class="video-modal-content">
+          <div class="video-player-container">
+            <video 
+              v-if="currentVideoUrl"
+              ref="videoPlayer"
+              class="video-player"
+              controls
+              autoplay
+              crossorigin="anonymous"
+              @ended="onVideoEnded"
+              @error="onVideoError"
+              @loadstart="onVideoLoadStart"
+              @canplay="onVideoCanPlay"
+            >
+              <source :src="currentVideoUrl" type="video/mp4">
+              브라우저가 비디오를 지원하지 않습니다.
+            </video>
+            <div v-else class="video-error">
+              <p>비디오를 불러올 수 없습니다.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -692,6 +731,9 @@ export default {
       showLoginRequiredModal: false,
       showDeleteConfirmModal: false,
       showLectureDeleteModal: false,
+      showVideoModal: false,
+      currentVideoLesson: null,
+      currentVideoUrl: '',
       deleteConfirmData: {},
       notificationData: {},
       errorMessage: '',
@@ -771,12 +813,13 @@ export default {
     
     // 강의 구매자인지 확인
     isPurchaser() {
-      return this.userRole === 'PURCHASER' || this.isPurchased;
+      return this.isPurchased;
     },
     
     // 관리자인지 확인
     isAdmin() {
-      return this.userRole === 'ADMIN';
+      const isAdmin = this.userRole === 'ADMIN';
+      return isAdmin;
     },
     
     // 로그인하지 않은 사용자인지 확인
@@ -833,9 +876,11 @@ export default {
       return this.isPurchased || this.isAuthor || this.isAdmin;
     },
     
-    // 자물쇠 표시 여부 (일반 사용자만)
+    // 자물쇠 표시 여부 (구매하지 않은 일반 사용자만)
     showLockIcon() {
-      return this.isGuest;
+      const showLock = !this.canWatchLecture;
+      console.log('자물쇠 표시 여부:', showLock, '구매상태:', this.isPurchased, '작성자:', this.isAuthor, '관리자:', this.isAdmin);
+      return showLock;
     }
   },
   methods: {
@@ -869,7 +914,7 @@ export default {
            this.userRole = 'GENERAL';
          }
         
-        console.log('사용자 역할 확인:', this.userRole);
+
              } catch (error) {
          console.error('사용자 역할 확인 실패:', error);
          this.userRole = 'GENERAL';
@@ -882,8 +927,9 @@ export default {
         const response = await lectureService.getCartItems();
         if (response.success) {
           // 장바구니 목록에서 현재 강의 ID가 있는지 확인
-          this.isInCart = response.data.some(item => item.lectureId === lectureId);
-          console.log('장바구니 상태 확인:', this.isInCart);
+          this.isInCart = response.data.some(item => 
+            item.lectureId === lectureId || item.id === lectureId
+          );
         }
       } catch (error) {
         console.error('장바구니 상태 확인 실패:', error);
@@ -897,7 +943,7 @@ export default {
          const response = await lectureService.checkLectureLikeStatus(lectureId);
          if (response.success) {
            this.isLiked = response.data.liked || false;
-           console.log('좋아요 상태 확인:', this.isLiked);
+
          }
        } catch (error) {
          console.error('좋아요 상태 확인 실패:', error);
@@ -910,21 +956,48 @@ export default {
      // 구매 여부 확인 (백엔드 API 사용)
      async checkPurchaseStatus(lectureId) {
        try {
+         console.log('구매 상태 확인 시작 - 강의 ID:', lectureId);
          const response = await lectureService.getPurchasedLectures();
+         console.log('구매한 강의 목록 응답:', response);
+         
          if (response.success) {
            // 구매한 강의 목록에서 현재 강의 ID가 있는지 확인
-           this.isPurchased = response.data.content.some(purchase => purchase.id === lectureId);
-           console.log('구매 상태 확인:', this.isPurchased);
+           // purchase 객체에서 id 또는 lectureId 필드를 확인
+           const isPurchased = response.data.content.some(purchase => 
+             purchase.id === lectureId || purchase.lectureId === lectureId
+           );
+           
+           console.log('구매 상태 확인 결과:', {
+             lectureId: lectureId,
+             isPurchased: isPurchased,
+             currentIsPurchased: this.isPurchased,
+             purchasedLectures: response.data.content
+           });
+           
+           // 구매 상태가 변경된 경우에만 업데이트
+           if (this.isPurchased !== isPurchased) {
+             this.isPurchased = isPurchased;
+             console.log('구매 상태 업데이트:', isPurchased ? '구매됨' : '구매되지 않음');
+             
+             // UI 강제 업데이트
+             this.$nextTick(() => {
+               this.$forceUpdate();
+             });
+           } else {
+             console.log('구매 상태 변경 없음 - 현재 상태 유지');
+           }
          }
        } catch (error) {
          console.error('구매 상태 확인 실패:', error);
          this.isPurchased = false;
+         this.$nextTick(() => {
+           this.$forceUpdate();
+         });
        }
      },
 
          // 강의 데이터를 받아오는 메서드 (백엔드 API 호출)
      async fetchLectureData(lectureId) {
-       console.log('강의 ID:', lectureId, typeof lectureId);
        
                // 썸네일 상태 초기화
         this.videoThumb = null;
@@ -934,7 +1007,7 @@ export default {
         
         if (response.success) {
           const lectureData = response.data;
-          console.log('백엔드에서 받은 강의 데이터:', lectureData);
+
 
           
           try {
@@ -990,13 +1063,13 @@ export default {
           const previewLesson = this.lecture.lessons.find(lesson => lesson.isPreview && lesson.videoUrl);
           if (previewLesson && previewLesson.videoUrl) {
             this.previewVideoUrl = previewLesson.videoUrl;
-            console.log('미리보기 비디오 URL 설정:', this.previewVideoUrl);
+   
           } else {
             // 미리보기 강의가 없으면 첫 번째 강의 사용
             const firstLesson = this.lecture.lessons.find(lesson => lesson.videoUrl);
             if (firstLesson && firstLesson.videoUrl) {
               this.previewVideoUrl = firstLesson.videoUrl;
-              console.log('첫 번째 강의 비디오 URL 설정:', this.previewVideoUrl);
+   
             }
           }
           
@@ -1005,7 +1078,7 @@ export default {
             this.$nextTick(() => {
               // 숨겨진 비디오가 로드되면 썸네일 생성
               if (this.$refs.hiddenVideo) {
-                console.log('숨겨진 비디오 요소 확인됨, 썸네일 생성 시작');
+       
               }
             });
           }
@@ -1120,11 +1193,10 @@ export default {
     
          // Q&A 데이터 변환 (질문-답글 구조)
      convertQA(qaList) {
-       console.log('=== convertQA 시작 ===');
-       console.log('qaList:', qaList);
+
        
        if (!qaList || qaList.length === 0) {
-         console.log('QnA 목록이 비어있습니다.');
+
          return [];
        }
        
@@ -1148,7 +1220,7 @@ export default {
          answerStatus: qa.answerStatus
        }));
        
-       console.log('변환된 QnA 데이터:', convertedQA);
+       
        return convertedQA;
      },
      
@@ -1264,6 +1336,22 @@ export default {
        }
      },
      
+     // 비디오 로드 시작
+     onVideoLoadStart() {
+
+     },
+
+     // 비디오 재생 가능
+     onVideoCanPlay() {
+
+     },
+
+     // 비디오 에러 처리
+     onVideoError(event) {
+       console.error('비디오 에러:', event);
+       this.showError('비디오를 재생할 수 없습니다.');
+     },
+
      // 비디오 종료 시 처리
      onVideoEnded() {
        this.isVideoPlaying = false;
@@ -1272,18 +1360,26 @@ export default {
      
      // 비디오 재생 메서드
      playVideo(lesson) {
-       console.log('비디오 재생 시도:', lesson);
-       
        if (lesson.videoUrl) {
-         console.log('비디오 URL:', lesson.videoUrl);
-         
          // URL이 유효한지 확인
          try {
            const url = new URL(lesson.videoUrl);
-           console.log('유효한 URL:', url.href);
            
-           // 새 탭에서 비디오 URL 열기
-           window.open(lesson.videoUrl, '_blank');
+           // 상태 설정
+           this.currentVideoLesson = lesson;
+           this.currentVideoUrl = lesson.videoUrl;
+           this.showVideoModal = true;
+           
+           // 강제로 DOM 업데이트
+           this.$forceUpdate();
+           
+           // nextTick으로 DOM 업데이트 보장
+           this.$nextTick(() => {
+             // 비디오 요소 확인
+             if (this.$refs.videoPlayer) {
+               this.$refs.videoPlayer.load();
+             }
+           });
          } catch (error) {
            console.error('잘못된 URL 형식:', lesson.videoUrl);
            this.showError('잘못된 비디오 URL 형식입니다.');
@@ -1291,6 +1387,22 @@ export default {
        } else {
          console.error('비디오 URL이 없음');
          this.showError('비디오 URL이 없습니다.');
+       }
+     },
+
+
+
+
+     
+     // 비디오 모달 닫기
+     closeVideoModal() {
+       this.showVideoModal = false;
+       this.currentVideoLesson = null;
+       this.currentVideoUrl = '';
+       
+       // 비디오 정지
+       if (this.$refs.videoPlayer) {
+         this.$refs.videoPlayer.pause();
        }
      },
     
@@ -1406,16 +1518,11 @@ export default {
 
       try {
         // 디버깅: lecture 객체와 lectureId 확인
-        console.log('=== submitReview 디버깅 ===');
-        console.log('this.lecture:', this.lecture);
-        console.log('this.lecture.lectureId:', this.lecture.lectureId);
-        console.log('this.lecture.id:', this.lecture.id);
-        console.log('typeof this.lecture.lectureId:', typeof this.lecture.lectureId);
-        console.log('isEditingReview:', this.isEditingReview);
+        
         
         // lectureId가 없으면 id를 사용
         const lectureId = this.lecture.lectureId || this.lecture.id;
-        console.log('사용할 lectureId:', lectureId);
+        
         
         // 리뷰 데이터 준비
         const reviewData = {
@@ -1424,20 +1531,19 @@ export default {
           lectureId: lectureId
         };
 
-        console.log('리뷰 요청:', reviewData);
-        console.log('reviewData.lectureId 타입:', typeof reviewData.lectureId);
+        
         
         let response;
         if (this.isEditingReview) {
           // 리뷰 수정 API 호출
-          console.log('리뷰 수정 API 호출');
+          
           response = await lectureService.modifyReview(reviewData);
-          console.log('리뷰 수정 응답:', response);
+          
         } else {
           // 리뷰 등록 API 호출
-          console.log('리뷰 등록 API 호출');
+          
           response = await lectureService.createReview(reviewData);
-          console.log('리뷰 등록 응답:', response);
+          
         }
 
         // 백엔드 응답 구조에 따라 성공 여부 확인
@@ -1478,9 +1584,7 @@ export default {
       try {
         if (this.isEditingQA) {
           // Q&A 수정
-          console.log('=== Q&A 수정 시작 ===');
-          console.log('Q&A ID:', this.editingQAId);
-          console.log('질문 내용:', this.newQuestion.content);
+          
           
           // Q&A 수정 데이터 준비
           const qnaData = {
@@ -1489,7 +1593,7 @@ export default {
           
           // API 호출
           const response = await lectureService.updateQna(this.editingQAId, qnaData);
-          console.log('Q&A 수정 응답:', response);
+          
           
           if (response && (response.success === true || response.code === 200)) {
             // 성공 시 모달 닫기 및 폼 초기화
@@ -1508,9 +1612,7 @@ export default {
           }
         } else {
           // Q&A 등록
-          console.log('=== Q&A 등록 시작 ===');
-          console.log('강의 ID:', this.lecture.id);
-          console.log('질문 내용:', this.newQuestion.content);
+          
           
           // Q&A 데이터 준비
           const qnaData = {
@@ -1520,7 +1622,7 @@ export default {
           
           // API 호출
           const response = await lectureService.createQna(this.lecture.id, qnaData);
-          console.log('Q&A 등록 응답:', response);
+          
           
           if (response && (response.success === true || response.code === 200 || response.code === 201)) {
             // 성공 시 모달 닫기 및 폼 초기화
@@ -1556,16 +1658,28 @@ export default {
     },
 
           // 강의 구매
-      purchaseLecture() {
-               // 실제로는 결제 API 호출
-       this.isPurchased = true;
-       this.userRole = 'PURCHASER';
-        this.showNotification({
-          title: '구매 완료',
-          icon: '🎉',
-          message: '강의가 구매되었습니다!',
-          submessage: '이제 리뷰를 작성할 수 있습니다.'
-        });
+      async purchaseLecture() {
+        try {
+          // 실제로는 결제 API 호출
+          // TODO: 실제 결제 API 호출 로직 추가
+          
+          // 구매 상태 업데이트
+          this.isPurchased = true;
+          this.userRole = 'PURCHASER';
+          
+          // 구매 상태를 백엔드에서 다시 확인하여 동기화
+          await this.checkPurchaseStatus(this.lecture.id);
+          
+          this.showNotification({
+            title: '구매 완료',
+            icon: '🎉',
+            message: '강의가 구매되었습니다!',
+            submessage: '이제 리뷰를 작성할 수 있습니다.'
+          });
+        } catch (error) {
+          console.error('구매 처리 중 오류:', error);
+          this.showError('구매 처리 중 오류가 발생했습니다.');
+        }
       },
       
       // 강의 시청 페이지로 이동
@@ -1609,7 +1723,7 @@ export default {
       async deleteLectureFromServer() {
         try {
           const result = await lectureService.deleteLecture(this.lecture.id);
-          console.log('강의 삭제 성공:', result);
+   
           return result;
         } catch (error) {
           console.error('강의 삭제 오류:', error);
@@ -1631,7 +1745,7 @@ export default {
       
       // 리뷰 수정
       editReview(review) {
-        console.log('리뷰 수정 시작:', review);
+ 
         this.isEditingReview = true;
         this.editingReviewId = review.id;
         this.newReview = {
@@ -1644,7 +1758,7 @@ export default {
       
               // 리뷰 삭제
         deleteReview(review) {
-          console.log('리뷰 삭제 시작:', review);
+   
           
           // 삭제 확인 모달 표시
           this.deleteConfirmData = {
@@ -1663,10 +1777,10 @@ export default {
           try {
             const review = this.deleteConfirmData.review;
             const lectureId = this.lecture.lectureId || this.lecture.id;
-            console.log('삭제할 강의 ID:', lectureId);
+     
             
             const response = await lectureService.deleteReview(lectureId);
-            console.log('리뷰 삭제 응답:', response);
+     
             
             if (response && (response.success === true || response.code === 200)) {
               // 모달 닫기
@@ -1701,10 +1815,10 @@ export default {
         async confirmDeleteQA() {
           try {
             const qa = this.deleteConfirmData.qa;
-            console.log('삭제할 Q&A ID:', qa.id);
+     
             
             const response = await lectureService.deleteQna(qa.id);
-            console.log('Q&A 삭제 응답:', response);
+     
             
             if (response && (response.success === true || response.code === 200)) {
               // 모달 닫기
@@ -1757,7 +1871,7 @@ export default {
       
       // Q&A 수정
       editQA(qa) {
-        console.log('Q&A 수정 시작:', qa);
+ 
         this.isEditingQA = true;
         this.editingQAId = qa.qnaId || qa.id; // Use qnaId if available, fallback to id
         this.newQuestion = {
@@ -1769,7 +1883,7 @@ export default {
       
       // Q&A 삭제
       deleteQA(qa) {
-        console.log('Q&A 삭제 시작:', qa);
+ 
         
         // 삭제 확인 모달 표시
         this.deleteConfirmData = {
@@ -1843,7 +1957,7 @@ export default {
 
       // Q&A 답변 작성 처리
       handleAnswerQA(qa) {
-        console.log('Q&A 답변 작성 시작:', qa);
+ 
         
         // 답변 작성 모드로 설정
         this.isEditingQA = false;
@@ -1885,8 +1999,7 @@ export default {
 
     // 장바구니에 강의 추가/제거 (토글 기능)
     async enrollLecture() {
-      console.log('enrollLecture 메서드 호출됨');
-      console.log('현재 강의:', this.lecture);
+      
       
       if (!this.lecture) {
         this.showError('강의 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
@@ -1944,8 +2057,7 @@ export default {
 
     // 강의 구매하기
     purchaseLecture() {
-      console.log('purchaseLecture 메서드 호출됨');
-      console.log('현재 강의:', this.lecture);
+      
       
       if (!this.lecture) {
         this.showError('강의 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
@@ -2106,23 +2218,37 @@ export default {
 
            // 강의 클릭 처리 (역할별 접근 제어)
       handleLessonClick(lesson, index) {
+        // 디버깅 로그 추가
+        console.log('레슨 클릭 디버깅:', {
+          lessonTitle: lesson.title,
+          lessonIndex: index,
+          isPurchased: this.isPurchased,
+          isPreview: lesson.isPreview,
+          hasVideoUrl: !!lesson.videoUrl,
+          videoUrl: lesson.videoUrl,
+          canWatchLecture: this.canWatchLecture,
+          isGuest: this.isGuest,
+          isAuthor: this.isAuthor,
+          isAdmin: this.isAdmin
+        });
+
         // 첫 번째 강의(인덱스 0)는 미리보기 가능
         if (index === 0) {
           this.playVideo(lesson);
           return;
         }
         
-        // 강의 시청 가능한 사용자 (구매자, 작성자, 관리자)
+                   // 강의 시청 가능한 사용자 (구매자, 작성자, 관리자)
         if (this.canWatchLecture) {
           this.playVideo(lesson);
           return;
         }
         
-                 // 일반 사용자: 구매 필요 안내
-         if (this.isGuest) {
-           this.showPurchaseRequiredModal = true;
-           return;
-         }
+        // 일반 사용자: 구매 필요 안내
+        if (this.isGuest) {
+          this.showPurchaseRequiredModal = true;
+          return;
+        }
       },
 
            // 강의 제목 툴팁 생성 (역할별)
@@ -2186,7 +2312,7 @@ export default {
         
         // 결제 완료 후 돌아온 경우 구매 상태를 다시 확인
         if (paymentCompleted === 'true') {
-          console.log('결제 완료 후 페이지 로드 - 구매 상태 재확인');
+   
           setTimeout(async () => {
             await this.checkPurchaseStatus(lectureId);
             await this.checkCartStatus(lectureId);
@@ -2904,7 +3030,7 @@ export default {
 .action-buttons {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
   margin-top: 16px;
 }
 
@@ -2912,18 +3038,39 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   color: #666;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
-  padding: 8px 16px;
+  padding: 6px 12px;
   background: #f8f9fa;
-  border-radius: 25px;
+  border-radius: 20px;
   border: 2px solid #e9ecef;
   transition: all 0.3s ease;
 }
 
 .share-section:hover {
+  background: #e9ecef;
+  border-color: #dee2e6;
+  transform: translateY(-2px);
+}
+
+.report-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #666;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 6px 12px;
+  background: #f8f9fa;
+  border-radius: 20px;
+  border: 2px solid #e9ecef;
+  transition: all 0.3s ease;
+}
+
+.report-section:hover {
   background: #e9ecef;
   border-color: #dee2e6;
   transform: translateY(-2px);
@@ -3739,18 +3886,18 @@ export default {
  .like-button {
    display: flex;
    align-items: center;
-   gap: 6px;
-   padding: 8px 16px;
+   gap: 4px;
+   padding: 6px 12px;
    background: #fff;
    border: 2px solid #ff6b6b;
-   border-radius: 25px;
+   border-radius: 20px;
    color: #ff6b6b;
    font-weight: 600;
-   font-size: 14px;
+   font-size: 13px;
    cursor: pointer;
    transition: all 0.3s ease;
    box-shadow: 0 2px 4px rgba(255, 107, 107, 0.2);
-   min-width: 80px;
+   min-width: 70px;
    justify-content: center;
  }
  
@@ -3773,7 +3920,7 @@ export default {
  }
  
  .like-icon {
-   font-size: 16px;
+   font-size: 14px;
    transition: transform 0.3s ease;
  }
  
@@ -3790,5 +3937,113 @@ export default {
   .review-edit-actions .delete-btn:hover,
   .qa-edit-actions .delete-btn:hover {
     background: #c82333;
+  }
+
+  /* 비디오 모달 스타일 */
+  .video-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 1000;
+  }
+
+  .video-modal {
+    background: #000;
+    border-radius: 12px;
+    max-width: 90vw;
+    max-height: 90vh;
+    width: 100%;
+    height: auto;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .video-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    background: #1a1a1a;
+    color: white;
+    border-bottom: 1px solid #333;
+  }
+
+  .video-modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  .video-modal-header .close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.2s;
+  }
+
+  .video-modal-header .close-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .video-modal-content {
+    padding: 0;
+  }
+
+  .video-player-container {
+    width: 100%;
+    height: auto;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .video-player {
+    width: 100%;
+    height: auto;
+    max-height: 70vh;
+    background: #000;
+  }
+
+  .video-error {
+    padding: 40px;
+    text-align: center;
+    color: #999;
+  }
+
+  .video-error p {
+    margin: 0;
+    font-size: 16px;
+  }
+
+  @media (max-width: 768px) {
+    .video-modal {
+      max-width: 95vw;
+      max-height: 95vh;
+    }
+    
+    .video-modal-header {
+      padding: 15px;
+    }
+    
+    .video-modal-header h3 {
+      font-size: 16px;
+    }
+    
+    .video-player {
+      max-height: 60vh;
+    }
   }
 </style> 

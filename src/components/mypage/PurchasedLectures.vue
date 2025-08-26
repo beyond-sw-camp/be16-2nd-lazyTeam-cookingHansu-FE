@@ -6,17 +6,17 @@
 
     <div class="lectures-grid">
       <div v-for="lecture in pagedLectures" :key="lecture.id" class="lecture-card">
-        <div class="lecture-image">
+        <div class="lecture-image" @click="goToLectureDetail(lecture.id)">
           <img :src="lecture.thumbUrl" :alt="lecture.title" />
         </div>
         <div class="lecture-content">
           <div class="lecture-header">
             <span class="category-badge" :class="categoryClass(lecture.category)">{{ getCategoryName(lecture.category) }}</span>
 
-            <router-link :to="{ name: 'PaymentDetails', params: { orderId: 'ORDER_20250111_001' } }" class="payment-history-link">결제 내역</router-link>
+            <router-link :to="{ name: 'PaymentDetails', params: { lectureId: lecture.id } }" class="payment-history-link">결제 내역</router-link>
 
           </div>
-          <h3 class="lecture-title">{{ lecture.title }}</h3>
+          <h3 class="lecture-title" @click="goToLectureDetail(lecture.id)">{{ lecture.title }}</h3>
           <p class="lecture-description">{{ lecture.description }}</p>
           <div class="lecture-rating-stats">
             <div class="lecture-rating">
@@ -139,6 +139,9 @@ export default {
         case 'DESSERT': return '디저트';
         default: return category;
       }
+    },
+    goToLectureDetail(lectureId) {
+      this.$router.push(`/lectures/${lectureId}`);
     }
   }
 };
@@ -185,6 +188,12 @@ export default {
   width: 100%;
   height: 180px;
   overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.lecture-image:hover {
+  transform: scale(1.02);
 }
 
 .lecture-image img {
@@ -258,6 +267,12 @@ export default {
   color: #222;
   margin: 0 0 8px 0;
   line-height: 1.3;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.lecture-title:hover {
+  color: #ff7a00;
 }
 
 .lecture-description {
