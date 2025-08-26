@@ -397,6 +397,25 @@ export const useAuthStore = defineStore('auth', {
       localStorage.setItem('provider', provider);
     },
 
+    // 관리자 인증 정보 설정 (AdminLoginStore에서 호출)
+    setAdminAuth(authData) {
+      this.user = authData.user;
+      this.accessToken = authData.accessToken;
+      this.refreshToken = authData.refreshToken;
+      this.expiresIn = authData.expiresIn;
+      this.isAuthenticated = true;
+      this.provider = 'admin';
+      
+      // 로컬 스토리지에 저장
+      localStorage.setItem('accessToken', authData.accessToken);
+      localStorage.setItem('refreshToken', authData.refreshToken);
+      if (authData.expiresIn) {
+        localStorage.setItem('expiresIn', authData.expiresIn);
+      }
+      localStorage.setItem('user', JSON.stringify(authData.user));
+      localStorage.setItem('provider', 'admin');
+    },
+
     // 토큰 갱신
     async refreshToken() {
       if (this.isRefreshing) {

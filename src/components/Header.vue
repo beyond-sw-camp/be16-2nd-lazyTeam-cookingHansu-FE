@@ -95,8 +95,8 @@
             로그아웃
           </v-btn>
         </div>
-      </div>
-    </div>
+            </div>
+            </div>
 
     <!-- Mobile Layout -->
     <div class="d-flex d-md-none header-mobile">
@@ -125,7 +125,7 @@
         >
           로그인
         </v-btn>
-      </div>
+            </div>
 
       <!-- Logged In State -->
       <div v-else class="mobile-logged-in">
@@ -142,7 +142,7 @@
           <router-link to="/" class="logo-link">
             <h1 class="logo-text">요리한수</h1>
           </router-link>
-        </div>
+            </div>
 
         <div class="mobile-user-section">
           <!-- 모바일 알림 버튼 -->
@@ -199,9 +199,9 @@
           >
             로그아웃
           </v-btn>
-        </div>
       </div>
     </div>
+      </div>
 
   </v-app-bar>
 
@@ -568,8 +568,8 @@ const toggleMobileMenu = () => {
 }
 
 .mobile-user-section {
-  display: flex;
-  align-items: center;
+    display: flex;
+    align-items: center;
   gap: 8px;
 }
 
@@ -664,4 +664,4 @@ const toggleMobileMenu = () => {
     gap: 6px;
   }
 }
-</style>
+</style> 
