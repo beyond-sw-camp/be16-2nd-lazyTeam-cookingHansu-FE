@@ -83,6 +83,7 @@ import Bookmarks from '@/components/mypage/Bookmarks.vue';
 import Likes from '@/components/mypage/Likes.vue';
 import ProfileEditModal from '@/models/mypage/ProfileEditModal.vue';
 import WithdrawConfirmModal from '@/components/common/WithdrawConfirmModal.vue';
+import { apiGet } from '@/utils/api';
 
 export default {
   name: 'MyPage',
@@ -162,19 +163,19 @@ export default {
     },
     
     async fetchUserProfile() {
-      try {
-        const response = await fetch('http://localhost:8080/api/my/profile');
-        if (response.ok) {
-          const result = await response.json();
-          console.log('프로필 데이터:', result.data);
-          this.userProfile = result.data;
-        } else {
-          console.error('프로필 조회 실패');
-        }
-      } catch (error) {
-        console.error('프로필 조회 오류:', error);
-      }
-    },
+  try {
+    const response = await apiGet('/api/my/profile');
+    if (response.ok) {
+      const result = await response.json();
+      console.log('프로필 데이터:', result.data);
+      this.userProfile = result.data;
+    } else {
+      console.error('프로필 조회 실패');
+    }
+  } catch (error) {
+    console.error('프로필 조회 오류:', error);
+  }
+},
     updateUserProfile(updatedData) {
       this.userProfile = { ...this.userProfile, ...updatedData };
     },

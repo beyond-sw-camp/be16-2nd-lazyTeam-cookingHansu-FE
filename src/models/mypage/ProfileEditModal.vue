@@ -87,6 +87,8 @@
 </template>
 
 <script>
+import { apiPostFormData, apiPut } from '@/utils/api';
+
 export default {
   name: 'ProfileEditModal',
   props: {
@@ -99,7 +101,8 @@ export default {
       default: () => ({})
     }
   },
-  emits: ['close', 'update'],
+
+  emits: ['close', 'update', 'showMessage'],
   data() {
     return {
       loading: false,
@@ -139,7 +142,7 @@ export default {
       this.selectedFile = null;
       this.nicknameError = '';
     },
-    
+
     validateNickname() {
       const nickname = this.formData.nickname.trim();
       if (nickname.length < 2) {
@@ -150,50 +153,50 @@ export default {
         this.nicknameError = '';
       }
     },
-    
+
     closeModal() {
       this.$emit('close');
     },
-    
+
     triggerFileInput() {
       this.$refs.fileInput.click();
     },
-    
+
     handleImageUpload(event) {
       const file = event.target.files[0];
-      if (file) {
-        // 파일 크기 검증
-        if (file.size > 5 * 1024 * 1024) {
-          this.$emit('showMessage', {
-            type: 'error',
-            title: '파일 크기 초과',
-            message: '프로필 이미지는 5MB 이하여야 합니다.'
-          });
-          return;
-        }
-        
-        // 파일 타입 검증
-        const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg'];
-        if (!allowedTypes.includes(file.type)) {
-          this.$emit('showMessage', {
-            type: 'error',
-            title: '지원하지 않는 파일 형식',
-            message: 'PNG, JPG, JPEG 파일만 업로드 가능합니다.'
-          });
-          return;
-        }
-        
-        this.selectedFile = file;
-        
-        // 미리보기 생성
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          this.profileImagePreview = e.target.result;
-        };
-        reader.readAsDataURL(file);
+      if (!file) return;
+
+      // 파일 크기 검증
+      if (file.size > 5 * 1024 * 1024) {
+        this.$emit('showMessage', {
+          type: 'error',
+          title: '파일 크기 초과',
+          message: '프로필 이미지는 5MB 이하여야 합니다.'
+        });
+        return;
       }
+
+      // 파일 타입 검증
+      const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+      if (!allowedTypes.includes(file.type)) {
+        this.$emit('showMessage', {
+          type: 'error',
+          title: '지원하지 않는 파일 형식',
+          message: 'PNG, JPG, JPEG 파일만 업로드 가능합니다.'
+        });
+        return;
+      }
+
+      this.selectedFile = file;
+
+      // 미리보기 생성
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        this.profileImagePreview = e.target.result;
+      };
+      reader.readAsDataURL(file);
     },
-    
+
     async saveProfile() {
       // 닉네임 유효성 검사
       this.validateNickname();
@@ -205,7 +208,7 @@ export default {
         });
         return;
       }
-      
+
       if (!this.formData.nickname.trim()) {
         this.$emit('showMessage', {
           type: 'error',
@@ -214,49 +217,39 @@ export default {
         });
         return;
       }
-      
+
       this.loading = true;
-      
+
       try {
         // 이미지 업로드 처리
         let imageUrl = this.userData.profileImageUrl;
         if (this.selectedFile) {
-          // S3 업로드 API 호출
-          const formData = new FormData();
-          formData.append('image', this.selectedFile);
-          
-          const uploadResponse = await fetch('http://localhost:8080/api/my/profile/image', {
-            method: 'POST',
-            body: formData
-          });
-          
+          const fd = new FormData();
+          fd.append('image', this.selectedFile);
+
+          const uploadResponse = await apiPostFormData('/api/my/profile/image', fd);
+
           if (!uploadResponse.ok) {
             throw new Error('이미지 업로드 실패');
           }
-          
+
           const uploadResult = await uploadResponse.json();
           imageUrl = uploadResult.data;
         }
-        
+
         // 프로필 업데이트 API 호출
-        const updateResponse = await fetch('http://localhost:8080/api/my/profile', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            nickname: this.formData.nickname,
-            info: this.formData.info,
-            profileImageUrl: imageUrl
-          })
+        const updateResponse = await apiPut('/api/my/profile', {
+          nickname: this.formData.nickname,
+          info: this.formData.info,
+          profileImageUrl: imageUrl
         });
-        
+
         if (!updateResponse.ok) {
           throw new Error('프로필 업데이트 실패');
         }
-        
+
         const updateResult = await updateResponse.json();
-        
+
         this.$emit('update', updateResult.data);
         this.$emit('showMessage', {
           type: 'success',
@@ -279,6 +272,7 @@ export default {
 };
 </script>
 
+
 <style scoped>
 .modal-overlay {
   position: fixed;
@@ -299,21 +293,25 @@ export default {
   border-radius: 16px;
   width: 100%;
   max-width: 500px;
+  max-height: 90vh;
+  overflow: hidden;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 24px 24px 0 24px;
+  padding: 20px 24px;
   border-bottom: 1px solid #eee;
-  padding-bottom: 16px;
+  flex-shrink: 0;
 }
 
 .modal-header h3 {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
   color: #333;
 }
@@ -340,25 +338,28 @@ export default {
 }
 
 .modal-body {
-  padding: 24px;
+  padding: 20px 24px;
+  flex: 1;
+  overflow-y: auto; /* 내용이 많으면 스크롤 */
+  min-height: 0; /* flex 아이템이 축소될 수 있도록 */
 }
 
 /* 프로필 이미지 업로드 */
 .profile-image-section {
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: 24px;
 }
 
 .profile-image-container {
   position: relative;
   display: inline-block;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .profile-image-preview,
 .profile-image-placeholder {
-  width: 120px;
-  height: 120px;
+  width: 100px;
+  height: 100px;
   border-radius: 50%;
   object-fit: cover;
   border: 3px solid #ff7a00;
@@ -376,14 +377,16 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 36px;
+  color: #ccc;
 }
 
 .image-upload-overlay {
   position: absolute;
   bottom: 0;
   right: 0;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   background: #ff7a00;
   border-radius: 50%;
   display: flex;
@@ -400,23 +403,23 @@ export default {
 
 .image-hint {
   margin: 0 0 4px 0;
-  font-size: 14px;
+  font-size: 13px;
   color: #666;
 }
 
 .image-requirements {
   margin: 0;
-  font-size: 12px;
+  font-size: 11px;
   color: #999;
 }
 
 .form-group {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   font-weight: 600;
   color: #333;
   font-size: 14px;
@@ -425,7 +428,7 @@ export default {
 .form-group input,
 .form-group textarea {
   width: 100%;
-  padding: 12px 16px;
+  padding: 10px 14px;
   border: 2px solid #e0e0e0;
   border-radius: 8px;
   font-size: 14px;
@@ -446,6 +449,12 @@ export default {
   cursor: not-allowed;
 }
 
+.form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+  max-height: 120px;
+}
+
 .disabled-hint {
   display: block;
   margin-top: 4px;
@@ -453,45 +462,41 @@ export default {
   color: #999;
 }
 
-.nickname-hint {
+.char-count {
   display: block;
   margin-top: 4px;
   font-size: 12px;
-  color: #666;
+  color: #999;
+  text-align: right;
 }
 
 .nickname-error {
   display: block;
   margin-top: 4px;
   font-size: 12px;
-  color: #dc3545;
-}
-
-.char-count {
-  display: block;
-  text-align: right;
-  margin-top: 4px;
-  font-size: 12px;
-  color: #999;
+  color: #e74c3c;
 }
 
 .modal-footer {
   display: flex;
+  justify-content: flex-end;
   gap: 12px;
-  padding: 24px;
+  padding: 16px 24px;
   border-top: 1px solid #eee;
+  flex-shrink: 0;
+  background: white;
 }
 
 .cancel-btn,
 .save-btn {
-  flex: 1;
-  padding: 12px 24px;
+  padding: 10px 20px;
+  border: none;
   border-radius: 8px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
-  border: none;
-  font-size: 14px;
+  min-width: 80px;
 }
 
 .cancel-btn {
@@ -517,16 +522,65 @@ export default {
   cursor: not-allowed;
 }
 
+/* 반응형 디자인 */
 @media (max-width: 768px) {
-  .modal-content {
-    margin: 20px;
-    max-height: calc(100vh - 40px);
+  .modal-overlay {
+    padding: 10px;
   }
   
-  .modal-header,
-  .modal-body,
+  .modal-content {
+    max-width: 100%;
+    max-height: 95vh;
+  }
+  
+  .modal-header {
+    padding: 16px 20px;
+  }
+  
+  .modal-body {
+    padding: 16px 20px;
+  }
+  
   .modal-footer {
-    padding: 16px;
+    padding: 12px 20px;
+  }
+  
+  .profile-image-preview,
+  .profile-image-placeholder {
+    width: 80px;
+    height: 80px;
+  }
+  
+  .profile-image-placeholder {
+    font-size: 28px;
+  }
+  
+  .image-upload-overlay {
+    width: 28px;
+    height: 28px;
   }
 }
+
+@media (max-width: 480px) {
+  .modal-header h3 {
+    font-size: 16px;
+  }
+  
+  .form-group {
+    margin-bottom: 16px;
+  }
+  
+  .form-group input,
+  .form-group textarea {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  
+  .cancel-btn,
+  .save-btn {
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+}
+
 </style>
