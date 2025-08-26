@@ -42,7 +42,6 @@ export const useNotificationStore = defineStore('notification', () => {
   /**
    * 알림 목록 조회
    * @param {Object} params - 조회 파라미터
-   * @param {string} params.userId - 사용자 ID
    * @param {number} params.page - 페이지 번호 (선택)
    * @param {number} params.size - 페이지 크기 (선택)
    */
@@ -51,7 +50,7 @@ export const useNotificationStore = defineStore('notification', () => {
     error.value = null
     
     try {
-      const response = await notificationService.getNotifications()
+      const response = await notificationService.getNotifications(params)
       
       // 알림 정렬: 읽지 않은 알림 -> 읽은 알림 순서
       const sortedNotifications = response.notifications.sort((a, b) => {

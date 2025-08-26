@@ -179,8 +179,7 @@ const handleNotificationClick = async (notification) => {
   // 서버에 읽음 처리
   if (notification.id) {
     try {
-      const userId = getUserId()
-      await notificationStore.markAsRead(notification.id, userId)
+      await notificationStore.markAsRead(notification.id)
     } catch (error) {
       console.error('읽음 처리 실패:', error)
     }
@@ -228,8 +227,7 @@ const handleDeleteNotification = async (notificationId) => {
     return
   }
   try {
-    const userId = getUserId()
-    await notificationStore.deleteNotification(notificationId, userId)
+    await notificationStore.deleteNotification(notificationId)
     console.log('✅ 알림 삭제 완료:', notificationId)
   } catch (error) {
     console.error('❌ 알림 삭제 실패:', error)
@@ -239,8 +237,7 @@ const handleDeleteNotification = async (notificationId) => {
 const loadMore = async () => {
   loading.value = true
   try {
-    const userId = getUserId()
-    const result = await notificationStore.loadMoreNotifications(userId)
+    const result = await notificationStore.loadMoreNotifications()
     hasMore.value = result.hasMore
   } catch (error) {
     console.error('알림 로드 실패:', error)
@@ -253,10 +250,10 @@ onMounted(async () => {
   loading.value = true
   try {
     // 실제 API에서 알림 로드
-    const userId = getUserId()
-    await notificationStore.fetchNotifications({ userId })
+    await notificationStore.fetchNotifications()
     
     // SSE 연결 설정
+    const userId = getUserId()
     if (userId) {
       notificationStore.connectToNotificationStream(userId)
     } else {

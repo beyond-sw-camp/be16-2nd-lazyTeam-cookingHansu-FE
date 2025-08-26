@@ -4,22 +4,11 @@ export const notificationService = {
   /**
    * 알림 목록 조회 (백엔드 API에 맞게 수정)
    * @param {Object} params - 조회 파라미터
-   * @param {string} params.userId - 사용자 ID (필수)
    * @returns {Promise<Array>} 알림 목록
    */
   async getNotifications(params = {}) {
     try {
-      const { userId } = params;
-      
-      if (!userId) {
-        throw new Error('userId는 필수 파라미터입니다.')
-      }
-
-      const queryParams = new URLSearchParams({
-        userId: userId
-      })
-
-      const response = await apiGet(`/api/notifications?${queryParams}`)
+      const response = await apiGet(`/api/notifications`)
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -45,20 +34,11 @@ export const notificationService = {
   /**
    * 특정 알림을 읽음으로 표시 (백엔드 API에 맞게 수정)
    * @param {string} notificationId - 알림 ID
-   * @param {string} userId - 사용자 ID
    * @returns {Promise<void>}
    */
-  async markAsRead(notificationId, userId) {
+  async markAsRead(notificationId) {
     try {
-      if (!userId) {
-        throw new Error('userId는 필수 파라미터입니다.')
-      }
-      
-      const queryParams = new URLSearchParams({
-        userId: userId
-      })
-      
-      const response = await apiPatch(`/api/notifications/${notificationId}/read?${queryParams}`)
+      const response = await apiPatch(`/api/notifications/${notificationId}/read`)
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
@@ -87,21 +67,12 @@ export const notificationService = {
   /**
    * 특정 알림 삭제
    * @param {string} notificationId
-   * @param {string} userId
    * @returns {Promise<void>}
    */
-  async deleteNotification(notificationId, userId) {
+  async deleteNotification(notificationId) {
     try {
-      if (!userId) {
-        throw new Error('userId는 필수 파라미터입니다.')
-      }
-      
-      const queryParams = new URLSearchParams({
-        userId: userId
-      })
-      
-      console.log('🔍 DELETE 요청 URL:', `/api/notifications/${notificationId}?${queryParams}`)
-      const response = await apiDelete(`/api/notifications/${notificationId}?${queryParams}`)
+      console.log('🔍 DELETE 요청 URL:', `/api/notifications/${notificationId}`)
+      const response = await apiDelete(`/api/notifications/${notificationId}`)
       console.log('🔍 DELETE 응답 상태:', response.status)
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
