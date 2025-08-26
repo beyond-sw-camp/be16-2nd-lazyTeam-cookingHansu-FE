@@ -91,12 +91,13 @@
             rounded="lg"
             @click="logout"
             class="logout-btn"
+            :class="{ 'admin-logout-btn': isAdmin }"
           >
             로그아웃
           </v-btn>
         </div>
-      </div>
-    </div>
+            </div>
+            </div>
 
     <!-- Mobile Layout -->
     <div class="d-flex d-md-none header-mobile">
@@ -125,7 +126,7 @@
         >
           로그인
         </v-btn>
-      </div>
+            </div>
 
       <!-- Logged In State -->
       <div v-else class="mobile-logged-in">
@@ -142,7 +143,7 @@
           <router-link to="/" class="logo-link">
             <h1 class="logo-text">요리한수</h1>
           </router-link>
-        </div>
+            </div>
 
         <div class="mobile-user-section">
           <!-- 모바일 알림 버튼 -->
@@ -196,12 +197,13 @@
             size="small"
             @click="logout"
             class="mobile-logout-btn"
+            :class="{ 'admin-logout-btn': isAdmin }"
           >
             로그아웃
           </v-btn>
-        </div>
       </div>
     </div>
+      </div>
 
   </v-app-bar>
 
@@ -285,28 +287,48 @@ const isLoggedIn = computed(() => {
   return authStore.getIsAuthenticated;
 })
 
+// 사용자 역할 확인
+const userRole = computed(() => {
+  return authStore.getUserRole;
+})
+
+// 관리자 여부 확인
+const isAdmin = computed(() => {
+  return userRole.value === 'admin';
+})
+
 // 프로필 정보 가져오기
 const fetchProfileInfo = async () => {
   if (isLoggedIn.value && authStore.accessToken) {
     try {
-      const profileInfo = await authStore.fetchProfileInfo();
-      if (profileInfo) {
+      // 관리자인 경우 auth 스토어의 정보 사용
+      if (isAdmin.value) {
+        const adminUser = authStore.getUser;
         profileData.value = {
-          nickname: profileInfo.nickname || '사용자',
-          profileImageUrl: profileInfo.profileImageUrl || ''
+          nickname: adminUser?.nickname || '관리자',
+          profileImageUrl: '' // 관리자는 기본적으로 프로필 이미지 없음
         };
       } else {
-        // 프로필 정보가 없는 경우 기본값 설정
-        profileData.value = {
-          nickname: '사용자',
-          profileImageUrl: ''
-        };
+        // 일반 사용자인 경우 기존 로직 사용
+        const profileInfo = await authStore.fetchProfileInfo();
+        if (profileInfo) {
+          profileData.value = {
+            nickname: profileInfo.nickname || '사용자',
+            profileImageUrl: profileInfo.profileImageUrl || ''
+          };
+        } else {
+          // 프로필 정보가 없는 경우 기본값 설정
+          profileData.value = {
+            nickname: '사용자',
+            profileImageUrl: ''
+          };
+        }
       }
     } catch (error) {
       console.error('프로필 정보 가져오기 실패:', error);
       // 에러 발생 시 기본값 설정
       profileData.value = {
-        nickname: '사용자',
+        nickname: isAdmin.value ? '관리자' : '사용자',
         profileImageUrl: ''
       };
     }
@@ -341,6 +363,13 @@ watch(isLoggedIn, async (newValue) => {
   }
 })
 
+// 사용자 역할 변경 감시
+watch(userRole, async (newRole) => {
+  if (isLoggedIn.value) {
+    await fetchProfileInfo();
+  }
+})
+
 // 컴포넌트 마운트 시 리사이즈 이벤트 리스너 추가 및 프로필 정보 가져오기
 onMounted(async () => {
   window.addEventListener('resize', handleResize);
@@ -360,7 +389,7 @@ onUnmounted(() => {
 })
 
 const userNickname = computed(() => {
-  return profileData.value.nickname || '사용자';
+  return profileData.value.nickname || (isAdmin.value ? '관리자' : '사용자');
 })
 
 const userProfileImage = computed(() => {
@@ -535,6 +564,17 @@ const toggleMobileMenu = () => {
   font-weight: 500;
 }
 
+.admin-logout-btn {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.admin-logout-btn:hover {
+  background-color: var(--color-primary);
+  color: white;
+}
+
 /* Mobile Styles */
 .header-mobile {
   width: 100%;
@@ -568,8 +608,8 @@ const toggleMobileMenu = () => {
 }
 
 .mobile-user-section {
-  display: flex;
-  align-items: center;
+    display: flex;
+    align-items: center;
   gap: 8px;
 }
 
@@ -591,6 +631,17 @@ const toggleMobileMenu = () => {
 .mobile-logout-btn {
   font-size: 12px;
   font-weight: 500;
+}
+
+.mobile-logout-btn.admin-logout-btn {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.mobile-logout-btn.admin-logout-btn:hover {
+  background-color: var(--color-primary);
+  color: white;
 }
 
 .mobile-nav-drawer {
@@ -664,4 +715,4 @@ const toggleMobileMenu = () => {
     gap: 6px;
   }
 }
-</style>
+</style> 
