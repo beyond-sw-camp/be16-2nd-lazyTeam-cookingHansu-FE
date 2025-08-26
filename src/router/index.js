@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/store/auth/auth';
+import { useAdminLoginStore } from '@/store/admin/adminLogin';
 import AdminLayout from '@/layouts/admin/AdminLayout.vue' 
 import Dashboard from '@/views/admin/Dashboard.vue'
 import LectureApproval from '@/views/admin/LectureApproval.vue'
@@ -150,8 +151,8 @@ const routes = [
       { path: 'mypage', name: 'MyPage', component: MyPage },
       { path: 'notice', name: 'NoticeList', component: NoticeList },
       { path: 'notice/:id', name: 'NoticeDetail', component: NoticeDetail },
-      { path: 'notice/create', name: 'NoticeCreate', component: NoticeCreate },
-      { path: 'notice/edit/:id', name: 'NoticeEdit', component: NoticeEdit },
+      { path: 'notice/create', name: 'NoticeCreate', component: NoticeCreate, meta: { requiresAuth: true, requiresAdmin: true } },
+      { path: 'notice/edit/:id', name: 'NoticeEdit', component: NoticeEdit, meta: { requiresAuth: true, requiresAdmin: true } },
       { path: 'notifications', name: 'NotificationPage', component: NotificationPage },
     ],
   },
@@ -165,6 +166,7 @@ const router = createRouter({
 // 인증 가드
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
+  const adminLoginStore = useAdminLoginStore();
 
   // OAuth 리다이렉트 페이지는 인증 가드 건너뛰기
   if (to.name === "GoogleOAuthRedirect" || 
@@ -208,7 +210,8 @@ router.beforeEach(async (to, from, next) => {
   // 관리자 권한이 필요한 페이지
   if (
     to.meta.requiresAdmin &&
-    (!authStore.isAuthenticated || authStore.user?.role !== "admin")
+    (!authStore.isAuthenticated || authStore.user?.role !== "admin") &&
+    !adminLoginStore.isLoggedIn
   ) {
     next("/admin-login");
     return;
