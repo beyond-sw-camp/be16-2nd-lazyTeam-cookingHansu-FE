@@ -11,11 +11,11 @@
                 <v-icon size="16" class="mx-2 text-grey">mdi-chevron-right</v-icon>
                 <span class="text-grey-darken-1">레시피</span>
                 <v-icon size="16" class="mx-2 text-grey">mdi-chevron-right</v-icon>
-                <span class="text-primary font-weight-bold">게시글 등록</span>
+                <span class="text-primary font-weight-bold">게시글 수정</span>
               </nav>
-              <h1 class="text-h3 font-weight-bold mb-3">레시피 게시글 등록</h1>
+              <h1 class="text-h3 font-weight-bold mb-3">레시피 게시글 수정</h1>
               <p class="text-body-1 text-grey-darken-2">
-                맛있는 레시피를 공유하고 다른 사람들과 소통해보세요
+                기존 레시피 게시글을 수정하고 업데이트하세요
               </p>
             </div>
 
@@ -51,8 +51,6 @@
 
                   <v-textarea v-model="post.content" label="게시글 내용 *" placeholder="레시피를 만들면서 느낀 점, 팁, 후기 등을 자유롭게 작성해주세요"
                     variant="outlined" rows="5" class="mb-6" required />
-
-
 
                   <!-- 썸네일 이미지 -->
                   <div class="image-input-section mb-6">
@@ -113,16 +111,34 @@
                         style="width: 160px;" required />
                     </v-col>
                     <v-col cols="auto">
-                      <v-text-field v-model="post.servings" label="인분" placeholder="4" variant="outlined" type="number"
-                        style="max-width: 120px;" required />
+                      <v-text-field 
+                        v-model="post.servings" 
+                        label="인분" 
+                        placeholder="4" 
+                        variant="outlined" 
+                        type="number"
+                        min="1"
+                        max="20"
+                        style="max-width: 120px;" 
+                        required 
+                      />
                     </v-col>
                     <v-col cols="auto">
                       <v-select v-model="post.difficulty" :items="difficultyOptions" label="난이도" variant="outlined"
                         style="width: 160px;" required />
                     </v-col>
                     <v-col cols="auto">
-                      <v-text-field v-model="post.cookTime" label="조리 시간 (분)" placeholder="30" variant="outlined"
-                        type="number" style="max-width: 160px;" required />
+                      <v-text-field 
+                        v-model="post.cookTime" 
+                        label="조리 시간 (분)" 
+                        placeholder="30" 
+                        variant="outlined"
+                        type="number" 
+                        min="1"
+                        max="999"
+                        style="max-width: 160px;" 
+                        required 
+                      />
                     </v-col>
                   </v-row>
                 </v-col>
@@ -167,7 +183,7 @@
                     <span class="text-white font-weight-bold text-body-2">{{ index + 1 }}</span>
                   </v-avatar>
 
-                <div class="flex-grow-1" style="max-width: calc(100% - 42px);">
+                  <div class="flex-grow-1" style="max-width: calc(100% - 42px);">
                     <v-textarea v-model="step.content" :label="`조리 순서 ${index + 1}를 상세히 설명해주세요`"
                       placeholder="예: 돼지고기를 한입 크기로 썰어 준비합니다" variant="outlined" rows="3" class="mb-3" required />
 
@@ -191,31 +207,28 @@
                 placeholder="이 레시피를 더 맛있게 만들 수 있는 팁이나 변형 방법을 공유해주세요" variant="outlined" rows="4" />
             </div>
 
-
-
             <!-- 하단 버튼들 -->
             <div class="d-flex justify-center gap-12 mt-10">
               <v-btn variant="outlined" size="large" class="px-8" @click="goBack">
                 취소
               </v-btn>
-              <v-btn color="primary" size="large" class="px-8" @click="submitPost" :loading="isSubmitting"
-                :disabled="isSubmitting">
-                게시글 등록
+              <v-btn color="primary" size="large" class="px-8" @click="updatePost" :loading="isUpdating"
+                :disabled="isUpdating">
+                게시글 수정
               </v-btn>
             </div>
           </v-card>
         </v-col>
       </v-row>
     </v-container>
-
-
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
+const route = useRoute()
 const router = useRouter()
 
 // 게시글 데이터
@@ -223,7 +236,7 @@ const post = reactive({
   title: '',
   content: '',
   imageUrl: '',
-  imageFile: null, // 실제 파일 객체 저장
+  imageFile: null,
   category: '한식',
   difficulty: '보통',
   cookTime: '',
@@ -240,9 +253,7 @@ const post = reactive({
 
 // 이미지 업로드 관련 상태
 const imageInput = ref(null)
-const isSubmitting = ref(false)
-
-
+const isUpdating = ref(false)
 
 // 옵션 데이터
 const categoryOptions = [
@@ -276,6 +287,93 @@ const getDifficultyEnum = (difficulty) => {
   return difficultyMap[difficulty] || 'MEDIUM'
 }
 
+// 카테고리 역변환 함수
+const getCategoryText = (category) => {
+  const categoryMap = {
+    'KOREAN': '한식',
+    'CHINESE': '중식',
+    'WESTERN': '양식',
+    'JAPANESE': '일식'
+  }
+  return categoryMap[category] || '한식'
+}
+
+// 난이도 역변환 함수
+const getDifficultyText = (difficulty) => {
+  const difficultyMap = {
+    'VERY_LOW': '매우 쉬움',
+    'LOW': '쉬움',
+    'MEDIUM': '보통',
+    'HIGH': '어려움',
+    'VERY_HIGH': '매우 어려움'
+  }
+  return difficultyMap[difficulty] || '보통'
+}
+
+// 기존 게시글 데이터 로드
+const loadPost = async () => {
+  try {
+    const postId = route.query.id
+    if (!postId) {
+      alert('게시글 ID가 없습니다.')
+      router.push('/recipes')
+      return
+    }
+
+    const response = await fetch(`http://localhost:8080/api/posts/${postId}`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+      }
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      console.log('게시글 데이터 로드 성공:', data)
+      
+      if (data.data) {
+        // 데이터 매핑
+        post.title = data.data.title || ''
+        post.content = data.data.description || ''
+        post.imageUrl = data.data.thumbnailUrl || ''
+
+        post.category = getCategoryText(data.data.category)
+        post.difficulty = getDifficultyText(data.data.level)
+        post.cookTime = data.data.cookTime || ''
+        post.servings = data.data.serving || ''
+        post.cookingTip = data.data.cookTip || ''
+        post.isPublic = data.data.isOpen !== undefined ? data.data.isOpen : true
+        
+        // 재료 데이터
+        if (data.data.ingredients && data.data.ingredients.length > 0) {
+          post.ingredients = data.data.ingredients.map(ingredient => ({
+            name: ingredient.name || ingredient.ingredientName || '',
+            amount: ingredient.amount || ingredient.quantity || ''
+          }))
+        } else {
+          post.ingredients = [{ name: '', amount: '' }]
+        }
+        
+        // 조리 과정 데이터
+        if (data.data.steps && data.data.steps.length > 0) {
+          post.steps = data.data.steps.map(step => ({
+            stepSequence: step.stepSequence || 1,
+            content: step.content || '',
+            comment: step.description || '' // 백엔드의 description을 comment로 매핑
+          }))
+        } else {
+          post.steps = [{ stepSequence: 1, content: '', comment: '' }]
+        }
+      }
+    } else {
+      throw new Error('게시글을 불러올 수 없습니다.')
+    }
+  } catch (error) {
+    console.error('게시글 로드 실패:', error)
+    alert('게시글을 불러오는데 실패했습니다.')
+    router.push('/recipes')
+  }
+}
+
 // 메서드들
 const addIngredient = () => {
   post.ingredients.push({ name: '', amount: '' })
@@ -288,7 +386,8 @@ const removeIngredient = (index) => {
 }
 
 const addStep = () => {
-  post.steps.push({ content: '', comment: '' })
+  const nextSequence = post.steps.length + 1
+  post.steps.push({ stepSequence: nextSequence, content: '', comment: '' })
 }
 
 const removeStep = (index) => {
@@ -297,358 +396,228 @@ const removeStep = (index) => {
   }
 }
 
-const goBack = () => {
-  router.go(-1)
-}
-
-const submitPost = async () => {
-  try {
-    // 백엔드 제약조건에 맞춘 유효성 검사
-    
-    // 1. 필수 필드 검증
-    if (!post.title.trim()) {
-      alert('제목을 입력해주세요.')
-      return
-    }
-    
-    if (post.title.trim().length > 20) {
-      alert('제목은 최대 20자까지 입력 가능합니다.')
-      return
-    }
-    
-    if (!post.category) {
-      alert('카테고리를 선택해주세요.')
-      return
-    }
-    
-    if (!post.difficulty) {
-      alert('난이도를 선택해주세요.')
-      return
-    }
-    
-    if (!post.cookTime || post.cookTime < 1 || post.cookTime > 999) {
-      alert('조리시간은 1~999분 사이로 입력해주세요.')
-      return
-    }
-    
-    if (!post.servings || post.servings < 1 || post.servings > 20) {
-      alert('인분수는 1~20인분 사이로 입력해주세요.')
-      return
-    }
-    
-    // 2. 선택 필드 길이 검증
-    if (post.content.trim().length > 2000) {
-      alert('설명은 최대 2000자까지 입력 가능합니다.')
-      return
-    }
-    
-    if (post.cookingTip && post.cookingTip.trim().length > 2000) {
-      alert('요리팁은 최대 2000자까지 입력 가능합니다.')
-      return
-    }
-    
-    // 3. 재료 검증
-    if (post.ingredients.length === 0) {
-      alert('최소 1개 이상의 재료를 입력해주세요.')
-      return
-    }
-    
-    for (let i = 0; i < post.ingredients.length; i++) {
-      const ingredient = post.ingredients[i]
-      if (!ingredient.name.trim()) {
-        alert(`${i + 1}번째 재료명을 입력해주세요.`)
-        return
-      }
-      if (ingredient.name.trim().length > 255) {
-        alert(`${i + 1}번째 재료명은 최대 255자까지 입력 가능합니다.`)
-        return
-      }
-      if (!ingredient.amount.trim()) {
-        alert(`${i + 1}번째 재료량을 입력해주세요.`)
-        return
-      }
-      if (ingredient.amount.trim().length > 255) {
-        alert(`${i + 1}번째 재료량은 최대 255자까지 입력 가능합니다.`)
-        return
-      }
-    }
-    
-    // 4. 조리과정 검증
-    if (post.steps.length === 0) {
-      alert('최소 1개 이상의 조리과정을 입력해주세요.')
-      return
-    }
-    
-    for (let i = 0; i < post.steps.length; i++) {
-      const step = post.steps[i]
-      if (!step.content.trim()) {
-        alert(`${i + 1}번째 조리과정을 입력해주세요.`)
-        return
-      }
-      if (step.content.trim().length > 255) {
-        alert(`${i + 1}번째 조리과정은 최대 255자까지 입력 가능합니다.`)
-        return
-      }
-      if (step.comment && step.comment.trim().length > 1000) {
-        alert(`${i + 1}번째 추가설명은 최대 1000자까지 입력 가능합니다.`)
-        return
-      }
-    }
-
-    isSubmitting.value = true
-
-    // 데이터 변환
-    const requestData = {
-      title: post.title,
-      description: post.content,  // content → description
-      category: getCategoryEnum(post.category),  // 한식 → KOREAN
-      level: getDifficultyEnum(post.difficulty), // 보통 → MEDIUM
-      cookTime: parseInt(post.cookTime) || 0,
-      serving: parseInt(post.servings) || 1,    // servings → serving
-      cookTip: post.cookingTip,                  // cookingTip → cookTip
-      isOpen: post.isPublic,                     // isPublic → isOpen
-      ingredients: post.ingredients.map(ing => ({
-        name: ing.name,
-        amount: ing.amount || "적당량"  // amount 필드 추가
-      })),
-      steps: post.steps.map((step, index) => ({
-        stepSequence: index + 1,      // stepSequence 추가
-        content: step.content,
-        description: step.comment      // comment를 description으로 매핑
-      }))
-    }
-
-    const formData = new FormData()
-    formData.append('request', new Blob([JSON.stringify(requestData)], {
-      type: 'application/json'
-    }))
-
-    // 이미지가 있다면 추가
-    if (post.imageFile) {
-      formData.append('thumbnail', post.imageFile)
-    }
-
-    const token = localStorage.getItem('accessToken') // 또는 store에서 가져오기
-    
-    if (!token) {
-      alert('로그인이 필요합니다.')
-      router.push('/login')
-      return
-    }
-    
-    // JWT 토큰 내용 확인
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]))
-      console.log('🔍 JWT 토큰 페이로드:', payload)
-      console.log('🔍 사용자 ID:', payload.sub)
-    } catch (e) {
-      console.log('❌ JWT 토큰 파싱 실패:', e)
-    }
-    
-    // 백엔드 API 경로를 여러 개 시도해보기
-    let response
-    let apiUrl = 'http://localhost:8080/api/posts'
-    
-    console.log('🔄 게시글 등록 첫 번째 시도:', apiUrl)
-    response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      },
-      body: formData
-    })
-    
-    if (!response.ok) {
-      console.log('🔄 게시글 등록 두 번째 시도: /api/recipes')
-      apiUrl = 'http://localhost:8080/api/recipes'
-      response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      })
-    }
-    
-    if (!response.ok) {
-      console.log('🔄 게시글 등록 세 번째 시도: /api/posts/create')
-      apiUrl = 'http://localhost:8080/api/posts/create'
-      response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      })
-    }
-    
-    console.log('📡 게시글 등록 최종 응답 상태:', response.status, response.statusText, 'URL:', apiUrl)
-    if (response.ok) {
-      const responseData = await response.json()
-      console.log('게시글 생성 응답:', responseData)
-      
-      // 생성된 게시글의 ID를 가져와서 상세 페이지로 이동
-      if (responseData.data && responseData.data.id) {
-        alert('게시글이 등록되었습니다!')
-        router.push(`/recipes/${responseData.data.id}`)
-      } else {
-        alert('게시글이 등록되었습니다!')
-        router.push('/recipes')
-      }
-    } else {
-      throw new Error('등록 실패')
-    }
-  } catch (error) {
-    console.error('게시글 등록 실패:', error)
-    alert('게시글 등록에 실패했습니다.')
-  } finally {
-    isSubmitting.value = false
-  }
-}
-
-// 이미지 관련 메서드들
+// 이미지 업로드 관련
 const triggerImageUpload = () => {
-  imageInput.value?.click()
+  imageInput.value.click()
 }
 
 const handleImageChange = (event) => {
   const file = event.target.files[0]
   if (file) {
-    validateAndSetImage(file)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('파일 크기는 5MB 이하여야 합니다.')
+      return
+    }
+    
+    post.imageFile = file
+    post.imageUrl = URL.createObjectURL(file)
   }
 }
 
 const handleImageDrop = (event) => {
   event.preventDefault()
-  const files = event.dataTransfer.files
-  if (files.length > 0) {
-    const file = files[0]
-    if (file.type.startsWith('image/')) {
-      validateAndSetImage(file)
+  const file = event.dataTransfer.files[0]
+  if (file && file.type.startsWith('image/')) {
+    if (file.size > 5 * 1024 * 1024) {
+      alert('파일 크기는 5MB 이하여야 합니다.')
+      return
     }
+    
+    post.imageFile = file
+    post.imageUrl = URL.createObjectURL(file)
   }
-}
-
-const validateAndSetImage = (file) => {
-  // 파일 크기 검증 (5MB)
-  if (file.size > 5 * 1024 * 1024) {
-    alert('파일 크기는 5MB 이하여야 합니다')
-    return
-  }
-
-  // 파일 타입 검증
-  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-    alert('지원되는 이미지 형식: JPG, PNG, WebP')
-    return
-  }
-
-  // 실제 파일 객체 저장
-  post.imageFile = file
-
-  // 이미지 미리보기 생성
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    post.imageUrl = e.target.result
-  }
-  reader.readAsDataURL(file)
 }
 
 const clearImage = () => {
-  post.imageUrl = ''
   post.imageFile = null
+  post.imageUrl = ''
   if (imageInput.value) {
     imageInput.value.value = ''
   }
 }
+
+// 게시글 수정
+const updatePost = async () => {
+  try {
+    isUpdating.value = true
+    
+    // 기본 검증
+    if (!post.title.trim() || !post.content.trim()) {
+      alert('제목과 내용을 입력해주세요.')
+      return
+    }
+
+    if (post.ingredients.length === 0 || post.steps.length === 0) {
+      alert('재료와 조리 과정을 입력해주세요.')
+      return
+    }
+    
+    console.log('🚀 updatePost 함수 호출됨!')
+    console.log('현재 post 데이터:', post)
+    
+    // PostUpdateRequestDto에 해당하는 데이터를 하나의 객체로 만듭니다.
+    const requestDto = {
+      title: post.title,
+      description: post.content || '',
+      category: getCategoryEnum(post.category), // '한식' → 'KOREAN' 변환
+      level: getDifficultyEnum(post.difficulty),   // '보통' → 'MEDIUM' 변환
+      cookTime: parseInt(post.cookTime) || 0,
+      serving: parseInt(post.servings) || 1,
+      cookTip: post.cookingTip || '',
+      isOpen: post.isPublic,
+      // 기존 썸네일 URL은 DTO 필드로 전달
+      thumbnailUrl: post.imageUrl || null,
+      ingredients: post.ingredients.map(ing => ({
+        name: ing.name,
+        amount: ing.amount
+      })),
+      steps: post.steps.map(step => ({
+        stepSequence: step.stepSequence || 1,
+        content: step.content,
+        description: step.comment || ''
+      }))
+    };
+    
+    console.log('📦 requestDto 생성 완료:', requestDto)
+    
+    // FormData 객체를 생성합니다.
+    const formData = new FormData();
+    console.log('📋 FormData 객체 생성 완료')
+    
+    // 1. JSON 데이터를 'request' 파트로 추가합니다.
+    console.log('🔧 FormData request 필드 추가 시도...')
+    formData.append(
+      'request',
+      new Blob([JSON.stringify(requestDto)], { type: 'application/json' })
+    );
+    
+    console.log('✅ FormData request 필드 추가 완료')
+    
+    // 2. 썸네일 파일을 'thumbnail' 파트로 추가합니다.
+    //    새로운 파일이 있을 경우에만 추가합니다.
+    if (post.imageFile && post.imageFile.size > 0) {
+      console.log('새로운 썸네일 파일 전송:', post.imageFile.name, post.imageFile.size);
+      formData.append('thumbnail', post.imageFile);
+    }
+    
+    // FormData 내용 확인 로그
+    console.log('FormData 내용 확인:');
+    for (let pair of formData.entries()) {
+      console.log(pair[0] + ': ' + pair[1]);
+    }
+    
+    console.log('🚀 fetch 요청 시작...')
+    
+    const postId = route.query.id
+    const response = await fetch(
+      `http://localhost:8080/api/posts/${postId}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          // Content-Type은 브라우저가 자동으로 multipart/form-data로 설정
+        },
+        body: formData
+      }
+    )
+    
+    if (response.ok) {
+      const responseData = await response.json()
+      console.log('게시글 수정 응답:', responseData)
+      alert('게시글이 수정되었습니다!')
+      router.push(`/recipes/${postId}`)
+    } else {
+      const errorData = await response.text()
+      console.error('게시글 수정 실패:', response.status, errorData)
+      alert('게시글 수정에 실패했습니다.')
+    }
+    
+  } catch (error) {
+    console.error('❌ 게시글 수정 실패 - 전체 에러 객체:', error)
+    console.error('❌ 에러 타입:', error.constructor.name)
+    console.error('❌ 에러 메시지:', error.message)
+    console.error('❌ 에러 스택:', error.stack)
+    
+    const errorMessage = error.message || '알 수 없는 오류가 발생했습니다.'
+    alert(`게시글 수정에 실패했습니다: ${errorMessage}`)
+  } finally {
+    isUpdating.value = false
+  }
+}
+
+const goBack = () => {
+  router.go(-1)
+}
+
+// 컴포넌트 마운트 시 기존 데이터 로드
+onMounted(() => {
+  loadPost()
+})
 </script>
 
 <style scoped>
 .breadcrumb {
   display: flex;
   align-items: center;
-  font-size: 14px;
-}
-
-.text-primary {
-  color: #1976d2 !important;
-}
-
-/* 이미지 입력 섹션 스타일 */
-.image-input-section {
-  border: 2px dashed #e0e0e0;
-  border-radius: 12px;
-  padding: 24px;
-  background: #fafafa;
-  transition: all 0.3s ease;
-}
-
-.image-input-section:hover {
-  border-color: #1976d2;
-  background: #f5f9ff;
+  font-size: 0.875rem;
 }
 
 .image-upload-area {
-  text-align: center;
+  width: 100%;
 }
 
 .upload-placeholder {
-  border: 2px dashed #e0e0e0;
-  border-radius: 12px;
-  padding: 40px 20px;
-  background: #fafafa;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  min-height: 200px;
+  width: 100%;
+  height: 200px;
+  border: 2px dashed #ddd;
+  border-radius: 8px;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background-color: #fafafa;
 }
 
 .upload-placeholder:hover {
   border-color: #1976d2;
-  background: #f5f9ff;
+  background-color: #f5f5f5;
 }
 
 .upload-guide {
   text-align: center;
-}
-
-.upload-guide p {
-  margin: 8px 0;
+  color: #666;
 }
 
 .image-preview {
-  max-width: 100%;
-  max-height: 300px;
-  border-radius: 8px;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
+  border-radius: 6px;
 }
 
 .image-actions {
-  text-align: center;
+  display: flex;
+  gap: 10px;
+}
+
+.image-help {
+  margin-top: 16px;
 }
 
 .image-help ul {
-  margin: 0;
-  padding-left: 20px;
+  list-style: none;
+  padding-left: 0;
 }
 
 .image-help li {
   margin-bottom: 4px;
 }
 
-/* 공개 설정 스위치 스타일 */
-.public-setting-switch {
-  background: #f8f9fa;
-  padding: 16px 20px;
-  border-radius: 12px;
-  border: 1px solid #e9ecef;
-  min-width: 280px;
-}
-
-.public-setting-switch .v-alert {
-  margin-top: 12px;
-  font-size: 0.875rem;
+.image-help li:before {
+  content: "•";
+  color: #1976d2;
+  font-weight: bold;
+  margin-right: 8px;
 }
 </style>

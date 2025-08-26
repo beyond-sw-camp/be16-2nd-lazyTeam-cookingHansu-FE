@@ -242,22 +242,61 @@
                       <span class="text-caption text-grey-darken-1">{{ formatDate(comment.createdAt) }}</span>
                     </div>
                     
-                    <!-- 댓글 수정/삭제 버튼 (작성자만) -->
-                    <div v-if="comment.isAuthor" class="comment-actions">
-                      <v-btn
-                        icon="mdi-pencil"
-                        size="small"
-                        variant="text"
-                        @click="editComment(comment)"
-                        class="mr-1"
-                      />
-                      <v-btn
-                        icon="mdi-delete"
-                        size="small"
-                        variant="text"
-                        color="error"
-                        @click="deleteComment(comment.id)"
-                      />
+                    <!-- 댓글 액션 버튼들 -->
+                    <div class="comment-actions">
+                      <!-- 더보기 버튼 -->
+                      <v-menu
+                        v-model="comment.showMoreMenu"
+                        :close-on-content-click="false"
+                        location="bottom end"
+                      >
+                        <template v-slot:activator="{ props }">
+                          <v-btn 
+                            icon="mdi-dots-vertical"
+                            size="small" 
+                            variant="text"
+                            v-bind="props"
+                            class="more-btn"
+                          />
+                        </template>
+                        
+                        <v-list density="compact">
+                          <!-- 수정 버튼 (작성자만 표시) -->
+                          <v-list-item
+                            v-if="comment.isAuthor"
+                            @click="editComment(comment)"
+                            class="edit-menu-item"
+                          >
+                            <template v-slot:prepend>
+                              <v-icon size="16" color="primary">mdi-pencil</v-icon>
+                            </template>
+                            <v-list-item-title>수정</v-list-item-title>
+                          </v-list-item>
+                          
+                          <!-- 삭제 버튼 (작성자만 표시) -->
+                          <v-list-item
+                            v-if="comment.isAuthor"
+                            @click="deleteComment(comment.id)"
+                            class="delete-menu-item"
+                          >
+                            <template v-slot:prepend>
+                              <v-icon size="16" color="error">mdi-delete</v-icon>
+                            </template>
+                            <v-list-item-title class="text-error">삭제</v-list-item-title>
+                          </v-list-item>
+                          
+                          <!-- 신고 버튼 (모든 사용자에게 표시) -->
+                          <v-list-item
+                            @click="reportComment(comment)"
+                            class="report-menu-item"
+                          >
+                            <template v-slot:prepend>
+                              <v-icon size="16" color="warning">mdi-flag</v-icon>
+                            </template>
+                            <v-list-item-title class="text-warning">신고</v-list-item-title>
+                          </v-list-item>
+                        </v-list>
+                      </v-menu>
                     </div>
                   </div>
                   
@@ -398,7 +437,8 @@ const submitComment = async () => {
       content: newComment.value,
       authorName: '현재 사용자', // TODO: 실제 사용자 정보 사용
       createdAt: new Date().toISOString(),
-      isAuthor: true
+      isAuthor: true,
+      showMoreMenu: false // 더보기 메뉴 상태
     }
     
     post.comments.unshift(comment)
@@ -422,6 +462,29 @@ const deleteComment = async (commentId) => {
     }
   } catch (error) {
     console.error('댓글 삭제 실패:', error)
+  }
+}
+
+// 댓글 신고 기능
+const reportComment = async (comment) => {
+  try {
+    const reportReason = prompt('신고 사유를 입력해주세요:')
+    if (!reportReason || !reportReason.trim()) {
+      return
+    }
+
+    // TODO: API 호출로 댓글 신고
+    console.log('댓글 신고:', {
+      commentId: comment.id,
+      reason: reportReason.trim()
+    })
+    
+    alert('신고가 접수되었습니다.')
+    // 더보기 메뉴 닫기
+    comment.showMoreMenu = false
+  } catch (error) {
+    console.error('댓글 신고 실패:', error)
+    alert('신고 중 오류가 발생했습니다.')
   }
 }
 
@@ -658,6 +721,27 @@ onMounted(() => {
 .comment-actions {
   display: flex;
   gap: 4px;
+}
+
+/* 더보기 메뉴 스타일 */
+.more-btn {
+  color: #666;
+}
+
+.more-btn:hover {
+  color: #333;
+}
+
+.edit-menu-item:hover {
+  background-color: #e3f2fd;
+}
+
+.delete-menu-item:hover {
+  background-color: #ffebee;
+}
+
+.report-menu-item:hover {
+  background-color: #fff3e0;
 }
 
 .action-buttons {

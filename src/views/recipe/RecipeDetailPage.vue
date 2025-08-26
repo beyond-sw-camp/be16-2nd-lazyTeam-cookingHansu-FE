@@ -18,27 +18,33 @@
         <div class="recipe-main-section">
           <div class="recipe-main-box">
             <div class="recipe-image-container">
-              <v-img
+      <v-img
                 :src="recipe.thumbnailUrl || defaultThumbnail"
                 height="400"
-                cover
+        cover
                 class="recipe-image"
-              />
-            </div>
+            />
+          </div>
             
             <div class="recipe-info">
               <div class="recipe-header">
                 <div class="title-section">
                   <div class="title-row">
-                    <h1 class="recipe-title">{{ recipe.title }}</h1>
+                    <div class="title-left">
+                      <h1 class="recipe-title">{{ recipe.title }}</h1>
+                      <div class="author-simple">
+                        <span class="author-name-simple">{{ recipe.nickname || '작성자' }}</span>
+                        <span class="author-role-simple">{{ getUserTypeText(recipe.role) }}</span>
+            </div>
+          </div>
                     <v-chip 
                       :color="getCategoryColor(recipe.category)" 
                       size="small" 
                       class="category-chip"
                     >
                       {{ getCategoryText(recipe.category) }}
-                    </v-chip>
-                  </div>
+            </v-chip>
+          </div>
                   <p class="recipe-subtitle">{{ recipe.description }}</p>
                   
                   <!-- 수정/삭제 버튼들 (작성자만 보임) -->
@@ -63,40 +69,30 @@
                         <v-icon start size="12">mdi-delete</v-icon>
                         삭제
                       </v-btn>
-                  </div>
-                </div>
-              </div>
-              
-              <div class="author-info">
-                <div class="author-avatar">
-                  <v-avatar size="40" color="orange">
-                    <span class="text-h6 text-white font-weight-bold">
-                      {{ getAuthorInitial(recipe.nickname) }}
-                    </span>
-                  </v-avatar>
-                </div>
-                <div class="author-details">
-                  <div class="author-name">{{ recipe.nickname || '작성자' }}</div>
-                  <div class="author-role">{{ getUserTypeText(recipe.role) }}</div>
-                </div>
-              </div>
+            </div>
+            </div>
+            </div>
               
               <!-- 좋아요, 북마크, 조회수 카운트 -->
               <div class="engagement-stats">
-                <div class="stat-item clickable" @click="toggleLike">
+                <div class="stat-item" :class="{ clickable: isLoggedIn }" @click="isLoggedIn ? toggleLike() : showLoginAlert()">
                   <v-icon :color="isLiked ? 'red' : 'grey'" size="20">mdi-heart</v-icon>
                   <span class="stat-count">{{ recipe.likeCount || 0 }}</span>
-                </div>
-                <div class="stat-item clickable" @click="toggleBookmark">
+          </div>
+                <div class="stat-item" :class="{ clickable: isLoggedIn }" @click="isLoggedIn ? toggleBookmark() : showLoginAlert()">
                   <v-icon :color="isBookmarked ? 'blue' : 'grey'" size="20">mdi-bookmark</v-icon>
                   <span class="stat-count">{{ recipe.bookmarkCount || 0 }}</span>
                 </div>
                 <div class="stat-item">
+                  <v-icon color="grey" size="20">mdi-eye</v-icon>
+                  <span class="stat-count">{{ recipe.viewCount || 0 }}</span>
+                </div>
+                <div class="stat-item">
                   <v-icon color="grey" size="20">mdi-comment</v-icon>
                   <span class="stat-count">{{ getTotalCommentCount() }}</span>
-                </div>
-              </div>
-              
+        </div>
+      </div>
+      
               <div class="recipe-meta-info">
                 <h3 class="meta-title">레시피 정보</h3>
                 
@@ -109,19 +105,12 @@
                   <div class="meta-item">
                     <div class="meta-label">난이도</div>
                     <div class="meta-value">
-                      <div class="difficulty-stars">
-                        <v-icon 
-                          v-for="i in 5" 
-                          :key="i"
-                          :color="i <= getDifficultyLevel(recipe.level) ? 'orange' : 'grey'"
-                          size="20"
-                        >
-                          mdi-star
-                        </v-icon>
+                      <div class="difficulty-text">
+                        {{ getDifficultyText(recipe.level) }}
                       </div>
-                    </div>
-                  </div>
-                  
+      </div>
+    </div>
+
                   <div class="meta-item">
                     <div class="meta-label">인분</div>
                     <div class="meta-value">{{ recipe.serving }}인분</div>
@@ -134,9 +123,9 @@
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-        
+              </div>
+            </div>
+
         <!-- 재료와 조리과정 섹션 -->
         <div class="recipe-detail-content">
           <div class="detail-sections-container">
@@ -157,35 +146,35 @@
                     </div>
                   </div>
                 </div>
-              </div>
             </div>
-            
+          </div>
+
             <!-- 조리과정 섹션 -->
             <div class="cooking-steps-section">
               <h2 class="section-title">조리과정</h2>
               <div class="cooking-steps">
-                <div 
-                  v-for="(step, index) in recipe.steps" 
-                  :key="step.id" 
+              <div 
+                v-for="(step, index) in recipe.steps" 
+                :key="step.id" 
                   class="step-item"
                 >
                   <div class="step-number">
                     <div class="step-circle">{{ index + 1 }}</div>
-                  </div>
+                          </div>
                   <div class="step-content">
-                    <h4 class="step-title">{{ getStepTitle(index) }}</h4>
                     <p class="step-description">{{ step.content }}</p>
+                    <p v-if="step.description" class="step-subtitle">{{ step.description }}</p>
                   </div>
                 </div>
               </div>
-              
+
               <!-- 요리 팁 -->
               <div v-if="recipe.cookTip" class="cooking-tip-section">
                 <h3 class="tip-title">요리 팁</h3>
                 <p class="tip-content">{{ recipe.cookTip }}</p>
-              </div>
-            </div>
-          </div>
+                    </div>
+                  </div>
+                </div>
         </div>
         
 
@@ -193,29 +182,35 @@
         <div class="comments-section">
           <h3 class="comments-title">댓글 ({{ getTotalCommentCount() }})</h3>
           
-          <div class="comment-form">
-            <v-textarea
-              v-model="newComment"
-              placeholder="댓글을 작성해주세요...."
-              variant="outlined"
-              rows="3"
+          <!-- 댓글 작성 폼 (로그인한 사용자만 보임) -->
+          <div v-if="isLoggedIn" class="comment-form">
+                <v-textarea
+                  v-model="newComment"
+                  placeholder="댓글을 작성해주세요...."
+                  variant="outlined"
+                  rows="3"
               hide-details
               class="comment-input"
             ></v-textarea>
-            <v-btn 
-              color="primary" 
-              @click="submitComment"
-              :disabled="!newComment.trim()"
+                  <v-btn 
+                    color="primary" 
+                    @click="submitComment"
+                    :disabled="!newComment.trim()"
               class="comment-submit-btn"
-            >
-              댓글 등록
-            </v-btn>
-          </div>
+                  >
+                    댓글 등록
+                  </v-btn>
+                </div>
           
-          <div class="comments-list">
-            <div 
-              v-for="comment in comments" 
-              :key="comment.id" 
+          <!-- 비로그인 사용자에게 로그인 안내 -->
+          <div v-else class="login-notice">
+            <p>댓글을 작성하려면 <button @click="goToLogin" class="login-link">로그인</button>이 필요합니다.</p>
+              </div>
+
+              <div class="comments-list">
+                <div 
+                  v-for="comment in comments" 
+                  :key="comment.id"
               class="comment-item"
             >
               <div class="comment-header">
@@ -249,11 +244,97 @@
                   >
                     답글
                   </v-btn>
+                  
+                  <!-- 더보기 버튼 -->
+                  <v-menu
+                    v-model="comment.showMoreMenu"
+                    :close-on-content-click="false"
+                    location="bottom end"
+                  >
+                    <template v-slot:activator="{ props }">
+                      <v-btn 
+                        icon 
+                        size="small" 
+                        variant="text"
+                        v-bind="props"
+                        class="more-btn"
+                      >
+                        <v-icon size="16">mdi-dots-vertical</v-icon>
+                      </v-btn>
+                    </template>
+                    
+                    <v-list density="compact">
+                      <!-- 수정 버튼 (작성자만 표시) -->
+                      <v-list-item
+                        v-if="currentUser && currentUser.nickname === comment.nickname"
+                        @click="startEditComment(comment)"
+                        class="edit-menu-item"
+                      >
+                        <template v-slot:prepend>
+                          <v-icon size="16" color="primary">mdi-pencil</v-icon>
+                        </template>
+                        <v-list-item-title>수정</v-list-item-title>
+                      </v-list-item>
+                      
+                      <!-- 삭제 버튼 (작성자만 표시) -->
+                      <v-list-item
+                        v-if="currentUser && currentUser.nickname === comment.nickname"
+                        @click="deleteComment(comment.id)"
+                        class="delete-menu-item"
+                      >
+                        <template v-slot:prepend>
+                          <v-icon size="16" color="error">mdi-delete</v-icon>
+                        </template>
+                        <v-list-item-title class="text-error">삭제</v-list-item-title>
+                      </v-list-item>
+                      
+                      <!-- 신고 버튼 (모든 사용자에게 표시) -->
+                      <v-list-item
+                        @click="reportComment(comment)"
+                        class="report-menu-item"
+                      >
+                        <template v-slot:prepend>
+                          <v-icon size="16" color="warning">mdi-flag</v-icon>
+                        </template>
+                        <v-list-item-title class="text-warning">신고</v-list-item-title>
+                      </v-list-item>
+                    </v-list>
+                  </v-menu>
                 </div>
               </div>
               
-              <div class="comment-content">
+              <!-- 댓글 내용 (수정 모드가 아닐 때) -->
+              <div v-if="!comment.isEditing" class="comment-content">
                 {{ comment.content }}
+              </div>
+              
+              <!-- 댓글 수정 폼 (수정 모드일 때) -->
+              <div v-if="comment.isEditing" class="comment-edit-form">
+                <v-textarea
+                  v-model="comment.editText"
+                  placeholder="댓글을 수정해주세요...."
+                  variant="outlined"
+                  rows="2"
+                  hide-details
+                  class="comment-edit-input"
+                ></v-textarea>
+                <div class="comment-edit-actions">
+                  <v-btn 
+                    size="small" 
+                    variant="outlined"
+                    @click="cancelEditComment(comment)"
+                  >
+                    취소
+                  </v-btn>
+                  <v-btn 
+                    size="small" 
+                    color="primary"
+                    @click="saveEditComment(comment)"
+                    :disabled="!comment.editText.trim()"
+                  >
+                    저장
+                  </v-btn>
+                </div>
               </div>
               
               <div v-if="comment.showReplyForm" class="reply-form">
@@ -272,7 +353,7 @@
                     @click="cancelReply(comment)"
                   >
                     취소
-                  </v-btn>
+                      </v-btn>
                   <v-btn 
                     size="small" 
                     color="primary"
@@ -280,14 +361,14 @@
                     :disabled="!comment.replyText.trim()"
                   >
                     답글 등록
-                  </v-btn>
+                      </v-btn>
                 </div>
-              </div>
-              
+                    </div>
+
               <div v-if="comment.replies && comment.replies.length > 0" class="replies-list">
-                <div 
-                  v-for="reply in comment.replies" 
-                  :key="reply.id" 
+                      <div 
+                        v-for="reply in comment.replies" 
+                        :key="reply.id"
                   class="reply-item"
                 >
                   <div class="reply-header">
@@ -295,27 +376,27 @@
                       <span class="text-caption text-white font-weight-bold">
                         {{ getAuthorInitial(reply.nickname) }}
                       </span>
-                    </v-avatar>
+                        </v-avatar>
                     <div class="reply-author-info">
                       <div class="reply-author-name">{{ reply.nickname }}</div>
                       <div class="reply-time">{{ formatDate(reply.createdAt) }}</div>
-                    </div>
-                  </div>
+                          </div>
+                        </div>
                   <div class="reply-content">
                     {{ reply.content }}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
           
           <div v-if="comments.length > 5" class="load-more-comments">
             <v-btn variant="outlined" @click="loadMoreComments">
               댓글 더보기▼
             </v-btn>
-          </div>
-        </div>
-        
+                  </div>
+                </div>
+
         <v-dialog v-model="showDeleteModal" max-width="400">
           <v-card>
             <v-card-title class="text-h6 font-weight-bold">
@@ -324,7 +405,7 @@
             <v-card-text>
               <p class="text-body-1">"{{ recipe.title }}"을(를) 삭제하시겠습니까?</p>
               <p class="text-caption text-grey mt-2">이 작업은 되돌릴 수 없습니다.</p>
-            </v-card-text>
+              </v-card-text>
             <v-card-actions class="pa-4">
               <v-spacer></v-spacer>
               <v-btn variant="outlined" @click="showDeleteModal = false">
@@ -334,7 +415,7 @@
                 삭제
               </v-btn>
             </v-card-actions>
-          </v-card>
+            </v-card>
         </v-dialog>
       </div>
 
@@ -343,8 +424,8 @@
           {{ error }}
         </v-alert>
         <v-btn color="primary" @click="loadRecipe">다시 시도</v-btn>
-      </div>
-    </div>
+                    </div>
+                    </div>
   </div>
 </template>
 
@@ -356,15 +437,24 @@ import Header from '@/components/Header.vue'
 const route = useRoute()
 const router = useRouter()
 
+// 기본 썸네일 이미지
+const defaultThumbnail = '/src/assets/images/smu_mascort1.jpg'
+
 const loading = ref(true)
 const error = ref(null)
 const showDeleteModal = ref(false)
 const newComment = ref('')
+const currentUser = ref(null)
+
+// 로그인 상태 확인
+const isLoggedIn = computed(() => {
+  return !!localStorage.getItem('accessToken')
+})
+
 // 현재 사용자가 작성자인지 확인
 const isAuthor = computed(() => {
-  if (!recipe.nickname) return false
-  const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
-  return currentUser.nickname === recipe.nickname
+  if (!recipe.nickname || !currentUser.value) return false
+  return currentUser.value.nickname === recipe.nickname
 })
 
 // 좋아요, 북마크 상태
@@ -387,9 +477,20 @@ const recipe = reactive({
   likeCount: 0,
   bookmarkCount: 0,
   viewCount: 0,
-  nickname: '',
+    nickname: '',
   role: ''
 })
+
+const getDifficultyText = (level) => {
+  const levels = {
+    'VERY_LOW': '매우 쉬움',
+    'LOW': '쉬움',
+    'MEDIUM': '보통',
+    'HIGH': '어려움',
+    'VERY_HIGH': '매우 어려움'
+  }
+  return levels[level] || '보통'
+}
 
 const getDifficultyLevel = (level) => {
   const levels = {
@@ -435,15 +536,7 @@ const getAuthorInitial = (nickname) => {
   return nickname ? nickname.charAt(0) : 'U'
 }
 
-const getStepTitle = (index) => {
-  const titles = [
-    '밥 준비하기',
-    '나물 준비하기', 
-    '고기와 계란 준비',
-    '비빔밥 완성하기'
-  ]
-  return titles[index] || `단계 ${index + 1}`
-}
+
 
 const formatDate = (date) => {
   if (!date) return '방금 전'
@@ -490,7 +583,7 @@ const submitComment = async () => {
     })
 
     console.log('댓글 생성 응답 상태:', response.status, response.statusText)
-
+    
     if (response.ok) {
       const data = await response.json()
       console.log('댓글 생성 성공:', data)
@@ -594,8 +687,20 @@ const deleteComment = async (commentId) => {
   }
 }
 
-// 댓글 수정
-const editComment = async (comment) => {
+// 댓글 수정 시작
+const startEditComment = (comment) => {
+  comment.isEditing = true
+  comment.editText = comment.content // 현재 내용을 수정 폼에 설정
+}
+
+// 댓글 수정 취소
+const cancelEditComment = (comment) => {
+  comment.isEditing = false
+  comment.editText = ''
+}
+
+// 댓글 수정 저장
+const saveEditComment = async (comment) => {
   if (!comment.editText.trim()) return
   
   try {
@@ -648,10 +753,15 @@ const loadComments = async () => {
   console.log('댓글 목록 로드 시작, postId:', recipe.id)
   
   try {
+    // 댓글 목록은 권한 없이도 조회 가능하도록 헤더를 선택적으로 설정
+    const headers = {}
+    const token = localStorage.getItem('accessToken')
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+    
     const response = await fetch(`http://localhost:8080/post/comment/list/${recipe.id}`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-      }
+      headers
     })
 
     console.log('댓글 목록 응답 상태:', response.status, response.statusText)
@@ -674,6 +784,7 @@ const loadComments = async () => {
             createdAt: comment.createdAt,
             likeCount: comment.likeCount || 0,
             isLiked: comment.isLiked || false,
+            showMoreMenu: false, // 더보기 메뉴 상태
             replies: comment.childComments ? comment.childComments.map(reply => ({
               id: reply.commentId || reply.id,
               nickname: reply.authorNickName || reply.nickname,
@@ -760,23 +871,71 @@ const loadRecipe = async () => {
     const recipeId = route.params.id
     console.log('레시피 ID:', recipeId)
     
-    // 조회수 증가
-    try {
-      await fetch(`http://localhost:8080/api/interactions/posts/${recipeId}/views`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      })
-    } catch (error) {
-      console.log('조회수 증가 실패 (무시)', error)
+    // 조회수 증가 (로그인한 사용자만)
+    if (isLoggedIn.value) {
+      try {
+        await fetch(`http://localhost:8080/api/interactions/posts/${recipeId}/views`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          }
+        })
+      } catch (error) {
+        console.log('조회수 증가 실패 (무시)', error)
+      }
     }
     
-    const response = await fetch(`http://localhost:8080/api/posts/${recipeId}`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+    console.log('🔍 상세 조회 API 호출:', `http://localhost:8080/api/posts/${recipeId}`)
+    
+    // 상세 조회는 권한 없이도 가능하도록 헤더를 선택적으로 설정
+    const headers = {}
+    const token = localStorage.getItem('accessToken')
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+    
+    // 백엔드 API 경로를 여러 개 시도해보기
+    let response
+    let apiUrl = `http://localhost:8080/api/posts/${recipeId}`
+    
+    console.log('🔄 첫 번째 시도:', apiUrl)
+    response = await fetch(apiUrl, { headers })
+    
+    if (!response.ok) {
+      console.log('🔄 두 번째 시도: /api/posts/detail/{id}')
+      apiUrl = `http://localhost:8080/api/posts/detail/${recipeId}`
+      response = await fetch(apiUrl, { headers })
+      
+      if (!response.ok) {
+        console.log('❌ 두 번째 시도 실패:', response.status, response.statusText)
+        try {
+          const errorText = await response.text()
+          console.log('❌ 에러 상세:', errorText)
+        } catch (e) {
+          console.log('❌ 에러 상세 읽기 실패:', e)
+        }
       }
-    })
+    }
+    
+    if (!response.ok) {
+      console.log('🔄 세 번째 시도: /api/recipes/{id}')
+      apiUrl = `http://localhost:8080/api/recipes/${recipeId}`
+      response = await fetch(apiUrl, { headers })
+      
+      if (!response.ok) {
+        console.log('❌ 세 번째 시도 실패:', response.status, response.statusText)
+        try {
+          const errorText = await response.text()
+          console.log('❌ 에러 상세:', errorText)
+        } catch (e) {
+          console.log('❌ 에러 상세 읽기 실패:', e)
+        }
+      }
+    }
+    
+    console.log('📡 최종 응답 상태:', response.status, response.statusText, 'URL:', apiUrl)
+    
+    console.log('📡 상세 조회 응답 상태:', response.status, response.statusText)
 
     if (response.ok) {
       const data = await response.json()
@@ -822,7 +981,7 @@ const loadRecipe = async () => {
 }
 
 const editRecipe = () => {
-  router.push({ path: '/recipe/post-write', query: { id: recipe.id } })
+  router.push({ path: '/recipe/post-edit', query: { id: recipe.id } })
 }
 
 const confirmDelete = () => {
@@ -831,12 +990,16 @@ const confirmDelete = () => {
 
 const deleteRecipe = async () => {
   try {
+    console.log('🗑️ 삭제 API 호출:', `http://localhost:8080/api/posts/${recipe.id}`)
+    
     const response = await fetch(`http://localhost:8080/api/posts/${recipe.id}`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
       }
     })
+    
+    console.log('📡 삭제 응답 상태:', response.status, response.statusText)
 
     if (response.ok) {
       alert('레시피가 삭제되었습니다.')
@@ -852,13 +1015,81 @@ const deleteRecipe = async () => {
   }
 }
 
+const showLoginAlert = () => {
+  alert('로그인이 필요한 기능입니다.')
+}
+
+const goToLogin = () => {
+  router.push('/login')
+}
+
+// 댓글 신고 기능
+const reportComment = async (comment) => {
+  try {
+    if (!currentUser.value) {
+      alert('로그인이 필요합니다.')
+      return
+    }
+
+    const reportReason = prompt('신고 사유를 입력해주세요:')
+    if (!reportReason || !reportReason.trim()) {
+      return
+    }
+
+    const response = await fetch('http://localhost:8080/api/reports', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+      },
+      body: JSON.stringify({
+        targetType: 'COMMENT',
+        targetId: comment.id,
+        reason: reportReason.trim()
+      })
+    })
+
+    if (response.ok) {
+      alert('신고가 접수되었습니다.')
+      // 더보기 메뉴 닫기
+      comment.showMoreMenu = false
+    } else {
+      const errorData = await response.text()
+      console.error('신고 실패:', response.status, errorData)
+      alert('신고 접수에 실패했습니다.')
+    }
+  } catch (error) {
+    console.error('신고 에러:', error)
+    alert('신고 중 오류가 발생했습니다.')
+  }
+}
+
 const goBack = () => {
   router.go(-1)
 }
 
-onMounted(() => {
-  loadRecipe()
+onMounted(async () => {
+  await loadCurrentUser()
+  await loadRecipe()
 })
+
+// 현재 사용자 정보 로드
+const loadCurrentUser = async () => {
+  try {
+    const response = await fetch('http://localhost:8080/user/profile', {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+      }
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      currentUser.value = data.data
+    }
+  } catch (error) {
+    console.error('사용자 정보 로드 실패:', error)
+  }
+}
 </script>
 
 <style scoped>
@@ -962,7 +1193,7 @@ onMounted(() => {
 
 .action-buttons {
   display: flex;
-  gap: 8px;
+    gap: 8px;
   flex-shrink: 0;
   min-width: 140px;
   justify-content: flex-end;
@@ -1080,14 +1311,40 @@ onMounted(() => {
 /* 타이틀 행 */
 .title-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 15px;
   margin-bottom: 10px;
 }
 
+.title-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .recipe-title {
   margin-bottom: 0;
-  flex: 1;
+}
+
+.author-simple {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.author-name-simple {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #666;
+}
+
+.author-role-simple {
+  font-size: 0.8rem;
+  color: #999;
+  padding: 2px 6px;
+  background-color: #f0f0f0;
+  border-radius: 4px;
 }
 
 .category-chip {
@@ -1148,9 +1405,13 @@ onMounted(() => {
   color: #333;
 }
 
-.difficulty-stars {
-  display: flex;
-  gap: 5px;
+.difficulty-text {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #333;
+  padding: 4px 8px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
 }
 
 
@@ -1287,6 +1548,17 @@ onMounted(() => {
   font-size: 1rem;
   color: #555;
   line-height: 1.6;
+  margin-bottom: 8px;
+}
+
+.step-subtitle {
+  font-size: 0.9rem;
+  color: #666;
+  line-height: 1.4;
+  margin: 8px 0 0 0;
+  font-style: italic;
+  padding-left: 8px;
+  border-left: 2px solid #f44336;
 }
 
 .cooking-tip-section {
@@ -1347,6 +1619,33 @@ onMounted(() => {
   min-width: 120px;
 }
 
+.login-notice {
+  text-align: center;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.login-notice p {
+  margin: 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.login-link {
+  background: none;
+  border: none;
+  color: #ff7a00;
+  text-decoration: underline;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.login-link:hover {
+  color: #e65c00;
+}
+
 .comments-list {
   display: flex;
   flex-direction: column;
@@ -1357,7 +1656,7 @@ onMounted(() => {
   padding: 20px;
   background-color: #f8f9fa;
   border-radius: 10px;
-  border: 1px solid #e9ecef;
+  /* 테두리 제거 */
 }
 
 .comment-header {
@@ -1407,6 +1706,16 @@ onMounted(() => {
   color: #666;
 }
 
+.delete-btn {
+  font-size: 0.8rem;
+  color: #dc3545;
+}
+
+.delete-btn:hover {
+  background-color: #f8d7da;
+  border-radius: 4px;
+}
+
 .comment-content {
   font-size: 1rem;
   color: #333;
@@ -1441,7 +1750,7 @@ onMounted(() => {
   padding: 15px;
   background-color: #fff;
   border-radius: 8px;
-  border: 1px solid #e0e0e0;
+  /* 테두리 제거 */
   margin-bottom: 10px;
 }
 
@@ -1521,9 +1830,9 @@ onMounted(() => {
   
   .section-title {
     font-size: 1.5rem;
-  }
-  
-  .recipe-header {
+}
+
+.recipe-header {
     flex-direction: column;
     gap: 15px;
   }
@@ -1574,8 +1883,29 @@ onMounted(() => {
   }
   
   .comment-actions {
-    align-self: flex-start;
-  }
+  align-self: flex-start;
+}
+
+/* 더보기 메뉴 스타일 */
+.more-btn {
+  color: #666;
+}
+
+.more-btn:hover {
+  color: #333;
+}
+
+.edit-menu-item:hover {
+  background-color: #e3f2fd;
+}
+
+.delete-menu-item:hover {
+  background-color: #ffebee;
+}
+
+.report-menu-item:hover {
+  background-color: #fff3e0;
+}
 }
 
 @media (max-width: 480px) {

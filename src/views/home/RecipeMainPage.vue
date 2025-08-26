@@ -62,7 +62,7 @@
             <div class="meta">
               <span class="meta-views"><span class="meta-icon">&#128065;</span> {{ recipe.views }}</span>
               <span class="meta-likes">❤️ {{ recipe.likes }}</span>
-              <span class="meta-comments">💬 {{ recipe.comments }}</span>
+              <span class="meta-bookmarks">🔖 {{ recipe.bookmarks }}</span>
             </div>
             <div class="time">{{ recipe.time }}</div>
           </div>
@@ -188,18 +188,29 @@ export default {
         console.log('✅ API 응답:', JSON.stringify(response.data, null, 2));
         
         // API 응답 데이터를 프론트엔드 형식에 맞게 변환
-        this.recipes = (response.data.data.content || []).map(post => ({
-          id: post.id,
-          image: post.thumbnailUrl || defaultThumbnail,
-          category: post.category,
-          title: post.title,
-          authorType: post.user?.role || 'GENERAL', // user.role 필드 사용
-          description: post.description,
-          likes: post.likeCount || 0,
-          comments: 0, // commentCount 필드가 없음
-          views: post.viewCount || 0,
-          time: this.formatTime(post.createdAt)
-        }));
+        this.recipes = (response.data.data.content || []).map(post => {
+          console.log('📝 개별 포스트 데이터:', {
+            id: post.id,
+            title: post.title,
+            commentCount: post.commentCount,
+            likeCount: post.likeCount,
+            bookmarkCount: post.bookmarkCount,
+            viewCount: post.viewCount
+          });
+          
+          return {
+            id: post.id,
+            image: post.thumbnailUrl || defaultThumbnail,
+            category: post.category,
+            title: post.title,
+            authorType: post.user?.role || 'GENERAL', // user.role 필드 사용
+            description: post.description,
+            likes: post.likeCount || 0,
+            bookmarks: post.bookmarkCount || 0, // 북마크수 추가
+            views: post.viewCount || 0,
+            time: this.formatTime(post.createdAt)
+          };
+        });
         
         this.totalItems = response.data.data.totalElements || 0;
         
@@ -289,6 +300,23 @@ export default {
       this.$router.push('/recipe/post-write');
     },
     
+    // 로그인 상태 확인
+    get isLoggedIn() {
+      const token = localStorage.getItem('accessToken');
+      console.log('🔐 로그인 상태 확인:', {
+        tokenExists: !!token,
+        tokenLength: token ? token.length : 0,
+        isLoggedIn: !!token
+      });
+      return !!token;
+    },
+    
+    // 로그인 알림
+    showLoginAlert() {
+      alert('로그인이 필요한 기능입니다.');
+      this.$router.push('/login');
+    },
+    
     // 필터 변경 시 목록 재조회
     onFilterChange() {
       this.currentPage = 1;
@@ -354,6 +382,16 @@ export default {
   font-weight: 600;
   cursor: pointer;
   font-size: 14px;
+}
+
+.write-btn.disabled {
+  background: #ccc;
+  color: #666;
+  cursor: not-allowed;
+}
+
+.write-btn.disabled:hover {
+  background: #ccc;
 }
 .filter-row {
   display: flex;
