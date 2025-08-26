@@ -177,7 +177,12 @@ router.beforeEach(async (to, from, next) => {
   // 루트 경로('/')에 대한 처리
   if (to.path === '/' && to.name === 'Home') {
     if (authStore.isAuthenticated) {
-      // 로그인된 사용자는 recipes 페이지로 리다이렉트
+      // admin 사용자는 관리자 페이지로 리다이렉트
+      if (authStore.user?.role === "admin") {
+        next('/admin');
+        return;
+      }
+      // 일반 로그인된 사용자는 recipes 페이지로 리다이렉트
       next('/recipes');
       return;
     } else {
@@ -225,6 +230,15 @@ router.beforeEach(async (to, from, next) => {
 
   // 추가 정보 입력 페이지들에 대한 접근 제어
   if (authStore.isAuthenticated && authStore.user) {
+    // admin 사용자는 추가 정보 입력 페이지에 접근할 수 없음
+    if (authStore.user.role === "admin") {
+      if (to.path === '/add-info' || to.path === '/detail-user' || 
+          to.path === '/detail-cook' || to.path === '/detail-owner') {
+        next('/admin');
+        return;
+      }
+    }
+    
     const registrationStep = authStore.getRegistrationStep;
     
     // 이미 등록이 완료된 사용자가 추가 정보 입력 페이지에 접근하려는 경우
@@ -279,7 +293,7 @@ router.beforeEach(async (to, from, next) => {
     }
     
     if (to.path === '/detail-owner' && registrationStep !== 'detail-owner') {
-      if (registrationStep === 'add-info') {
+      if (registrationStep === '/add-info') {
         next('/add-info');
         return;
       } else if (registrationStep === 'complete') {
@@ -298,6 +312,12 @@ router.beforeEach(async (to, from, next) => {
   // 로그인된 사용자가 메인 페이지나 다른 페이지로 이동할 때 등록 상태 확인
   if (authStore.isAuthenticated && authStore.user && 
       (to.path === "/" || to.path === "/recipes" || to.path === "/lectures" || to.path === "/mypage")) {
+    
+    // admin 사용자는 등록 상태 확인을 건너뛰고 관리자 페이지로 리다이렉트
+    if (authStore.user.role === "admin") {
+      next('/admin');
+      return;
+    }
     
     // /complete 페이지에서 메인 페이지로 이동하는 경우는 등록 상태 확인을 건너뛰기
     if (from.path === '/complete') {
