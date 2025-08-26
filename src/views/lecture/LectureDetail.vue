@@ -12,13 +12,19 @@
            </div>
            <div class="title-section">
              <h1 class="lecture-title">{{ lecture.title }}</h1>
-             <!-- 강의 상단 수정 버튼 -->
+             <!-- 강의 상단 수정/삭제 버튼 -->
              <div v-if="showEditButton" class="top-edit-button">
                <button 
                  class="edit-lecture-btn" 
                  @click="editLecture"
                >
                  ✏️ 강의 수정하기
+               </button>
+               <button 
+                 class="delete-lecture-btn" 
+                 @click="showDeleteConfirm"
+               >
+                 🗑️ 강의 삭제하기
                </button>
              </div>
            </div>
@@ -644,14 +650,25 @@
       @confirm="handleDeleteConfirm"
       @cancel="handleDeleteCancel"
     />
+
+    <!-- 강의 삭제 확인 모달 -->
+    <DeleteConfirmModal
+      v-model="showLectureDeleteModal"
+      title="강의 삭제"
+      message="정말로 이 강의를 삭제하시겠습니까?"
+      :item-info="`강의명: ${lecture?.title || ''}`"
+      @confirm="deleteLecture"
+      @cancel="cancelLectureDelete"
+    />
   </div>
 </template>
 
 <script>
 import Header from '@/components/Header.vue';
 import DeleteConfirmModal from '@/components/common/DeleteConfirmModal.vue';
-import { useCartStore } from '@/store/cart/cart.js';
+
 import { lectureService } from '@/store/lecture/lectureService';
+import { useCartStore } from '@/store/cart/cart';
 import { getUserIdFromToken } from '@/utils/api';
 
 
@@ -660,6 +677,7 @@ export default {
   components: { Header, DeleteConfirmModal },
   data() {
     return {
+      cartStore: null, // 장바구니 스토어 인스턴스
       activeTab: 'reviews',
       lecture: null,
       showShareModal: false,
@@ -673,6 +691,7 @@ export default {
        showPurchaseRequiredModal: false,
       showLoginRequiredModal: false,
       showDeleteConfirmModal: false,
+      showLectureDeleteModal: false,
       deleteConfirmData: {},
       notificationData: {},
       errorMessage: '',
@@ -706,8 +725,7 @@ export default {
        // 비디오 재생 상태
        isVideoPlaying: false,
        previewVideoUrl: '',
-       // 장바구니 스토어
-       cartStore: null,
+
        // 백엔드에서 확인한 장바구니 상태
        isInCart: false,
                // 비디오 썸네일 관련
@@ -858,20 +876,20 @@ export default {
        }
     },
     
-         // 장바구니 상태 확인 (백엔드 API 사용)
-     async checkCartStatus(lectureId) {
-       try {
-         const response = await lectureService.getCartItems();
-         if (response.success) {
-           // 현재 강의가 장바구니에 있는지 확인
-           this.isInCart = response.data.some(item => item.lectureId === lectureId);
-           console.log('장바구니 상태 확인:', this.isInCart);
-         }
-       } catch (error) {
-         console.error('장바구니 상태 확인 실패:', error);
-         this.isInCart = false;
-       }
-     },
+             // 장바구니 상태 확인 (백엔드 API 사용)
+    async checkCartStatus(lectureId) {
+      try {
+        const response = await lectureService.getCartItems();
+        if (response.success) {
+          // 장바구니 목록에서 현재 강의 ID가 있는지 확인
+          this.isInCart = response.data.some(item => item.lectureId === lectureId);
+          console.log('장바구니 상태 확인:', this.isInCart);
+        }
+      } catch (error) {
+        console.error('장바구니 상태 확인 실패:', error);
+        this.isInCart = false;
+      }
+    },
 
      // 좋아요 상태 확인 (백엔드 API 사용)
      async checkLikeStatus(lectureId) {
@@ -1561,48 +1579,38 @@ export default {
          // 강의 수정 페이지로 라우팅
          this.$router.push(`/lectures/edit/${this.lecture.id}`);
        },
+
+       // 강의 삭제 확인 모달 표시
+       showDeleteConfirm() {
+         this.showLectureDeleteModal = true;
+       },
+
+       // 강의 삭제 실행
+       async deleteLecture() {
+         try {
+           await this.deleteLectureFromServer();
+           this.showSuccess('강의가 삭제되었습니다.');
+           this.$router.push('/lectures');
+         } catch (error) {
+           this.showError('강의 삭제에 실패했습니다.');
+         } finally {
+           this.showLectureDeleteModal = false;
+         }
+       },
+
+       // 강의 삭제 취소
+       cancelLectureDelete() {
+         this.showLectureDeleteModal = false;
+       },
       
-      // 강의 삭제
-      deleteLecture() {
-        this.showConfirm({
-          title: '강의 삭제',
-          icon: '🗑️',
-          message: '정말로 이 강의를 삭제하시겠습니까?',
-          submessage: '삭제된 강의는 복구할 수 없습니다.',
-          confirmText: '삭제하기',
-          callback: async () => {
-            try {
-              // TODO: 실제 삭제 API 호출
-              await this.deleteLectureFromServer();
-              this.showSuccess('강의가 삭제되었습니다.');
-              this.$router.push('/lectures');
-            } catch (error) {
-              this.showError('강의 삭제에 실패했습니다.');
-            }
-          }
-        });
-      },
+
       
       // 서버에서 강의 삭제
       async deleteLectureFromServer() {
         try {
-          const token = localStorage.getItem('accessToken');
-          const response = await fetch(`http://localhost:8080/lecture/delete/${this.lecture.id}`, {
-            method: 'DELETE',
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
-          
-          if (response.ok) {
-            const result = await response.json();
-            console.log('강의 삭제 성공:', result);
-            return result;
-          } else {
-            const errorText = await response.text();
-            console.error('강의 삭제 실패:', errorText);
-            throw new Error('강의 삭제에 실패했습니다.');
-          }
+          const result = await lectureService.deleteLecture(this.lecture.id);
+          console.log('강의 삭제 성공:', result);
+          return result;
         } catch (error) {
           console.error('강의 삭제 오류:', error);
           throw error;
@@ -1864,18 +1872,14 @@ export default {
       async purchaseLecture() {
         try {
           // 장바구니에 추가
-          const response = await lectureService.addToCart([this.lecture.id]);
+          await lectureService.addToCart([this.lecture.id]);
           
-          if (response.success) {
-            this.isInCart = true;
-            // 장바구니 페이지로 이동
-            this.$router.push('/cart');
-          } else {
-            this.showError(response.message || '장바구니 추가에 실패했습니다.');
-          }
+          this.isInCart = true;
+          // 장바구니 페이지로 이동
+          this.$router.push('/cart');
         } catch (error) {
           console.error('강의 구매 처리 오류:', error);
-          this.showError('강의 구매 처리에 실패했습니다.');
+          this.showError('장바구니 추가에 실패했습니다.');
         }
       },
 
@@ -1898,16 +1902,18 @@ export default {
           confirmText: '제거하기',
           callback: async () => {
             try {
-              // 백엔드 API로 장바구니 삭제 요청
-              const response = await lectureService.removeFromCart(this.lecture.id);
+              // 백엔드 API를 통해 장바구니에서 제거
+              await lectureService.removeFromCart(this.lecture.id);
               
-              if (response.success) {
-                // 백엔드 성공 시 상태 업데이트
-                this.isInCart = false;
-                this.showSuccess('장바구니에서 강의가 제거되었습니다.');
-              } else {
-                this.showError(response.message || '장바구니에서 제거에 실패했습니다.');
+              // 성공 시 상태 업데이트
+              this.isInCart = false;
+              
+              // 장바구니 스토어 업데이트
+              if (this.cartStore) {
+                await this.cartStore.fetchServerCartList();
               }
+              
+              this.showSuccess('장바구니에서 강의가 제거되었습니다.');
             } catch (error) {
               console.error('장바구니 삭제 오류:', error);
               this.showError('장바구니에서 제거에 실패했습니다. 다시 시도해주세요.');
@@ -1918,23 +1924,21 @@ export default {
       }
 
       try {
-        // 백엔드 API로 장바구니 추가 요청
-        const response = await lectureService.addToCart([this.lecture.id]);
+        // 백엔드 API를 통해 장바구니에 추가
+        await lectureService.addToCart([this.lecture.id]);
         
-        if (response.success) {
-          // 백엔드 성공 시 상태 업데이트
-          this.isInCart = true;
-          this.showCartModal = true;
-        } else {
-          this.showError(response.message || '장바구니 추가에 실패했습니다.');
+        // 성공 시 상태 업데이트
+        this.isInCart = true;
+        
+        // 장바구니 스토어 업데이트
+        if (this.cartStore) {
+          await this.cartStore.fetchServerCartList();
         }
+        
+        this.showCartModal = true;
       } catch (error) {
         console.error('장바구니 추가 오류:', error);
-        if (error.message && error.message.includes('이미 장바구니에 담긴 강의입니다')) {
-          this.showError('이미 장바구니에 담긴 강의입니다.');
-        } else {
-          this.showError('장바구니 추가에 실패했습니다. 다시 시도해주세요.');
-        }
+        this.showError('장바구니 추가에 실패했습니다. 다시 시도해주세요.');
       }
     },
 
@@ -2175,6 +2179,23 @@ export default {
       const lectureId = this.$route.params.id;
       if (lectureId) {
         this.fetchLectureData(lectureId);
+        
+        // URL 쿼리 파라미터에서 결제 완료 여부 확인
+        const urlParams = new URLSearchParams(window.location.search);
+        const paymentCompleted = urlParams.get('paymentCompleted');
+        
+        // 결제 완료 후 돌아온 경우 구매 상태를 다시 확인
+        if (paymentCompleted === 'true') {
+          console.log('결제 완료 후 페이지 로드 - 구매 상태 재확인');
+          setTimeout(async () => {
+            await this.checkPurchaseStatus(lectureId);
+            await this.checkCartStatus(lectureId);
+            // URL에서 paymentCompleted 파라미터 제거
+            const newUrl = new URL(window.location);
+            newUrl.searchParams.delete('paymentCompleted');
+            window.history.replaceState({}, '', newUrl);
+          }, 1000);
+        }
       }
       
       // Kakao SDK 초기화
@@ -2241,6 +2262,26 @@ export default {
    background: #138496;
    transform: translateY(-1px);
    box-shadow: 0 2px 8px rgba(23, 162, 184, 0.3);
+ }
+
+ .delete-lecture-btn {
+   background: #dc3545;
+   color: white;
+   border: none;
+   padding: 10px 16px;
+   border-radius: 6px;
+   font-size: 14px;
+   font-weight: 600;
+   cursor: pointer;
+   transition: all 0.2s ease;
+   white-space: nowrap;
+   margin-left: 12px;
+ }
+
+ .delete-lecture-btn:hover {
+   background: #c82333;
+   transform: translateY(-1px);
+   box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
  }
 
 .tags {

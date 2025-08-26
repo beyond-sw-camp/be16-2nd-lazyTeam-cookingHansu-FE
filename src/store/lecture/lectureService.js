@@ -361,4 +361,29 @@ export const lectureService = {
       throw error;
     }
   },
+
+  // 강의 삭제
+  async deleteLecture(lectureId) {
+    try {
+      console.log('=== deleteLecture 시작 ===');
+      console.log('lectureId:', lectureId);
+      console.log('lectureId 타입:', typeof lectureId);
+      
+      // lectureId가 없거나 빈 값인지 확인
+      if (!lectureId) {
+        console.error('lectureId가 누락되었습니다!');
+        throw new Error('lectureId is required');
+      }
+      
+      const response = await apiDelete(`/lecture/delete/${lectureId}`);
+      console.log('강의 삭제 응답:', response);
+      
+      // response가 fetch Response 객체이므로 JSON으로 파싱
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('강의 삭제 실패:', error);
+      throw error;
+    }
+  },
 };

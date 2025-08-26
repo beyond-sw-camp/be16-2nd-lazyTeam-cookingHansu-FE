@@ -248,12 +248,13 @@
 import { ref, computed, watch, onUnmounted, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/auth/auth'
-import { useCartStore } from '@/store/cart/cart.js'
+import { useCartStore } from '@/store/cart/cart'
 import { useNotificationStore } from '@/store/notification/notification.js'
 
 const router = useRouter();
 const authStore = useAuthStore();
 const cartStore = useCartStore();
+
 const notificationStore = useNotificationStore();
 
 // Reactive data
@@ -328,26 +329,40 @@ watch(mobileMenuOpen, (isOpen) => {
   }
 })
 
-// 로그인 상태 변경 감시하여 프로필 정보 가져오기
+// 로그인 상태 변경 감시하여 프로필 정보와 장바구니 정보 가져오기
 watch(isLoggedIn, async (newValue) => {
   if (newValue) {
     await fetchProfileInfo();
+    // 서버에서 장바구니 목록 가져오기
+    try {
+      await cartStore.fetchServerCartList();
+    } catch (error) {
+      console.error('장바구니 정보 가져오기 실패:', error);
+    }
   } else {
-    // 로그아웃 시 프로필 정보 초기화
+    // 로그아웃 시 프로필 정보와 장바구니 초기화
     profileData.value = {
       nickname: '',
       profileImageUrl: ''
     };
+    localStorage.removeItem('cartItems');
+    cartStore.serverCartItems = [];
   }
 })
 
-// 컴포넌트 마운트 시 리사이즈 이벤트 리스너 추가 및 프로필 정보 가져오기
+// 컴포넌트 마운트 시 리사이즈 이벤트 리스너 추가 및 프로필 정보, 장바구니 정보 가져오기
 onMounted(async () => {
   window.addEventListener('resize', handleResize);
   
-  // 로그인된 상태라면 프로필 정보 가져오기
+  // 로그인된 상태라면 프로필 정보와 장바구니 정보 가져오기
   if (isLoggedIn.value) {
     await fetchProfileInfo();
+    // 서버에서 장바구니 목록 가져오기
+    try {
+      await cartStore.fetchServerCartList();
+    } catch (error) {
+      console.error('장바구니 정보 가져오기 실패:', error);
+    }
   }
 })
 
@@ -371,9 +386,14 @@ const profileInfo = computed(() => {
   return profileData.value;
 })
 
-// 장바구니 개수
+// 장바구니 개수 (서버에서 가져온 데이터 사용)
 const cartCount = computed(() => {
-  return cartStore.cartCount;
+  return cartStore.serverCartCount
+})
+
+// 장바구니 개수 변경 감시 (디버깅용)
+watch(() => cartStore.serverCartCount, (newCount) => {
+  console.log('장바구니 개수 변경:', newCount)
 })
 
 // 읽지 않은 알림 개수

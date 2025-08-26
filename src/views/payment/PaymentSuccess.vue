@@ -38,7 +38,8 @@
 
 <script>
 import Header from '@/components/Header.vue'
-import { useCartStore } from '@/store/cart/cart.js'
+import { useCartStore } from '@/store/cart/cart'
+
 
 export default {
   name: 'PaymentSuccess',
@@ -47,13 +48,17 @@ export default {
   },
   data() {
     return {
+      cartStore: null, // 장바구니 스토어 인스턴스
       orderId: '',
       amount: 0,
       paymentDate: '',
-      cartStore: useCartStore()
+
     }
   },
   mounted() {
+    // 장바구니 스토어 초기화
+    this.cartStore = useCartStore();
+    
     // URL 파라미터에서 결제 정보 가져오기
     const urlParams = new URLSearchParams(window.location.search)
     const paymentKey = urlParams.get('paymentKey')
@@ -73,17 +78,20 @@ export default {
 
     async approvePayment(paymentKey) {
       try {
+        console.log('결제 승인 시작:', { paymentKey, orderId: this.orderId, amount: this.amount });
+        
         // 선택된 강의 ID 목록 가져오기
         const selectedItems = JSON.parse(localStorage.getItem('selectedItemsForPayment') || '[]')
         const cartItems = JSON.parse(localStorage.getItem('cartItems') || '[]')
         const lectureIds = selectedItems.length > 0 ? selectedItems : cartItems.map(item => item.id)
 
-        const token = localStorage.getItem('accessToken');
+        console.log('결제할 강의 IDs:', lectureIds);
+
         const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/purchase/confirm`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
           },
           body: JSON.stringify({
             paymentKey,
@@ -93,13 +101,31 @@ export default {
           })
         })
 
+        console.log('결제 승인 응답 상태:', response.status);
+
         if (!response.ok) {
-          console.error('결제 승인 처리 실패')
-          throw new Error('결제 승인 처리 실패')
+          const errorText = await response.text();
+          console.error('결제 승인 처리 실패:', response.status, errorText);
+          throw new Error(`결제 승인 처리 실패: ${response.status} - ${errorText}`);
         } else {
-          console.log('결제 승인 처리 완료')
+          const result = await response.json();
+          console.log('결제 승인 처리 완료:', result);
+          
           // 결제 성공 시 선택된 아이템만 장바구니에서 제거
-          this.removeSelectedItemsFromCart()
+          await this.removeSelectedItemsFromCart()
+          
+          // 결제 완료 후 강의 상태 업데이트를 위해 페이지 새로고침
+          setTimeout(() => {
+            // 결제 완료 후 강의 상세 페이지로 돌아가기 (paymentCompleted 파라미터 추가)
+            const selectedItems = JSON.parse(localStorage.getItem('selectedItemsForPayment') || '[]');
+            if (selectedItems.length > 0) {
+              // 첫 번째 강의의 상세 페이지로 이동
+              window.location.href = `/lecture/${selectedItems[0]}?paymentCompleted=true`;
+            } else {
+              // 강의 목록으로 이동
+              window.location.href = '/lectures';
+            }
+          }, 2000);
         }
       } catch (error) {
         console.error('결제 승인 요청 중 오류:', error)
@@ -109,18 +135,50 @@ export default {
     },
 
     // 선택된 아이템들을 장바구니에서 제거
-    removeSelectedItemsFromCart() {
+    async removeSelectedItemsFromCart() {
       try {
+        console.log('장바구니에서 아이템 제거 시작');
         const selectedItems = JSON.parse(localStorage.getItem('selectedItemsForPayment') || '[]')
         
+        console.log('제거할 아이템들:', selectedItems);
+        
         if (selectedItems.length > 0) {
-          // 장바구니 스토어를 사용하여 선택된 아이템들 제거
-          this.cartStore.removeMultipleFromCart(selectedItems)
+          // 서버에서 장바구니 아이템 제거
+          for (const itemId of selectedItems) {
+            try {
+              console.log(`강의 ${itemId} 장바구니에서 제거 중...`);
+              const removeResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/cart/remove`, {
+                method: 'DELETE',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+                },
+                body: JSON.stringify({ lectureId: itemId })
+              })
+              
+              if (removeResponse.ok) {
+                console.log(`강의 ${itemId} 제거 성공`);
+              } else {
+                console.error(`강의 ${itemId} 제거 실패:`, removeResponse.status);
+              }
+            } catch (error) {
+              console.error(`강의 ${itemId} 제거 중 오류:`, error)
+            }
+          }
+          
+          // 장바구니 스토어 업데이트
+          if (this.cartStore) {
+            console.log('장바구니 스토어 업데이트 중...');
+            await this.cartStore.fetchServerCartList();
+            console.log('장바구니 스토어 업데이트 완료');
+          }
+          
           console.log('선택된 강의들이 장바구니에서 제거되었습니다.')
         }
         
         // 선택된 아이템 정보 삭제
         localStorage.removeItem('selectedItemsForPayment')
+        console.log('localStorage에서 selectedItemsForPayment 삭제 완료');
       } catch (error) {
         console.error('장바구니에서 아이템 제거 중 오류:', error)
       }

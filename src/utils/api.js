@@ -1,7 +1,7 @@
 // 공통 API 유틸리티
 
 // API 기본 URL
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 // JWT 토큰에서 사용자 ID 추출
 export const getUserIdFromToken = () => {
