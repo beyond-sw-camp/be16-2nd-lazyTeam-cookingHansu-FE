@@ -48,7 +48,11 @@
         @input="onBusinessNameInput"
       />
 
-      <Address />
+      <Address
+        v-model="form.businessAddress"
+        :has-error="errors.businessAddress"
+        @input="onBusinessAddressInput"
+      />
     </form>
 
     <FormButtons @prev="onPrev" @next="showConfirmationModal" next-text="가입 완료" />
@@ -116,6 +120,7 @@ const errors = ref({
   businessFile: false, // businessUrl에서 businessFile로 변경
   businessNumber: false,
   businessName: false,
+  businessAddress: false,
 });
 
 onMounted(() => {
@@ -133,6 +138,7 @@ onMounted(() => {
   errors.value.businessFile = false; // businessUrl에서 businessFile로 변경
   errors.value.businessNumber = false;
   errors.value.businessName = false;
+  errors.value.businessAddress = false;
 });
 
 function onPrev() {
@@ -221,11 +227,13 @@ function validate() {
   errors.value.businessFile = !form.value.businessFile; // businessUrl에서 businessFile로 변경
   errors.value.businessNumber = !form.value.businessNumber;
   errors.value.businessName = !form.value.businessName;
+  errors.value.businessAddress = !form.value.businessAddress;
   return (
     !errors.value.shopCategory &&
     !errors.value.businessFile &&
     !errors.value.businessNumber &&
-    !errors.value.businessName
+    !errors.value.businessName &&
+    !errors.value.businessAddress
   );
 }
 
@@ -254,6 +262,13 @@ function onBusinessNumberInput() {
 function onBusinessNameInput() {
   if (form.value.businessName && errors.value.businessName) {
     errors.value.businessName = false;
+  }
+}
+
+// 가게 주소 입력 시 에러 제거
+function onBusinessAddressInput() {
+  if (form.value.businessAddress && errors.value.businessAddress) {
+    errors.value.businessAddress = false;
   }
 }
 </script>
