@@ -8,8 +8,8 @@
       <div v-for="item in pagedLikes" :key="item.id" class="like-card">
         <div class="like-image">
           <img :src="item.image" :alt="item.title" />
-          <button class="unlike-btn" @click="unlikeItem(item.id)">
-            <span class="unlike-icon">❤️</span>
+          <button class="remove-like-btn" @click="unlikeItem(item.id)">
+            <span class="remove-icon">×</span>
           </button>
         </div>
         <div class="like-content">
@@ -221,7 +221,7 @@ export default {
   object-fit: cover;
 }
 
-.unlike-btn {
+.remove-like-btn {
   position: absolute;
   top: 8px;
   right: 8px;
@@ -238,12 +238,13 @@ export default {
   transition: background 0.2s;
 }
 
-.unlike-btn:hover {
+.remove-like-btn:hover {
   background: rgba(255, 0, 0, 0.8);
 }
 
-.unlike-icon {
-  font-size: 14px;
+.remove-icon {
+  font-size: 18px;
+  font-weight: bold;
 }
 
 .like-content {
