@@ -27,7 +27,13 @@ export const useNotificationStore = defineStore('notification', {
       
       // SSE 연결 상태
       isConnected: false,
-      eventSource: null
+      eventSource: null,
+      
+      // 구독 시도 중인지 여부 (중복 구독 방지)
+      isSubscribing: false,
+      
+      // 마지막 연결 시도 시간
+      lastConnectionAttempt: 0
     };
   },
 
@@ -60,6 +66,9 @@ export const useNotificationStore = defineStore('notification', {
         
         this.notifications = response.notifications || [];
         console.log('🔍 스토어에 설정된 알림:', this.notifications);
+        
+        // 중복 알림 정리
+        this._cleanupDuplicateNotifications();
         
         this._updateUnreadCount();
         console.log('🔍 읽지 않은 알림 개수:', this.unreadCount);
@@ -131,6 +140,121 @@ export const useNotificationStore = defineStore('notification', {
       }
     },
 
+    // 새 알림 처리 헬퍼 메서드
+    _processNewNotification(notification) {
+      // 중복 알림 방지: 동일한 ID의 알림이 이미 존재하는지 확인
+      const isDuplicate = this.notifications.some(n => n.id === notification.id);
+      if (isDuplicate) {
+        console.log('🔍 중복 알림 감지, 건너뜀:', notification.id);
+        return;
+      }
+      
+      // targetId를 id로 사용 (서버에서 id 필드가 없는 경우)
+      if (!notification.id && notification.targetId) {
+        notification.id = notification.targetId;
+      }
+      
+      // 새 알림을 목록 맨 앞에 추가
+      this.notifications.unshift(notification);
+      console.log('🔍 새 알림 추가됨:', notification.id || notification.targetId);
+      console.log('🔍 알림 목록 업데이트:', this.notifications);
+      
+      // 알림 타입에 따른 처리
+      if (notification.chatRoomId) {
+        // 채팅 메시지인 경우 - 채팅방 목록 실시간 업데이트
+        console.log('🔍 채팅 메시지 수신:', {
+          chatRoomId: notification.chatRoomId,
+          content: notification.content,
+          senderId: notification.senderId
+        });
+        
+        this._updateChatRoomList(notification);
+      } else {
+        // 일반 알림인 경우
+        console.log('🔍 일반 알림 수신:', notification.targetType || 'NOTICE');
+      }
+      
+      this._updateUnreadCount();
+      console.log('🔍 읽지 않은 알림 개수 업데이트:', this.unreadCount);
+      
+      // 브라우저 알림 표시 (사용자가 허용한 경우)
+      this._showBrowserNotification(notification);
+    },
+
+    // 채팅방 목록 실시간 업데이트
+    _updateChatRoomList(notification) {
+      try {
+        // chat store를 동적으로 import하여 순환 참조 방지
+        import('@/store/chat/chat').then(({ useChatStore }) => {
+          const chatStore = useChatStore();
+          
+          // 채팅방 목록에서 해당 채팅방 찾기
+          const chatRoom = chatStore.rooms.find(room => room.roomId === notification.chatRoomId);
+          
+          if (chatRoom) {
+            // 현재 사용자 ID 가져오기
+            const authStore = useAuthStore();
+            const currentUserId = authStore.user?.id;
+            
+            // 상대방이 보낸 메시지인지 확인
+            const isFromOtherUser = notification.senderId !== currentUserId;
+            
+            // 현재 선택된 채팅방인지 확인
+            const isCurrentRoom = chatStore.currentRoomId === notification.chatRoomId;
+            
+            // 채팅방 정보 실시간 업데이트
+            const updatedRoom = {
+              ...chatRoom,
+              lastMessage: notification.content,
+              lastMessageTime: new Date().toISOString()
+            };
+            
+            // newMessageCount 처리 로직
+            if (isFromOtherUser) {
+              if (isCurrentRoom) {
+                // 현재 채팅 중인 채팅방에서는 newMessageCount를 0으로 유지
+                updatedRoom.newMessageCount = 0;
+                console.log('🔍 현재 채팅 중인 채팅방 - newMessageCount 0 유지');
+              } else {
+                // 다른 채팅방에서는 newMessageCount 증가
+                updatedRoom.newMessageCount = (chatRoom.newMessageCount || 0) + 1;
+                console.log('🔍 다른 채팅방 - newMessageCount 증가:', updatedRoom.newMessageCount);
+              }
+            } else {
+              // 내가 보낸 메시지인 경우 newMessageCount는 그대로 유지
+              updatedRoom.newMessageCount = chatRoom.newMessageCount || 0;
+              console.log('🔍 내 메시지 - newMessageCount 유지:', updatedRoom.newMessageCount);
+            }
+            
+            // 채팅방 목록에서 해당 채팅방 업데이트
+            const roomIndex = chatStore.rooms.findIndex(room => room.roomId === notification.chatRoomId);
+            if (roomIndex !== -1) {
+              chatStore.rooms[roomIndex] = updatedRoom;
+              
+              // 채팅방을 목록 맨 위로 이동 (최신 메시지가 온 채팅방)
+              chatStore.rooms.splice(roomIndex, 1);
+              chatStore.rooms.unshift(updatedRoom);
+              
+              console.log('🔍 채팅방 목록 실시간 업데이트 완료:', {
+                chatRoomId: notification.chatRoomId,
+                lastMessage: notification.content,
+                newMessageCount: updatedRoom.newMessageCount,
+                isFromOtherUser,
+                senderId: notification.senderId,
+                currentUserId
+              });
+            }
+          } else {
+            console.log('🔍 채팅방을 찾을 수 없음, 새로고침 필요:', notification.chatRoomId);
+          }
+        }).catch(error => {
+          console.error('🔍 chat store import 실패:', error);
+        });
+      } catch (error) {
+        console.error('🔍 채팅방 목록 업데이트 실패:', error);
+      }
+    },
+
     // 읽지 않은 알림 개수 업데이트
     _updateUnreadCount() {
       const unreadCount = this.notifications.filter(n => {
@@ -138,24 +262,64 @@ export const useNotificationStore = defineStore('notification', {
         return n && (n.isRead === false || n.isRead === null || n.isRead === undefined);
       }).length;
       
+      const previousCount = this.unreadCount;
+      this.unreadCount = unreadCount;
+      
       console.log('🔍 _updateUnreadCount 호출:', {
         totalNotifications: this.notifications.length,
         notifications: this.notifications.map(n => ({ id: n.id, isRead: n.isRead })),
         calculatedUnreadCount: unreadCount,
-        previousUnreadCount: this.unreadCount
+        previousUnreadCount: previousCount,
+        change: unreadCount - previousCount
       });
       
-      this.unreadCount = unreadCount;
+      // 카운트 변화가 예상과 다른 경우 경고
+      if (unreadCount > previousCount + 1) {
+        console.warn('🔍 ⚠️ 읽지 않은 알림 개수가 예상보다 많이 증가했습니다:', {
+          previous: previousCount,
+          current: unreadCount,
+          increase: unreadCount - previousCount
+        });
+      }
     },
 
-    // SSE Polyfill 연결 시작
-    startNotificationSubscription() {
-      // 이미 연결된 경우 중지
-      if (this.eventSource) {
-        this.stopNotificationSubscription();
+    // SSE Polyfill 연결 시작 (중복 구독 방지)
+    async startNotificationSubscription() {
+      // 이미 연결되어 있거나 구독 중인 경우 중지
+      if (this.isConnected && this.eventSource) {
+        console.log('🔍 SSE 연결이 이미 활성화되어 있습니다.');
+        return;
       }
 
+      // 구독 시도 중인 경우 중지
+      if (this.isSubscribing) {
+        console.log('🔍 이미 구독 시도 중입니다.');
+        return;
+      }
+
+      // 인증 상태 확인
+      const authStore = useAuthStore();
+      if (!authStore.isAuthenticated || !authStore.accessToken) {
+        console.log('🔍 사용자가 인증되지 않았습니다. 알림 구독을 건너뜁니다.');
+        return;
+      }
+
+      // 마지막 연결 시도로부터 1초 이내인 경우 중지 (연속 시도 방지)
+      const now = Date.now();
+      if (now - this.lastConnectionAttempt < 1000) {
+        console.log('🔍 너무 빠른 재연결 시도입니다. 잠시 후 다시 시도해주세요.');
+        return;
+      }
+
+      this.lastConnectionAttempt = now;
+      this.isSubscribing = true;
+
       try {
+        // 기존 연결이 있다면 정리
+        if (this.eventSource) {
+          this.stopNotificationSubscription();
+        }
+
         console.log('🔍 SSE Polyfill 연결 시작...');
         console.log('🔍 API URL:', `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/notifications/subscribe`);
         
@@ -170,57 +334,27 @@ export const useNotificationStore = defineStore('notification', {
           console.log('🔍 알림 SSE Polyfill 연결 성공:', event.data);
         });
 
-        // 실시간 알림 수신 이벤트
-        this.eventSource.addEventListener('notification', (event) => {
-          try {
-            console.log('🔍 SSE 알림 이벤트 수신:', event);
-            const notification = JSON.parse(event.data);
-            console.log('🔍 새 알림 파싱 완료:', notification);
-            
-            // 새 알림을 목록 맨 앞에 추가
-            this.notifications.unshift(notification);
-            console.log('🔍 알림 목록 업데이트:', this.notifications);
-            
-            this._updateUnreadCount();
-            console.log('🔍 읽지 않은 알림 개수 업데이트:', this.unreadCount);
-            
-            // 브라우저 알림 표시 (사용자가 허용한 경우)
-            this._showBrowserNotification(notification);
-          } catch (error) {
-            console.error('🔍 실시간 알림 파싱 실패:', error);
-          }
-        });
 
-        // 일반 메시지 이벤트 (connect 이벤트 등)
+
+        // 메시지 이벤트 처리 (알림 및 connect 이벤트)
         this.eventSource.addEventListener('message', (event) => {
           try {
-            console.log('🔍 SSE 메시지 이벤트 수신:', event);
-            
             // connect 이벤트인지 확인
             if (event.data === 'ok') {
               console.log('🔍 SSE 연결 성공 확인');
               return;
             }
             
-            // 알림 데이터인지 확인
-            if (event.data && typeof event.data === 'string') {
+            // notify 이벤트 처리
+            if (event.type === 'notify' && event.data) {
               try {
                 const notification = JSON.parse(event.data);
                 if (notification.recipientId || notification.content) {
-                  console.log('🔍 SSE를 통한 새 알림 수신:', notification);
-                  
-                  // 새 알림을 목록 맨 앞에 추가
-                  this.notifications.unshift(notification);
-                  console.log('🔍 알림 목록 업데이트:', this.notifications);
-                  
-                  this._updateUnreadCount();
-                  console.log('🔍 읽지 않은 알림 개수 업데이트:', this.unreadCount);
-                  
-                  // 브라우저 알림 표시 (사용자가 허용한 경우)
-                  this._showBrowserNotification(notification);
+                  console.log('🔍 새 알림 수신:', notification);
+                  this._processNewNotification(notification);
                 }
               } catch (parseError) {
-                console.log('🔍 SSE 메시지가 알림 데이터가 아님:', event.data);
+                console.log('🔍 알림 데이터 파싱 실패:', event.data);
               }
             }
           } catch (error) {
@@ -232,6 +366,7 @@ export const useNotificationStore = defineStore('notification', {
         this.eventSource.onerror = (error) => {
           console.error('알림 SSE Polyfill 연결 에러:', error);
           this.isConnected = false;
+          this.isSubscribing = false;
           
           // 401 에러인 경우 재연결 시도하지 않음
           if (error.message && error.message.includes('401')) {
@@ -248,6 +383,9 @@ export const useNotificationStore = defineStore('notification', {
       } catch (error) {
         console.error('알림 SSE Polyfill 구독 시작 실패:', error);
         this.isConnected = false;
+        this.isSubscribing = false;
+      } finally {
+        this.isSubscribing = false;
       }
     },
 
@@ -257,6 +395,7 @@ export const useNotificationStore = defineStore('notification', {
         this.eventSource.close();
         this.eventSource = null;
         this.isConnected = false;
+        this.isSubscribing = false;
         console.log('알림 SSE Polyfill 구독 중지됨');
       }
     },
@@ -265,6 +404,7 @@ export const useNotificationStore = defineStore('notification', {
     _handleAuthError() {
       console.warn('🔍 SSE 인증 에러로 인해 알림 구독을 중단합니다.');
       this.isConnected = false;
+      this.isSubscribing = false;
       
       // auth store에서 토큰 상태 확인
       const authStore = useAuthStore();
@@ -317,6 +457,8 @@ export const useNotificationStore = defineStore('notification', {
       this.totalPages = 1;
       this.hasMore = true;
       this.stopNotificationSubscription();
+      this.isSubscribing = false;
+      this.lastConnectionAttempt = 0;
     },
 
     // 컴포넌트 마운트 시 SSE 연결 상태 확인 및 재연결
@@ -334,6 +476,39 @@ export const useNotificationStore = defineStore('notification', {
       }
     },
 
+    // 중복 알림 제거 및 목록 정리
+    _cleanupDuplicateNotifications() {
+      const seenIds = new Set();
+      const uniqueNotifications = [];
+      
+      for (const notification of this.notifications) {
+        // id 또는 targetId를 사용하여 중복 체크
+        const notificationId = notification.id || notification.targetId;
+        
+        if (notificationId && !seenIds.has(notificationId)) {
+          seenIds.add(notificationId);
+          uniqueNotifications.push(notification);
+        } else if (!notificationId) {
+          // ID가 없는 알림은 내용으로 중복 체크
+          const contentKey = `${notification.content}_${notification.recipientId}_${notification.createdAt}`;
+          if (!seenIds.has(contentKey)) {
+            seenIds.add(contentKey);
+            uniqueNotifications.push(notification);
+          }
+        }
+      }
+      
+      if (uniqueNotifications.length !== this.notifications.length) {
+        console.log('🔍 중복 알림 정리:', {
+          before: this.notifications.length,
+          after: uniqueNotifications.length,
+          removed: this.notifications.length - uniqueNotifications.length
+        });
+        this.notifications = uniqueNotifications;
+        this._updateUnreadCount();
+      }
+    },
+
     // 로그아웃 시 완전한 정리
     clearAllData() {
       console.log('🔍 알림 스토어 데이터 완전 정리');
@@ -345,6 +520,8 @@ export const useNotificationStore = defineStore('notification', {
       this.totalPages = 1;
       this.hasMore = true;
       this.stopNotificationSubscription();
+      this.isSubscribing = false;
+      this.lastConnectionAttempt = 0;
     }
   }
 });

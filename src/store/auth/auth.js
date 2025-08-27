@@ -217,15 +217,7 @@ export const useAuthStore = defineStore('auth', {
             console.error('Failed to get current user after local login:', error);
           }
           
-          // 알림 구독 시작 (SSE Polyfill)
-          try {
-            const notificationStore = useNotificationStore();
-            await notificationStore.requestNotificationPermission();
-            console.log('🔍 로그인 성공 후 알림 구독 시작...');
-            notificationStore.startNotificationSubscription();
-          } catch (error) {
-            console.warn('알림 구독 시작 실패:', error);
-          }
+          // 알림 구독은 initialize()에서 중앙 관리됨
           
           return user;
         } else {
@@ -269,10 +261,30 @@ export const useAuthStore = defineStore('auth', {
               console.error('Failed to get current user during initialization:', error);
               // 사용자 정보 조회 실패 시에도 기본 정보는 유지
             }
+            
+            // 인증된 사용자의 경우 알림 구독 시작
+            try {
+              const notificationStore = useNotificationStore();
+              await notificationStore.requestNotificationPermission();
+              console.log('🔍 초기화 후 알림 구독 시작...');
+              notificationStore.startNotificationSubscription();
+            } catch (error) {
+              console.warn('알림 구독 시작 실패:', error);
+            }
           } else {
             // 토큰이 만료된 경우 자동 갱신 시도
             try {
               await this.refreshToken();
+              
+              // 토큰 갱신 성공 시 알림 구독 시작
+              try {
+                const notificationStore = useNotificationStore();
+                await notificationStore.requestNotificationPermission();
+                console.log('🔍 토큰 갱신 후 알림 구독 시작...');
+                notificationStore.startNotificationSubscription();
+              } catch (error) {
+                console.warn('알림 구독 시작 실패:', error);
+              }
             } catch (error) {
               console.warn('Token refresh failed during initialization:', error.message);
               // 토큰 갱신 실패 시에도 기본 정보는 유지
@@ -318,15 +330,7 @@ export const useAuthStore = defineStore('auth', {
           console.error('Failed to get current user after Google login:', error);
         }
         
-        // 알림 구독 시작 (SSE Polyfill)
-        try {
-          const notificationStore = useNotificationStore();
-          await notificationStore.requestNotificationPermission();
-          console.log('🔍 Google 로그인 성공 후 알림 구독 시작...');
-          notificationStore.startNotificationSubscription();
-        } catch (error) {
-          console.warn('알림 구독 시작 실패:', error);
-        }
+        // 알림 구독은 initialize()에서 중앙 관리됨
         
         return user;
       } catch (error) {
@@ -369,15 +373,7 @@ export const useAuthStore = defineStore('auth', {
           console.error('Failed to get current user after Kakao login:', error);
         }
         
-        // 알림 구독 시작 (SSE Polyfill)
-        try {
-          const notificationStore = useNotificationStore();
-          await notificationStore.requestNotificationPermission();
-          console.log('🔍 Kakao 로그인 성공 후 알림 구독 시작...');
-          notificationStore.startNotificationSubscription();
-        } catch (error) {
-          console.warn('알림 구독 시작 실패:', error);
-        }
+        // 알림 구독은 initialize()에서 중앙 관리됨
         
         return user;
       } catch (error) {
@@ -420,15 +416,7 @@ export const useAuthStore = defineStore('auth', {
           console.error('Failed to get current user after Naver login:', error);
         }
         
-        // 알림 구독 시작 (SSE Polyfill)
-        try {
-          const notificationStore = useNotificationStore();
-          await notificationStore.requestNotificationPermission();
-          console.log('🔍 Naver 로그인 성공 후 알림 구독 시작...');
-          notificationStore.startNotificationSubscription();
-        } catch (error) {
-          console.warn('알림 구독 시작 실패:', error);
-        }
+        // 알림 구독은 initialize()에서 중앙 관리됨
         
         return user;
       } catch (error) {
@@ -458,6 +446,19 @@ export const useAuthStore = defineStore('auth', {
       localStorage.setItem('expiresIn', this.expiresIn);
       localStorage.setItem('user', JSON.stringify(user));
       localStorage.setItem('provider', provider);
+      
+      // 로그인 성공 후 알림 구독 시작
+      try {
+        const notificationStore = useNotificationStore();
+        notificationStore.requestNotificationPermission().then(() => {
+          console.log('🔍 로그인 후 알림 구독 시작...');
+          notificationStore.startNotificationSubscription();
+        }).catch((error) => {
+          console.warn('알림 구독 시작 실패:', error);
+        });
+      } catch (error) {
+        console.warn('알림 구독 시작 실패:', error);
+      }
     },
 
     // 관리자 인증 정보 설정 (AdminLoginStore에서 호출)
@@ -477,6 +478,8 @@ export const useAuthStore = defineStore('auth', {
       }
       localStorage.setItem('user', JSON.stringify(authData.user));
       localStorage.setItem('provider', 'admin');
+      
+
     },
 
     // 토큰 갱신

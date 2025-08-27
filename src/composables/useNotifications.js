@@ -17,6 +17,13 @@ export function useNotifications() {
   // 실시간 알림 연결 시작 (SSE Polyfill 사용)
   const startNotificationStream = () => {
     try {
+      // 이미 연결되어 있는지 확인
+      if (notificationStore.isConnected) {
+        console.log('🔍 이미 SSE 연결이 활성화되어 있습니다.');
+        isConnected.value = true;
+        return;
+      }
+      
       // SSE Polyfill을 사용하여 JWT 토큰으로 인증
       notificationStore.startNotificationSubscription()
       isConnected.value = true
@@ -28,7 +35,8 @@ export function useNotifications() {
 
   // 실시간 알림 연결 중지
   const stopNotificationStream = () => {
-    notificationStore.stopNotificationSubscription()
+    // 전역 SSE 연결은 중지하지 않고 로컬 상태만 업데이트
+    console.log('🔍 컴포넌트 언마운트: 로컬 연결 상태만 업데이트');
     isConnected.value = false
   }
 
@@ -66,7 +74,14 @@ export function useNotifications() {
   onMounted(async () => {
     await requestNotificationPermission()
     await loadNotifications()
-    startNotificationStream()
+
+    // 이미 연결되어 있는지 확인하고, 연결 상태 동기화
+    isConnected.value = notificationStore.isConnected;
+
+    // 연결이 안 되어 있다면 연결 시도 (하지만 중복 방지 로직이 있음)
+    if (!isConnected.value) {
+      startNotificationStream()
+    }
   })
 
   // 컴포넌트 언마운트시 연결 해제

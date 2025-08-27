@@ -18,6 +18,9 @@ class EventSourcePolyfill {
     this.xhr = null;
     this.isConnected = false;
     
+    // 중복 처리 방지를 위한 처리된 데이터 추적
+    this.processedData = new Set();
+    
     this.connect();
   }
 
@@ -132,56 +135,59 @@ class EventSourcePolyfill {
       if (!responseText) return;
       
       const lines = responseText.split('\n');
-      console.log('🔍 SSE 응답 데이터 처리:', {
-        totalLines: lines.length,
-        responseLength: responseText.length,
-        responseText: responseText
-      });
       
-      // 마지막 완성된 이벤트만 처리
+      // 이벤트와 데이터를 함께 처리
+      let currentEvent = null;
+      let currentData = null;
+      
       for (let i = 0; i < lines.length - 1; i++) {
         const line = lines[i].trim();
         
-        if (line.startsWith('data:')) {
-          const data = line.substring(5).trim();
-          if (data) {
-            console.log('🔍 SSE 데이터 라인 파싱:', data);
-            
+        if (line.startsWith('event:')) {
+          currentEvent = line.substring(6).trim();
+        } else if (line.startsWith('data:')) {
+          currentData = line.substring(5).trim();
+          if (currentData) {
             try {
               // JSON 데이터인지 확인
-              if (data.startsWith('{') || data.startsWith('[')) {
-                const jsonData = JSON.parse(data);
-                console.log('🔍 SSE JSON 데이터 파싱 성공:', jsonData);
+              if (currentData.startsWith('{') || currentData.startsWith('[')) {
+                const jsonData = JSON.parse(currentData);
                 
                 // connect 이벤트 처리
-                if (data === '"ok"') {
-                  console.log('🔍 SSE 연결 성공 이벤트 수신');
+                if (currentData === '"ok"') {
                   if (this.onopen) {
                     this.onopen({ type: 'open', data: 'ok' });
                   }
                 }
-                // notification 이벤트 처리
-                else if (jsonData.recipientId || jsonData.content) {
-                  console.log('🔍 SSE 알림 이벤트 수신:', jsonData);
+                // notify 이벤트 처리 (서버에서 실제 사용하는 이벤트명)
+                else if (currentEvent === 'notify' && (jsonData.recipientId || jsonData.content)) {
+                  // 중복 처리 방지: 이미 처리된 알림인지 확인
+                  const notificationKey = `${jsonData.targetId || jsonData.id}_${jsonData.content}`;
+                  if (this.processedData.has(notificationKey)) {
+                    console.log('🔍 중복 알림 감지, 건너뜀:', notificationKey);
+                    continue;
+                  }
+                  
+                  console.log('🔍 새 알림 처리:', notificationKey);
+                  this.processedData.add(notificationKey);
+                  
                   if (this.onmessage) {
                     this.onmessage({ 
-                      type: 'notification', 
+                      type: 'notify', 
                       data: JSON.stringify(jsonData) 
                     });
                   }
                 }
               } else {
                 // 일반 텍스트 데이터 (예: "ok")
-                console.log('🔍 SSE 텍스트 데이터 수신:', data);
-                if (data === 'ok') {
-                  console.log('🔍 SSE 연결 성공 이벤트 수신');
+                if (currentData === 'ok') {
                   if (this.onopen) {
                     this.onopen({ type: 'open', data: 'ok' });
                   }
                 }
               }
             } catch (parseError) {
-              console.warn('🔍 SSE 데이터 파싱 실패:', parseError, '원본 데이터:', data);
+              console.warn('🔍 SSE 데이터 파싱 실패:', parseError, '원본 데이터:', currentData);
             }
           }
         }
@@ -226,6 +232,9 @@ class EventSourcePolyfill {
     }
     this.readyState = 2; // CLOSED
     this.isConnected = false;
+    
+    // 중복 처리 방지 데이터 정리
+    this.processedData.clear();
   }
 
   addEventListener(event, callback) {
