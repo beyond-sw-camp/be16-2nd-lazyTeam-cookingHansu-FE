@@ -91,12 +91,13 @@
             rounded="lg"
             @click="logout"
             class="logout-btn"
+            :class="{ 'admin-logout-btn': isAdmin }"
           >
             로그아웃
           </v-btn>
         </div>
-      </div>
-    </div>
+            </div>
+            </div>
 
     <!-- Mobile Layout -->
     <div class="d-flex d-md-none header-mobile">
@@ -125,7 +126,7 @@
         >
           로그인
         </v-btn>
-      </div>
+            </div>
 
       <!-- Logged In State -->
       <div v-else class="mobile-logged-in">
@@ -142,7 +143,7 @@
           <router-link to="/" class="logo-link">
             <h1 class="logo-text">요리한수</h1>
           </router-link>
-        </div>
+            </div>
 
         <div class="mobile-user-section">
           <!-- 모바일 알림 버튼 -->
@@ -196,12 +197,13 @@
             size="small"
             @click="logout"
             class="mobile-logout-btn"
+            :class="{ 'admin-logout-btn': isAdmin }"
           >
             로그아웃
           </v-btn>
-        </div>
       </div>
     </div>
+      </div>
 
   </v-app-bar>
 
@@ -286,28 +288,48 @@ const isLoggedIn = computed(() => {
   return authStore.getIsAuthenticated;
 })
 
+// 사용자 역할 확인
+const userRole = computed(() => {
+  return authStore.getUserRole;
+})
+
+// 관리자 여부 확인
+const isAdmin = computed(() => {
+  return userRole.value === 'admin';
+})
+
 // 프로필 정보 가져오기
 const fetchProfileInfo = async () => {
   if (isLoggedIn.value && authStore.accessToken) {
     try {
-      const profileInfo = await authStore.fetchProfileInfo();
-      if (profileInfo) {
+      // 관리자인 경우 auth 스토어의 정보 사용
+      if (isAdmin.value) {
+        const adminUser = authStore.getUser;
         profileData.value = {
-          nickname: profileInfo.nickname || '사용자',
-          profileImageUrl: profileInfo.profileImageUrl || ''
+          nickname: adminUser?.nickname || '관리자',
+          profileImageUrl: '' // 관리자는 기본적으로 프로필 이미지 없음
         };
       } else {
-        // 프로필 정보가 없는 경우 기본값 설정
-        profileData.value = {
-          nickname: '사용자',
-          profileImageUrl: ''
-        };
+        // 일반 사용자인 경우 기존 로직 사용
+        const profileInfo = await authStore.fetchProfileInfo();
+        if (profileInfo) {
+          profileData.value = {
+            nickname: profileInfo.nickname || '사용자',
+            profileImageUrl: profileInfo.profileImageUrl || ''
+          };
+        } else {
+          // 프로필 정보가 없는 경우 기본값 설정
+          profileData.value = {
+            nickname: '사용자',
+            profileImageUrl: ''
+          };
+        }
       }
     } catch (error) {
       console.error('프로필 정보 가져오기 실패:', error);
       // 에러 발생 시 기본값 설정
       profileData.value = {
-        nickname: '사용자',
+        nickname: isAdmin.value ? '관리자' : '사용자',
         profileImageUrl: ''
       };
     }
@@ -350,7 +372,18 @@ watch(isLoggedIn, async (newValue) => {
   }
 })
 
+<<<<<<< HEAD
 // 컴포넌트 마운트 시 리사이즈 이벤트 리스너 추가 및 프로필 정보, 장바구니 정보 가져오기
+=======
+// 사용자 역할 변경 감시
+watch(userRole, async (newRole) => {
+  if (isLoggedIn.value) {
+    await fetchProfileInfo();
+  }
+})
+
+// 컴포넌트 마운트 시 리사이즈 이벤트 리스너 추가 및 프로필 정보 가져오기
+>>>>>>> 2bed1673bdcdf3891d558d5b42647382a7ff5c83
 onMounted(async () => {
   window.addEventListener('resize', handleResize);
   
@@ -375,7 +408,7 @@ onUnmounted(() => {
 })
 
 const userNickname = computed(() => {
-  return profileData.value.nickname || '사용자';
+  return profileData.value.nickname || (isAdmin.value ? '관리자' : '사용자');
 })
 
 const userProfileImage = computed(() => {
@@ -478,13 +511,17 @@ const toggleMobileMenu = () => {
 /* Desktop Styles */
 .header-desktop {
   width: 100%;
+  display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0 24px;
+  min-height: 80px;
 }
 
 .logo-link {
   text-decoration: none;
+  flex-shrink: 0;
+  min-width: 120px;
 }
 
 .logo-text {
@@ -495,9 +532,15 @@ const toggleMobileMenu = () => {
 }
 
 .nav-menu {
+  flex: 1;
   display: flex;
-  gap: 32px;
+  justify-content: center;
   align-items: center;
+  position: absolute;
+  left: 47.5%;
+  transform: translateX(-50%);
+  gap: 32px;
+  margin: 0 24px;
 }
 
 .nav-link {
@@ -505,6 +548,7 @@ const toggleMobileMenu = () => {
   text-decoration: none;
   font-size: 14px;
   transition: color 0.3s ease;
+  white-space: nowrap;
 }
 
 .nav-link:hover {
@@ -519,7 +563,8 @@ const toggleMobileMenu = () => {
 .header-right {
   display: flex;
   align-items: center;
-  gap: 16px;
+  flex-shrink: 0;
+  min-width: 300px;
 }
 
 .login-btn {
@@ -529,38 +574,111 @@ const toggleMobileMenu = () => {
 .user-section {
   display: flex;
   align-items: center;
-  gap: 12px;
+  width: 100%;
+  justify-content: flex-end;
 }
 
 .profile-avatar {
   border: 2px solid var(--color-primary);
+  flex-shrink: 0;
 }
 
 .notification-btn {
   position: relative;
+  flex-shrink: 0;
 }
 
 .cart-btn {
   position: relative;
+  flex-shrink: 0;
+  margin-left: -12px;
 }
 
 .welcome-text {
   color: var(--color-text);
   font-size: 14px;
   white-space: nowrap;
+  flex-shrink: 0;
+  margin-right: 12px;
 }
 
 .logout-btn {
   font-size: 12px;
   font-weight: 500;
+  flex-shrink: 0;
+}
+
+.admin-logout-btn {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.admin-logout-btn:hover {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+/* 반응형 데스크탑 스타일 */
+@media (max-width: 1200px) {
+  .header-desktop {
+    padding: 0 16px;
+  }
+  
+  .nav-menu {
+    gap: 24px;
+    margin: 0 16px;
+  }
+  
+  .welcome-text {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 1150px) {
+  .welcome-text {
+    display: none;
+  }
+  
+  .user-section {
+    min-width: 250px;
+  }
+  
+  .header-right {
+    min-width: 250px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .nav-menu {
+    gap: 20px;
+    margin: 0 12px;
+  }
+  
+  .user-section {
+    min-width: 220px;
+  }
+  
+  .header-right {
+    min-width: 220px;
+  }
+}
+
+@media (max-width: 960px) {
+  .header-desktop {
+    display: none;
+  }
 }
 
 /* Mobile Styles */
 .header-mobile {
   width: 100%;
+  display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0 16px;
+  min-height: 72px;
+  position: relative;
 }
 
 .mobile-logged-out {
@@ -578,9 +696,12 @@ const toggleMobileMenu = () => {
 }
 
 .mobile-logo-center {
-  flex: 1;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   justify-content: center;
+  align-items: center;
 }
 
 .mobile-logo-center .logo-text {
@@ -590,17 +711,24 @@ const toggleMobileMenu = () => {
 .mobile-user-section {
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-shrink: 0;
 }
 
-.mobile-notification-btn,
+.mobile-notification-btn {
+  position: relative;
+  flex-shrink: 0;
+}
+
 .mobile-cart-btn {
   position: relative;
+  flex-shrink: 0;
+  margin-left: -12px;
 }
 
 .hamburger-btn {
   color: var(--color-text);
   transition: color 0.3s ease;
+  flex-shrink: 0;
 }
 
 .hamburger-btn:hover {
@@ -611,6 +739,57 @@ const toggleMobileMenu = () => {
 .mobile-logout-btn {
   font-size: 12px;
   font-weight: 500;
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
+.mobile-logout-btn.admin-logout-btn {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.mobile-logout-btn.admin-logout-btn:hover {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+/* 반응형 모바일 스타일 */
+@media (max-width: 600px) {
+  .header-mobile {
+    padding: 0 12px;
+  }
+  
+  .mobile-logo-center .logo-text {
+    font-size: 18px;
+  }
+  
+  .mobile-user-section {
+    gap: 8px;
+  }
+  
+  .mobile-notification-btn,
+  .mobile-cart-btn {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-mobile {
+    padding: 0 8px;
+  }
+  
+  .mobile-logo-center .logo-text {
+    font-size: 16px;
+  }
+  
+  .mobile-user-section {
+    gap: 6px;
+  }
+  
+  .welcome-text {
+    display: none;
+  }
 }
 
 .mobile-nav-drawer {
@@ -684,4 +863,4 @@ const toggleMobileMenu = () => {
     gap: 6px;
   }
 }
-</style>
+</style> 

@@ -66,6 +66,7 @@ export const getHeaders = () => {
     'Content-Type': 'application/json',
   };
   
+<<<<<<< HEAD
   // JWT 토큰이 있으면 헤더에 추가
   try {
     if (typeof localStorage !== 'undefined' && localStorage) {
@@ -76,6 +77,18 @@ export const getHeaders = () => {
     }
   } catch (error) {
     console.error('localStorage 접근 오류:', error);
+=======
+  // 일반 사용자 JWT 토큰이 있으면 헤더에 추가
+  const token = localStorage.getItem('accessToken');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+>>>>>>> 2bed1673bdcdf3891d558d5b42647382a7ff5c83
+  }
+  
+  // 관리자 JWT 토큰이 있으면 헤더에 추가 (관리자 API용)
+  const adminToken = localStorage.getItem('adminAccessToken');
+  if (adminToken) {
+    headers['Authorization'] = `Bearer ${adminToken}`;
   }
   
   return headers;

@@ -39,12 +39,19 @@ import NoticeDetail from '@/views/notice/NoticeDetail.vue'
 import NoticeCreate from '@/views/notice/NoticeCreate.vue'
 import NoticeEdit from '@/views/notice/NoticeEdit.vue'
 import NotificationPage from '@/views/notification/NotificationPage.vue'
+import AccessDenied from '@/views/common/AccessDenied.vue'
 
 const routes = [
   {
     path: "/admin-login",
     name: "AdminLogin",
     component: AdminLoginPage,
+  },
+  {
+    path: "/access-denied",
+    name: "AccessDenied",
+    component: AccessDenied,
+    meta: { requiresAuth: true },
   },
   {
     path: "/payment-details/:lectureId",
@@ -177,7 +184,7 @@ router.beforeEach(async (to, from, next) => {
   // 루트 경로('/')에 대한 처리
   if (to.path === '/' && to.name === 'Home') {
     if (authStore.isAuthenticated) {
-      // 로그인된 사용자는 recipes 페이지로 리다이렉트
+      // 로그인된 사용자는 recipes 페이지로 리다이렉트 (관리자 포함)
       next('/recipes');
       return;
     } else {
@@ -206,11 +213,22 @@ router.beforeEach(async (to, from, next) => {
   }
 
   // 관리자 권한이 필요한 페이지
-  if (
-    to.meta.requiresAdmin &&
-    (!authStore.isAuthenticated || authStore.user?.role !== "admin")
-  ) {
-    next("/admin-login");
+  if (to.meta.requiresAdmin) {
+    if (!authStore.isAuthenticated) {
+      // 로그인되지 않은 사용자는 관리자 로그인 페이지로
+      next("/admin-login");
+      return;
+    } else if (authStore.user?.role !== "admin") {
+      // 일반 사용자(GENERAL/CHEF/OWNER)는 접근 차단 페이지로
+      next("/access-denied");
+      return;
+    }
+  }
+
+  // URL 직접 입력으로 관리자 페이지 접근 시도 차단
+  if (to.path.startsWith('/admin') && authStore.isAuthenticated && authStore.user?.role !== "admin") {
+    // 일반 사용자가 관리자 경로로 직접 접근 시도 시 접근 차단 페이지로 리다이렉트
+    next("/access-denied");
     return;
   }
 
@@ -225,6 +243,7 @@ router.beforeEach(async (to, from, next) => {
 
   // 추가 정보 입력 페이지들에 대한 접근 제어
   if (authStore.isAuthenticated && authStore.user) {
+    // admin 사용자도 추가 정보 입력 페이지에 접근할 수 있음 (필요시)
     const registrationStep = authStore.getRegistrationStep;
     
     // 이미 등록이 완료된 사용자가 추가 정보 입력 페이지에 접근하려는 경우
@@ -279,7 +298,7 @@ router.beforeEach(async (to, from, next) => {
     }
     
     if (to.path === '/detail-owner' && registrationStep !== 'detail-owner') {
-      if (registrationStep === 'add-info') {
+      if (registrationStep === '/add-info') {
         next('/add-info');
         return;
       } else if (registrationStep === 'complete') {
