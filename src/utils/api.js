@@ -9,10 +9,16 @@ export const getHeaders = () => {
     'Content-Type': 'application/json',
   };
   
-  // JWT 토큰이 있으면 헤더에 추가
+  // 일반 사용자 JWT 토큰이 있으면 헤더에 추가
   const token = localStorage.getItem('accessToken');
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  // 관리자 JWT 토큰이 있으면 헤더에 추가 (관리자 API용)
+  const adminToken = localStorage.getItem('adminAccessToken');
+  if (adminToken) {
+    headers['Authorization'] = `Bearer ${adminToken}`;
   }
   
   return headers;

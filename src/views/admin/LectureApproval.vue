@@ -181,6 +181,8 @@
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
 import { useLectureApprovalStore } from '@/store/admin/lectureApproval'
+import { useAuthStore } from '@/store/auth/auth'
+import { useAdminLoginStore } from '@/store/admin/adminLogin'
 import ErrorAlert from '@/components/common/ErrorAlert.vue'
 import Pagination from "../../components/common/Pagination.vue";
 import CommonSnackbar from "../../components/common/CommonSnackbar.vue";
@@ -189,6 +191,14 @@ import RejectConfirmModal from "../../components/common/RejectConfirmModal.vue";
 import LoadingScreen from "@/components/common/LoadingScreen.vue";
 
 const lectureApprovalStore = useLectureApprovalStore()
+const authStore = useAuthStore()
+const adminLoginStore = useAdminLoginStore()
+
+// 관리자 권한 확인
+const isAdmin = computed(() => {
+  const userRole = authStore.getUserRole
+  return userRole === 'ADMIN' || adminLoginStore.isLoggedIn
+})
 
 // 페이지네이션
 const currentPage = ref(1);
@@ -302,6 +312,12 @@ const closeSnackbar = () => {
 
 // 컴포넌트 마운트 시 데이터 로드
 onMounted(async () => {
+  // 관리자 권한 확인
+  if (!isAdmin.value) {
+    console.error('관리자 권한이 없습니다.')
+    return
+  }
+  
   await lectureApprovalStore.fetchWaitingLectures();
 });
 </script>

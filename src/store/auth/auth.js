@@ -64,6 +64,11 @@ export const useAuthStore = defineStore('auth', {
       // 사용자의 기본 프로필 정보가 완성되었는지 여부로 판단
       if (!state.user) return false;
       
+      // 관리자 계정은 항상 신규 사용자가 아님
+      if (state.user.role === 'admin') {
+        return false;
+      }
+      
       // getRegistrationStep과 일치하도록 수정
       // getter 내에서 다른 getter를 호출할 때는 this를 사용해야 함
       // 하지만 state 파라미터만 사용할 수 있으므로 직접 로직을 구현
@@ -105,6 +110,11 @@ export const useAuthStore = defineStore('auth', {
     isRegistrationComplete: (state) => {
       if (!state.user) return false;
       
+      // 관리자 계정은 항상 등록 완료 상태
+      if (state.user.role === 'admin') {
+        return true;
+      }
+      
       // 공통 필수 정보 확인
       if (!state.user.nickname || !state.user.role) {
         return false;
@@ -134,6 +144,11 @@ export const useAuthStore = defineStore('auth', {
     // 사용자가 어느 단계까지 등록했는지 확인
     getRegistrationStep: (state) => {
       if (!state.user) return 'none';
+      
+      // 관리자 계정은 항상 등록 완료 상태
+      if (state.user.role === 'admin') {
+        return 'complete';
+      }
       
       // 기본 정보가 없으면 add-info 단계
       if (!state.user.nickname || !state.user.role) {
@@ -245,12 +260,19 @@ export const useAuthStore = defineStore('auth', {
             }
           } else {
             // 토큰이 만료된 경우 자동 갱신 시도
-            await this.refreshToken();
+            try {
+              await this.refreshToken();
+            } catch (error) {
+              console.warn('Token refresh failed during initialization:', error.message);
+              // 토큰 갱신 실패 시에도 기본 정보는 유지
+              // (refreshToken에서 logout 호출을 제거했으므로 자동으로 유지됨)
+            }
           }
         }
       } catch (error) {
         console.error('Auth initialization failed:', error);
-        this.clearAuth();
+        // this.clearAuth();
+        // 에러가 발생해도 clearAuth는 호출하지 않음 (사용자 경험 개선)
       }
     },
 
@@ -397,6 +419,25 @@ export const useAuthStore = defineStore('auth', {
       localStorage.setItem('provider', provider);
     },
 
+    // 관리자 인증 정보 설정 (AdminLoginStore에서 호출)
+    setAdminAuth(authData) {
+      this.user = authData.user;
+      this.accessToken = authData.accessToken;
+      this.refreshToken = authData.refreshToken;
+      this.expiresIn = authData.expiresIn;
+      this.isAuthenticated = true;
+      this.provider = 'admin';
+      
+      // 로컬 스토리지에 저장
+      localStorage.setItem('accessToken', authData.accessToken);
+      localStorage.setItem('refreshToken', authData.refreshToken);
+      if (authData.expiresIn) {
+        localStorage.setItem('expiresIn', authData.expiresIn);
+      }
+      localStorage.setItem('user', JSON.stringify(authData.user));
+      localStorage.setItem('provider', 'admin');
+    },
+
     // 토큰 갱신
     async refreshToken() {
       if (this.isRefreshing) {
@@ -451,8 +492,8 @@ export const useAuthStore = defineStore('auth', {
         
       } catch (error) {
         console.error('Token refresh failed:', error);
-        // 토큰 갱신 실패 시 로그아웃
-        await this.logout();
+        // 토큰 갱신 실패 시에도 로그아웃하지 않음 (사용자 경험 개선)
+        // await this.logout(); // 이 줄 제거
         throw error;
       } finally {
         this.isRefreshing = false;
@@ -476,7 +517,10 @@ export const useAuthStore = defineStore('auth', {
         console.error('Logout request failed:', error);
       } finally {
         // 클라이언트 상태 정리
-        this.clearAuth();
+        // 관리자 로그인 상태가 아닌 경우에만 clearAuth 호출
+        if (!localStorage.getItem('adminAccessToken')) {
+          this.clearAuth();
+        }
       }
     },
 

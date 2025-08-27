@@ -228,6 +228,8 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useNoticeStore } from '../../store/notice/notice';
+import { useAuthStore } from '../../store/auth/auth';
+import { useAdminLoginStore } from '../../store/admin/adminLogin';
 import { validateFile } from '../../utils/fileValidation';
 import DeleteConfirmModal from '../../components/common/DeleteConfirmModal.vue';
 import Pagination from '../../components/common/Pagination.vue';
@@ -236,6 +238,14 @@ import CommonSnackbar from '../../components/common/CommonSnackbar.vue';
 import LoadingScreen from '../../components/common/LoadingScreen.vue';
 
 const noticeStore = useNoticeStore();
+const authStore = useAuthStore();
+const adminLoginStore = useAdminLoginStore();
+
+// 관리자 권한 확인
+const isAdmin = computed(() => {
+  const userRole = authStore.getUserRole
+  return userRole === 'ADMIN' || adminLoginStore.isLoggedIn
+})
 
 // 폼 관련
 const form = ref(null);
@@ -501,6 +511,12 @@ const closeSnackbar = () => {
 
 // 컴포넌트 마운트 시 공지사항 목록 로드
 onMounted(async () => {
+  // 관리자 권한 확인
+  if (!isAdmin.value) {
+    console.error('관리자 권한이 없습니다.')
+    return
+  }
+  
   await noticeStore.fetchNotices(0, 100); // 충분히 큰 수로 모든 공지사항 로드
 });
 

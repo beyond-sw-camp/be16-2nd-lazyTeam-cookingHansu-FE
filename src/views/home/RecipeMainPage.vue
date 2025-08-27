@@ -14,7 +14,7 @@
     <div class="filter-card">
       <div class="filter-title-row">
         <div class="filter-title">레시피 필터</div>
-        <button class="write-btn">게시글 등록하기</button>
+        <button class="write-btn" @click="goToWrite">게시글 등록하기</button>
       </div>
       <div class="filter-row">
         <div class="filter-col">
@@ -73,12 +73,26 @@
       :total-pages="totalPages"
       @page-change="changePage"
     />
+
+    <!-- 로그인 필요 모달 -->
+    <CommonModal
+      v-model="showLoginModal"
+      type="info"
+      title="로그인이 필요합니다"
+      message="게시글을 등록하려면 로그인이 필요합니다. 로그인하시겠습니까?"
+      confirm-text="로그인하기"
+      cancel-text="취소"
+      @confirm="goToLogin"
+      @cancel="closeLoginModal"
+    />
   </div>
 </template>
 
 <script>
 import Header from '@/components/Header.vue';
 import Pagination from '@/components/common/Pagination.vue';
+import CommonModal from '@/components/common/CommonModal.vue';
+import { useAuthStore } from '@/store/auth/auth';
 
 const defaultThumbnail = '/src/assets/images/smu_mascort1.jpg';
 
@@ -87,6 +101,7 @@ export default {
   components: {
     Header,
     Pagination,
+    CommonModal,
   },
   data() {
     return {
@@ -98,6 +113,7 @@ export default {
       selectedSort: "latest",
       selectedRecipe: null,
       showClickEffect: false,
+      showLoginModal: false,
       recipes: [
         {
           id: 1,
@@ -343,6 +359,10 @@ export default {
     };
   },
   computed: {
+    isLoggedIn() {
+      const authStore = useAuthStore();
+      return authStore.isAuthenticated;
+    },
     filteredRecipes() {
       let filtered = this.recipes;
       
@@ -397,6 +417,24 @@ export default {
     },
     goToLecture() {
       this.$router.push({ name: "LectureList" });
+    },
+    goToWrite() {
+      if (this.isLoggedIn) {
+        // 게시글 등록 페이지로 이동 (추후 구현 예정)
+        console.log('게시글 등록 페이지로 이동');
+        // this.$router.push({ name: "RecipeCreate" });
+      } else {
+        // 비회원인 경우 로그인 필요 모달 표시
+        this.showLoginModal = true;
+      }
+    },
+    goToLogin() {
+      // 로그인 페이지로 이동
+      this.$router.push({ name: "Login" });
+      this.closeLoginModal();
+    },
+    closeLoginModal() {
+      this.showLoginModal = false;
     },
     categoryText(category) {
       switch (category) {
