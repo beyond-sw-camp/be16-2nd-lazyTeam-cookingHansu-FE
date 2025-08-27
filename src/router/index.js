@@ -40,12 +40,19 @@ import NoticeDetail from '@/views/notice/NoticeDetail.vue'
 import NoticeCreate from '@/views/notice/NoticeCreate.vue'
 import NoticeEdit from '@/views/notice/NoticeEdit.vue'
 import NotificationPage from '@/views/notification/NotificationPage.vue'
+import AccessDenied from '@/views/common/AccessDenied.vue'
 
 const routes = [
   {
     path: "/admin-login",
     name: "AdminLogin",
     component: AdminLoginPage,
+  },
+  {
+    path: "/access-denied",
+    name: "AccessDenied",
+    component: AccessDenied,
+    meta: { requiresAuth: true },
   },
   {
     path: "/payment-details/:orderId",
@@ -208,12 +215,22 @@ router.beforeEach(async (to, from, next) => {
   }
 
   // 관리자 권한이 필요한 페이지
-  if (
-    to.meta.requiresAdmin &&
-    (!authStore.isAuthenticated || authStore.user?.role !== "admin") &&
-    !adminLoginStore.isLoggedIn
-  ) {
-    next("/admin-login");
+  if (to.meta.requiresAdmin) {
+    if (!authStore.isAuthenticated) {
+      // 로그인되지 않은 사용자는 관리자 로그인 페이지로
+      next("/admin-login");
+      return;
+    } else if (authStore.user?.role !== "admin") {
+      // 일반 사용자(GENERAL/CHEF/OWNER)는 접근 차단 페이지로
+      next("/access-denied");
+      return;
+    }
+  }
+
+  // URL 직접 입력으로 관리자 페이지 접근 시도 차단
+  if (to.path.startsWith('/admin') && authStore.isAuthenticated && authStore.user?.role !== "admin") {
+    // 일반 사용자가 관리자 경로로 직접 접근 시도 시 접근 차단 페이지로 리다이렉트
+    next("/access-denied");
     return;
   }
 
