@@ -109,6 +109,14 @@
             </div>
 
             <div :class="['d-flex', msg.senderId === myId ? 'justify-end' : 'justify-start']">
+              <!-- 디버깅용 로그 -->
+              <div v-if="msg.senderId === myId" style="display: none;">
+                {{ console.log('🔍 내 메시지:', msg.senderId, '===', myId, '결과:', msg.senderId === myId) }}
+              </div>
+              <div v-else style="display: none;">
+                {{ console.log('🔍 상대방 메시지:', msg.senderId, '===', myId, '결과:', msg.senderId === myId) }}
+              </div>
+              
               <!-- 내 메시지 -->
               <template v-if="msg.senderId === myId">
                 <div class="d-flex align-end mr-1" style="min-width: 50px;">
@@ -276,6 +284,7 @@ import { ref, computed, watch, nextTick, onBeforeUnmount, onMounted } from "vue"
 import { useRouter, onBeforeRouteLeave } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useChatStore } from '@/store/chat/chat';
+import { useAuthStore } from '@/store/auth/auth';
 import { formatRelativeTime } from '@/utils/timeUtils';
 import { useFileUpload } from '@/composables/useFileUpload';
 import { useDialog } from '@/composables/useDialog';
@@ -290,7 +299,8 @@ const props = defineProps({
 
 const router = useRouter();
 const chatStore = useChatStore();
-const { messages, currentRoomId, loading, error } = storeToRefs(chatStore);
+const authStore = useAuthStore();
+const { messages, currentRoomId, loading, error, onlineUsers } = storeToRefs(chatStore);
 
 
 
@@ -301,7 +311,18 @@ const chatContainer = ref(null);
 const topSentinel = ref(null);
 let topObserver = null;
 
-const myId = '550e8400-e29b-41d4-a716-446655440001';
+const myId = ref(authStore.user?.id);
+
+// 사용자 ID가 변경될 때마다 업데이트
+watch(() => authStore.user?.id, (newId) => {
+  if (newId) {
+    myId.value = newId;
+    console.log('🔍 사용자 ID 업데이트:', newId);
+  } else {
+    console.error('사용자 ID가 없습니다. 로그인이 필요합니다.');
+    router.push('/login');
+  }
+}, { immediate: true });
 
 /* -----------------------------
  * 스크롤/프리로드 상태
@@ -413,7 +434,7 @@ const chatMessages = computed(() => {
     // ✅ 수정: 각 메시지별로 개별 unread count 계산
     let unreadCount = 0;
     
-    if (msg.senderId === myId) {
+          if (msg.senderId === myId.value) {
       // 내 메시지: 상대방이 읽었으면 0, 읽지 않았으면 1
       // ✅ 수정: Store의 개별 메시지 unread count 계산 함수 사용
       unreadCount = chatStore.getMessageUnreadCount(currentRoomId.value, msg.id);
@@ -423,15 +444,15 @@ const chatMessages = computed(() => {
       unreadCount = 0;
     }
     
-    // ✅ UI 표시: 상대방 온라인일 때는 읽음 처리된 것처럼 보임
-    let displayUnreadCount = unreadCount;
-    const onlineUsers = chatStore.onlineUsers[currentRoomId.value];
-    const isOtherOnline = onlineUsers && onlineUsers.some(user => user.userId !== myId);
+    // ✅ Store에서 이미 온라인 상태를 고려하여 계산했으므로 그대로 사용
+    const displayUnreadCount = unreadCount;
     
-    if (isOtherOnline && msg.senderId === myId) {
-      // 상대방이 온라인이고 내 메시지일 때: UI에서만 읽음 처리
-      displayUnreadCount = 0;
-    }
+    console.log(`🔍 메시지 ${msg.id} unread 처리:`, {
+      senderId: msg.senderId,
+      myId: myId.value,
+      isMyMessage: msg.senderId === myId.value,
+      finalUnreadCount: displayUnreadCount
+    });
     
 
     
@@ -469,8 +490,8 @@ watch(
     if (oldMessages && newMessages.length > oldMessages.length) {
       const newMessage = newMessages[newMessages.length - 1];
       
-      // 상대방 메시지이고 현재 방에 있을 때만 읽음처리
-      if (newMessage.senderId !== myId && newMessage.roomId === currentRoomId.value) {
+              // 상대방 메시지이고 현재 방에 있을 때만 읽음처리
+        if (newMessage.senderId !== myId.value && newMessage.roomId === currentRoomId.value) {
         console.log(`📥 상대방 메시지 수신: 자동 읽음 처리`);
         
         // ✅ 수정: Store의 디바운스된 읽음 처리 사용

@@ -17,6 +17,53 @@
           테스트용 채팅방 생성
         </v-btn>
         
+        <!-- 테스트용 신고 버튼들 -->
+        <div class="test-report-buttons">
+          <v-btn
+            color="error"
+            variant="outlined"
+            size="x-small"
+            prepend-icon="mdi-flag"
+            @click="openUserProfileModal"
+            class="test-report-btn"
+          >
+            프로필 테스트
+          </v-btn>
+          
+          <v-btn
+            color="error"
+            variant="outlined"
+            size="x-small"
+            prepend-icon="mdi-flag"
+            @click="openUserReportModal"
+            class="test-report-btn"
+          >
+            사용자 신고
+          </v-btn>
+          
+          <v-btn
+            color="error"
+            variant="outlined"
+            size="x-small"
+            prepend-icon="mdi-flag"
+            @click="openCommentReportModal"
+            class="test-report-btn"
+          >
+            댓글 신고
+          </v-btn>
+          
+          <v-btn
+            color="error"
+            variant="outlined"
+            size="x-small"
+            prepend-icon="mdi-flag"
+            @click="openRecipeReportModal"
+            class="test-report-btn"
+          >
+            게시글 신고
+          </v-btn>
+        </div>
+        
         <h1 class="notice-title">공지사항</h1>
       </div>
       
@@ -86,6 +133,42 @@
         @page-change="handlePageChange"
       />
     </div>
+    
+    <!-- 사용자 프로필 모달 -->
+    <UserProfileModal
+      v-model="showUserProfileModal"
+      :user="testUser"
+      @chat="handleStartChat"
+      @report="handleProfileReport"
+    />
+    
+    <!-- 신고 모달들 -->
+    <ReportModal
+      v-model="showUserReportModal"
+      :report-type="'USER'"
+      :target-id="'test-user-123'"
+      :target-name="'테스트 사용자 (홍길동)'"
+      @success="handleReportSuccess"
+      @error="handleReportError"
+    />
+    
+    <ReportModal
+      v-model="showCommentReportModal"
+      :report-type="'COMMENT'"
+      :target-id="'test-comment-456'"
+      :target-name="'테스트 댓글 (김철수: 안녕하세요! 좋은 글이네요.)'"
+      @success="handleReportSuccess"
+      @error="handleReportError"
+    />
+    
+    <ReportModal
+      v-model="showRecipeReportModal"
+      :report-type="'RECIPE'"
+      :target-id="'test-recipe-789'"
+      :target-name="'테스트 레시피 (김치찌개 만들기)'"
+      @success="handleReportSuccess"
+      @error="handleReportError"
+    />
   </div>
 </template>
 
@@ -93,25 +176,39 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useNoticeStore } from '../../store/notice/notice';
+import { useAuthStore } from '../../store/auth/auth';
+import Header from '../../components/Header.vue';
 import { formatDateTime } from '../../utils/timeUtils';
 import Pagination from '../../components/common/Pagination.vue';
 import ErrorAlert from '../../components/common/ErrorAlert.vue';
 import LoadingScreen from '../../components/common/LoadingScreen.vue';
+import ReportModal from '../../components/common/ReportModal.vue';
+import UserProfileModal from '../../components/common/UserProfileModal.vue';
 import { useChatStore } from '../../store/chat/chat';
+import { useAdminLoginStore } from '../../store/admin/adminLogin';
 
 const router = useRouter();
 const noticeStore = useNoticeStore();
+const authStore = useAuthStore();
 const chatStore = useChatStore();
+const adminLoginStore = useAdminLoginStore();
 
-// 관리자 여부 확인 (테스팅용)
+// 관리자 여부 확인 (두 스토어 모두 확인)
 const isAdmin = computed(() => {
-  // 테스팅을 위해 관리자로 설정
-  localStorage.setItem('userRole', 'ADMIN');
-  return true;
+  const userRole = authStore.getUserRole;
+  return userRole === 'ADMIN' || adminLoginStore.isLoggedIn;
 });
 
 // 테스트용 채팅방 생성 상태
 const creatingChatRoom = ref(false);
+
+// 사용자 프로필 모달 상태
+const showUserProfileModal = ref(false);
+
+// 신고 모달 상태들
+const showUserReportModal = ref(false);
+const showCommentReportModal = ref(false);
+const showRecipeReportModal = ref(false);
 
 // 페이지네이션 정보
 const paginationInfo = computed(() => noticeStore.getPaginationInfo);
@@ -147,9 +244,16 @@ const createTestChatRoom = async () => {
   try {
     creatingChatRoom.value = true;
     
-    // 테스트용 사용자 ID (고정)
-    const myId = '550e8400-e29b-41d4-a716-446655440001';
-    const inviteeId = '550e8400-e29b-41d4-a716-446655440002';
+    // 실제 사용자 ID 사용
+    const myId = authStore.user?.id;
+    if (!myId) {
+      alert('로그인이 필요합니다.');
+      router.push('/login');
+      return;
+    }
+    
+    // 테스트용 상대방 ID (고정) - 실제 서비스에서는 다른 사용자 ID를 사용해야 함
+    const inviteeId = 'af705516-2529-49ae-ab4b-861453cecf6a';
     
     console.log('테스트용 채팅방 생성 시작:', { myId, inviteeId });
     
@@ -165,6 +269,81 @@ const createTestChatRoom = async () => {
   } finally {
     creatingChatRoom.value = false;
   }
+};
+
+// 테스트용 사용자 데이터
+const testUser = ref({
+  id: 'test-user-123',
+  nickname: '홍길동',
+  email: 'hong@example.com',
+  profileImage: 'https://via.placeholder.com/100x100/4CAF50/FFFFFF?text=홍',
+  joinDate: '2024-01-15'
+});
+
+// 사용자 프로필 모달 열기
+const openUserProfileModal = () => {
+  showUserProfileModal.value = true;
+};
+
+// 신고 모달 열기 함수들
+const openUserReportModal = () => {
+  showUserReportModal.value = true;
+};
+
+const openCommentReportModal = () => {
+  showCommentReportModal.value = true;
+};
+
+const openRecipeReportModal = () => {
+  showRecipeReportModal.value = true;
+};
+
+// 신고 성공 처리
+const handleReportSuccess = (response) => {
+  console.log('신고 성공:', response);
+  alert('신고가 성공적으로 접수되었습니다.');
+};
+
+// 신고 오류 처리
+const handleReportError = (error) => {
+  console.error('신고 오류:', error);
+  alert('신고 처리 중 오류가 발생했습니다: ' + error);
+};
+
+// 프로필에서 채팅 시작
+const handleStartChat = async (userId) => {
+  try {
+    const myId = authStore.user?.id;
+    if (!myId) {
+      alert('로그인이 필요합니다.');
+      router.push('/login');
+      return;
+    }
+    
+    console.log('프로필에서 채팅 시작:', { myId, userId });
+    
+    const roomId = await chatStore.createRoom(myId, userId);
+    console.log('채팅방 생성 성공, roomId:', roomId);
+    
+    // 프로필 모달 닫기
+    showUserProfileModal.value = false;
+    
+    // 채팅 페이지로 이동
+    router.push(`/chat?autoSelect=true&roomId=${roomId}`);
+    
+  } catch (error) {
+    console.error('채팅방 생성 실패:', error);
+    alert('채팅방 생성에 실패했습니다: ' + (error.message || '알 수 없는 오류'));
+  }
+};
+
+// 프로필에서 신고하기
+const handleProfileReport = (userId) => {
+  // 프로필 모달 닫기
+  showUserProfileModal.value = false;
+  
+  // 사용자 신고 모달 열기
+  showUserReportModal.value = true;
 };
 
 // 날짜 포맷팅은 timeUtils의 formatDateTime 사용
@@ -234,6 +413,19 @@ onMounted(() => {
 
 .test-chat-btn:hover {
   background-color: rgba(40, 167, 69, 0.1);
+}
+
+.test-report-buttons {
+  display: flex;
+  gap: 10px;
+  margin-right: 20px;
+  flex-wrap: wrap;
+}
+
+.test-report-btn {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  min-width: auto;
 }
 
 .notice-title {

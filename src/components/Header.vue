@@ -19,8 +19,24 @@
         <router-link to="/notice" class="nav-link">공지사항</router-link>
         <router-link to="/recipes" class="nav-link">레시피 공유 게시글</router-link>
         <router-link to="/lectures" class="nav-link">판매중인 강의</router-link>
-        <router-link to="/chat" class="nav-link">1:1채팅</router-link>
-        <router-link to="/mypage" class="nav-link">마이페이지</router-link>
+        <!-- 관리자가 아닐 때만 표시할 메뉴 -->
+        <a v-if="!isAdmin" @click="handleChatClick" class="nav-link" style="cursor: pointer;">1:1채팅</a>
+        <!-- 관리자일 때는 관리자페이지, 일반 사용자일 때는 마이페이지 -->
+        <router-link 
+          v-if="isAdmin" 
+          to="/admin" 
+          class="nav-link"
+        >
+          관리자페이지
+        </router-link>
+        <a 
+          v-else 
+          @click="handleMyPageClick" 
+          class="nav-link"
+          style="cursor: pointer;"
+        >
+          마이페이지
+        </a>
       </div>
 
       <!-- Right Section -->
@@ -49,8 +65,9 @@
             <v-icon v-else size="20" color="grey">mdi-account</v-icon>
           </v-avatar>
           
-          <!-- 알림 버튼 -->
+          <!-- 알림 버튼 (관리자가 아닐 때만 표시) -->
           <v-btn
+            v-if="!isAdmin"
             icon
             variant="text"
             class="notification-btn"
@@ -66,8 +83,9 @@
             </v-badge>
           </v-btn>
 
-          <!-- 장바구니 버튼 -->
+          <!-- 장바구니 버튼 (관리자가 아닐 때만 표시) -->
           <v-btn
+            v-if="!isAdmin"
             icon
             variant="text"
             class="cart-btn"
@@ -146,8 +164,9 @@
             </div>
 
         <div class="mobile-user-section">
-          <!-- 모바일 알림 버튼 -->
+          <!-- 모바일 알림 버튼 (관리자가 아닐 때만 표시) -->
           <v-btn
+            v-if="!isAdmin"
             icon
             variant="text"
             size="small"
@@ -164,8 +183,9 @@
             </v-badge>
           </v-btn>
 
-          <!-- 모바일 장바구니 버튼 -->
+          <!-- 모바일 장바구니 버튼 (관리자가 아닐 때만 표시) -->
           <v-btn
+            v-if="!isAdmin"
             icon
             variant="text"
             size="small"
@@ -218,14 +238,15 @@
     <v-list>
       <v-list-item
         v-for="item in mobileMenuItems"
-        :key="item.path"
+        :key="item.title"
         :to="item.path"
-        @click="mobileMenuOpen = false"
+        @click="handleMobileMenuClick(item)"
       >
         <v-list-item-title>{{ item.title }}</v-list-item-title>
       </v-list-item>
-      <!-- 모바일 메뉴에 장바구니 추가 -->
+      <!-- 모바일 메뉴에 장바구니 추가 (관리자가 아닐 때만 표시) -->
       <v-list-item
+        v-if="!isAdmin"
         to="/cart"
         @click="mobileMenuOpen = false"
         class="cart-menu-item"
@@ -244,6 +265,18 @@
       </v-list-item>
     </v-list>
   </v-navigation-drawer>
+
+  <!-- 로그인 필요 모달 -->
+  <CommonModal
+    v-model="showLoginModal"
+    type="info"
+    title="로그인이 필요합니다"
+    message="해당 서비스를 이용하려면 로그인이 필요합니다. 로그인하시겠습니까?"
+    confirm-text="로그인하기"
+    cancel-text="취소"
+    @confirm="goToLogin"
+    @cancel="closeLoginModal"
+  />
 </template>
 
 <script setup>
@@ -252,22 +285,41 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/auth/auth'
 import { useCartStore } from '@/store/cart/cart'
 import { useNotificationStore } from '@/store/notification/notification.js'
+import { useAdminLoginStore } from '@/store/admin/adminLogin'
+import CommonModal from '@/components/common/CommonModal.vue'
 
 const router = useRouter();
 const authStore = useAuthStore();
 const cartStore = useCartStore();
 
 const notificationStore = useNotificationStore();
+const adminLoginStore = useAdminLoginStore();
 
 // Reactive data
 const mobileMenuOpen = ref(false);
-const mobileMenuItems = ref([
-  { title: '공지사항', path: '/notice' },
-  { title: '레시피 공유 게시글', path: '/recipes' },
-  { title: '판매중인 강의', path: '/lectures' },
-  { title: '1:1채팅', path: '/chat' },
-  { title: '마이페이지', path: '/mypage' }
-]);
+const showLoginModal = ref(false);
+// 모바일 메뉴 아이템 (역할에 따라 동적으로 생성)
+const mobileMenuItems = computed(() => {
+  const baseItems = [
+    { title: '공지사항', path: '/notice' },
+    { title: '레시피 공유 게시글', path: '/recipes' },
+    { title: '판매중인 강의', path: '/lectures' }
+  ];
+  
+  // 관리자가 아닐 때만 표시할 메뉴
+  if (!isAdmin.value) {
+    baseItems.push({ title: '1:1채팅', action: 'chat' });
+  }
+  
+  // 관리자일 때는 관리자페이지, 일반 사용자일 때는 마이페이지
+  if (isAdmin.value) {
+    baseItems.push({ title: '관리자페이지', path: '/admin' });
+  } else {
+    baseItems.push({ title: '마이페이지', action: 'mypage' });
+  }
+  
+  return baseItems;
+})
 
 // 화면 크기 감지 함수
 const handleResize = () => {
@@ -285,6 +337,12 @@ const profileData = ref({
 
 // Computed properties
 const isLoggedIn = computed(() => {
+  // adminLoginStore의 상태를 우선적으로 확인
+  if (adminLoginStore.isLoggedIn) {
+    return true;
+  }
+  
+  // 일반 사용자의 경우 authStore 확인
   return authStore.getIsAuthenticated;
 })
 
@@ -293,36 +351,57 @@ const userRole = computed(() => {
   return authStore.getUserRole;
 })
 
-// 관리자 여부 확인
+// 관리자 여부 확인 (두 스토어 모두 확인)
 const isAdmin = computed(() => {
-  return userRole.value === 'admin';
+  const adminLoggedIn = adminLoginStore.isLoggedIn;
+  const userRoleValue = userRole.value;
+  
+  console.log('isAdmin 계산 중:', {
+    userRole: userRoleValue,
+    adminLoggedIn: adminLoggedIn,
+    adminLoggedInType: typeof adminLoggedIn,
+    adminStoreState: {
+      accessToken: adminLoginStore.accessToken,
+      admin: adminLoginStore.admin
+    }
+  });
+  
+  // adminLoginStore의 상태를 우선적으로 확인
+  if (adminLoggedIn) {
+    return true;
+  }
+  
+  // 일반 사용자의 경우 userRole 확인
+  return userRoleValue === 'ADMIN';
 })
 
 // 프로필 정보 가져오기
 const fetchProfileInfo = async () => {
-  if (isLoggedIn.value && authStore.accessToken) {
+  if (isLoggedIn.value) {
     try {
-      // 관리자인 경우 auth 스토어의 정보 사용
+      // 관리자인 경우 adminLoginStore의 정보 사용
       if (isAdmin.value) {
-        const adminUser = authStore.getUser;
+        const adminUser = adminLoginStore.admin;
         profileData.value = {
-          nickname: adminUser?.nickname || '관리자',
+          nickname: adminUser?.adminName || '관리자',
           profileImageUrl: '' // 관리자는 기본적으로 프로필 이미지 없음
         };
       } else {
         // 일반 사용자인 경우 기존 로직 사용
-        const profileInfo = await authStore.fetchProfileInfo();
-        if (profileInfo) {
-          profileData.value = {
-            nickname: profileInfo.nickname || '사용자',
-            profileImageUrl: profileInfo.profileImageUrl || ''
-          };
-        } else {
-          // 프로필 정보가 없는 경우 기본값 설정
-          profileData.value = {
-            nickname: '사용자',
-            profileImageUrl: ''
-          };
+        if (authStore.accessToken) {
+          const profileInfo = await authStore.fetchProfileInfo();
+          if (profileInfo) {
+            profileData.value = {
+              nickname: profileInfo.nickname || '사용자',
+              profileImageUrl: profileInfo.profileImageUrl || ''
+            };
+          } else {
+            // 프로필 정보가 없는 경우 기본값 설정
+            profileData.value = {
+              nickname: '사용자',
+              profileImageUrl: ''
+            };
+          }
         }
       }
     } catch (error) {
@@ -373,6 +452,27 @@ watch(isLoggedIn, async (newValue) => {
 })
 
 
+// 관리자 로그인 상태도 감시
+watch(() => adminLoginStore.isLoggedIn, async (newValue, oldValue) => {
+  console.log('관리자 로그인 상태 변경 감지:', { old: oldValue, new: newValue });
+  
+  if (newValue) {
+    await fetchProfileInfo();
+  } else {
+    // 관리자 로그아웃 시 프로필 정보 초기화
+    profileData.value = {
+      nickname: '',
+      profileImageUrl: ''
+    };
+  }
+}, { immediate: true })
+
+// isAdmin 상태 변화 감시 (디버깅용)
+watch(isAdmin, (newValue, oldValue) => {
+  console.log('isAdmin 상태 변화:', { old: oldValue, new: newValue });
+});
+
+
 // 사용자 역할 변경 감시
 watch(userRole, async (newRole) => {
   if (isLoggedIn.value) {
@@ -384,8 +484,23 @@ watch(userRole, async (newRole) => {
 onMounted(async () => {
   window.addEventListener('resize', handleResize);
   
-  // 로그인된 상태라면 프로필 정보와 장바구니 정보 가져오기
-  if (isLoggedIn.value) {
+
+  // 초기 상태 로깅
+  console.log('Header 컴포넌트 마운트 시 상태:', {
+    isLoggedIn: isLoggedIn.value,
+    adminLoggedIn: adminLoginStore.isLoggedIn,
+    userRole: userRole.value,
+    isAdmin: isAdmin.value,
+    adminStoreDetails: {
+      accessToken: adminLoginStore.accessToken,
+      admin: adminLoginStore.admin,
+      isLoggedIn: adminLoginStore.isLoggedIn,
+      isLoggedInType: typeof adminLoginStore.isLoggedIn
+    }
+  });
+  
+  // 로그인된 상태라면 프로필 정보 가져오기
+  if (isLoggedIn.value || adminLoginStore.isLoggedIn) {
     await fetchProfileInfo();
     // 서버에서 장바구니 목록 가져오기
     try {
@@ -438,7 +553,11 @@ const goToLogin = () => {
 
 const logout = async () => {
   try {
-    await authStore.logout();
+    if (isAdmin.value) {
+      await adminLoginStore.logout();
+    } else {
+      await authStore.logout();
+    }
     // 루트 페이지로 이동 (로그아웃 후 비로그인 상태이므로 landing 페이지로 리다이렉트됨)
     router.push('/');
   } catch (error) {
@@ -457,6 +576,38 @@ const goToCart = () => {
 const toggleMobileMenu = () => {
   mobileMenuOpen.value = !mobileMenuOpen.value
 }
+
+const handleChatClick = () => {
+  if (isLoggedIn.value) {
+    router.push('/chat');
+  } else {
+    showLoginModal.value = true;
+  }
+}
+
+const handleMyPageClick = () => {
+  if (isLoggedIn.value) {
+    router.push('/mypage');
+  } else {
+    showLoginModal.value = true;
+  }
+}
+
+const handleMobileMenuClick = (item) => {
+  if (item.action === 'chat') {
+    handleChatClick();
+  } else if (item.action === 'mypage') {
+    handleMyPageClick();
+  } else {
+    // 일반 경로 이동
+    router.push(item.path);
+  }
+  mobileMenuOpen.value = false;
+}
+
+const closeLoginModal = () => {
+  showLoginModal.value = false;
+}
 </script>
 
 <style scoped>
@@ -472,12 +623,12 @@ const toggleMobileMenu = () => {
 
 /* 고정된 헤더 아래 콘텐츠 패딩 */
 :deep(.v-main) {
-  padding-top: 80px !important; /* prominent 모드에서 v-app-bar의 높이 */
+  padding-top: 64px !important; /* 헤더 높이에 맞춰 패딩 조정 */
 }
 
 @media (max-width: 960px) {
   :deep(.v-main) {
-    padding-top: 72px !important; /* 모바일에서 prominent 모드 v-app-bar의 높이 */
+    padding-top: 56px !important; /* 모바일에서 헤더 높이에 맞춰 패딩 조정 */
   }
 }
 
@@ -496,12 +647,12 @@ const toggleMobileMenu = () => {
 }
 
 :global(.v-main) {
-  padding-top: 80px !important;
+  padding-top: 32px !important;
 }
 
 @media (max-width: 960px) {
   :global(.v-main) {
-    padding-top: 72px !important;
+    padding-top: 56px !important;
   }
 }
 
@@ -667,6 +818,17 @@ const toggleMobileMenu = () => {
   }
 }
 
+.admin-logout-btn {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.admin-logout-btn:hover {
+  background-color: var(--color-primary);
+  color: white;
+}
+
 /* Mobile Styles */
 .header-mobile {
   width: 100%;
@@ -787,6 +949,17 @@ const toggleMobileMenu = () => {
   .welcome-text {
     display: none;
   }
+}
+
+.mobile-logout-btn.admin-logout-btn {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.mobile-logout-btn.admin-logout-btn:hover {
+  background-color: var(--color-primary);
+  color: white;
 }
 
 .mobile-nav-drawer {
