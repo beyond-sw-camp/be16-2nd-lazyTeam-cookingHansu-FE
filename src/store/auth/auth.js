@@ -260,12 +260,19 @@ export const useAuthStore = defineStore('auth', {
             }
           } else {
             // 토큰이 만료된 경우 자동 갱신 시도
-            await this.refreshToken();
+            try {
+              await this.refreshToken();
+            } catch (error) {
+              console.warn('Token refresh failed during initialization:', error.message);
+              // 토큰 갱신 실패 시에도 기본 정보는 유지
+              // (refreshToken에서 logout 호출을 제거했으므로 자동으로 유지됨)
+            }
           }
         }
       } catch (error) {
         console.error('Auth initialization failed:', error);
-        this.clearAuth();
+        // this.clearAuth();
+        // 에러가 발생해도 clearAuth는 호출하지 않음 (사용자 경험 개선)
       }
     },
 
@@ -485,8 +492,8 @@ export const useAuthStore = defineStore('auth', {
         
       } catch (error) {
         console.error('Token refresh failed:', error);
-        // 토큰 갱신 실패 시 로그아웃
-        await this.logout();
+        // 토큰 갱신 실패 시에도 로그아웃하지 않음 (사용자 경험 개선)
+        // await this.logout(); // 이 줄 제거
         throw error;
       } finally {
         this.isRefreshing = false;
@@ -510,7 +517,10 @@ export const useAuthStore = defineStore('auth', {
         console.error('Logout request failed:', error);
       } finally {
         // 클라이언트 상태 정리
-        this.clearAuth();
+        // 관리자 로그인 상태가 아닌 경우에만 clearAuth 호출
+        if (!localStorage.getItem('adminAccessToken')) {
+          this.clearAuth();
+        }
       }
     },
 

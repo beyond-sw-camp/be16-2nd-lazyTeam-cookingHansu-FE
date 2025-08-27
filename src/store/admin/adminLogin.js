@@ -29,31 +29,33 @@ export const useAdminLoginStore = defineStore('adminLogin', {
       try {
         const response = await adminLoginService.login(email, password)
         
-        // 응답 데이터 저장
+        // 응답 데이터 저장 (ResponseDto로 감싸진 경우 data 필드에서 추출)
+        const adminData = response.data || response
+        
         this.admin = {
-          adminId: response.adminId,
-          adminName: response.adminName,
-          adminEmail: response.adminEmail
+          adminId: adminData.adminId,
+          adminName: adminData.adminName,
+          adminEmail: adminData.adminEmail
         }
-        this.accessToken = response.accessToken
-        this.refreshToken = response.refreshToken
-        this.expiresIn = response.expiresIn
+        this.accessToken = adminData.accessToken
+        this.refreshToken = adminData.refreshToken
+        this.expiresIn = adminData.expiresIn
         
         // 로컬 스토리지에 저장
-        localStorage.setItem('adminAccessToken', response.accessToken)
-        localStorage.setItem('adminRefreshToken', response.refreshToken)
+        localStorage.setItem('adminAccessToken', adminData.accessToken)
+        localStorage.setItem('adminRefreshToken', adminData.refreshToken)
         localStorage.setItem('adminInfo', JSON.stringify(this.admin))
         
         // useAuthStore의 사용자 정보도 업데이트 (라우터 가드에서 권한 확인용)
         const authStore = useAuthStore()
         authStore.setAdminAuth({
-          accessToken: response.accessToken,
-          refreshToken: response.refreshToken,
-          expiresIn: response.expiresIn,
+          accessToken: adminData.accessToken,
+          refreshToken: adminData.refreshToken,
+          expiresIn: adminData.expiresIn,
           user: {
-            id: response.adminId,
-            email: response.adminEmail,
-            nickname: response.adminName,
+            id: adminData.adminId,
+            email: adminData.adminEmail,
+            nickname: adminData.adminName,
             role: 'admin'
           }
         })
