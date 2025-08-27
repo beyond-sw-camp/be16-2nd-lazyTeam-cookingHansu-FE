@@ -447,6 +447,12 @@ export const useAuthStore = defineStore('auth', {
       localStorage.setItem('user', JSON.stringify(user));
       localStorage.setItem('provider', provider);
       
+      // 사용자 역할 설정 (user 객체에서 role 추출)
+      if (user && user.role) {
+        localStorage.setItem('userRole', user.role);
+        console.log('🔍 사용자 역할 설정:', user.role);
+      }
+      
       // 로그인 성공 후 알림 구독 시작
       try {
         const notificationStore = useNotificationStore();
@@ -478,8 +484,10 @@ export const useAuthStore = defineStore('auth', {
       }
       localStorage.setItem('user', JSON.stringify(authData.user));
       localStorage.setItem('provider', 'admin');
+      localStorage.setItem('userRole', 'ADMIN');
+      localStorage.setItem('adminAccessToken', authData.accessToken);
       
-
+      console.log('🔍 관리자 인증 정보 설정 완료');
     },
 
     // 토큰 갱신
@@ -592,6 +600,8 @@ export const useAuthStore = defineStore('auth', {
       localStorage.removeItem('expiresIn');
       localStorage.removeItem('user');
       localStorage.removeItem('provider');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('adminAccessToken');
     },
 
     // 에러 설정
