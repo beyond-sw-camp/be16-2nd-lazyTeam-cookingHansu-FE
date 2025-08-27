@@ -157,7 +157,8 @@ export default {
         orderId: '',
         payMethod: '',
         buyerName: '',
-        buyerEmail: ''
+        buyerEmail: '',
+        lectureId: ''
       },
       loading: false,
       error: null
@@ -225,8 +226,8 @@ export default {
     },
     goToStudy() {
       // 구매한 강의의 상세 페이지로 이동
-      if (this.orderDetails.id) {
-        this.$router.push(`/lectures/${this.orderDetails.id}`);
+      if (this.orderDetails.lectureId) {
+        this.$router.push(`/lectures/${this.orderDetails.lectureId}`);
       } else {
         // 구매한 강의가 없는 경우 강의 목록으로 이동
         this.$router.push('/lectures');
