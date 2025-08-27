@@ -2,10 +2,6 @@
   <div class="my-posts">
     <div class="section-header">
       <h2>내 게시글</h2>
-      <button class="write-post-btn">
-        <span class="plus-icon">+</span>
-        게시글 작성
-      </button>
     </div>
 
     <div class="posts-grid">
@@ -44,10 +40,6 @@
       <div class="empty-icon">📝</div>
       <h3>아직 작성한 게시글이 없어요</h3>
       <p>첫 번째 게시글을 작성해보세요!</p>
-      <button class="write-first-post-btn">
-        <span class="plus-icon">+</span>
-        게시글 작성하기
-      </button>
     </div>
   </div>
 </template>
@@ -179,28 +171,7 @@ export default {
   margin: 0;
 }
 
-.write-post-btn {
-  background: #ff7a00;
-  color: white;
-  border: none;
-  padding: 12px 20px;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: background 0.2s;
-}
 
-.write-post-btn:hover {
-  background: #e66a00;
-}
-
-.plus-icon {
-  font-size: 18px;
-  font-weight: bold;
-}
 
 .posts-grid {
   display: grid;
@@ -316,34 +287,13 @@ export default {
   color: #666;
 }
 
-.write-first-post-btn {
-  background: #ff7a00;
-  color: white;
-  border: none;
-  padding: 16px 32px;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 16px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  transition: background 0.2s;
-}
 
-.write-first-post-btn:hover {
-  background: #e66a00;
-}
 
 @media (max-width: 768px) {
   .section-header {
     flex-direction: column;
     gap: 16px;
     align-items: stretch;
-  }
-  
-  .write-post-btn {
-    justify-content: center;
   }
   
   .posts-grid {

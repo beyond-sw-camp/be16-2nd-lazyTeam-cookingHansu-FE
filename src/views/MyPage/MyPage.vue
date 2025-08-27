@@ -44,7 +44,6 @@
 
     <!-- 탭 컨텐츠 -->
     <div class="tab-content">
-      <MyRecipes v-if="currentTab === 'recipes'" />
       <MyPosts v-if="currentTab === 'posts'" />
       <PurchasedLectures v-if="currentTab === 'lectures'" />
       <Bookmarks v-if="currentTab === 'bookmarks'" />
@@ -76,7 +75,6 @@
 
 <script>
 import Header from '@/components/Header.vue';
-import MyRecipes from '@/components/mypage/MyRecipes.vue';
 import MyPosts from '@/components/mypage/MyPosts.vue';
 import PurchasedLectures from '@/components/mypage/PurchasedLectures.vue';
 import Bookmarks from '@/components/mypage/Bookmarks.vue';
@@ -90,7 +88,6 @@ export default {
   name: 'MyPage',
   components: {
     Header,
-    MyRecipes,
     MyPosts,
     PurchasedLectures,
     Bookmarks,
@@ -111,7 +108,6 @@ export default {
         userType: ''
       },
       tabs: [
-        { id: 'recipes', name: '내 레시피' },
         { id: 'posts', name: '내 게시글' },
         { id: 'lectures', name: '구매한 강의' },
         { id: 'bookmarks', name: '북마크' },
@@ -149,8 +145,8 @@ export default {
     getInitialTab() {
       const urlParams = new URLSearchParams(window.location.search);
       const tab = urlParams.get('tab');
-      const validTabs = ['recipes', 'posts', 'lectures', 'bookmarks', 'likes'];
-      return tab && validTabs.includes(tab) ? tab : 'recipes';
+      const validTabs = ['posts', 'lectures', 'bookmarks', 'likes'];
+      return tab && validTabs.includes(tab) ? tab : 'posts';
     },
     updateUrlWithTab(tab) {
       const url = new URL(window.location);
