@@ -38,7 +38,7 @@
               @click="handleNotificationClick(notification)"
             >
               <!-- 알림 타입별 아이콘 -->
-              <div :class="['notification-icon', notification.targetType?.toLowerCase() || 'default']">
+              <div :class="['notification-icon', notification.targetType.toLowerCase()]">
                 {{ getNotificationIcon(notification.targetType) }}
               </div>
               
@@ -46,7 +46,7 @@
               <div class="notification-detail">
                 <div class="notification-main">
                   <div class="notification-badge-row">
-                    <span :class="['notification-type-badge', notification.targetType?.toLowerCase() || 'default']">
+                    <span :class="['notification-type-badge', notification.targetType.toLowerCase()]">
                       {{ getTypeName(notification.targetType) }}
                     </span>
                     <!-- 읽지 않음 표시 -->
@@ -83,20 +83,17 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useNotificationStore } from '@/store/notification/notification.js'
-import { useAuthStore } from '@/store/auth/auth.js'
-import { formatChatTime } from '@/utils/timeUtils'
+import { formatDistanceToNow } from 'date-fns'
+import { ko } from 'date-fns/locale'
 
 const router = useRouter()
 const notificationStore = useNotificationStore()
-const authStore = useAuthStore()
 
-// 사용자 ID 가져오기
-const getUserId = () => {
-  return authStore.user?.id
-}
+// 사용자 ID (전역 변수로 정의)
+const userId = '00000000-0000-0000-0000-000000000000' // 결제 테스트 사용자 ID
 
 // 반응형 데이터
 const activeFilter = ref('ALL')
@@ -117,7 +114,6 @@ const filters = [
 
 // 컴퓨티드
 const filteredNotifications = computed(() => {
-  
   if (activeFilter.value === 'ALL') {
     return notificationStore.notifications
   }
@@ -159,32 +155,30 @@ const getTypeName = (targetType) => {
   return typeMap[targetType] || '알림'
 }
 
-
 const formatTime = (timestamp) => {
-  if (!timestamp) return '시간 정보 없음'
-  
   try {
-    const result = formatChatTime(timestamp)
-    console.log('formatChatTime 결과:', result)
-    return result
+    // timestamp가 유효한지 확인
+    if (!timestamp || timestamp === 'Invalid Date' || isNaN(new Date(timestamp).getTime())) {
+      return '시간 정보 없음'
+    }
+    
+    const date = new Date(timestamp)
+    return formatDistanceToNow(date, { 
+      addSuffix: true, 
+      locale: ko 
+    })
   } catch (error) {
-    console.error('시간 포맷팅 에러:', error)
+    console.warn('날짜 파싱 에러:', error, 'timestamp:', timestamp)
     return '시간 정보 없음'
   }
 }
 
 const handleNotificationClick = async (notification) => {
-  console.log('알림 클릭:', notification)
-  
-  // 서버에 읽음 처리
-  if (notification.id) {
-    try {
-      await notificationStore.markAsRead(notification.id)
-    } catch (error) {
-      console.error('읽음 처리 실패:', error)
-    }
-  } else {
-    console.log('알림 ID가 없습니다')
+  // 알림을 읽음으로 표시
+  try {
+    await notificationStore.markAsRead(notification.id)
+  } catch (error) {
+    console.error('읽음 처리 실패:', error)
   }
   
   // 알림 타입에 따라 해당 페이지로 이동
@@ -222,10 +216,6 @@ const handleNotificationClick = async (notification) => {
 // 알림 삭제 처리
 const handleDeleteNotification = async (notificationId) => {
   console.log('🗑️ 삭제 버튼 클릭됨, ID:', notificationId)
-  if (!notificationId) {
-    console.log('알림을 삭제할 수 없습니다')
-    return
-  }
   try {
     await notificationStore.deleteNotification(notificationId)
     console.log('✅ 알림 삭제 완료:', notificationId)
@@ -246,19 +236,15 @@ const loadMore = async () => {
   }
 }
 
+// 라이프사이클
 onMounted(async () => {
   loading.value = true
   try {
     // 실제 API에서 알림 로드
     await notificationStore.fetchNotifications()
     
-    // SSE 연결 설정
-    const userId = getUserId()
-    if (userId) {
-      notificationStore.connectToNotificationStream(userId)
-    } else {
-      console.error('사용자 ID를 가져올 수 없습니다.')
-    }
+    // SSE 연결 상태 확인 및 재연결
+    notificationStore.ensureNotificationSubscription()
     
     // 이전 필터 상태 복원
     const savedFilter = sessionStorage.getItem('notificationFilter')
@@ -272,18 +258,13 @@ onMounted(async () => {
     loading.value = false
   }
 })
-
-// 컴포넌트 언마운트 시 SSE 연결 해제
-onUnmounted(() => {
-  notificationStore.disconnectFromNotificationStream()
-})
 </script>
 
 <style scoped>
 .notification-page {
   min-height: 100vh;
   background-color: #f8f9fa;
-  padding-top: 60px;
+  padding-top: 80px; /* 헤더 높이만큼 상단 여백 추가 */
 }
 
 .notification-container {
@@ -446,10 +427,6 @@ onUnmounted(() => {
   background: #f3e5f5;
 }
 
-.notification-icon.default {
-  background: #f5f5f5;
-}
-
 .notification-detail {
   flex: 1;
   min-width: 0;
@@ -519,11 +496,6 @@ onUnmounted(() => {
 .notification-type-badge.notice {
   background: #f3e5f5;
   color: #7b1fa2;
-}
-
-.notification-type-badge.default {
-  background: #f5f5f5;
-  color: #666;
 }
 
 .notification-badge-row {

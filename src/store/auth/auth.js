@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { API_CONFIG } from '@/constants/oauth';
 import { authService } from '@/services/auth/authService';
 import { apiGet } from '@/utils/api';
+import { useNotificationStore } from '@/store/notification/notification';
 
 // Auth 관련 상태 관리 스토어
 // OAuth2 소셜 로그인 기반의 토큰 관리, 로그인 상태 관리, 사용자 정보 관리
@@ -216,6 +217,8 @@ export const useAuthStore = defineStore('auth', {
             console.error('Failed to get current user after local login:', error);
           }
           
+          // 알림 구독은 initialize()에서 중앙 관리됨
+          
           return user;
         } else {
           throw new Error(response.message || '로그인에 실패했습니다.');
@@ -258,10 +261,32 @@ export const useAuthStore = defineStore('auth', {
               console.error('Failed to get current user during initialization:', error);
               // 사용자 정보 조회 실패 시에도 기본 정보는 유지
             }
+            
+            // 인증된 사용자의 경우 알림 구독 시작
+            try {
+              const notificationStore = useNotificationStore();
+              await notificationStore.requestNotificationPermission();
+              console.log('🔍 초기화 후 알림 구독 시작...');
+              notificationStore.startNotificationSubscription();
+            } catch (error) {
+              console.warn('알림 구독 시작 실패:', error);
+            }
           } else {
             // 토큰이 만료된 경우 자동 갱신 시도
             try {
               await this.refreshToken();
+
+              
+              // 토큰 갱신 성공 시 알림 구독 시작
+              try {
+                const notificationStore = useNotificationStore();
+                await notificationStore.requestNotificationPermission();
+                console.log('🔍 토큰 갱신 후 알림 구독 시작...');
+                notificationStore.startNotificationSubscription();
+              } catch (error) {
+                console.warn('알림 구독 시작 실패:', error);
+              }
+
             } catch (error) {
               console.warn('Token refresh failed during initialization:', error.message);
               // 토큰 갱신 실패 시에도 기본 정보는 유지
@@ -307,6 +332,8 @@ export const useAuthStore = defineStore('auth', {
           console.error('Failed to get current user after Google login:', error);
         }
         
+        // 알림 구독은 initialize()에서 중앙 관리됨
+        
         return user;
       } catch (error) {
         console.error('Google login failed:', error);
@@ -347,6 +374,8 @@ export const useAuthStore = defineStore('auth', {
         } catch (error) {
           console.error('Failed to get current user after Kakao login:', error);
         }
+        
+        // 알림 구독은 initialize()에서 중앙 관리됨
         
         return user;
       } catch (error) {
@@ -389,6 +418,8 @@ export const useAuthStore = defineStore('auth', {
           console.error('Failed to get current user after Naver login:', error);
         }
         
+        // 알림 구독은 initialize()에서 중앙 관리됨
+        
         return user;
       } catch (error) {
         console.error('Naver login failed:', error);
@@ -417,6 +448,19 @@ export const useAuthStore = defineStore('auth', {
       localStorage.setItem('expiresIn', this.expiresIn);
       localStorage.setItem('user', JSON.stringify(user));
       localStorage.setItem('provider', provider);
+      
+      // 로그인 성공 후 알림 구독 시작
+      try {
+        const notificationStore = useNotificationStore();
+        notificationStore.requestNotificationPermission().then(() => {
+          console.log('🔍 로그인 후 알림 구독 시작...');
+          notificationStore.startNotificationSubscription();
+        }).catch((error) => {
+          console.warn('알림 구독 시작 실패:', error);
+        });
+      } catch (error) {
+        console.warn('알림 구독 시작 실패:', error);
+      }
     },
 
     // 관리자 인증 정보 설정 (AdminLoginStore에서 호출)
@@ -436,6 +480,8 @@ export const useAuthStore = defineStore('auth', {
       }
       localStorage.setItem('user', JSON.stringify(authData.user));
       localStorage.setItem('provider', 'admin');
+      
+
     },
 
     // 토큰 갱신
@@ -503,6 +549,14 @@ export const useAuthStore = defineStore('auth', {
     // 로그아웃
     async logout() {
       try {
+        // 알림 구독 중지
+        try {
+          const notificationStore = useNotificationStore();
+          notificationStore.stopNotificationSubscription();
+        } catch (error) {
+          console.warn('알림 구독 중지 실패:', error);
+        }
+        
         // 서버에 로그아웃 요청
         if (this.accessToken) {
           await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.LOGOUT}`, {
