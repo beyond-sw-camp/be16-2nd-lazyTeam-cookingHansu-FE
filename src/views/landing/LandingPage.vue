@@ -17,7 +17,7 @@
                     지금 시작하기
                 </v-btn>
                 <v-btn @click="goToRecipe" outlined large class="recipe-btn">
-                    레시피 둘러보기
+                    게시글 둘러보기
                 </v-btn>
               </v-row>
             </v-col>
@@ -115,7 +115,7 @@
     router.push(isLoggedIn.value ? { name: 'MyPage' } : { name: 'Login' })
   }
   function goToRecipe() {
-    router.push(isLoggedIn.value ? '/recipe' : { name: 'Login' })
+    router.push('/recipes')
   }
   function goToSignUp() {
     router.push({ name: 'Login' })

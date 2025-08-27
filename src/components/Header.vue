@@ -20,7 +20,7 @@
         <router-link to="/recipes" class="nav-link">레시피 공유 게시글</router-link>
         <router-link to="/lectures" class="nav-link">판매중인 강의</router-link>
         <!-- 관리자가 아닐 때만 표시할 메뉴 -->
-        <router-link v-if="!isAdmin" to="/chat" class="nav-link">1:1채팅</router-link>
+        <a v-if="!isAdmin" @click="handleChatClick" class="nav-link" style="cursor: pointer;">1:1채팅</a>
         <!-- 관리자일 때는 관리자페이지, 일반 사용자일 때는 마이페이지 -->
         <router-link 
           v-if="isAdmin" 
@@ -29,13 +29,14 @@
         >
           관리자페이지
         </router-link>
-        <router-link 
+        <a 
           v-else 
-          to="/mypage" 
+          @click="handleMyPageClick" 
           class="nav-link"
+          style="cursor: pointer;"
         >
           마이페이지
-        </router-link>
+        </a>
       </div>
 
       <!-- Right Section -->
@@ -237,9 +238,9 @@
     <v-list>
       <v-list-item
         v-for="item in mobileMenuItems"
-        :key="item.path"
+        :key="item.title"
         :to="item.path"
-        @click="mobileMenuOpen = false"
+        @click="handleMobileMenuClick(item)"
       >
         <v-list-item-title>{{ item.title }}</v-list-item-title>
       </v-list-item>
@@ -264,6 +265,18 @@
       </v-list-item>
     </v-list>
   </v-navigation-drawer>
+
+  <!-- 로그인 필요 모달 -->
+  <CommonModal
+    v-model="showLoginModal"
+    type="info"
+    title="로그인이 필요합니다"
+    message="해당 서비스를 이용하려면 로그인이 필요합니다. 로그인하시겠습니까?"
+    confirm-text="로그인하기"
+    cancel-text="취소"
+    @confirm="goToLogin"
+    @cancel="closeLoginModal"
+  />
 </template>
 
 <script setup>
@@ -273,6 +286,7 @@ import { useAuthStore } from '@/store/auth/auth'
 import { useCartStore } from '@/store/cart/cart.js'
 import { useNotificationStore } from '@/store/notification/notification.js'
 import { useAdminLoginStore } from '@/store/admin/adminLogin'
+import CommonModal from '@/components/common/CommonModal.vue'
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -282,6 +296,7 @@ const adminLoginStore = useAdminLoginStore();
 
 // Reactive data
 const mobileMenuOpen = ref(false);
+const showLoginModal = ref(false);
 // 모바일 메뉴 아이템 (역할에 따라 동적으로 생성)
 const mobileMenuItems = computed(() => {
   const baseItems = [
@@ -292,14 +307,14 @@ const mobileMenuItems = computed(() => {
   
   // 관리자가 아닐 때만 표시할 메뉴
   if (!isAdmin.value) {
-    baseItems.push({ title: '1:1채팅', path: '/chat' });
+    baseItems.push({ title: '1:1채팅', action: 'chat' });
   }
   
   // 관리자일 때는 관리자페이지, 일반 사용자일 때는 마이페이지
   if (isAdmin.value) {
     baseItems.push({ title: '관리자페이지', path: '/admin' });
   } else {
-    baseItems.push({ title: '마이페이지', path: '/mypage' });
+    baseItems.push({ title: '마이페이지', action: 'mypage' });
   }
   
   return baseItems;
@@ -321,6 +336,12 @@ const profileData = ref({
 
 // Computed properties
 const isLoggedIn = computed(() => {
+  // adminLoginStore의 상태를 우선적으로 확인
+  if (adminLoginStore.isLoggedIn) {
+    return true;
+  }
+  
+  // 일반 사용자의 경우 authStore 확인
   return authStore.getIsAuthenticated;
 })
 
@@ -331,7 +352,26 @@ const userRole = computed(() => {
 
 // 관리자 여부 확인 (두 스토어 모두 확인)
 const isAdmin = computed(() => {
-  return userRole.value === 'ADMIN' || adminLoginStore.isLoggedIn;
+  const adminLoggedIn = adminLoginStore.isLoggedIn;
+  const userRoleValue = userRole.value;
+  
+  console.log('isAdmin 계산 중:', {
+    userRole: userRoleValue,
+    adminLoggedIn: adminLoggedIn,
+    adminLoggedInType: typeof adminLoggedIn,
+    adminStoreState: {
+      accessToken: adminLoginStore.accessToken,
+      admin: adminLoginStore.admin
+    }
+  });
+  
+  // adminLoginStore의 상태를 우선적으로 확인
+  if (adminLoggedIn) {
+    return true;
+  }
+  
+  // 일반 사용자의 경우 userRole 확인
+  return userRoleValue === 'ADMIN';
 })
 
 // 프로필 정보 가져오기
@@ -403,11 +443,24 @@ watch(isLoggedIn, async (newValue) => {
 })
 
 // 관리자 로그인 상태도 감시
-watch(() => adminLoginStore.isLoggedIn, async (newValue) => {
+watch(() => adminLoginStore.isLoggedIn, async (newValue, oldValue) => {
+  console.log('관리자 로그인 상태 변경 감지:', { old: oldValue, new: newValue });
+  
   if (newValue) {
     await fetchProfileInfo();
+  } else {
+    // 관리자 로그아웃 시 프로필 정보 초기화
+    profileData.value = {
+      nickname: '',
+      profileImageUrl: ''
+    };
   }
-})
+}, { immediate: true })
+
+// isAdmin 상태 변화 감시 (디버깅용)
+watch(isAdmin, (newValue, oldValue) => {
+  console.log('isAdmin 상태 변화:', { old: oldValue, new: newValue });
+});
 
 // 사용자 역할 변경 감시
 watch(userRole, async (newRole) => {
@@ -419,6 +472,20 @@ watch(userRole, async (newRole) => {
 // 컴포넌트 마운트 시 리사이즈 이벤트 리스너 추가 및 프로필 정보 가져오기
 onMounted(async () => {
   window.addEventListener('resize', handleResize);
+  
+  // 초기 상태 로깅
+  console.log('Header 컴포넌트 마운트 시 상태:', {
+    isLoggedIn: isLoggedIn.value,
+    adminLoggedIn: adminLoginStore.isLoggedIn,
+    userRole: userRole.value,
+    isAdmin: isAdmin.value,
+    adminStoreDetails: {
+      accessToken: adminLoginStore.accessToken,
+      admin: adminLoginStore.admin,
+      isLoggedIn: adminLoginStore.isLoggedIn,
+      isLoggedInType: typeof adminLoginStore.isLoggedIn
+    }
+  });
   
   // 로그인된 상태라면 프로필 정보 가져오기
   if (isLoggedIn.value || adminLoginStore.isLoggedIn) {
@@ -486,6 +553,38 @@ const goToCart = () => {
 const toggleMobileMenu = () => {
   mobileMenuOpen.value = !mobileMenuOpen.value
 }
+
+const handleChatClick = () => {
+  if (isLoggedIn.value) {
+    router.push('/chat');
+  } else {
+    showLoginModal.value = true;
+  }
+}
+
+const handleMyPageClick = () => {
+  if (isLoggedIn.value) {
+    router.push('/mypage');
+  } else {
+    showLoginModal.value = true;
+  }
+}
+
+const handleMobileMenuClick = (item) => {
+  if (item.action === 'chat') {
+    handleChatClick();
+  } else if (item.action === 'mypage') {
+    handleMyPageClick();
+  } else {
+    // 일반 경로 이동
+    router.push(item.path);
+  }
+  mobileMenuOpen.value = false;
+}
+
+const closeLoginModal = () => {
+  showLoginModal.value = false;
+}
 </script>
 
 <style scoped>
@@ -501,12 +600,12 @@ const toggleMobileMenu = () => {
 
 /* 고정된 헤더 아래 콘텐츠 패딩 */
 :deep(.v-main) {
-  padding-top: 80px !important; /* prominent 모드에서 v-app-bar의 높이 */
+  padding-top: 64px !important; /* 헤더 높이에 맞춰 패딩 조정 */
 }
 
 @media (max-width: 960px) {
   :deep(.v-main) {
-    padding-top: 72px !important; /* 모바일에서 prominent 모드 v-app-bar의 높이 */
+    padding-top: 56px !important; /* 모바일에서 헤더 높이에 맞춰 패딩 조정 */
   }
 }
 
@@ -525,12 +624,12 @@ const toggleMobileMenu = () => {
 }
 
 :global(.v-main) {
-  padding-top: 80px !important;
+  padding-top: 32px !important;
 }
 
 @media (max-width: 960px) {
   :global(.v-main) {
-    padding-top: 72px !important;
+    padding-top: 56px !important;
   }
 }
 

@@ -220,7 +220,7 @@ router.beforeEach(async (to, from, next) => {
       // 로그인되지 않은 사용자는 관리자 로그인 페이지로
       next("/admin-login");
       return;
-    } else if (authStore.user?.role !== "admin") {
+    } else if (authStore.user?.role !== "ADMIN" && !adminLoginStore.isLoggedIn) {
       // 일반 사용자(GENERAL/CHEF/OWNER)는 접근 차단 페이지로
       next("/access-denied");
       return;
@@ -228,7 +228,7 @@ router.beforeEach(async (to, from, next) => {
   }
 
   // URL 직접 입력으로 관리자 페이지 접근 시도 차단
-  if (to.path.startsWith('/admin') && authStore.isAuthenticated && authStore.user?.role !== "admin") {
+  if (to.path.startsWith('/admin') && authStore.isAuthenticated && authStore.user?.role !== "ADMIN" && !adminLoginStore.isLoggedIn) {
     // 일반 사용자가 관리자 경로로 직접 접근 시도 시 접근 차단 페이지로 리다이렉트
     next("/access-denied");
     return;
