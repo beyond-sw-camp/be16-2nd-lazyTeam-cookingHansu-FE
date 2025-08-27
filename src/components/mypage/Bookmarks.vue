@@ -4,24 +4,34 @@
       <h2>북마크</h2>
     </div>
 
-    <div class="bookmarks-grid">
+    <div v-if="loading" class="loading-state">
+      <div class="loading-spinner"></div>
+      <p>북마크를 불러오는 중...</p>
+    </div>
+
+    <div v-else-if="bookmarks.length > 0" class="bookmarks-grid">
       <div v-for="item in pagedBookmarks" :key="item.id" class="bookmark-card">
         <div class="bookmark-image">
-          <img :src="item.image" :alt="item.title" />
+          <img 
+            v-if="item.thumbnailUrl" 
+            :src="item.thumbnailUrl" 
+            :alt="item.title" 
+          />
+          <div v-else class="no-image">이미지 없음</div>
           <button class="remove-bookmark-btn" @click="removeBookmark(item.id)">
             <span class="remove-icon">×</span>
           </button>
         </div>
         <div class="bookmark-content">
           <div class="bookmark-type">
-            <span class="type-badge" :class="typeClass(item.type)">{{ item.type }}</span>
-            <span class="bookmark-date">{{ item.bookmarkDate }}</span>
+            <span class="type-badge type-recipe">레시피</span>
+            <span class="bookmark-date">{{ formatDate(item.createdAt) }}</span>
           </div>
           <h3 class="bookmark-title">{{ item.title }}</h3>
           <p class="bookmark-description">{{ item.description }}</p>
           <div class="bookmark-meta">
             <div class="author-stats">
-              <span v-if="item.author" class="author">{{ item.author }}</span>
+              <span v-if="item.writerNickname" class="author">{{ item.writerNickname }}</span>
               <div class="bookmark-stats">
                 <span class="stat-item">
                   <span class="stat-icon">🔖</span>
@@ -29,7 +39,7 @@
                 </span>
                 <span class="stat-item">
                   <span class="stat-icon">❤️</span>
-                  {{ item.likes }}
+                  {{ item.likeCount }}
                 </span>
               </div>
             </div>
@@ -39,22 +49,31 @@
     </div>
 
     <Pagination 
+      v-if="bookmarks.length > 0"
       :current-page="currentPage"
       :total-pages="totalPages"
       @page-change="changePage"
     />
 
-    <div v-if="bookmarks.length === 0" class="empty-state">
+    <div v-if="!loading && bookmarks.length === 0" class="empty-state">
       <div class="empty-icon">🔖</div>
       <h3>아직 북마크한 항목이 없어요</h3>
-      <p>관심 있는 레시피나 강의를 북마크해보세요!</p>
+      <p>관심 있는 레시피를 북마크해보세요!</p>
       <button class="browse-content-btn">콘텐츠 둘러보기</button>
+    </div>
+
+    <div v-if="error" class="error-state">
+      <div class="error-icon">❌</div>
+      <h3>북마크를 불러오는데 실패했습니다</h3>
+      <p>{{ error }}</p>
+      <button @click="fetchBookmarks" class="retry-btn">다시 시도</button>
     </div>
   </div>
 </template>
 
 <script>
 import Pagination from '../common/Pagination.vue';
+import { apiGet } from '@/utils/api';
 
 export default {
   name: 'Bookmarks',
@@ -65,52 +84,9 @@ export default {
     return {
       currentPage: 1,
       bookmarksPerPage: 6,
-      bookmarks: [
-        {
-          id: 1,
-          type: '레시피',
-          title: '김치찌개 만들면서 깨달은 요리 철학',
-          description: '오늘 김치찌개를 끓이면서 느낀 점들을 공유해요. 요리는 정말 마음이 중요한 것 같아요...',
-          image: '/src/assets/images/smu_mascort1.jpg',
-          author: '김요리',
-          bookmarkDate: '2024.01.05',
-          bookmarkCount: 18,
-          likes: 42
-        },
-        {
-          id: 2,
-          type: '레시피',
-          title: '한국 요리 초보자를 위한 팁',
-          description: '요리를 시작한 지 6개월된 초보가 공유하는 실용적인 팁들. 실패담도 포함...',
-          image: '/src/assets/images/smu_mascort2.jpg',
-          author: '이요리',
-          bookmarkDate: '2024.01.03',
-          bookmarkCount: 9,
-          likes: 28
-        },
-        {
-          id: 3,
-          type: '레시피',
-          title: '요리 도구 추천 리뷰',
-          description: '1년간 사용해본 요리 도구들 솔직 후기. 꼭 필요한 것과 불필요한 것들...',
-          image: '/src/assets/images/smu_mascort3.jpg',
-          author: '박요리',
-          bookmarkDate: '2024.01.01',
-          bookmarkCount: 14,
-          likes: 35
-        },
-        {
-          id: 4,
-          type: '레시피',
-          title: '집밥 vs 외식, 나의 선택은?',
-          description: '한 달간 집밥만 해먹기 도전 후기. 건강과 경제적 효과, 그리고 의외의 발견들...',
-          image: '/src/assets/images/smu_mascort4.jpg',
-          author: '최요리',
-          bookmarkDate: '2023.12.28',
-          bookmarkCount: 11,
-          likes: 29
-        }
-      ]
+      bookmarks: [],
+      loading: false,
+      error: null
     };
   },
   computed: {
@@ -123,7 +99,30 @@ export default {
       return Math.ceil(this.bookmarks.length / this.bookmarksPerPage);
     }
   },
+  async mounted() {
+    await this.fetchBookmarks();
+  },
   methods: {
+    async fetchBookmarks() {
+      this.loading = true;
+      this.error = null;
+      
+      try {
+        const response = await apiGet('/api/my/bookmarked-posts');
+        
+        if (response.ok) {
+          const result = await response.json();
+          this.bookmarks = result.data || [];
+        } else {
+          throw new Error('북마크를 불러오는데 실패했습니다.');
+        }
+      } catch (error) {
+        console.error('북마크 조회 오류:', error);
+        this.error = error.message || '북마크를 불러오는데 실패했습니다.';
+      } finally {
+        this.loading = false;
+      }
+    },
     changePage(page) {
       if (page >= 1 && page <= this.totalPages) {
         this.currentPage = page;
@@ -132,8 +131,15 @@ export default {
     removeBookmark(id) {
       this.bookmarks = this.bookmarks.filter(item => item.id !== id);
     },
-    typeClass(type) {
-      return 'type-recipe';
+    formatDate(dateString) {
+      if (!dateString) return '';
+      
+      const date = new Date(dateString);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      
+      return `${year}.${month}.${day}`;
     }
   }
 };
@@ -158,7 +164,65 @@ export default {
   margin: 0;
 }
 
+.loading-state {
+  text-align: center;
+  padding: 80px 20px;
+  color: #666;
+}
 
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #ff7a00;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-state {
+  text-align: center;
+  padding: 80px 20px;
+  color: #666;
+}
+
+.error-icon {
+  font-size: 64px;
+  margin-bottom: 24px;
+}
+
+.error-state h3 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: #dc3545;
+}
+
+.error-state p {
+  font-size: 16px;
+  margin: 0 0 32px 0;
+  color: #666;
+}
+
+.retry-btn {
+  background: #ff7a00;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.retry-btn:hover {
+  background: #e66a00;
+}
 
 .bookmarks-grid {
   display: grid;
@@ -192,6 +256,17 @@ export default {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.no-image {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+  color: #999;
+  font-size: 14px;
 }
 
 .remove-bookmark-btn {
@@ -242,8 +317,6 @@ export default {
   background: #ffe5c2;
   color: #ff7a00;
 }
-
-
 
 .bookmark-date {
   font-size: 12px;
@@ -352,8 +425,6 @@ export default {
     gap: 16px;
     align-items: stretch;
   }
-  
-
   
   .bookmarks-grid {
     grid-template-columns: 1fr;
