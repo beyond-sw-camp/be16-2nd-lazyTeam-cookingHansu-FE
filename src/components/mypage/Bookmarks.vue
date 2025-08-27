@@ -2,29 +2,6 @@
   <div class="bookmarks">
     <div class="section-header">
       <h2>북마크</h2>
-      <div class="filter-tabs">
-        <button 
-          :class="{ active: activeFilter === 'all' }" 
-          @click="activeFilter = 'all'"
-          class="filter-tab"
-        >
-          전체
-        </button>
-        <button 
-          :class="{ active: activeFilter === 'recipes' }" 
-          @click="activeFilter = 'recipes'"
-          class="filter-tab"
-        >
-          레시피
-        </button>
-        <button 
-          :class="{ active: activeFilter === 'lectures' }" 
-          @click="activeFilter = 'lectures'"
-          class="filter-tab"
-        >
-          강의
-        </button>
-      </div>
     </div>
 
     <div class="bookmarks-grid">
@@ -67,7 +44,7 @@
       @page-change="changePage"
     />
 
-    <div v-if="filteredBookmarks.length === 0" class="empty-state">
+    <div v-if="bookmarks.length === 0" class="empty-state">
       <div class="empty-icon">🔖</div>
       <h3>아직 북마크한 항목이 없어요</h3>
       <p>관심 있는 레시피나 강의를 북마크해보세요!</p>
@@ -86,7 +63,6 @@ export default {
   },
   data() {
     return {
-      activeFilter: 'all',
       currentPage: 1,
       bookmarksPerPage: 6,
       bookmarks: [
@@ -138,23 +114,13 @@ export default {
     };
   },
   computed: {
-    filteredBookmarks() {
-      if (this.activeFilter === 'all') {
-        return this.bookmarks;
-      }
-      return this.bookmarks.filter(item => {
-        if (this.activeFilter === 'recipes') return item.type === '레시피';
-        if (this.activeFilter === 'lectures') return item.type === '강의';
-        return true;
-      });
-    },
     pagedBookmarks() {
       const start = (this.currentPage - 1) * this.bookmarksPerPage;
       const end = start + this.bookmarksPerPage;
-      return this.filteredBookmarks.slice(start, end);
+      return this.bookmarks.slice(start, end);
     },
     totalPages() {
-      return Math.ceil(this.filteredBookmarks.length / this.bookmarksPerPage);
+      return Math.ceil(this.bookmarks.length / this.bookmarksPerPage);
     }
   },
   methods: {
@@ -167,7 +133,7 @@ export default {
       this.bookmarks = this.bookmarks.filter(item => item.id !== id);
     },
     typeClass(type) {
-      return type === '레시피' ? 'type-recipe' : 'type-lecture';
+      return 'type-recipe';
     }
   }
 };
@@ -192,33 +158,7 @@ export default {
   margin: 0;
 }
 
-.filter-tabs {
-  display: flex;
-  gap: 8px;
-}
 
-.filter-tab {
-  padding: 8px 16px;
-  border: 1px solid #ddd;
-  background: white;
-  color: #666;
-  border-radius: 20px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.filter-tab:hover {
-  border-color: #ff7a00;
-  color: #ff7a00;
-}
-
-.filter-tab.active {
-  background: #ff7a00;
-  color: white;
-  border-color: #ff7a00;
-}
 
 .bookmarks-grid {
   display: grid;
@@ -303,10 +243,7 @@ export default {
   color: #ff7a00;
 }
 
-.type-lecture {
-  background: #e2f0ff;
-  color: #007aff;
-}
+
 
 .bookmark-date {
   font-size: 12px;
@@ -416,9 +353,7 @@ export default {
     align-items: stretch;
   }
   
-  .filter-tabs {
-    justify-content: center;
-  }
+
   
   .bookmarks-grid {
     grid-template-columns: 1fr;
