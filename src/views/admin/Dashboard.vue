@@ -40,10 +40,20 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useDashboardStore } from '@/store/admin/dashboard'
+import { useAuthStore } from '@/store/auth/auth'
+import { useAdminLoginStore } from '@/store/admin/adminLogin'
 import ErrorAlert from '@/components/common/ErrorAlert.vue'
 import LoadingScreen from '@/components/common/LoadingScreen.vue'
 
 const dashboardStore = useDashboardStore()
+const authStore = useAuthStore()
+const adminLoginStore = useAdminLoginStore()
+
+// 관리자 권한 확인
+const isAdmin = computed(() => {
+  const userRole = authStore.getUserRole
+  return userRole === 'ADMIN' || adminLoginStore.isLoggedIn
+})
 
 // 통계 카드 데이터 (computed로 실시간 반영)
 const statCards = computed(() => [
@@ -75,6 +85,12 @@ const statCards = computed(() => [
 
 // 컴포넌트 마운트 시 데이터 로드
 onMounted(async () => {
+  // 관리자 권한 확인
+  if (!isAdmin.value) {
+    console.error('관리자 권한이 없습니다.')
+    return
+  }
+  
   // 서버 연결 확인 후 데이터 로드
   try {
     await dashboardStore.fetchDashboardData()

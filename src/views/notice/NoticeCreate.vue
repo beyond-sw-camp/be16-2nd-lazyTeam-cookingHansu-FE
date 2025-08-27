@@ -147,11 +147,15 @@
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useNoticeStore } from '../../store/notice/notice';
+import { useAuthStore } from '../../store/auth/auth';
+import { useAdminLoginStore } from '../../store/admin/adminLogin';
 import { validateFile } from '../../utils/fileValidation';
 import ErrorAlert from '../../components/common/ErrorAlert.vue';
 
 const router = useRouter();
 const noticeStore = useNoticeStore();
+const authStore = useAuthStore();
+const adminLoginStore = useAdminLoginStore();
 
 // 폼 관련
 const form = ref(null);
@@ -192,11 +196,10 @@ const imageRules = [
   },
 ];
 
-// 관리자 권한 확인 (테스팅용)
+// 관리자 권한 확인 (실제 인증 시스템과 연동)
 const isAdmin = computed(() => {
-  // 테스팅을 위해 관리자로 설정
-  localStorage.setItem('userRole', 'ADMIN');
-  return true;
+  const userRole = authStore.getUserRole;
+  return userRole === 'ADMIN' || adminLoginStore.isLoggedIn;
 });
 
 // 뒤로가기
@@ -283,12 +286,20 @@ const submitNotice = async () => {
 
 // 컴포넌트 마운트 시 관리자 권한 확인
 onMounted(() => {
+  // 관리자가 아닌 경우 접근 차단
   if (!isAdmin.value) {
     errorMessage.value = '관리자만 접근할 수 있는 페이지입니다.';
     errorSnackbar.value = true;
     setTimeout(() => {
       router.push('/notice');
     }, 2000);
+    return;
+  }
+  
+  // 로그인 상태가 아닌 경우 로그인 페이지로 이동
+  if (!authStore.isAuthenticated && !adminLoginStore.isLoggedIn) {
+    router.push('/login');
+    return;
   }
 });
 </script>

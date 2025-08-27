@@ -186,6 +186,8 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
 import { useReportManagementStore } from '@/store/admin/reportManagement';
+import { useAuthStore } from '@/store/auth/auth';
+import { useAdminLoginStore } from '@/store/admin/adminLogin';
 import ErrorAlert from '@/components/common/ErrorAlert.vue';
 import Pagination from '../../components/common/Pagination.vue';
 import CommonSnackbar from '../../components/common/CommonSnackbar.vue';
@@ -195,6 +197,14 @@ import LoadingScreen from '../../components/common/LoadingScreen.vue';
 import { formatDateTime } from '@/utils/timeUtils';
 
 const reportManagementStore = useReportManagementStore();
+const authStore = useAuthStore();
+const adminLoginStore = useAdminLoginStore();
+
+// 관리자 권한 확인
+const isAdmin = computed(() => {
+  const userRole = authStore.getUserRole
+  return userRole === 'ADMIN' || adminLoginStore.isLoggedIn
+})
 
 // 탭 상태
 const activeTab = ref('all');
@@ -402,6 +412,12 @@ const closeSnackbar = () => {
 
 // 컴포넌트 마운트 시 데이터 로드
 onMounted(async () => {
+  // 관리자 권한 확인
+  if (!isAdmin.value) {
+    console.error('관리자 권한이 없습니다.')
+    return
+  }
+  
   await reportManagementStore.fetchReports(0, 50);
 });
 </script>
