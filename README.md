@@ -2,9 +2,8 @@
 
 > **누구나 요리를 배우고, 나누고, 소통하는 All-in-One 요리 플랫폼**  
 > 레시피 공유부터 요리 전문가 강의까지, 한 수 배워보세요!
-<br>
 <img width="800" height="1000" alt="요리한수" src="https://github.com/user-attachments/assets/67175952-18b8-463f-b010-65395f81e1c0" />
-
+<br>
 ---
 
 ## 👨‍👩‍👧‍👦 Team Members
