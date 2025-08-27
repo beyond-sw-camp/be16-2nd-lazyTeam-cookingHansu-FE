@@ -1,446 +1,350 @@
-import { ref, computed } from 'vue'
-import { defineStore } from 'pinia'
-import notificationService from '@/services/notification/notificationService.js'
+import { defineStore } from 'pinia';
+import { notificationService } from '@/services/notification/notificationService';
+import { ssePolyfillService } from '@/services/notification/ssePolyfillService';
+import { useAuthStore } from '@/store/auth/auth';
 
-export const useNotificationStore = defineStore('notification', () => {
-  // State
-  const notifications = ref([])
-  const unreadCount = ref(0)
-  const loading = ref(false)
-  const error = ref(null)
-  const currentPage = ref(1)
-  const totalPages = ref(1)
-  const hasMore = ref(true)
-
-  // 알림 설정
-  const notificationSettings = ref({
-    postCommentEnabled: true,
-    qnaCommentEnabled: true,
-    replyEnabled: true,
-    approvalEnabled: true,
-    chatEnabled: true,
-    paymentEnabled: true,
-    noticeEnabled: true
-  })
-
-  // 실시간 알림 연결
-  const eventSource = ref(null)
-  const isConnected = ref(false)
-
-  // Getters
-  const unreadNotifications = computed(() => 
-    notifications.value.filter(n => !n.isRead)
-  )
-
-  const readNotifications = computed(() => 
-    notifications.value.filter(n => n.isRead)
-  )
-
-  const notificationsByType = computed(() => (type) => 
-    notifications.value.filter(n => n.targetType === type)
-  )
-
-  /**
-   * 알림 목록 조회
-   * @param {Object} params - 조회 파라미터
-   * @param {string} params.userId - 사용자 ID
-   * @param {number} params.page - 페이지 번호 (선택)
-   * @param {number} params.size - 페이지 크기 (선택)
-   */
-  const fetchNotifications = async (params = {}) => {
-    loading.value = true
-    error.value = null
-    
-    try {
-      const { userId } = params
+export const useNotificationStore = defineStore('notification', {
+  state: () => {
+    console.log('🔍 Notification Store 초기화');
+    return {
+      // 알림 목록
+      notifications: [],
       
-      if (!userId) {
-        throw new Error('사용자 ID가 필요합니다.')
+      // 로딩 상태
+      loading: false,
+      
+      // 에러 상태
+      error: null,
+      
+      // 읽지 않은 알림 개수
+      unreadCount: 0,
+      
+      // 페이지네이션
+      currentPage: 0,
+      totalPages: 1,
+      hasMore: true,
+      pageSize: 10,
+      
+      // SSE 연결 상태
+      isConnected: false,
+      eventSource: null
+    };
+  },
+
+  getters: {
+    // getters는 사용되지 않으므로 제거
+    // 직접 state 속성에 접근하거나 computed 사용
+  },
+
+  actions: {
+    // 에러 처리 헬퍼
+    _handleError(error, defaultMessage) {
+      console.error(defaultMessage, error);
+      this.error = error.message || defaultMessage;
+    },
+
+    // 로딩 상태 관리
+    _setLoading(loading) {
+      this.loading = loading;
+    },
+
+    // 알림 목록 조회
+    async fetchNotifications() {
+      this._setLoading(true);
+      this.error = null;
+      
+      try {
+        console.log('🔍 알림 목록 조회 시작');
+        const response = await notificationService.getNotifications();
+        console.log('🔍 알림 서비스 응답:', response);
+        
+        this.notifications = response.notifications || [];
+        console.log('🔍 스토어에 설정된 알림:', this.notifications);
+        
+        this._updateUnreadCount();
+        console.log('🔍 읽지 않은 알림 개수:', this.unreadCount);
+      } catch (error) {
+        this._handleError(error, '알림 목록을 불러오는데 실패했습니다.');
+      } finally {
+        this._setLoading(false);
       }
-      
-      const response = await notificationService.getNotifications({ userId })
-      
-      // 알림 정렬: 읽지 않은 알림 -> 읽은 알림 순서
-      const sortedNotifications = response.notifications.sort((a, b) => {
-        // 1순위: 읽음 상태 (읽지 않은 것이 위로)
-        if (a.isRead !== b.isRead) {
-          return a.isRead ? 1 : -1
+    },
+
+    // 추가 알림 로드 (페이지네이션)
+    async loadMoreNotifications() {
+      if (!this.hasMore || this.loading) {
+        return { hasMore: this.hasMore };
+      }
+
+      this._setLoading(true);
+      this.error = null;
+
+      try {
+        const response = await notificationService.getNotifications({
+          page: this.currentPage + 1,
+          size: this.pageSize
+        });
+
+        // 새로운 알림을 기존 목록에 추가
+        this.notifications.push(...response.notifications);
+        
+        this.currentPage = response.currentPage;
+        this.totalPages = response.totalPages;
+        this.hasMore = response.hasNext;
+        this._updateUnreadCount();
+
+        return { hasMore: this.hasMore };
+      } catch (error) {
+        this._handleError(error, '추가 알림을 불러오는데 실패했습니다.');
+        return { hasMore: this.hasMore };
+      } finally {
+        this._setLoading(false);
+      }
+    },
+
+    // 알림 읽음 처리
+    async markAsRead(notificationId) {
+      try {
+        await notificationService.markAsRead(notificationId);
+        
+        // 로컬 상태 업데이트
+        const notification = this.notifications.find(n => n.id === notificationId);
+        if (notification) {
+          notification.isRead = true;
+          this._updateUnreadCount();
         }
-        // 2순위: 생성 시간 (최신 순)
-        return new Date(b.createdAt) - new Date(a.createdAt)
-      })
-      
-      notifications.value = sortedNotifications
-      currentPage.value = response.currentPage
-      totalPages.value = response.totalPages
-      hasMore.value = response.hasNext
-      
-      // 읽지 않은 알림 개수 업데이트
-      const unreadNotifications = response.notifications.filter(n => !n.isRead)
-      unreadCount.value = unreadNotifications.length
-      
-    } catch (err) {
-      error.value = err.message
-      console.error('알림 조회 실패:', err)
-    } finally {
-      loading.value = false
-    }
-  }
-
-  /**
-   * 더 많은 알림 로드 (페이지네이션)
-   * @returns {Promise<Object>} 로드 결과
-   */
-  const loadMoreNotifications = async () => {
-    if (!hasMore.value || loading.value) {
-      return { hasMore: hasMore.value }
-    }
-
-    loading.value = true
-    error.value = null
-
-    try {
-      const response = await notificationService.getNotifications({
-        page: currentPage.value + 1,
-        size: 10
-      })
-
-      // 새로운 알림을 기존 목록에 추가
-      notifications.value.push(...response.notifications)
-      
-      currentPage.value = response.currentPage
-      totalPages.value = response.totalPages
-      hasMore.value = response.hasNext
-
-      return { hasMore: hasMore.value }
-    } catch (err) {
-      error.value = err.message
-      console.error('추가 알림 로드 실패:', err)
-      return { hasMore: hasMore.value }
-    } finally {
-      loading.value = false
-    }
-  }
-
-  /**
-   * 특정 알림을 읽음으로 표시
-   * @param {number} notificationId - 알림 ID
-   * @param {string} userId - 사용자 ID
-   */
-  const markAsRead = async (notificationId, userId) => {
-    try {
-      if (!userId) {
-        throw new Error('사용자 ID가 필요합니다.')
+      } catch (error) {
+        this._handleError(error, '알림 읽음 처리에 실패했습니다.');
       }
-      
-      // 백엔드 API 호출
-      await notificationService.markAsRead(notificationId, userId)
-      
-      // 로컬 상태 업데이트
-      const notification = notifications.value.find(n => n.id === notificationId)
-      
-      if (notification && !notification.isRead) {
-        notification.isRead = true
-        unreadCount.value = Math.max(0, unreadCount.value - 1)
+    },
+
+    // 알림 삭제
+    async deleteNotification(notificationId) {
+      try {
+        await notificationService.deleteNotification(notificationId);
         
-        // 읽음 처리 후 알림 목록 재정렬
-        notifications.value.sort((a, b) => {
-          // 1순위: 읽음 상태 (읽지 않은 것이 위로)
-          if (a.isRead !== b.isRead) {
-            return a.isRead ? 1 : -1
+        // 로컬 상태에서 제거
+        this.notifications = this.notifications.filter(n => n.id !== notificationId);
+        this._updateUnreadCount();
+      } catch (error) {
+        this._handleError(error, '알림 삭제에 실패했습니다.');
+      }
+    },
+
+    // 읽지 않은 알림 개수 업데이트
+    _updateUnreadCount() {
+      const unreadCount = this.notifications.filter(n => {
+        // isRead가 undefined, null, false인 경우 모두 읽지 않은 것으로 처리
+        return n && (n.isRead === false || n.isRead === null || n.isRead === undefined);
+      }).length;
+      
+      console.log('🔍 _updateUnreadCount 호출:', {
+        totalNotifications: this.notifications.length,
+        notifications: this.notifications.map(n => ({ id: n.id, isRead: n.isRead })),
+        calculatedUnreadCount: unreadCount,
+        previousUnreadCount: this.unreadCount
+      });
+      
+      this.unreadCount = unreadCount;
+    },
+
+    // SSE Polyfill 연결 시작
+    startNotificationSubscription() {
+      // 이미 연결된 경우 중지
+      if (this.eventSource) {
+        this.stopNotificationSubscription();
+      }
+
+      try {
+        console.log('🔍 SSE Polyfill 연결 시작...');
+        console.log('🔍 API URL:', `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/notifications/subscribe`);
+        
+        // SSE Polyfill을 사용하여 JWT 토큰을 헤더에 포함
+        this.eventSource = ssePolyfillService.createAuthenticatedEventSource(
+          `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/notifications/subscribe`
+        );
+        this.isConnected = true;
+
+        // 연결 성공 이벤트
+        this.eventSource.addEventListener('connect', (event) => {
+          console.log('🔍 알림 SSE Polyfill 연결 성공:', event.data);
+        });
+
+        // 실시간 알림 수신 이벤트
+        this.eventSource.addEventListener('notification', (event) => {
+          try {
+            console.log('🔍 SSE 알림 이벤트 수신:', event);
+            const notification = JSON.parse(event.data);
+            console.log('🔍 새 알림 파싱 완료:', notification);
+            
+            // 새 알림을 목록 맨 앞에 추가
+            this.notifications.unshift(notification);
+            console.log('🔍 알림 목록 업데이트:', this.notifications);
+            
+            this._updateUnreadCount();
+            console.log('🔍 읽지 않은 알림 개수 업데이트:', this.unreadCount);
+            
+            // 브라우저 알림 표시 (사용자가 허용한 경우)
+            this._showBrowserNotification(notification);
+          } catch (error) {
+            console.error('🔍 실시간 알림 파싱 실패:', error);
           }
-          // 2순위: 생성 시간 (최신 순)
-          return new Date(b.createdAt) - new Date(a.createdAt)
-        })
-      }
-    } catch (err) {
-      error.value = err.message
-      console.error('알림 읽음 처리 실패:', err)
-      throw err
-    }
-  }
+        });
 
-  /**
-   * 모든 알림을 읽음으로 표시
-   */
-  const markAllAsRead = async () => {
-    try {
-      await notificationService.markAllAsRead()
-      
-      // 로컬 상태 업데이트
-      notifications.value.forEach(notification => {
-        notification.isRead = true
-      })
-      unreadCount.value = 0
-    } catch (err) {
-      error.value = err.message
-      console.error('전체 알림 읽음 처리 실패:', err)
-      throw err
-    }
-  }
-
-  /**
-   * 특정 알림 삭제
-   * @param {number} notificationId - 알림 ID
-   */
-  const deleteNotification = async (notificationId, userId) => {
-    try {
-      if (!userId) {
-        throw new Error('사용자 ID가 필요합니다.')
-      }
-      
-      // 백엔드 API 호출
-      await notificationService.deleteNotification(notificationId, userId)
-      
-      // 로컬 상태에서 제거
-      const index = notifications.value.findIndex(n => n.id === notificationId)
-      if (index !== -1) {
-        const notification = notifications.value[index]
-        if (!notification.isRead) {
-          unreadCount.value = Math.max(0, unreadCount.value - 1)
-        }
-        notifications.value.splice(index, 1)
-      }
-    } catch (err) {
-      error.value = err.message
-      console.error('알림 삭제 실패:', err)
-      throw err
-    }
-  }
-
-  /**
-   * 읽지 않은 알림 개수 업데이트
-   * @param {number} count - 새로운 개수
-   */
-  const updateUnreadCount = (count) => {
-    unreadCount.value = Math.max(0, count)
-  }
-
-  /**
-   * 알림 설정 조회
-   * @returns {Promise<Object>} 알림 설정
-   */
-  const fetchNotificationSettings = async () => {
-    try {
-      const settings = await notificationService.getNotificationSettings()
-      notificationSettings.value = { ...notificationSettings.value, ...settings }
-      return settings
-    } catch (err) {
-      error.value = err.message
-      console.error('알림 설정 조회 실패:', err)
-      throw err
-    }
-  }
-
-  /**
-   * 알림 설정 업데이트
-   * @param {Object} settings - 새로운 설정
-   * @returns {Promise<void>}
-   */
-  const updateNotificationSettings = async (settings) => {
-    try {
-      await notificationService.updateNotificationSettings(settings)
-      notificationSettings.value = { ...notificationSettings.value, ...settings }
-    } catch (err) {
-      error.value = err.message
-      console.error('알림 설정 업데이트 실패:', err)
-      throw err
-    }
-  }
-
-  /**
-   * 실시간 알림 스트림 연결
-   * @param {string} userId - 사용자 ID
-   */
-  const connectToNotificationStream = (userId) => {
-    if (!userId) {
-      console.error('실시간 알림 연결 실패: 사용자 ID가 필요합니다.')
-      return
-    }
-
-    if (eventSource.value) {
-      disconnectFromNotificationStream()
-    }
-
-    eventSource.value = notificationService.connectToNotificationStream(
-      userId,
-      // 새 알림 수신 콜백
-      (notification) => {
-        // 새 알림을 목록에 추가
-        notifications.value.unshift(notification)
-        
-        // 알림 목록 재정렬: 읽지 않은 알림이 위로
-        notifications.value.sort((a, b) => {
-          // 1순위: 읽음 상태 (읽지 않은 것이 위로)
-          if (a.isRead !== b.isRead) {
-            return a.isRead ? 1 : -1
+        // 일반 메시지 이벤트 (connect 이벤트 등)
+        this.eventSource.addEventListener('message', (event) => {
+          try {
+            console.log('🔍 SSE 메시지 이벤트 수신:', event);
+            
+            // connect 이벤트인지 확인
+            if (event.data === 'ok') {
+              console.log('🔍 SSE 연결 성공 확인');
+              return;
+            }
+            
+            // 알림 데이터인지 확인
+            if (event.data && typeof event.data === 'string') {
+              try {
+                const notification = JSON.parse(event.data);
+                if (notification.recipientId || notification.content) {
+                  console.log('🔍 SSE를 통한 새 알림 수신:', notification);
+                  
+                  // 새 알림을 목록 맨 앞에 추가
+                  this.notifications.unshift(notification);
+                  console.log('🔍 알림 목록 업데이트:', this.notifications);
+                  
+                  this._updateUnreadCount();
+                  console.log('🔍 읽지 않은 알림 개수 업데이트:', this.unreadCount);
+                  
+                  // 브라우저 알림 표시 (사용자가 허용한 경우)
+                  this._showBrowserNotification(notification);
+                }
+              } catch (parseError) {
+                console.log('🔍 SSE 메시지가 알림 데이터가 아님:', event.data);
+              }
+            }
+          } catch (error) {
+            console.error('🔍 SSE 메시지 처리 실패:', error);
           }
-          // 2순위: 생성 시간 (최신 순)
-          return new Date(b.createdAt) - new Date(a.createdAt)
-        })
-        
-        // 읽지 않은 알림 개수 증가
-        if (!notification.isRead) {
-          unreadCount.value += 1
-        }
-        
-        // 브라우저 알림 표시 (권한이 있는 경우)
-        showBrowserNotification(notification)
-      },
-      // 에러 콜백
-      (error) => {
-        console.error('실시간 알림 연결 에러:', error)
-        isConnected.value = false
-        
-        // 재연결 시도 (3초 후)
-        setTimeout(() => {
-          if (!isConnected.value) {
-            connectToNotificationStream(userId)
+        });
+
+        // 에러 처리
+        this.eventSource.onerror = (error) => {
+          console.error('알림 SSE Polyfill 연결 에러:', error);
+          this.isConnected = false;
+          
+          // 401 에러인 경우 재연결 시도하지 않음
+          if (error.message && error.message.includes('401')) {
+            console.warn('🔍 인증 실패 (401). SSE 연결을 중단합니다.');
+            this._handleAuthError();
+            return;
           }
-        }, 3000)
+          
+          // 다른 에러인 경우에도 재연결 시도하지 않음 (로그아웃 시 재연결 방지)
+          console.warn('🔍 SSE 연결 에러로 인해 연결을 중단합니다.');
+        };
+
+        console.log('알림 SSE Polyfill 구독 시작됨');
+      } catch (error) {
+        console.error('알림 SSE Polyfill 구독 시작 실패:', error);
+        this.isConnected = false;
       }
-    )
+    },
 
-    isConnected.value = true
-  }
-
-  /**
-   * 실시간 알림 스트림 연결 해제
-   */
-  const disconnectFromNotificationStream = () => {
-    if (eventSource.value) {
-      eventSource.value.close()
-      eventSource.value = null
-      isConnected.value = false
-    }
-  }
-
-  /**
-   * 브라우저 알림 표시
-   * @param {Object} notification - 알림 객체
-   */
-  const showBrowserNotification = (notification) => {
-    if (!('Notification' in window) || Notification.permission !== 'granted') {
-      return
-    }
-
-    try {
-      const browserNotification = new Notification(getNotificationTitle(notification), {
-        body: notification.content,
-        icon: '/favicon.ico',
-        badge: '/favicon.ico',
-        tag: `notification-${notification.id}`,
-        requireInteraction: false,
-        silent: false
-      })
-
-      // 5초 후 자동 닫기
-      setTimeout(() => {
-        browserNotification.close()
-      }, 5000)
-
-      // 클릭 시 알림을 읽음으로 표시하고 관련 페이지로 이동
-      browserNotification.onclick = () => {
-        markAsRead(notification.id)
-        browserNotification.close()
+    // SSE Polyfill 연결 중지
+    stopNotificationSubscription() {
+      if (this.eventSource) {
+        this.eventSource.close();
+        this.eventSource = null;
+        this.isConnected = false;
+        console.log('알림 SSE Polyfill 구독 중지됨');
       }
-    } catch (error) {
-      console.error('브라우저 알림 표시 실패:', error)
+    },
+
+    // 인증 에러 처리
+    _handleAuthError() {
+      console.warn('🔍 SSE 인증 에러로 인해 알림 구독을 중단합니다.');
+      this.isConnected = false;
+      
+      // auth store에서 토큰 상태 확인
+      const authStore = useAuthStore();
+      if (!authStore.accessToken) {
+        console.error('🔍 액세스 토큰이 없습니다. 사용자 재로그인이 필요합니다.');
+        // 사용자에게 로그인 상태 확인을 안내
+        return;
+      }
+      
+      // 토큰이 있지만 401 에러가 발생한 경우
+      console.warn('🔍 토큰이 있지만 인증에 실패했습니다. 토큰이 만료되었을 수 있습니다.');
+      
+      // 필요시 토큰 갱신 시도 (auth store에 토큰 갱신 메서드가 있다면)
+      // try {
+      //   await authStore.refreshToken();
+      //   // 토큰 갱신 성공 시 SSE 연결 재시도
+      //   this.reconnectAttempts = 0;
+      //   this.startNotificationSubscription();
+      // } catch (error) {
+      //   console.error('🔍 토큰 갱신 실패:', error);
+      // }
+    },
+
+    // 브라우저 알림 표시
+    _showBrowserNotification(notification) {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('새 알림', {
+          body: notification.content,
+          icon: '/favicon.ico'
+        });
+      }
+    },
+
+    // 브라우저 알림 권한 요청
+    async requestNotificationPermission() {
+      if ('Notification' in window && Notification.permission === 'default') {
+        const permission = await Notification.requestPermission();
+        return permission === 'granted';
+      }
+      return Notification.permission === 'granted';
+    },
+
+    // 스토어 초기화
+    $reset() {
+      this.notifications = [];
+      this.loading = false;
+      this.error = null;
+      this.unreadCount = 0;
+      this.currentPage = 0;
+      this.totalPages = 1;
+      this.hasMore = true;
+      this.stopNotificationSubscription();
+    },
+
+    // 컴포넌트 마운트 시 SSE 연결 상태 확인 및 재연결
+    ensureNotificationSubscription() {
+      // 이미 연결되어 있으면 재연결하지 않음
+      if (this.isConnected && this.eventSource) {
+        console.log('🔍 SSE 연결이 이미 활성화되어 있습니다.');
+        return;
+      }
+
+      // 연결이 끊어져 있으면 재연결
+      if (!this.isConnected) {
+        console.log('🔍 SSE 연결이 끊어져 있습니다. 재연결을 시도합니다.');
+        this.startNotificationSubscription();
+      }
+    },
+
+    // 로그아웃 시 완전한 정리
+    clearAllData() {
+      console.log('🔍 알림 스토어 데이터 완전 정리');
+      this.notifications = [];
+      this.loading = false;
+      this.error = null;
+      this.unreadCount = 0;
+      this.currentPage = 0;
+      this.totalPages = 1;
+      this.hasMore = true;
+      this.stopNotificationSubscription();
     }
   }
-
-  /**
-   * 알림 타입별 제목 생성
-   * @param {Object} notification - 알림 객체
-   * @returns {string} 알림 제목
-   */
-  const getNotificationTitle = (notification) => {
-    const typeMap = {
-      POSTCOMMENT: '새 댓글',
-      QNACOMMENT: 'Q&A 댓글',
-      REPLY: '새 답글',
-      APPROVAL: '승인 알림',
-      CHAT: '새 메시지',
-      PAYMENT: '결제 알림',
-      NOTICE: '새 공지사항'
-    }
-    return typeMap[notification.targetType] || '새 알림'
-  }
-
-  /**
-   * 브라우저 알림 권한 요청
-   */
-  const requestNotificationPermission = async () => {
-    if ('Notification' in window) {
-      const permission = await Notification.requestPermission()
-      return permission === 'granted'
-    }
-    return false
-  }
-
-  /**
-   * 새 알림 추가 (테스트용)
-   * @param {Object} notification - 알림 객체
-   */
-  const addNotification = (notification) => {
-    const newNotification = {
-      id: Date.now(),
-      ...notification,
-      createdAt: new Date().toISOString(),
-      isRead: false
-    }
-    notifications.value.unshift(newNotification)
-    if (!newNotification.isRead) {
-      unreadCount.value += 1
-    }
-  }
-
-  /**
-   * 알림 상태 초기화
-   */
-  const resetState = () => {
-    notifications.value = []
-    unreadCount.value = 0
-    loading.value = false
-    error.value = null
-    currentPage.value = 1
-    totalPages.value = 0
-    hasMore.value = true
-    disconnectFromNotificationStream()
-  }
-
-  return {
-    // State
-    notifications,
-    unreadCount,
-    loading,
-    error,
-    currentPage,
-    totalPages,
-    hasMore,
-    notificationSettings,
-    isConnected,
-    
-    // Getters
-    unreadNotifications,
-    readNotifications,
-    notificationsByType,
-    
-    // Actions
-    fetchNotifications,
-    loadMoreNotifications,
-    markAsRead,
-    markAllAsRead,
-    deleteNotification,
-    updateUnreadCount,
-    fetchNotificationSettings,
-    updateNotificationSettings,
-    connectToNotificationStream,
-    disconnectFromNotificationStream,
-    requestNotificationPermission,
-    addNotification,
-    resetState
-  }
-})
-
-export default useNotificationStore
+});

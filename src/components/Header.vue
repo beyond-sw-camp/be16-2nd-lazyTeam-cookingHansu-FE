@@ -355,16 +355,6 @@ const isAdmin = computed(() => {
   const adminLoggedIn = adminLoginStore.isLoggedIn;
   const userRoleValue = userRole.value;
   
-  console.log('isAdmin 계산 중:', {
-    userRole: userRoleValue,
-    adminLoggedIn: adminLoggedIn,
-    adminLoggedInType: typeof adminLoggedIn,
-    adminStoreState: {
-      accessToken: adminLoginStore.accessToken,
-      admin: adminLoginStore.admin
-    }
-  });
-  
   // adminLoginStore의 상태를 우선적으로 확인
   if (adminLoggedIn) {
     return true;
@@ -433,19 +423,31 @@ watch(mobileMenuOpen, (isOpen) => {
 watch(isLoggedIn, async (newValue) => {
   if (newValue) {
     await fetchProfileInfo();
+    
+    // 일반 사용자인 경우 알림 목록 가져오고 SSE 연결 시작
+    if (!isAdmin.value) {
+      try {
+        await notificationStore.fetchNotifications();
+      } catch (error) {
+        console.error('🔍 Header: 로그인 후 알림 목록 조회 실패:', error);
+      }
+    }
   } else {
-    // 로그아웃 시 프로필 정보 초기화
+    // 로그아웃 시 프로필 정보 초기화 및 SSE 연결 중지
     profileData.value = {
       nickname: '',
       profileImageUrl: ''
     };
+    
+    // SSE 연결 중지
+    if (!isAdmin.value) {
+      notificationStore.clearAllData();
+    }
   }
 })
 
 // 관리자 로그인 상태도 감시
 watch(() => adminLoginStore.isLoggedIn, async (newValue, oldValue) => {
-  console.log('관리자 로그인 상태 변경 감지:', { old: oldValue, new: newValue });
-  
   if (newValue) {
     await fetchProfileInfo();
   } else {
@@ -459,7 +461,7 @@ watch(() => adminLoginStore.isLoggedIn, async (newValue, oldValue) => {
 
 // isAdmin 상태 변화 감시 (디버깅용)
 watch(isAdmin, (newValue, oldValue) => {
-  console.log('isAdmin 상태 변화:', { old: oldValue, new: newValue });
+  // console.log('isAdmin 상태 변화:', { old: oldValue, new: newValue });
 });
 
 // 사용자 역할 변경 감시
@@ -473,23 +475,18 @@ watch(userRole, async (newRole) => {
 onMounted(async () => {
   window.addEventListener('resize', handleResize);
   
-  // 초기 상태 로깅
-  console.log('Header 컴포넌트 마운트 시 상태:', {
-    isLoggedIn: isLoggedIn.value,
-    adminLoggedIn: adminLoginStore.isLoggedIn,
-    userRole: userRole.value,
-    isAdmin: isAdmin.value,
-    adminStoreDetails: {
-      accessToken: adminLoginStore.accessToken,
-      admin: adminLoginStore.admin,
-      isLoggedIn: adminLoginStore.isLoggedIn,
-      isLoggedInType: typeof adminLoginStore.isLoggedIn
-    }
-  });
-  
   // 로그인된 상태라면 프로필 정보 가져오기
   if (isLoggedIn.value || adminLoginStore.isLoggedIn) {
     await fetchProfileInfo();
+    
+    // 일반 사용자인 경우 알림 목록 먼저 가져오고 SSE 연결
+    if (!isAdmin.value) {
+      try {
+        await notificationStore.fetchNotifications();
+      } catch (error) {
+        console.error('🔍 Header: 알림 목록 조회 실패:', error);
+      }
+    }
   }
 })
 
@@ -513,13 +510,11 @@ const profileInfo = computed(() => {
   return profileData.value;
 })
 
-// 장바구니 개수
-const cartCount = computed(() => {
-  return cartStore.cartCount;
-})
-
-// 읽지 않은 알림 개수
+// 읽지 않은 알림 개수 (실시간 업데이트)
 const unreadCount = computed(() => {
+  if (!isLoggedIn.value || isAdmin.value) {
+    return 0;
+  }
   return notificationStore.unreadCount;
 })
 
@@ -530,6 +525,11 @@ const goToLogin = () => {
 
 const logout = async () => {
   try {
+    // 먼저 SSE 연결 중단 (재연결 시도 방지)
+    if (!isAdmin.value) {
+      notificationStore.clearAllData();
+    }
+    
     if (isAdmin.value) {
       await adminLoginStore.logout();
     } else {

@@ -156,16 +156,27 @@ const getTypeName = (targetType) => {
 }
 
 const formatTime = (timestamp) => {
-  return formatDistanceToNow(new Date(timestamp), { 
-    addSuffix: true, 
-    locale: ko 
-  })
+  try {
+    // timestamp가 유효한지 확인
+    if (!timestamp || timestamp === 'Invalid Date' || isNaN(new Date(timestamp).getTime())) {
+      return '시간 정보 없음'
+    }
+    
+    const date = new Date(timestamp)
+    return formatDistanceToNow(date, { 
+      addSuffix: true, 
+      locale: ko 
+    })
+  } catch (error) {
+    console.warn('날짜 파싱 에러:', error, 'timestamp:', timestamp)
+    return '시간 정보 없음'
+  }
 }
 
 const handleNotificationClick = async (notification) => {
   // 알림을 읽음으로 표시
   try {
-    await notificationStore.markAsRead(notification.id, userId)
+    await notificationStore.markAsRead(notification.id)
   } catch (error) {
     console.error('읽음 처리 실패:', error)
   }
@@ -204,9 +215,9 @@ const handleNotificationClick = async (notification) => {
 
 // 알림 삭제 처리
 const handleDeleteNotification = async (notificationId) => {
-  console.log('🗑️ 삭제 버튼 클릭됨, ID:', notificationId, 'userId:', userId)
+  console.log('🗑️ 삭제 버튼 클릭됨, ID:', notificationId)
   try {
-    await notificationStore.deleteNotification(notificationId, userId)
+    await notificationStore.deleteNotification(notificationId)
     console.log('✅ 알림 삭제 완료:', notificationId)
   } catch (error) {
     console.error('❌ 알림 삭제 실패:', error)
@@ -230,7 +241,10 @@ onMounted(async () => {
   loading.value = true
   try {
     // 실제 API에서 알림 로드
-    await notificationStore.fetchNotifications({ userId })
+    await notificationStore.fetchNotifications()
+    
+    // SSE 연결 상태 확인 및 재연결
+    notificationStore.ensureNotificationSubscription()
     
     // 이전 필터 상태 복원
     const savedFilter = sessionStorage.getItem('notificationFilter')

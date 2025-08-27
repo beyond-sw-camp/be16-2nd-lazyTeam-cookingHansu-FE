@@ -14,39 +14,38 @@ export function useNotifications() {
   }
 
 
-  // 실시간 알림 연결 시작
+  // 실시간 알림 연결 시작 (SSE Polyfill 사용)
   const startNotificationStream = () => {
-    const userId = getCurrentUserId()
-    if (userId) {
-      notificationStore.connectToNotificationStream(userId)
+    try {
+      // SSE Polyfill을 사용하여 JWT 토큰으로 인증
+      notificationStore.startNotificationSubscription()
       isConnected.value = true
+    } catch (error) {
+      console.error('알림 스트림 시작 실패:', error)
+      isConnected.value = false
     }
   }
 
   // 실시간 알림 연결 중지
   const stopNotificationStream = () => {
-    notificationStore.disconnectFromNotificationStream()
-          isConnected.value = false
+    notificationStore.stopNotificationSubscription()
+    isConnected.value = false
   }
 
   // 알림 목록 불러오기
   const loadNotifications = async () => {
-    const userId = getCurrentUserId()
-    if (userId) {
-      try {
-        await notificationStore.fetchNotifications({ userId })
-      } catch (error) {
-        console.error('알림 목록 로드 실패:', error)
-      }
+    try {
+      await notificationStore.fetchNotifications()
+    } catch (error) {
+      console.error('알림 목록 로드 실패:', error)
     }
   }
 
   // 알림 읽음 처리
   const markNotificationAsRead = async (notificationId) => {
-    const userId = getCurrentUserId()
-    if (userId && notificationId) {
+    if (notificationId) {
       try {
-        await notificationStore.markAsRead(notificationId, userId)
+        await notificationStore.markAsRead(notificationId)
       } catch (error) {
         console.error('알림 읽음 처리 실패:', error)
       }
