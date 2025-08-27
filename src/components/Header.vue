@@ -372,9 +372,7 @@ watch(isLoggedIn, async (newValue) => {
   }
 })
 
-<<<<<<< HEAD
-// 컴포넌트 마운트 시 리사이즈 이벤트 리스너 추가 및 프로필 정보, 장바구니 정보 가져오기
-=======
+
 // 사용자 역할 변경 감시
 watch(userRole, async (newRole) => {
   if (isLoggedIn.value) {
@@ -383,7 +381,6 @@ watch(userRole, async (newRole) => {
 })
 
 // 컴포넌트 마운트 시 리사이즈 이벤트 리스너 추가 및 프로필 정보 가져오기
->>>>>>> 2bed1673bdcdf3891d558d5b42647382a7ff5c83
 onMounted(async () => {
   window.addEventListener('resize', handleResize);
   

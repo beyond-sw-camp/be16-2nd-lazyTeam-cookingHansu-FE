@@ -19,8 +19,18 @@
 
       <!-- 페이지 제목 -->
       <div v-else class="page-header">
-        <h1>주문 상세 내역</h1>
-        <p class="order-number">주문번호: {{ orderDetails.orderId || '로딩 중...' }}</p>
+        <div class="header-content">
+          <button @click="goBack" class="back-button">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M15 18L9 12L15 6" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            뒤로가기
+          </button>
+          <div class="title-section">
+            <h1>주문 상세 내역</h1>
+            <p class="order-number">주문번호: {{ orderDetails.orderId || '로딩 중...' }}</p>
+          </div>
+        </div>
       </div>
 
       <div v-if="!loading && !error" class="details-grid">
@@ -221,6 +231,10 @@ export default {
         // 구매한 강의가 없는 경우 강의 목록으로 이동
         this.$router.push('/lectures');
       }
+    },
+    goBack() {
+      // 마이페이지의 구매한 강의목록으로 이동
+      this.$router.push({ name: 'MyPage', query: { tab: 'lectures' } });
     }
   }
 };
@@ -237,6 +251,58 @@ export default {
   max-width: 1100px;
   margin: 0 auto;
   padding: 40px 20px;
+}
+
+.page-header {
+  margin-bottom: 40px;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.back-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.back-button:hover {
+  background-color: #f5f5f5;
+  color: #333;
+}
+
+.back-button svg {
+  width: 20px;
+  height: 20px;
+}
+
+.title-section {
+  flex: 1;
+}
+
+.title-section h1 {
+  margin: 0 0 8px 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: #222;
+}
+
+.order-number {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
 }
 
 .loading-container {
