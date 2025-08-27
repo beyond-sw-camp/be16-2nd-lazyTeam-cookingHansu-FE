@@ -102,25 +102,29 @@
             <span class="total-lessons">총 {{ lecture.lessons.length }}강</span>
           </div>
           <div class="lessons-list">
-                         <div 
-               v-for="(lesson, index) in lecture.lessons" 
-               :key="index" 
-               class="lesson-item"
-               :class="{ 'preview': lesson.isPreview }"
-               @click="handleLessonClick(lesson, index)"
-               :title="getLessonTitle(lesson, index)"
-             >
-                             <div class="lesson-info">
-                                                                       <div class="lesson-icon">
-                                        <span v-if="!lesson.videoUrl" class="no-video-icon">⚠️</span>
-                                        <span v-else-if="!isPurchased && !lesson.isPreview" class="lock-icon">🔒</span>
-                                        <span v-else class="play-icon">▶</span>
-                                      </div>
+            <div 
+              v-for="(lesson, index) in lecture.lessons" 
+              :key="index" 
+              class="lesson-item"
+              :class="{ 
+                'preview': lesson.isPreview,
+                'can-watch': canWatchLecture,
+                'active': activeLessonIndex === index
+              }"
+              @click="handleLessonClick(lesson, index)"
+              :title="getLessonTitle(lesson, index)"
+            >
+              <div class="lesson-info">
+                <div class="lesson-icon">
+                  <span v-if="!lesson.videoUrl" class="no-video-icon">⚠️</span>
+                  <span v-else-if="!canWatchLecture && !lesson.isPreview" class="lock-icon">🔒</span>
+                  <span v-else class="play-icon">▶</span>
+                </div>
 
-                                                                      <div class="lesson-content">
-                     <h3>{{ lesson.description }}</h3>
-                     <p>{{ lesson.title }}</p>
-                   </div>
+                <div class="lesson-content">
+                  <h3>{{ lesson.description }}</h3>
+                  <p>{{ lesson.title }}</p>
+                </div>
               </div>
               <div class="lesson-meta">
                 <span class="duration">{{ lesson.duration }}</span>
@@ -135,7 +139,13 @@
           <h2>강사 소개</h2>
           <div class="instructor-info">
             <div class="instructor-avatar">
-              <span>{{ lecture.instructor.name.charAt(0) }}</span>
+              <img 
+                v-if="lecture.submittedByProfile" 
+                :src="lecture.submittedByProfile" 
+                :alt="lecture.instructor.name + ' 프로필 이미지'"
+                class="instructor-profile-img"
+              />
+              <span v-else>{{ lecture.instructor.name.charAt(0) }}</span>
             </div>
             <div class="instructor-details">
               <h3>{{ lecture.instructor.name }}</h3>
@@ -162,8 +172,8 @@
           </div>
           
                      <div v-if="activeTab === 'reviews'" class="reviews-content">
-             <!-- 리뷰 작성 버튼 (로그인한 사용자만 표시) -->
-             <div v-if="!isGuest" class="review-actions">
+             <!-- 리뷰 작성 버튼 (로그인한 사용자 중 리뷰 작성 가능하고 아직 리뷰를 작성하지 않은 사용자만 표시) -->
+             <div v-if="showReviewWriteButton" class="review-actions">
                <button class="write-review-btn" @click="handleReviewWrite">리뷰 작성하기</button>
              </div>
             
@@ -172,9 +182,22 @@
                              <div v-for="review in paginatedReviews" :key="review.id" class="review-item">
                                   <div class="review-header">
                     <div class="reviewer-info">
-                      <span class="reviewer-name">{{ review.writer }}</span>
-                      <div class="rating">
-                        <span v-for="i in 5" :key="i" class="star" :class="{ filled: i <= review.rating }">★</span>
+                      <div class="reviewer-profile">
+                        <img 
+                          v-if="review.profileUrl" 
+                          :src="review.profileUrl" 
+                          :alt="review.writer + ' 프로필 이미지'"
+                          class="reviewer-profile-img"
+                        />
+                        <div v-else class="reviewer-profile-placeholder">
+                          {{ review.writer.charAt(0) }}
+                        </div>
+                      </div>
+                      <div class="reviewer-details">
+                        <span class="reviewer-name">{{ review.writer }}</span>
+                        <div class="rating">
+                          <span v-for="i in 5" :key="i" class="star" :class="{ filled: i <= review.rating }">★</span>
+                        </div>
                       </div>
                     </div>
                     <div class="review-actions">
@@ -218,6 +241,17 @@
                   <div class="question">
                     <div class="question-header">
                       <div class="questioner-info">
+                        <div class="questioner-profile">
+                          <img 
+                            v-if="qa.parentProfileUrl" 
+                            :src="qa.parentProfileUrl" 
+                            :alt="qa.questionerId + ' 프로필 이미지'"
+                            class="questioner-profile-img"
+                          />
+                          <div v-else class="questioner-profile-placeholder">
+                            {{ qa.questionerId.charAt(0) }}
+                          </div>
+                        </div>
                         <span class="questioner-name">{{ qa.questionerId }}</span>
                       </div>
                       <div class="question-actions">
@@ -244,7 +278,20 @@
                  <div v-if="qa.hasAnswer" class="answer">
                    <div class="answer-content">
                      <div class="answer-header">
-                       <span class="answerer-name">{{ qa.answererId }}</span>
+                       <div class="answerer-info">
+                         <div class="answerer-profile">
+                           <img 
+                             v-if="qa.answerProfileUrl" 
+                             :src="qa.answerProfileUrl" 
+                             :alt="qa.answererId + ' 프로필 이미지'"
+                             class="answerer-profile-img"
+                           />
+                           <div v-else class="answerer-profile-placeholder">
+                             {{ qa.answererId.charAt(0) }}
+                           </div>
+                         </div>
+                         <span class="answerer-name">{{ qa.answererId }}</span>
+                       </div>
                        <span class="answer-date">{{ qa.answerDate }}</span>
                      </div>
                      <p>{{ qa.answer }}</p>
@@ -668,37 +715,7 @@
       @cancel="cancelLectureDelete"
     />
 
-    <!-- 비디오 재생 모달 -->
-    <div v-if="showVideoModal" class="modal-overlay video-modal-overlay" @click="closeVideoModal">
-      <div class="video-modal" @click.stop>
-        <div class="video-modal-header">
-          <h3>{{ currentVideoLesson ? currentVideoLesson.title : '강의 영상' }}</h3>
-          <button class="close-btn" @click="closeVideoModal">×</button>
-        </div>
-        <div class="video-modal-content">
-          <div class="video-player-container">
-            <video 
-              v-if="currentVideoUrl"
-              ref="videoPlayer"
-              class="video-player"
-              controls
-              autoplay
-              crossorigin="anonymous"
-              @ended="onVideoEnded"
-              @error="onVideoError"
-              @loadstart="onVideoLoadStart"
-              @canplay="onVideoCanPlay"
-            >
-              <source :src="currentVideoUrl" type="video/mp4">
-              브라우저가 비디오를 지원하지 않습니다.
-            </video>
-            <div v-else class="video-error">
-              <p>비디오를 불러올 수 없습니다.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+
   </div>
 </template>
 
@@ -731,9 +748,6 @@ export default {
       showLoginRequiredModal: false,
       showDeleteConfirmModal: false,
       showLectureDeleteModal: false,
-      showVideoModal: false,
-      currentVideoLesson: null,
-      currentVideoUrl: '',
       deleteConfirmData: {},
       notificationData: {},
       errorMessage: '',
@@ -767,6 +781,7 @@ export default {
        // 비디오 재생 상태
        isVideoPlaying: false,
        previewVideoUrl: '',
+       activeLessonIndex: -1, // 현재 재생 중인 강의 인덱스
 
        // 백엔드에서 확인한 장바구니 상태
        isInCart: false,
@@ -777,20 +792,56 @@ export default {
     };
   },
   computed: {
-    // 페이지네이션된 리뷰 목록
+    // 페이지네이션된 리뷰 목록 (현재 사용자 작성글 우선, 나머지는 등록순)
     paginatedReviews() {
       if (!this.lecture || !this.lecture.reviews) return [];
+      
+      // 리뷰 정렬: 현재 사용자 작성글을 상단에, 나머지는 등록순
+      const sortedReviews = [...this.lecture.reviews].sort((a, b) => {
+        // 현재 사용자가 작성한 리뷰인지 확인
+        const aIsCurrentUser = a.reviewerId === this.currentUserId;
+        const bIsCurrentUser = b.reviewerId === this.currentUserId;
+        
+        // 현재 사용자 작성글이 우선순위
+        if (aIsCurrentUser && !bIsCurrentUser) return -1;
+        if (!aIsCurrentUser && bIsCurrentUser) return 1;
+        
+        // 둘 다 현재 사용자이거나 둘 다 다른 사용자인 경우 등록순 정렬
+        // date 필드를 기준으로 최신순 정렬 (더 최근 날짜가 위로)
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        return dateB - dateA;
+      });
+      
       const startIndex = 0;
       const endIndex = this.currentReviewsPage * this.reviewsPerPage;
-      return this.lecture.reviews.slice(startIndex, endIndex);
+      return sortedReviews.slice(startIndex, endIndex);
     },
     
-    // 페이지네이션된 Q&A 목록
+    // 페이지네이션된 Q&A 목록 (현재 사용자 작성글 우선, 나머지는 등록순)
     paginatedQA() {
       if (!this.lecture || !this.lecture.qa) return [];
+      
+      // Q&A 정렬: 현재 사용자 작성글을 상단에, 나머지는 등록순
+      const sortedQA = [...this.lecture.qa].sort((a, b) => {
+        // 현재 사용자가 작성한 Q&A인지 확인
+        const aIsCurrentUser = a.questionerId === this.currentUserId;
+        const bIsCurrentUser = b.questionerId === this.currentUserId;
+        
+        // 현재 사용자 작성글이 우선순위
+        if (aIsCurrentUser && !bIsCurrentUser) return -1;
+        if (!aIsCurrentUser && bIsCurrentUser) return 1;
+        
+        // 둘 다 현재 사용자이거나 둘 다 다른 사용자인 경우 등록순 정렬
+        // questionDate 필드를 기준으로 최신순 정렬 (더 최근 날짜가 위로)
+        const dateA = new Date(a.questionDate);
+        const dateB = new Date(b.questionDate);
+        return dateB - dateA;
+      });
+      
       const startIndex = 0;
       const endIndex = this.currentQAPage * this.qaPerPage;
-      return this.lecture.qa.slice(startIndex, endIndex);
+      return sortedQA.slice(startIndex, endIndex);
     },
     
     // 리뷰 더 보기 버튼 표시 여부
@@ -808,7 +859,8 @@ export default {
     // 사용자 역할별 화면 제어 computed 속성들
     // 강의 작성자인지 확인 (CHEF, OWNER)
     isAuthor() {
-      return (this.userRole === 'CHEF' || this.userRole === 'OWNER') && this.currentUserId === this.lecture?.instructor?.id;
+      const result = (this.userRole === 'CHEF' || this.userRole === 'OWNER') && this.currentUserId === this.lecture?.instructor?.id;
+      return result;
     },
     
     // 강의 구매자인지 확인
@@ -824,7 +876,8 @@ export default {
     
     // 로그인하지 않은 사용자인지 확인
     isGuest() {
-      return !this.currentUserId;
+      const result = !this.currentUserId;
+      return result;
     },
     
     // 강의 구매하기 버튼 표시 여부 (로그인하지 않은 사용자만)
@@ -861,9 +914,10 @@ export default {
       return this.isAuthor || this.isAdmin;
     },
     
-    // 리뷰 작성 가능 여부 (구매자, 자영업자/요리사, 관리자)
+    // 리뷰 작성 가능 여부 (구매자만, 강의 작성자는 자신의 강의에 리뷰 작성 불가)
     canWriteReview() {
-      return this.isPurchased || this.isAuthor || this.isAdmin;
+      const result = this.isPurchased && !this.isAuthor;
+      return result;
     },
     
     // Q&A 작성 가능 여부 (구매자, 자영업자/요리사, 관리자)
@@ -876,11 +930,48 @@ export default {
       return this.isPurchased || this.isAuthor || this.isAdmin;
     },
     
-    // 자물쇠 표시 여부 (구매하지 않은 일반 사용자만)
-    showLockIcon() {
-      const showLock = !this.canWatchLecture;
-      console.log('자물쇠 표시 여부:', showLock, '구매상태:', this.isPurchased, '작성자:', this.isAuthor, '관리자:', this.isAdmin);
-      return showLock;
+
+    
+    // 이미 리뷰를 작성했는지 확인
+    hasUserReviewed() {
+      if (!this.currentUserId) {
+        return false;
+      }
+      
+      if (!this.lecture) {
+        return false;
+      }
+      
+      if (!this.lecture.reviews) {
+        return false;
+      }
+      
+      const matchingReviews = this.lecture.reviews.filter(review => {
+        return review.reviewerId === this.currentUserId;
+      });
+      
+      return matchingReviews.length > 0;
+    },
+    
+    // 리뷰 작성 버튼 표시 여부 (로그인한 사용자 중 리뷰 작성 가능하고 아직 리뷰를 작성하지 않은 사용자)
+    showReviewWriteButton() {
+      const result = !this.isGuest && this.canWriteReview && !this.hasUserReviewed;
+      return result;
+    }
+  },
+  watch: {
+    // previewVideoUrl이 변경될 때 썸네일 재생성
+    previewVideoUrl(newUrl) {
+      if (newUrl) {
+        this.$nextTick(() => {
+          if (this.$refs.hiddenVideo) {
+            // 비디오가 이미 로드된 경우 썸네일 생성
+            if (this.$refs.hiddenVideo.readyState >= 1) {
+              this.captureFirstFrame();
+            }
+          }
+        });
+      }
     }
   },
   methods: {
@@ -890,35 +981,34 @@ export default {
         // TODO: 실제 로그인 API에서 사용자 정보 가져오기
         // 현재는 localStorage에서 임시로 가져옴
         const userInfo = localStorage.getItem('userInfo');
+        
         if (userInfo) {
           const user = JSON.parse(userInfo);
           this.currentUserId = user.id;
           
-                     // 강의 작성자인지 확인 (CHEF, OWNER 모두 자영업자/요리사)
-           if (this.lecture && this.lecture.instructor && user.id === this.lecture.instructor.id) {
-             this.userRole = user.role === 'OWNER' ? 'OWNER' : 'CHEF';
-           }
-           // 관리자인지 확인
-           else if (user.role === 'ADMIN') {
-             this.userRole = 'ADMIN';
-           }
-           // 구매자인지 확인 (구매 상태는 별도로 확인)
-           else if (this.isPurchased) {
-             this.userRole = 'PURCHASER';
-           }
-           // 일반 사용자
-           else {
-             this.userRole = 'GENERAL';
-           }
-                 } else {
-           this.userRole = 'GENERAL';
-         }
-        
-
-             } catch (error) {
-         console.error('사용자 역할 확인 실패:', error);
-         this.userRole = 'GENERAL';
-       }
+          // 강의 작성자인지 확인 (CHEF, OWNER 모두 자영업자/요리사)
+          if (this.lecture && this.lecture.instructor && user.id === this.lecture.instructor.id) {
+            this.userRole = user.role === 'OWNER' ? 'OWNER' : 'CHEF';
+          }
+          // 관리자인지 확인
+          else if (user.role === 'ADMIN') {
+            this.userRole = 'ADMIN';
+          }
+          // 구매자인지 확인 (구매 상태는 별도로 확인)
+          else if (this.isPurchased) {
+            this.userRole = 'PURCHASER';
+          }
+          // 일반 사용자
+          else {
+            this.userRole = 'GENERAL';
+          }
+        } else {
+          this.userRole = 'GENERAL';
+        }
+      } catch (error) {
+        console.error('사용자 역할 확인 실패:', error);
+        this.userRole = 'GENERAL';
+      }
     },
     
              // 장바구니 상태 확인 (백엔드 API 사용)
@@ -956,9 +1046,7 @@ export default {
      // 구매 여부 확인 (백엔드 API 사용)
      async checkPurchaseStatus(lectureId) {
        try {
-         console.log('구매 상태 확인 시작 - 강의 ID:', lectureId);
          const response = await lectureService.getPurchasedLectures();
-         console.log('구매한 강의 목록 응답:', response);
          
          if (response.success) {
            // 구매한 강의 목록에서 현재 강의 ID가 있는지 확인
@@ -967,24 +1055,14 @@ export default {
              purchase.id === lectureId || purchase.lectureId === lectureId
            );
            
-           console.log('구매 상태 확인 결과:', {
-             lectureId: lectureId,
-             isPurchased: isPurchased,
-             currentIsPurchased: this.isPurchased,
-             purchasedLectures: response.data.content
-           });
-           
            // 구매 상태가 변경된 경우에만 업데이트
            if (this.isPurchased !== isPurchased) {
              this.isPurchased = isPurchased;
-             console.log('구매 상태 업데이트:', isPurchased ? '구매됨' : '구매되지 않음');
              
              // UI 강제 업데이트
              this.$nextTick(() => {
                this.$forceUpdate();
              });
-           } else {
-             console.log('구매 상태 변경 없음 - 현재 상태 유지');
            }
          }
        } catch (error) {
@@ -1037,8 +1115,50 @@ export default {
               students: lectureData.purchaseCount || 0, // 구매한 수강생 수
               // 장바구니용 필드들
               image: lectureData.thumbUrl || '/src/assets/images/smu_mascort1.jpg', // 썸네일 URL
-              teacher: lectureData.name // 강사명
+              teacher: lectureData.name, // 강사명
+              // 강사 프로필 이미지 URL 추가
+              submittedByProfile: lectureData.submittedByProfile
             };
+            
+            // 이미지 URL 디버깅 로그
+            console.log('=== 이미지 URL 디버깅 ===');
+            console.log('강사 프로필 이미지 URL (submittedByProfile):', this.lecture.submittedByProfile);
+            console.log('강사 프로필 이미지 URL 타입:', typeof this.lecture.submittedByProfile);
+            console.log('강사 프로필 이미지 URL 존재 여부:', !!this.lecture.submittedByProfile);
+            
+            // 리뷰어 프로필 이미지 URL 디버깅
+            if (this.lecture.reviews && this.lecture.reviews.length > 0) {
+              console.log('=== 리뷰어 프로필 이미지 URL 디버깅 ===');
+              this.lecture.reviews.forEach((review, index) => {
+                console.log(`리뷰 ${index + 1} - 리뷰어: ${review.writer}`);
+                console.log(`리뷰 ${index + 1} - 프로필 URL (profileUrl):`, review.profileUrl);
+                console.log(`리뷰 ${index + 1} - 프로필 URL 타입:`, typeof review.profileUrl);
+                console.log(`리뷰 ${index + 1} - 프로필 URL 존재 여부:`, !!review.profileUrl);
+              });
+            } else {
+              console.log('리뷰가 없습니다.');
+            }
+            
+            // Q&A 작성자 프로필 이미지 URL 디버깅
+            if (this.lecture.qa && this.lecture.qa.length > 0) {
+              console.log('=== Q&A 작성자 프로필 이미지 URL 디버깅 ===');
+              this.lecture.qa.forEach((qa, index) => {
+                console.log(`Q&A ${index + 1} - 질문자: ${qa.questionerId}`);
+                console.log(`Q&A ${index + 1} - 질문자 프로필 URL (parentProfileUrl):`, qa.parentProfileUrl);
+                console.log(`Q&A ${index + 1} - 질문자 프로필 URL 타입:`, typeof qa.parentProfileUrl);
+                console.log(`Q&A ${index + 1} - 질문자 프로필 URL 존재 여부:`, !!qa.parentProfileUrl);
+                
+                if (qa.hasAnswer) {
+                  console.log(`Q&A ${index + 1} - 답변자: ${qa.answererId}`);
+                  console.log(`Q&A ${index + 1} - 답변자 프로필 URL (answerProfileUrl):`, qa.answerProfileUrl);
+                  console.log(`Q&A ${index + 1} - 답변자 프로필 URL 타입:`, typeof qa.answerProfileUrl);
+                  console.log(`Q&A ${index + 1} - 답변자 프로필 URL 존재 여부:`, !!qa.answerProfileUrl);
+                }
+              });
+            } else {
+              console.log('Q&A가 없습니다.');
+            }
+            console.log('=== 이미지 URL 디버깅 끝 ===');
           } catch (error) {
             console.error('강의 데이터 변환 오류:', error);
             this.showError('강의 데이터를 처리하는 중 오류가 발생했습니다.');
@@ -1063,13 +1183,11 @@ export default {
           const previewLesson = this.lecture.lessons.find(lesson => lesson.isPreview && lesson.videoUrl);
           if (previewLesson && previewLesson.videoUrl) {
             this.previewVideoUrl = previewLesson.videoUrl;
-   
           } else {
             // 미리보기 강의가 없으면 첫 번째 강의 사용
             const firstLesson = this.lecture.lessons.find(lesson => lesson.videoUrl);
             if (firstLesson && firstLesson.videoUrl) {
               this.previewVideoUrl = firstLesson.videoUrl;
-   
             }
           }
           
@@ -1078,7 +1196,10 @@ export default {
             this.$nextTick(() => {
               // 숨겨진 비디오가 로드되면 썸네일 생성
               if (this.$refs.hiddenVideo) {
-       
+                // 비디오가 이미 로드된 경우 썸네일 생성
+                if (this.$refs.hiddenVideo.readyState >= 1) {
+                  this.captureFirstFrame();
+                }
               }
             });
           }
@@ -1172,7 +1293,8 @@ export default {
             rating: review.rating || 0,
             content: review.content || '',
             date: self.formatReviewDate(review.updateAt, review.createAt),
-            reviewerId: review.reviewerId || null
+            reviewerId: review.reviewerId || null,
+            profileUrl: review.profileUrl || null
           };
           
           return convertedReview;
@@ -1185,7 +1307,8 @@ export default {
             rating: 0,
             content: '리뷰를 불러오는 중 오류가 발생했습니다.',
             date: '',
-            reviewerId: null
+            reviewerId: null,
+            profileUrl: null
           };
         }
       });
@@ -1217,7 +1340,10 @@ export default {
          answerUpdatedAt: qa.answerUpdatedAt ? this.formatQADate(qa.answerUpdatedAt) : null,
          // 상태 정보
          parentStatus: qa.parentStatus,
-         answerStatus: qa.answerStatus
+         answerStatus: qa.answerStatus,
+         // 프로필 이미지 URL 추가
+         parentProfileUrl: qa.parentProfileUrl || null,
+         answerProfileUrl: qa.answerProfileUrl || null
        }));
        
        
@@ -1317,21 +1443,11 @@ export default {
        // 첫 번째 미리보기 비디오 찾기
        const previewLesson = this.lecture.lessons.find(lesson => lesson.isPreview && lesson.videoUrl);
        
-       if (previewLesson && previewLesson.videoUrl) {
-         this.previewVideoUrl = previewLesson.videoUrl;
-         this.isVideoPlaying = true;
-         
-         // 비디오 요소가 렌더링된 후 재생
-         this.$nextTick(() => {
-           if (this.$refs.previewVideo) {
-             this.$refs.previewVideo.play().catch(error => {
-               console.error('비디오 재생 실패:', error);
-               this.showError('비디오 재생에 실패했습니다.');
-               this.isVideoPlaying = false;
-             });
-           }
-         });
-       } else {
+                     if (previewLesson && previewLesson.videoUrl) {
+                // 미리보기 강의의 인덱스 찾기
+                const previewIndex = this.lecture.lessons.findIndex(lesson => lesson.isPreview && lesson.videoUrl);
+                this.playVideo(previewLesson, previewIndex);
+              } else {
          this.showError('미리보기 비디오를 찾을 수 없습니다.');
        }
      },
@@ -1354,30 +1470,60 @@ export default {
 
      // 비디오 종료 시 처리
      onVideoEnded() {
+       console.log('비디오 종료됨, 다음 강의 자동 재생 시도');
+       
+       // 다음 강의가 있는지 확인
+       if (this.activeLessonIndex >= 0 && this.activeLessonIndex < this.lecture.lessons.length - 1) {
+         const nextIndex = this.activeLessonIndex + 1;
+         const nextLesson = this.lecture.lessons[nextIndex];
+         
+         // 비로그인 사용자인 경우 자동 재생 방지
+         if (this.isGuest) {
+           console.log('비로그인 사용자 - 자동 재생 방지');
+           this.showPurchaseRequiredModal = true;
+           this.isVideoPlaying = false;
+           this.previewVideoUrl = '';
+           this.activeLessonIndex = -1;
+           return;
+         }
+         
+         // 다음 강의가 시청 가능한지 확인
+         if (nextLesson && nextLesson.videoUrl && (this.canWatchLecture || nextLesson.isPreview)) {
+           console.log('다음 강의 자동 재생:', nextLesson);
+           this.playVideo(nextLesson, nextIndex);
+           return;
+         }
+       }
+       
+       // 다음 강의가 없거나 시청할 수 없는 경우
        this.isVideoPlaying = false;
        this.previewVideoUrl = '';
+       this.activeLessonIndex = -1;
      },
      
-     // 비디오 재생 메서드
-     playVideo(lesson) {
+
+     
+     // 비디오 재생 메서드 (메인 영역에서 재생)
+     playVideo(lesson, lessonIndex = -1) {
        if (lesson.videoUrl) {
          // URL이 유효한지 확인
          try {
            const url = new URL(lesson.videoUrl);
            
-           // 상태 설정
-           this.currentVideoLesson = lesson;
-           this.currentVideoUrl = lesson.videoUrl;
-           this.showVideoModal = true;
+           // 메인 비디오 영역에서 재생
+           this.previewVideoUrl = lesson.videoUrl;
+           this.isVideoPlaying = true;
+           this.activeLessonIndex = lessonIndex; // 현재 재생 중인 강의 인덱스 설정
            
-           // 강제로 DOM 업데이트
-           this.$forceUpdate();
-           
-           // nextTick으로 DOM 업데이트 보장
+           // 비디오 요소가 렌더링된 후 재생
            this.$nextTick(() => {
-             // 비디오 요소 확인
-             if (this.$refs.videoPlayer) {
-               this.$refs.videoPlayer.load();
+             if (this.$refs.previewVideo) {
+               this.$refs.previewVideo.load();
+               this.$refs.previewVideo.play().catch(error => {
+                 console.error('비디오 재생 실패:', error);
+                 this.showError('비디오 재생에 실패했습니다.');
+                 this.isVideoPlaying = false;
+               });
              }
            });
          } catch (error) {
@@ -1389,22 +1535,14 @@ export default {
          this.showError('비디오 URL이 없습니다.');
        }
      },
+     
+
 
 
 
 
      
-     // 비디오 모달 닫기
-     closeVideoModal() {
-       this.showVideoModal = false;
-       this.currentVideoLesson = null;
-       this.currentVideoUrl = '';
-       
-       // 비디오 정지
-       if (this.$refs.videoPlayer) {
-         this.$refs.videoPlayer.pause();
-       }
-     },
+
     
     
 
@@ -1918,13 +2056,19 @@ export default {
           return;
         }
         
+        // 강의 작성자는 자신의 강의에 리뷰를 작성할 수 없음
+        if (this.isAuthor) {
+          this.showError('강의 작성자는 자신의 강의에 리뷰를 작성할 수 없습니다.');
+          return;
+        }
+        
         // 로그인했지만 구매하지 않은 경우
-        if (!this.isPurchased && !this.isAuthor && !this.isAdmin) {
+        if (!this.isPurchased) {
           this.showPurchaseRequiredModal = true;
           return;
         }
         
-        // 구매했거나 작성자/관리자인 경우 바로 작성 모달 열기
+        // 구매한 경우 바로 작성 모달 열기
         // 새 리뷰 작성 모드로 설정
         this.isEditingReview = false;
         this.editingReviewId = null;
@@ -2218,37 +2362,30 @@ export default {
 
            // 강의 클릭 처리 (역할별 접근 제어)
       handleLessonClick(lesson, index) {
-        // 디버깅 로그 추가
-        console.log('레슨 클릭 디버깅:', {
-          lessonTitle: lesson.title,
-          lessonIndex: index,
-          isPurchased: this.isPurchased,
-          isPreview: lesson.isPreview,
-          hasVideoUrl: !!lesson.videoUrl,
-          videoUrl: lesson.videoUrl,
-          canWatchLecture: this.canWatchLecture,
-          isGuest: this.isGuest,
-          isAuthor: this.isAuthor,
-          isAdmin: this.isAdmin
-        });
+        // 비디오 URL이 없는 경우
+        if (!lesson.videoUrl) {
+          this.showError('비디오를 사용할 수 없습니다.');
+          return;
+        }
 
-        // 첫 번째 강의(인덱스 0)는 미리보기 가능
-        if (index === 0) {
-          this.playVideo(lesson);
+        // 강의 시청 가능한 사용자 (구매자, 작성자, 관리자) 또는 미리보기 강의
+        if (this.canWatchLecture || lesson.isPreview) {
+          console.log('강의 클릭 처리:', lesson, 'isPreview:', lesson.isPreview, 'canWatchLecture:', this.canWatchLecture);
+          
+          // 모든 강의를 메인 영역에서 재생
+          console.log('강의 - 메인 영역에서 재생');
+          this.playVideo(lesson, index);
           return;
         }
         
-                   // 강의 시청 가능한 사용자 (구매자, 작성자, 관리자)
-        if (this.canWatchLecture) {
-          this.playVideo(lesson);
-          return;
-        }
-        
-        // 일반 사용자: 구매 필요 안내
+        // 로그인하지 않은 사용자: 로그인 필요 안내
         if (this.isGuest) {
-          this.showPurchaseRequiredModal = true;
+          this.showLoginRequiredModal = true;
           return;
         }
+        
+        // 로그인했지만 구매하지 않은 사용자: 구매 필요 안내
+        this.showPurchaseRequiredModal = true;
       },
 
            // 강의 제목 툴팁 생성 (역할별)
@@ -2257,19 +2394,23 @@ export default {
           return '비디오를 사용할 수 없습니다';
         }
         
-        if (index === 0) {
+        // 미리보기 강의인 경우
+        if (lesson.isPreview) {
           return '클릭하여 비디오 재생 (미리보기)';
         }
         
+        // 강의 시청 가능한 사용자 (구매자, 작성자, 관리자)
         if (this.canWatchLecture) {
           return '클릭하여 비디오 재생';
         }
         
+        // 로그인하지 않은 사용자
         if (this.isGuest) {
-          return '구매 후 시청 가능';
+          return '로그인 후 시청 가능';
         }
         
-        return '클릭하여 비디오 재생';
+        // 로그인했지만 구매하지 않은 사용자
+        return '구매 후 시청 가능';
       },
 
       // 별점 호버 기능
@@ -2603,21 +2744,30 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 20px;
-  border: 1px solid #eee;
+  border: 1px solid #000000;
   border-radius: 8px;
-  background: white;
+  background: #fff8f0;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  position: relative;
 }
 
 .lesson-item:hover {
   border-color: #ff7a00;
-  box-shadow: 0 2px 8px rgba(255, 122, 0, 0.1);
+  box-shadow: 0 4px 16px rgba(255, 122, 0, 0.15);
+  transform: translateY(-2px);
+  background: #fff5e6;
 }
 
 .lesson-item.preview {
-  border-color: #ff7a00;
   background: #fff8f0;
+}
+
+.lesson-item.active {
+  border-color: #ff7a00;
+  border-width: 2px;
+  background: #fff8f0;
+  box-shadow: 0 1px 4px rgba(255, 122, 0, 0.15);
 }
 
 .lesson-info {
@@ -2682,6 +2832,8 @@ export default {
   font-weight: 600;
 }
 
+
+
 .instructor-section {
   margin-bottom: 40px;
 }
@@ -2709,6 +2861,14 @@ export default {
   font-size: 24px;
   font-weight: 600;
   color: #666;
+  overflow: hidden;
+}
+
+.instructor-profile-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
 }
 
 .instructor-details h3 {
@@ -2787,6 +2947,38 @@ export default {
   gap: 12px;
 }
 
+.reviewer-profile {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.reviewer-profile-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.reviewer-profile-placeholder {
+  width: 100%;
+  height: 100%;
+  background: #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 600;
+  color: #666;
+}
+
+.reviewer-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .reviewer-name, .questioner-name, .answerer-name {
   font-weight: 600;
   color: #333;
@@ -2827,6 +3019,32 @@ export default {
   gap: 8px;
 }
 
+.questioner-profile {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.questioner-profile-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.questioner-profile-placeholder {
+  width: 100%;
+  height: 100%;
+  background: #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #666;
+}
+
 .answer {
   margin-top: 12px;
   margin-left: 20px;
@@ -2838,6 +3056,38 @@ export default {
   padding: 16px;
   border-radius: 8px;
   border-left: 3px solid #ff7a00;
+}
+
+.answerer-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.answerer-profile {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.answerer-profile-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.answerer-profile-placeholder {
+  width: 100%;
+  height: 100%;
+  background: #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #666;
 }
 
 .purchase-notice {
@@ -3711,12 +3961,12 @@ export default {
 
 
    /* 구매하지 않은 강의 스타일 */
-  .lesson-item:not(.preview) {
+  .lesson-item:not(.preview):not(.can-watch) {
     opacity: 0.8;
     position: relative;
   }
 
-  .lesson-item:not(.preview)::after {
+  .lesson-item:not(.preview):not(.can-watch)::after {
     content: '🔒';
     position: absolute;
     top: 10px;
