@@ -8,14 +8,10 @@
         @click="navigate(item.route)"
       >
         <!-- 아이콘과 컨텐트 같이 -->
-        <div class="container">
-          <v-list-item-icon>
-            <img :src="item.icon" alt="icon" width="20" />
-          </v-list-item-icon>
-          <v-list-item-content>
-            <v-list-item-title>{{ item.text }}</v-list-item-title>
-          </v-list-item-content>
-        </div>
+        <template v-slot:prepend>
+          <img :src="item.icon" alt="icon" width="20" />
+        </template>
+        <v-list-item-title>{{ item.text }}</v-list-item-title>
       </v-list-item>
     </v-list>
   </v-navigation-drawer>

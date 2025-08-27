@@ -37,11 +37,11 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="user in userManagementStore.getUserList" :key="user.userId">
+          <tr v-for="user in userList" :key="user.userId">
             <td>
               <v-avatar size="32">
                 <v-img 
-                  :src="user.profileImageUrl || '/default-avatar.png'" 
+                  :src="user.picture || '/default-avatar.png'" 
                   alt="profile"
                   cover
                 />
@@ -88,7 +88,7 @@
       </v-table>
 
       <!-- 데이터가 없을 때 -->
-      <v-card-text v-if="!userManagementStore.hasUsers && !userManagementStore.isLoading" class="text-center py-8">
+      <v-card-text v-if="!hasUsers && !userManagementStore.isLoading" class="text-center py-8">
         <v-icon size="64" color="grey-lighten-1">mdi-account-group-outline</v-icon>
         <p class="text-h6 text-grey mt-4">등록된 사용자가 없습니다.</p>
       </v-card-text>
@@ -109,11 +109,11 @@
 
     <!-- Pagination -->
     <Pagination
-      v-if="userManagementStore.hasUsers"
-      :current-page="userManagementStore.getPaginationInfo.currentPage + 1"
-      :total-pages="userManagementStore.getPaginationInfo.totalPages"
-      :total-elements="userManagementStore.getPaginationInfo.totalElements"
-      :page-size="userManagementStore.getPaginationInfo.pageSize"
+      v-if="hasUsers"
+      :current-page="paginationInfo.currentPage + 1"
+      :total-pages="paginationInfo.totalPages"
+      :total-elements="paginationInfo.totalElements"
+      :page-size="paginationInfo.pageSize"
       @page-change="handlePageChange"
     />
 
@@ -129,18 +129,34 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useUserManagementStore } from '../../store/admin/userManagement'
+import { useAuthStore } from '../../store/auth/auth'
+import { useAdminLoginStore } from '../../store/admin/adminLogin'
 import Pagination from '../../components/common/Pagination.vue'
 import CommonSnackbar from '../../components/common/CommonSnackbar.vue'
 import LoadingScreen from '../../components/common/LoadingScreen.vue'
 import { formatDate } from '../../utils/timeUtils'
 
 const userManagementStore = useUserManagementStore()
+const authStore = useAuthStore()
+const adminLoginStore = useAdminLoginStore()
+
+// 관리자 권한 확인
+const isAdmin = computed(() => {
+  const userRole = authStore.getUserRole
+  return userRole === 'ADMIN' || adminLoginStore.isLoggedIn
+})
+
 const showSnackbar = ref(false)
 const snackbarType = ref('success')
 const snackbarTitle = ref('')
 const snackbarMessage = ref('')
+
+// 사용자 목록 computed 속성 추가
+const userList = computed(() => userManagementStore.getUserList)
+const hasUsers = computed(() => userManagementStore.hasUsers)
+const paginationInfo = computed(() => userManagementStore.getPaginationInfo)
 
 // 성공 메시지 감시
 watch(() => userManagementStore.getSuccessMessage, (newMessage) => {
@@ -165,7 +181,8 @@ const closeSnackbar = () => {
 
 // 페이지 변경 핸들러
 const handlePageChange = (page) => {
-  userManagementStore.fetchUserList(page - 1, userManagementStore.getPaginationInfo.pageSize)
+  console.log('페이지 변경:', page)
+  userManagementStore.fetchUserList(page - 1, paginationInfo.value.pageSize)
 }
 
 // 사용자 활성화
@@ -213,6 +230,12 @@ const loadUserList = () => {
 
 // 컴포넌트 마운트 시 사용자 목록 로드
 onMounted(() => {
+  // 관리자 권한 확인
+  if (!isAdmin.value) {
+    console.error('관리자 권한이 없습니다.')
+    return
+  }
+  
   loadUserList()
 })
 </script>
