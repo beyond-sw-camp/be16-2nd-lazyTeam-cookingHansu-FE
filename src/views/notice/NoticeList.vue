@@ -173,21 +173,23 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, computed, onMounted, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { useNoticeStore } from '../../store/notice/notice';
 import { useAuthStore } from '../../store/auth/auth';
 import Header from '../../components/Header.vue';
-import { formatDateTime } from '../../utils/timeUtils';
+import CommonModal from '../../components/common/CommonModal.vue';
+import UserProfileModal from '../../components/common/UserProfileModal.vue';
+import ReportModal from '../../components/common/ReportModal.vue';
+import LoadingScreen from '../../components/common/LoadingScreen.vue';
 import Pagination from '../../components/common/Pagination.vue';
 import ErrorAlert from '../../components/common/ErrorAlert.vue';
-import LoadingScreen from '../../components/common/LoadingScreen.vue';
-import ReportModal from '../../components/common/ReportModal.vue';
-import UserProfileModal from '../../components/common/UserProfileModal.vue';
+import { formatDateTime } from '../../utils/timeUtils';
 import { useChatStore } from '../../store/chat/chat';
 import { useAdminLoginStore } from '../../store/admin/adminLogin';
 
 const router = useRouter();
+const route = useRoute();
 const noticeStore = useNoticeStore();
 const authStore = useAuthStore();
 const chatStore = useChatStore();
@@ -363,14 +365,20 @@ const restoreScrollPosition = () => {
   }
 };
 
-// 컴포넌트 마운트 시 공지사항 목록 로드 (이미 로드된 경우 제외)
-onMounted(() => {
-  // 이미 데이터가 있고 로딩 중이 아닌 경우에만 API 호출
-  if (noticeStore.getNotices.length === 0 && !noticeStore.isLoading) {
-    noticeStore.fetchNotices(0, 10);
-  }
+// 컴포넌트 마운트 시 공지사항 목록 로드
+onMounted(async () => {
+  // 페이지 진입할 때마다 최신 데이터 가져오기
+  await noticeStore.fetchNotices(0, 10);
+  
   // 뒤로가기 시 스크롤 위치 복원
   restoreScrollPosition();
+});
+
+// 라우트 변경 감지하여 공지사항 페이지 진입 시 최신 데이터 가져오기
+watch(() => route.path, async (newPath) => {
+  if (newPath === '/notice') {
+    await noticeStore.fetchNotices(0, 10);
+  }
 });
 
 
