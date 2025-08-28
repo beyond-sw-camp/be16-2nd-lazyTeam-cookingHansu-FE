@@ -859,7 +859,29 @@ export default {
     // 사용자 역할별 화면 제어 computed 속성들
     // 강의 작성자인지 확인 (CHEF, OWNER)
     isAuthor() {
-      const result = (this.userRole === 'CHEF' || this.userRole === 'OWNER') && this.currentUserId === this.lecture?.instructor?.id;
+              // 사용자 정보에서 직접 역할 확인
+        const userInfo = localStorage.getItem('user');
+        let userRole = 'GENERAL';
+        
+        if (userInfo) {
+          try {
+            const user = JSON.parse(userInfo);
+            userRole = user.role;
+          } catch (error) {
+            console.error('사용자 정보 파싱 오류:', error);
+          }
+        }
+      
+      const result = (userRole === 'CHEF' || userRole === 'OWNER') && this.currentUserId === this.lecture?.instructor?.id;
+      
+      console.log('=== isAuthor 디버깅 ===');
+      console.log('localStorage userRole:', userRole);
+      console.log('this.userRole:', this.userRole);
+      console.log('currentUserId:', this.currentUserId);
+      console.log('lecture?.instructor?.id:', this.lecture?.instructor?.id);
+      console.log('isAuthor result:', result);
+      console.log('========================');
+      
       return result;
     },
     
@@ -885,14 +907,44 @@ export default {
       return !this.currentUserId;
     },
     
-    // 장바구니에 담기 버튼 표시 여부 (로그인한 사용자 중 구매하지 않은 사용자, 장바구니에 없는 경우)
+    // 장바구니에 담기 버튼 표시 여부 (로그인한 사용자 중 구매하지 않은 사용자, 장바구니에 없는 경우, 강사이면서 강의 등록자가 아닌 경우)
     showCartButton() {
-      return this.currentUserId && !this.isPurchased && !this.isInCart;
+      console.log('=== showCartButton 디버깅 ===');
+      console.log('isAuthor:', this.isAuthor);
+      console.log('currentUserId:', this.currentUserId);
+      console.log('isPurchased:', this.isPurchased);
+      console.log('isInCart:', this.isInCart);
+      
+      // 강사이면서 강의 등록자인 경우 버튼 숨김
+      if (this.isAuthor) {
+        console.log('강사이면서 강의 등록자이므로 버튼 숨김');
+        return false;
+      }
+      
+      const result = this.currentUserId && !this.isPurchased && !this.isInCart;
+      console.log('showCartButton result:', result);
+      console.log('========================');
+      return result;
     },
     
-    // 장바구니에서 제거 버튼 표시 여부 (로그인한 사용자 중 구매하지 않은 사용자)
+    // 장바구니에서 제거 버튼 표시 여부 (로그인한 사용자 중 구매하지 않은 사용자, 강사이면서 강의 등록자가 아닌 경우)
     showRemoveFromCartButton() {
-      return this.currentUserId && !this.isPurchased && this.isInCart;
+      console.log('=== showRemoveFromCartButton 디버깅 ===');
+      console.log('isAuthor:', this.isAuthor);
+      console.log('currentUserId:', this.currentUserId);
+      console.log('isPurchased:', this.isPurchased);
+      console.log('isInCart:', this.isInCart);
+      
+      // 강사이면서 강의 등록자인 경우 버튼 숨김
+      if (this.isAuthor) {
+        console.log('강사이면서 강의 등록자이므로 버튼 숨김');
+        return false;
+      }
+      
+      const result = this.currentUserId && !this.isPurchased && this.isInCart;
+      console.log('showRemoveFromCartButton result:', result);
+      console.log('========================');
+      return result;
     },
     
     // 강의 수정 버튼 표시 여부 (등록자만 표시)
@@ -980,30 +1032,44 @@ export default {
       try {
         // TODO: 실제 로그인 API에서 사용자 정보 가져오기
         // 현재는 localStorage에서 임시로 가져옴
-        const userInfo = localStorage.getItem('userInfo');
+        const userInfo = localStorage.getItem('user');
         
         if (userInfo) {
           const user = JSON.parse(userInfo);
           this.currentUserId = user.id;
           
+          console.log('=== checkUserRole 디버깅 ===');
+          console.log('user.id:', user.id);
+          console.log('user.role:', user.role);
+          console.log('this.lecture:', this.lecture);
+          console.log('this.lecture?.instructor:', this.lecture?.instructor);
+          console.log('this.lecture?.instructor?.id:', this.lecture?.instructor?.id);
+          
           // 강의 작성자인지 확인 (CHEF, OWNER 모두 자영업자/요리사)
           if (this.lecture && this.lecture.instructor && user.id === this.lecture.instructor.id) {
             this.userRole = user.role === 'OWNER' ? 'OWNER' : 'CHEF';
+            console.log('강의 작성자로 설정됨:', this.userRole);
           }
           // 관리자인지 확인
           else if (user.role === 'ADMIN') {
             this.userRole = 'ADMIN';
+            console.log('관리자로 설정됨');
           }
           // 구매자인지 확인 (구매 상태는 별도로 확인)
           else if (this.isPurchased) {
             this.userRole = 'PURCHASER';
+            console.log('구매자로 설정됨');
           }
           // 일반 사용자
           else {
             this.userRole = 'GENERAL';
+            console.log('일반 사용자로 설정됨');
           }
+          console.log('최종 userRole:', this.userRole);
+          console.log('========================');
         } else {
           this.userRole = 'GENERAL';
+          console.log('사용자 정보가 없어서 GENERAL로 설정됨');
         }
       } catch (error) {
         console.error('사용자 역할 확인 실패:', error);
@@ -1178,6 +1244,14 @@ export default {
            
            // 좋아요 상태 확인
            await this.checkLikeStatus(lectureId);
+           
+           // 강의 데이터가 완전히 로드된 후 사용자 역할을 다시 확인
+           this.$nextTick(async () => {
+             if (this.lecture && this.lecture.instructor) {
+               console.log('강의 데이터 로드 완료 후 사용자 역할 재확인');
+               await this.checkUserRole(lectureId);
+             }
+           });
          
                    // 미리보기 비디오 URL 설정
           const previewLesson = this.lecture.lessons.find(lesson => lesson.isPreview && lesson.videoUrl);
