@@ -10,19 +10,19 @@
           <img :src="lecture.thumbUrl" :alt="lecture.title" />
         </div>
         <div class="lecture-content">
-                     <div class="lecture-header">
-             <span class="category-badge" :class="categoryClass(lecture.category)">{{ getCategoryName(lecture.category) }}</span>
-             <div class="header-right">
-               <span class="status-badge" :class="statusClass(lecture.status)">{{ getStatusName(lecture.status) }}</span>
-               <button 
-                 v-if="lecture.status === 'REJECTED'"
-                 class="delete-lecture-btn"
-                 @click.stop="showDeleteConfirm(lecture)"
-               >
-                 삭제
-               </button>
-             </div>
-           </div>
+          <div class="lecture-header">
+            <span class="category-badge" :class="categoryClass(lecture.category)">{{ getCategoryName(lecture.category) }}</span>
+            <div class="header-right">
+              <span class="status-badge" :class="statusClass(lecture.status)">{{ getStatusName(lecture.status) }}</span>
+              <button 
+                v-if="lecture.status === 'REJECTED'"
+                class="delete-lecture-btn"
+                @click.stop="showDeleteConfirm(lecture)"
+              >
+                삭제
+              </button>
+            </div>
+          </div>
           <h3 class="lecture-title" @click="goToLectureDetail(lecture)">{{ lecture.title }}</h3>
           <p class="lecture-description">{{ lecture.description }}</p>
           <div class="lecture-price">
@@ -52,7 +52,6 @@
               </span>
             </div>
           </div>
-
         </div>
       </div>
     </div>
@@ -70,40 +69,40 @@
       <button class="create-lecture-btn" @click="createLecture">강의 만들기</button>
     </div>
 
-         <!-- 승인되지 않은 강의 안내 모달 -->
-     <CommonModal
-       v-model="showUnapprovedModal"
-       :type="modalType"
-       :title="modalTitle"
-       :message="modalMessage"
-       :confirm-text="'확인'"
-       :show-cancel-button="false"
-       @confirm="closeUnapprovedModal"
-     />
+    <!-- 승인되지 않은 강의 안내 모달 -->
+    <CommonModal
+      v-model="showUnapprovedModal"
+      :type="modalType"
+      :title="modalTitle"
+      :message="modalMessage"
+      :confirm-text="'확인'"
+      :show-cancel-button="false"
+      @confirm="closeUnapprovedModal"
+    />
 
-           <!-- 강의 삭제 확인 모달 -->
-      <CommonModal
-        v-model="showDeleteModal"
-        type="warning"
-        title="강의 삭제"
-        message="정말로 이 강의를 삭제하시겠습니까? 삭제된 강의는 복구할 수 없습니다."
-        confirm-text="삭제"
-        cancel-text="취소"
-        :show-cancel-button="true"
-        @confirm="deleteLecture"
-        @cancel="closeDeleteModal"
-      />
+    <!-- 강의 삭제 확인 모달 -->
+    <CommonModal
+      v-model="showDeleteModal"
+      type="warning"
+      title="강의 삭제"
+      message="정말로 이 강의를 삭제하시겠습니까? 삭제된 강의는 복구할 수 없습니다."
+      confirm-text="삭제"
+      cancel-text="취소"
+      :show-cancel-button="true"
+      @confirm="deleteLecture"
+      @cancel="closeDeleteModal"
+    />
 
-      <!-- 삭제 완료 모달 -->
-      <CommonModal
-        v-model="showDeleteSuccessModal"
-        type="success"
-        title="삭제 완료"
-        message="강의가 성공적으로 삭제되었습니다."
-        confirm-text="확인"
-        :show-cancel-button="false"
-        @confirm="closeDeleteSuccessModal"
-      />
+    <!-- 삭제 완료 모달 -->
+    <CommonModal
+      v-model="showDeleteSuccessModal"
+      type="success"
+      title="삭제 완료"
+      message="강의가 성공적으로 삭제되었습니다."
+      confirm-text="확인"
+      :show-cancel-button="false"
+      @confirm="closeDeleteSuccessModal"
+    />
   </div>
 </template>
 
@@ -130,9 +129,9 @@ export default {
       modalType: 'warning',
       modalTitle: '',
       modalMessage: '',
-             showDeleteModal: false,
-       lectureToDelete: null,
-       showDeleteSuccessModal: false
+      showDeleteModal: false,
+      lectureToDelete: null,
+      showDeleteSuccessModal: false
     };
   },
   computed: {
@@ -148,7 +147,7 @@ export default {
       try {
         this.loading = true;
         const params = new URLSearchParams({
-          page: this.currentPage - 1, // API는 0-based pagination
+          page: this.currentPage - 1,
           size: this.lecturesPerPage
         });
         
@@ -217,7 +216,6 @@ export default {
         this.$router.push(`/lectures/${lecture.id}`);
       } else {
         console.log('승인되지 않은 강의 - 모달 표시');
-        // 승인되지 않은 강의는 모달로 안내
         this.openUnapprovedModal(lecture.status);
       }
     },
@@ -246,48 +244,44 @@ export default {
       this.showUnapprovedModal = true;
       console.log('showUnapprovedModal 상태:', this.showUnapprovedModal);
     },
-         closeUnapprovedModal() {
-       this.showUnapprovedModal = false;
-     },
-     showDeleteConfirm(lecture) {
-       this.lectureToDelete = lecture;
-       this.showDeleteModal = true;
-     },
-     closeDeleteModal() {
-       this.showDeleteModal = false;
-       this.lectureToDelete = null;
-     },
-           async deleteLecture() {
-        if (!this.lectureToDelete) return;
+    closeUnapprovedModal() {
+      this.showUnapprovedModal = false;
+    },
+    showDeleteConfirm(lecture) {
+      this.lectureToDelete = lecture;
+      this.showDeleteModal = true;
+    },
+    closeDeleteModal() {
+      this.showDeleteModal = false;
+      this.lectureToDelete = null;
+    },
+    async deleteLecture() {
+      if (!this.lectureToDelete) return;
+      
+      try {
+        const response = await fetch(`http://localhost:8080/lecture/delete/${this.lectureToDelete.id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+            'Content-Type': 'application/json'
+          }
+        });
         
-        try {
-          const response = await fetch(`http://localhost:8080/lecture/delete/${this.lectureToDelete.id}`, {
-            method: 'DELETE',
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-              'Content-Type': 'application/json'
-            }
-          });
-         
-                   if (response.ok) {
-            // 삭제 성공 시 목록에서 제거
-            this.lectures = this.lectures.filter(lecture => lecture.id !== this.lectureToDelete.id);
-            this.closeDeleteModal();
-            
-            // 성공 모달 표시
-            this.showDeleteSuccessModal = true;
-          } else {
-           throw new Error('강의 삭제에 실패했습니다.');
-         }
-                } catch (error) {
-           console.error('강의 삭제 실패:', error);
-           alert('강의 삭제에 실패했습니다. 다시 시도해주세요.');
-         }
-       },
-       closeDeleteSuccessModal() {
-         this.showDeleteSuccessModal = false;
-       }
-     }
+        if (response.ok) {
+          this.lectures = this.lectures.filter(lecture => lecture.id !== this.lectureToDelete.id);
+          this.closeDeleteModal();
+          this.showDeleteSuccessModal = true;
+        } else {
+          throw new Error('강의 삭제에 실패했습니다.');
+        }
+      } catch (error) {
+        console.error('강의 삭제 실패:', error);
+        alert('강의 삭제에 실패했습니다. 다시 시도해주세요.');
+      }
+    },
+    closeDeleteSuccessModal() {
+      this.showDeleteSuccessModal = false;
+    }
   }
 };
 </script>
@@ -351,34 +345,34 @@ export default {
   padding: 20px;
 }
 
- .lecture-header {
-   display: flex;
-   justify-content: space-between;
-   align-items: center;
-   margin-bottom: 12px;
- }
+.lecture-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
 
- .header-right {
-   display: flex;
-   align-items: center;
-   gap: 8px;
- }
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 
- .delete-lecture-btn {
-   background: #dc3545;
-   color: white;
-   border: none;
-   padding: 4px 8px;
-   border-radius: 4px;
-   font-size: 12px;
-   font-weight: 600;
-   cursor: pointer;
-   transition: background 0.2s;
- }
+.delete-lecture-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
 
- .delete-lecture-btn:hover {
-   background: #c82333;
- }
+.delete-lecture-btn:hover {
+  background: #c82333;
+}
 
 .category-badge {
   font-size: 12px;
@@ -519,8 +513,6 @@ export default {
   font-size: 12px;
 }
 
-
-
 .empty-state {
   text-align: center;
   padding: 80px 20px;
@@ -569,7 +561,5 @@ export default {
   .lecture-content {
     padding: 16px;
   }
-  
-
 }
 </style>
