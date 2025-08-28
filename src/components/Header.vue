@@ -425,6 +425,7 @@ watch(isLoggedIn, async (newValue) => {
   if (newValue) {
     await fetchProfileInfo();
     
+    // 일반 사용자인 경우 읽지 않은 알림 개수만 가져오기 (가벼운 API)
     if (!isAdmin.value) {
       try {
         await notificationStore.fetchUnreadCount();
@@ -432,8 +433,7 @@ watch(isLoggedIn, async (newValue) => {
         notificationStore.startNotificationSubscription();
         await cartStore.fetchServerCartList();
       } catch (error) {
-        console.error('🔍 Header: 로그인 후 읽지 않은 알림 개수 조회 실패:', error);
-        console.error('장바구니 정보 가져오기 실패:', error);
+        console.error('🔍 Header: 로그인 후 읽지 않은 알림 개수, 장바구니 정보 조회 실패:', error);
       }
     }
   } else {
@@ -444,31 +444,11 @@ watch(isLoggedIn, async (newValue) => {
     };
     
     // SSE 연결 중지
-    if (!isAdmin.value) {
-      notificationStore.clearAllData();
-    }
+    notificationStore.clearAllData();
     localStorage.removeItem('cartItems');
     cartStore.serverCartItems = [];
   }
 })
-
-if (newValue) {
-    await fetchProfileInfo();
-    // 서버에서 장바구니 목록 가져오기
-    try {
-      await cartStore.fetchServerCartList();
-    } catch (error) {
-      console.error('장바구니 정보 가져오기 실패:', error);
-    }
-  } else {
-    // 로그아웃 시 프로필 정보와 장바구니 초기화
-    profileData.value = {
-      nickname: '',
-      profileImageUrl: ''
-    };
-    localStorage.removeItem('cartItems');
-    cartStore.serverCartItems = [];
-  }
 
 
 // 관리자 로그인 상태도 감시
@@ -504,17 +484,16 @@ onMounted(async () => {
   // 로그인된 상태라면 프로필 정보 가져오기
   if (isLoggedIn.value || adminLoginStore.isLoggedIn) {
     await fetchProfileInfo();
-    
+    await fetchProfileInfo();
     // 일반 사용자인 경우 읽지 않은 알림 개수만 가져오기 (가벼운 API)
     if (!isAdmin.value) {
       try {
         await notificationStore.fetchUnreadCount();
-        await cartStore.fetchServerCartList();
         // SSE 연결 시작 (실시간 알림 수신용)
         notificationStore.startNotificationSubscription();
+        await cartStore.fetchServerCartList();
       } catch (error) {
-        console.error('장바구니 정보 가져오기 실패:', error);
-        console.error('🔍 Header: 읽지 않은 알림 개수 조회 실패:', error);
+        console.error('🔍 Header: 읽지 않은 알림 개수, 장바구니 정보 조회 실패:', error);
       }
     }
   }
@@ -540,7 +519,6 @@ const profileInfo = computed(() => {
   return profileData.value;
 })
 
-
 // 장바구니 개수 (서버에서 가져온 데이터 사용)
 const cartCount = computed(() => {
   return cartStore.serverCartCount
@@ -551,7 +529,7 @@ watch(() => cartStore.serverCartCount, (newCount) => {
   console.log('장바구니 개수 변경:', newCount)
 })
 
-// 읽지 않은 알림 개수 (실시간 업데이트)
+// 읽지 않은 알림 개수
 const unreadCount = computed(() => {
   if (!isLoggedIn.value || isAdmin.value) {
     return 0;
