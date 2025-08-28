@@ -319,8 +319,8 @@
       <div class="sidebar">
         <!-- 구매 정보 -->
         <div class="purchase-section">
-          <!-- 가격 표시 (구매한 사용자에게는 숨김) -->
-          <div v-if="!isPurchaser" class="price">{{ lecture.price.toLocaleString() }}원</div>
+          <!-- 가격 표시 (구매한 사용자나 강의 작성자에게는 숨김) -->
+          <div v-if="!isPurchaser && !isAuthor" class="price">{{ lecture.price.toLocaleString() }}원</div>
           
           <!-- 로그인한 사용자: 강의 구매하기 버튼 -->
           <button 
