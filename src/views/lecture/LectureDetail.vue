@@ -230,8 +230,8 @@
           </div>
           
                      <div v-if="activeTab === 'qa'" class="qa-content">
-             <!-- Q&A 작성 버튼 (로그인한 사용자만 표시) -->
-             <div v-if="!isGuest" class="qa-actions">
+             <!-- Q&A 작성 버튼 (로그인한 사용자만 표시, 강사가 자기 강의를 볼 때는 숨김) -->
+             <div v-if="!isGuest && !isAuthor" class="qa-actions">
                <button class="write-qa-btn" @click="handleQAWrite">질문하기</button>
              </div>
             
@@ -319,7 +319,8 @@
       <div class="sidebar">
         <!-- 구매 정보 -->
         <div class="purchase-section">
-          <div class="price">{{ lecture.price.toLocaleString() }}원</div>
+          <!-- 가격 표시 (구매한 사용자에게는 숨김) -->
+          <div v-if="!isPurchaser" class="price">{{ lecture.price.toLocaleString() }}원</div>
           
           <!-- 로그인한 사용자: 강의 구매하기 버튼 -->
           <button 
@@ -347,22 +348,13 @@
            >
              장바구니에서 제거
            </button>
-           
-                       <!-- 구매자: 강의 시청 버튼 -->
-            <button 
-              v-if="isPurchaser"
-              class="enroll-btn watch-btn" 
-              @click="goToLecturePlayer"
-            >
-              강의 시청하기
-            </button>
           <div class="action-buttons">
             <div class="share-section" @click="showShareModal = true">
               <span class="share-icon">📤</span>
               <span>공유하기</span>
             </div>
-            <!-- 신고하기 버튼 -->
-            <div class="report-section">
+            <!-- 신고하기 버튼 (강사가 자기 강의를 볼 때는 숨김) -->
+            <div v-if="!isAuthor" class="report-section">
               <span class="report-icon">🚨</span>
               <span>신고하기</span>
             </div>
@@ -873,20 +865,12 @@ export default {
         }
       
       const result = (userRole === 'CHEF' || userRole === 'OWNER') && this.currentUserId === this.lecture?.instructor?.id;
-      
-      console.log('=== isAuthor 디버깅 ===');
-      console.log('localStorage userRole:', userRole);
-      console.log('this.userRole:', this.userRole);
-      console.log('currentUserId:', this.currentUserId);
-      console.log('lecture?.instructor?.id:', this.lecture?.instructor?.id);
-      console.log('isAuthor result:', result);
-      console.log('========================');
-      
       return result;
     },
     
     // 강의 구매자인지 확인
     isPurchaser() {
+      console.log('isPurchased 값:', this.isPurchased);
       return this.isPurchased;
     },
     
@@ -909,41 +893,23 @@ export default {
     
     // 장바구니에 담기 버튼 표시 여부 (로그인한 사용자 중 구매하지 않은 사용자, 장바구니에 없는 경우, 강사이면서 강의 등록자가 아닌 경우)
     showCartButton() {
-      console.log('=== showCartButton 디버깅 ===');
-      console.log('isAuthor:', this.isAuthor);
-      console.log('currentUserId:', this.currentUserId);
-      console.log('isPurchased:', this.isPurchased);
-      console.log('isInCart:', this.isInCart);
-      
       // 강사이면서 강의 등록자인 경우 버튼 숨김
       if (this.isAuthor) {
-        console.log('강사이면서 강의 등록자이므로 버튼 숨김');
         return false;
       }
       
       const result = this.currentUserId && !this.isPurchased && !this.isInCart;
-      console.log('showCartButton result:', result);
-      console.log('========================');
       return result;
     },
     
     // 장바구니에서 제거 버튼 표시 여부 (로그인한 사용자 중 구매하지 않은 사용자, 강사이면서 강의 등록자가 아닌 경우)
     showRemoveFromCartButton() {
-      console.log('=== showRemoveFromCartButton 디버깅 ===');
-      console.log('isAuthor:', this.isAuthor);
-      console.log('currentUserId:', this.currentUserId);
-      console.log('isPurchased:', this.isPurchased);
-      console.log('isInCart:', this.isInCart);
-      
       // 강사이면서 강의 등록자인 경우 버튼 숨김
       if (this.isAuthor) {
-        console.log('강사이면서 강의 등록자이므로 버튼 숨김');
         return false;
       }
       
       const result = this.currentUserId && !this.isPurchased && this.isInCart;
-      console.log('showRemoveFromCartButton result:', result);
-      console.log('========================');
       return result;
     },
     
@@ -1038,38 +1004,24 @@ export default {
           const user = JSON.parse(userInfo);
           this.currentUserId = user.id;
           
-          console.log('=== checkUserRole 디버깅 ===');
-          console.log('user.id:', user.id);
-          console.log('user.role:', user.role);
-          console.log('this.lecture:', this.lecture);
-          console.log('this.lecture?.instructor:', this.lecture?.instructor);
-          console.log('this.lecture?.instructor?.id:', this.lecture?.instructor?.id);
-          
           // 강의 작성자인지 확인 (CHEF, OWNER 모두 자영업자/요리사)
           if (this.lecture && this.lecture.instructor && user.id === this.lecture.instructor.id) {
             this.userRole = user.role === 'OWNER' ? 'OWNER' : 'CHEF';
-            console.log('강의 작성자로 설정됨:', this.userRole);
           }
           // 관리자인지 확인
           else if (user.role === 'ADMIN') {
             this.userRole = 'ADMIN';
-            console.log('관리자로 설정됨');
           }
           // 구매자인지 확인 (구매 상태는 별도로 확인)
           else if (this.isPurchased) {
             this.userRole = 'PURCHASER';
-            console.log('구매자로 설정됨');
           }
           // 일반 사용자
           else {
             this.userRole = 'GENERAL';
-            console.log('일반 사용자로 설정됨');
           }
-          console.log('최종 userRole:', this.userRole);
-          console.log('========================');
         } else {
           this.userRole = 'GENERAL';
-          console.log('사용자 정보가 없어서 GENERAL로 설정됨');
         }
       } catch (error) {
         console.error('사용자 역할 확인 실패:', error);
@@ -1186,45 +1138,7 @@ export default {
               submittedByProfile: lectureData.submittedByProfile
             };
             
-            // 이미지 URL 디버깅 로그
-            console.log('=== 이미지 URL 디버깅 ===');
-            console.log('강사 프로필 이미지 URL (submittedByProfile):', this.lecture.submittedByProfile);
-            console.log('강사 프로필 이미지 URL 타입:', typeof this.lecture.submittedByProfile);
-            console.log('강사 프로필 이미지 URL 존재 여부:', !!this.lecture.submittedByProfile);
-            
-            // 리뷰어 프로필 이미지 URL 디버깅
-            if (this.lecture.reviews && this.lecture.reviews.length > 0) {
-              console.log('=== 리뷰어 프로필 이미지 URL 디버깅 ===');
-              this.lecture.reviews.forEach((review, index) => {
-                console.log(`리뷰 ${index + 1} - 리뷰어: ${review.writer}`);
-                console.log(`리뷰 ${index + 1} - 프로필 URL (profileUrl):`, review.profileUrl);
-                console.log(`리뷰 ${index + 1} - 프로필 URL 타입:`, typeof review.profileUrl);
-                console.log(`리뷰 ${index + 1} - 프로필 URL 존재 여부:`, !!review.profileUrl);
-              });
-            } else {
-              console.log('리뷰가 없습니다.');
-            }
-            
-            // Q&A 작성자 프로필 이미지 URL 디버깅
-            if (this.lecture.qa && this.lecture.qa.length > 0) {
-              console.log('=== Q&A 작성자 프로필 이미지 URL 디버깅 ===');
-              this.lecture.qa.forEach((qa, index) => {
-                console.log(`Q&A ${index + 1} - 질문자: ${qa.questionerId}`);
-                console.log(`Q&A ${index + 1} - 질문자 프로필 URL (parentProfileUrl):`, qa.parentProfileUrl);
-                console.log(`Q&A ${index + 1} - 질문자 프로필 URL 타입:`, typeof qa.parentProfileUrl);
-                console.log(`Q&A ${index + 1} - 질문자 프로필 URL 존재 여부:`, !!qa.parentProfileUrl);
-                
-                if (qa.hasAnswer) {
-                  console.log(`Q&A ${index + 1} - 답변자: ${qa.answererId}`);
-                  console.log(`Q&A ${index + 1} - 답변자 프로필 URL (answerProfileUrl):`, qa.answerProfileUrl);
-                  console.log(`Q&A ${index + 1} - 답변자 프로필 URL 타입:`, typeof qa.answerProfileUrl);
-                  console.log(`Q&A ${index + 1} - 답변자 프로필 URL 존재 여부:`, !!qa.answerProfileUrl);
-                }
-              });
-            } else {
-              console.log('Q&A가 없습니다.');
-            }
-            console.log('=== 이미지 URL 디버깅 끝 ===');
+
           } catch (error) {
             console.error('강의 데이터 변환 오류:', error);
             this.showError('강의 데이터를 처리하는 중 오류가 발생했습니다.');
@@ -1248,7 +1162,6 @@ export default {
            // 강의 데이터가 완전히 로드된 후 사용자 역할을 다시 확인
            this.$nextTick(async () => {
              if (this.lecture && this.lecture.instructor) {
-               console.log('강의 데이터 로드 완료 후 사용자 역할 재확인');
                await this.checkUserRole(lectureId);
              }
            });
@@ -1544,8 +1457,6 @@ export default {
 
      // 비디오 종료 시 처리
      onVideoEnded() {
-       console.log('비디오 종료됨, 다음 강의 자동 재생 시도');
-       
        // 다음 강의가 있는지 확인
        if (this.activeLessonIndex >= 0 && this.activeLessonIndex < this.lecture.lessons.length - 1) {
          const nextIndex = this.activeLessonIndex + 1;
@@ -1553,7 +1464,6 @@ export default {
          
          // 비로그인 사용자인 경우 자동 재생 방지
          if (this.isGuest) {
-           console.log('비로그인 사용자 - 자동 재생 방지');
            this.showPurchaseRequiredModal = true;
            this.isVideoPlaying = false;
            this.previewVideoUrl = '';
@@ -1563,7 +1473,6 @@ export default {
          
          // 다음 강의가 시청 가능한지 확인
          if (nextLesson && nextLesson.videoUrl && (this.canWatchLecture || nextLesson.isPreview)) {
-           console.log('다음 강의 자동 재생:', nextLesson);
            this.playVideo(nextLesson, nextIndex);
            return;
          }
@@ -2444,10 +2353,7 @@ export default {
 
         // 강의 시청 가능한 사용자 (구매자, 작성자, 관리자) 또는 미리보기 강의
         if (this.canWatchLecture || lesson.isPreview) {
-          console.log('강의 클릭 처리:', lesson, 'isPreview:', lesson.isPreview, 'canWatchLecture:', this.canWatchLecture);
-          
           // 모든 강의를 메인 영역에서 재생
-          console.log('강의 - 메인 영역에서 재생');
           this.playVideo(lesson, index);
           return;
         }
