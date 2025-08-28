@@ -283,7 +283,7 @@
 import { ref, computed, watch, onUnmounted, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/auth/auth'
-import { useCartStore } from '@/store/cart/cart.js'
+import { useCartStore } from '@/store/cart/cart'
 import { useNotificationStore } from '@/store/notification/notification.js'
 import { useAdminLoginStore } from '@/store/admin/adminLogin'
 import CommonModal from '@/components/common/CommonModal.vue'
@@ -291,6 +291,7 @@ import CommonModal from '@/components/common/CommonModal.vue'
 const router = useRouter();
 const authStore = useAuthStore();
 const cartStore = useCartStore();
+
 const notificationStore = useNotificationStore();
 const adminLoginStore = useAdminLoginStore();
 
@@ -420,11 +421,15 @@ watch(mobileMenuOpen, (isOpen) => {
   }
 })
 
-// 로그인 상태 변경 감시하여 프로필 정보 가져오기
+// 로그인 상태 변경 감시하여 프로필 정보와 장바구니 정보 가져오기
 watch(isLoggedIn, async (newValue) => {
   if (newValue) {
     await fetchProfileInfo();
-    
+    try {
+      await cartStore.fetchServerCartList();
+    } catch (error) {
+      console.error('장바구니 정보 가져오기 실패:', error);
+    }
     // 일반 사용자인 경우 알림 목록 가져오고 SSE 연결 시작
     if (!isAdmin.value) {
       try {
@@ -434,7 +439,7 @@ watch(isLoggedIn, async (newValue) => {
       }
     }
   } else {
-    // 로그아웃 시 프로필 정보 초기화 및 SSE 연결 중지
+    // 로그아웃 시 프로필 정보와 장바구니 초기화 및 SSE 연결 중지
     profileData.value = {
       nickname: '',
       profileImageUrl: ''
@@ -444,6 +449,8 @@ watch(isLoggedIn, async (newValue) => {
     if (!isAdmin.value) {
       notificationStore.clearAllData();
     }
+    localStorage.removeItem('cartItems');
+    cartStore.serverCartItems = [];
   }
 })
 
@@ -465,6 +472,7 @@ watch(isAdmin, (newValue, oldValue) => {
   // console.log('isAdmin 상태 변화:', { old: oldValue, new: newValue });
 });
 
+
 // 관리자 로그인 상태도 감시
 watch(() => adminLoginStore.isLoggedIn, async (newValue, oldValue) => {
   console.log('관리자 로그인 상태 변경 감지:', { old: oldValue, new: newValue });
@@ -485,6 +493,7 @@ watch(isAdmin, (newValue, oldValue) => {
   console.log('isAdmin 상태 변화:', { old: oldValue, new: newValue });
 });
 
+
 // 사용자 역할 변경 감시
 watch(userRole, async (newRole) => {
   if (isLoggedIn.value) {
@@ -496,6 +505,7 @@ watch(userRole, async (newRole) => {
 onMounted(async () => {
   window.addEventListener('resize', handleResize);
   
+
   // 초기 상태 로깅
   console.log('Header 컴포넌트 마운트 시 상태:', {
     isLoggedIn: isLoggedIn.value,
@@ -522,6 +532,12 @@ onMounted(async () => {
         console.error('🔍 Header: 알림 목록 조회 실패:', error);
       }
     }
+    // 서버에서 장바구니 목록 가져오기
+    try {
+      await cartStore.fetchServerCartList();
+    } catch (error) {
+      console.error('장바구니 정보 가져오기 실패:', error);
+    }
   }
 })
 
@@ -545,7 +561,17 @@ const profileInfo = computed(() => {
   return profileData.value;
 })
 
-// 읽지 않은 알림 개수 (실시간 업데이트)
+// 장바구니 개수 (서버에서 가져온 데이터 사용)
+const cartCount = computed(() => {
+  return cartStore.serverCartCount
+})
+
+// 장바구니 개수 변경 감시 (디버깅용)
+watch(() => cartStore.serverCartCount, (newCount) => {
+  console.log('장바구니 개수 변경:', newCount)
+})
+
+// 읽지 않은 알림 개수
 const unreadCount = computed(() => {
   if (!isLoggedIn.value || isAdmin.value) {
     return 0;

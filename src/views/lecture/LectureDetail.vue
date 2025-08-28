@@ -1,6 +1,5 @@
 <template>
   <div class="lecture-detail-page">
-    
     <div v-if="lecture" class="detail-container">
       <!-- 메인 콘텐츠 영역 -->
       <div class="main-content">
@@ -12,13 +11,19 @@
            </div>
            <div class="title-section">
              <h1 class="lecture-title">{{ lecture.title }}</h1>
-             <!-- 강의 상단 수정 버튼 -->
+             <!-- 강의 상단 수정/삭제 버튼 -->
              <div v-if="showEditButton" class="top-edit-button">
                <button 
                  class="edit-lecture-btn" 
                  @click="editLecture"
                >
                  ✏️ 강의 수정하기
+               </button>
+               <button 
+                 class="delete-lecture-btn" 
+                 @click="showDeleteConfirm"
+               >
+                 🗑️ 강의 삭제하기
                </button>
              </div>
            </div>
@@ -97,25 +102,29 @@
             <span class="total-lessons">총 {{ lecture.lessons.length }}강</span>
           </div>
           <div class="lessons-list">
-                         <div 
-               v-for="(lesson, index) in lecture.lessons" 
-               :key="index" 
-               class="lesson-item"
-               :class="{ 'preview': lesson.isPreview }"
-               @click="handleLessonClick(lesson, index)"
-               :title="getLessonTitle(lesson, index)"
-             >
-                             <div class="lesson-info">
-                                   <div class="lesson-icon">
-                    <span v-if="!lesson.videoUrl" class="no-video-icon">⚠️</span>
-                    <span v-else-if="lesson.isPreview" class="play-icon">▶</span>
-                    <span v-else-if="showLockIcon" class="lock-icon">🔒</span>
-                    <span v-else class="play-icon">▶</span>
-                  </div>
-                                                                      <div class="lesson-content">
-                     <h3>{{ lesson.description }}</h3>
-                     <p>{{ lesson.title }}</p>
-                   </div>
+            <div 
+              v-for="(lesson, index) in lecture.lessons" 
+              :key="index" 
+              class="lesson-item"
+              :class="{ 
+                'preview': lesson.isPreview,
+                'can-watch': canWatchLecture,
+                'active': activeLessonIndex === index
+              }"
+              @click="handleLessonClick(lesson, index)"
+              :title="getLessonTitle(lesson, index)"
+            >
+              <div class="lesson-info">
+                <div class="lesson-icon">
+                  <span v-if="!lesson.videoUrl" class="no-video-icon">⚠️</span>
+                  <span v-else-if="!canWatchLecture && !lesson.isPreview" class="lock-icon">🔒</span>
+                  <span v-else class="play-icon">▶</span>
+                </div>
+
+                <div class="lesson-content">
+                  <h3>{{ lesson.description }}</h3>
+                  <p>{{ lesson.title }}</p>
+                </div>
               </div>
               <div class="lesson-meta">
                 <span class="duration">{{ lesson.duration }}</span>
@@ -130,7 +139,13 @@
           <h2>강사 소개</h2>
           <div class="instructor-info">
             <div class="instructor-avatar">
-              <span>{{ lecture.instructor.name.charAt(0) }}</span>
+              <img 
+                v-if="lecture.submittedByProfile" 
+                :src="lecture.submittedByProfile" 
+                :alt="lecture.instructor.name + ' 프로필 이미지'"
+                class="instructor-profile-img"
+              />
+              <span v-else>{{ lecture.instructor.name.charAt(0) }}</span>
             </div>
             <div class="instructor-details">
               <h3>{{ lecture.instructor.name }}</h3>
@@ -157,37 +172,46 @@
           </div>
           
                      <div v-if="activeTab === 'reviews'" class="reviews-content">
-             <!-- 리뷰 작성 가능한 사용자 -->
-             <div v-if="canWriteReview" class="review-actions">
-               <button class="write-review-btn" @click="showReviewModal = true">리뷰 작성하기</button>
+             <!-- 리뷰 작성 버튼 (로그인한 사용자 중 리뷰 작성 가능하고 아직 리뷰를 작성하지 않은 사용자만 표시) -->
+             <div v-if="showReviewWriteButton" class="review-actions">
+               <button class="write-review-btn" @click="handleReviewWrite">리뷰 작성하기</button>
              </div>
-                        <!-- 일반 사용자: 구매 안내 -->
-           <div v-else-if="isGuest" class="purchase-notice">
-             <p>리뷰를 작성하려면 강의를 구매해주세요.</p>
-             <button class="purchase-btn" @click="purchaseLecture">강의 구매하기</button>
-           </div>
             
             <!-- 리뷰 목록 -->
             <div v-if="lecture.reviews.length > 0" class="reviews-list">
                              <div v-for="review in paginatedReviews" :key="review.id" class="review-item">
                                   <div class="review-header">
                     <div class="reviewer-info">
-                      <span class="reviewer-name">{{ review.writer }}</span>
-                      <div class="rating">
-                        <span v-for="i in 5" :key="i" class="star" :class="{ filled: i <= review.rating }">★</span>
+                      <div class="reviewer-profile">
+                        <img 
+                          v-if="review.profileUrl" 
+                          :src="review.profileUrl" 
+                          :alt="review.writer + ' 프로필 이미지'"
+                          class="reviewer-profile-img"
+                        />
+                        <div v-else class="reviewer-profile-placeholder">
+                          {{ review.writer.charAt(0) }}
+                        </div>
+                      </div>
+                      <div class="reviewer-details">
+                        <span class="reviewer-name">{{ review.writer }}</span>
+                        <div class="rating">
+                          <span v-for="i in 5" :key="i" class="star" :class="{ filled: i <= review.rating }">★</span>
+                        </div>
                       </div>
                     </div>
                     <div class="review-actions">
                       <span class="review-date">{{ review.date }}</span>
-                      <!-- 자신이 작성한 리뷰인 경우 수정/삭제 버튼 표시 -->
-                      <div v-if="canEditReview(review)" class="review-edit-actions">
-                        <button class="edit-btn" @click="editReview(review)">수정</button>
-                        <button class="delete-btn" @click="deleteReview(review)">삭제</button>
-                      </div>
                     </div>
                   </div>
                  <div class="review-content">
                    <p>{{ review.content }}</p>
+                   <!-- 자신이 작성한 리뷰인 경우 수정/삭제 텍스트 표시 -->
+                   <div v-if="canEditReview(review)" class="review-edit-actions">
+                     <span class="edit-text" @click="editReview(review)">수정</span>
+                     <span class="separator">|</span>
+                     <span class="delete-text" @click="deleteReview(review)">삭제</span>
+                   </div>
                  </div>
                </div>
               
@@ -206,15 +230,10 @@
           </div>
           
                      <div v-if="activeTab === 'qa'" class="qa-content">
-             <!-- Q&A 작성 가능한 사용자 -->
-             <div v-if="canWriteQA" class="qa-actions">
-               <button class="write-qa-btn" @click="showQAModal = true">질문하기</button>
+             <!-- Q&A 작성 버튼 (로그인한 사용자만 표시) -->
+             <div v-if="!isGuest" class="qa-actions">
+               <button class="write-qa-btn" @click="handleQAWrite">질문하기</button>
              </div>
-                        <!-- 일반 사용자: 구매 안내 -->
-           <div v-else-if="isGuest" class="purchase-notice">
-             <p>질문을 작성하려면 강의를 구매해주세요.</p>
-             <button class="purchase-btn" @click="purchaseLecture">강의 구매하기</button>
-           </div>
             
                          <!-- Q&A 목록 -->
              <div v-if="lecture.qa.length > 0" class="qa-list">
@@ -222,27 +241,57 @@
                   <div class="question">
                     <div class="question-header">
                       <div class="questioner-info">
+                        <div class="questioner-profile">
+                          <img 
+                            v-if="qa.parentProfileUrl" 
+                            :src="qa.parentProfileUrl" 
+                            :alt="qa.questionerId + ' 프로필 이미지'"
+                            class="questioner-profile-img"
+                          />
+                          <div v-else class="questioner-profile-placeholder">
+                            {{ qa.questionerId.charAt(0) }}
+                          </div>
+                        </div>
                         <span class="questioner-name">{{ qa.questionerId }}</span>
                       </div>
                       <div class="question-actions">
                         <span class="question-date">{{ qa.questionDate }}</span>
-                        <!-- 자신이 작성한 질문인 경우 수정/삭제 버튼 표시 -->
-                        <div v-if="canEditQA(qa)" class="qa-edit-actions">
-                          <button class="edit-btn" @click="editQA(qa)">수정</button>
-                          <button class="delete-btn" @click="deleteQA(qa)">삭제</button>
-                        </div>
                       </div>
                     </div>
                     <div class="question-content">
                       <p>{{ qa.question }}</p>
+                      <!-- 자신이 작성한 질문인 경우 수정/삭제 텍스트 표시 -->
+                      <div v-if="canEditQA(qa)" class="qa-edit-actions">
+                        <span class="edit-text" @click="editQA(qa)">수정</span>
+                        <span class="separator">|</span>
+                        <span class="delete-text" @click="deleteQA(qa)">삭제</span>
+                      </div>
                     </div>
                   </div>
+                 
+                 <!-- 답변하기 버튼 (강의 작성자만 표시, 답변이 없는 경우) -->
+                 <div v-if="isAuthor && !qa.hasAnswer" class="qa-answer-action">
+                   <button class="answer-btn" @click="handleAnswerQA(qa)">답변하기</button>
+                 </div>
                  
                  <!-- 답글이 있는 경우에만 표시 -->
                  <div v-if="qa.hasAnswer" class="answer">
                    <div class="answer-content">
                      <div class="answer-header">
-                       <span class="answerer-name">{{ qa.answererId }}</span>
+                       <div class="answerer-info">
+                         <div class="answerer-profile">
+                           <img 
+                             v-if="qa.answerProfileUrl" 
+                             :src="qa.answerProfileUrl" 
+                             :alt="qa.answererId + ' 프로필 이미지'"
+                             class="answerer-profile-img"
+                           />
+                           <div v-else class="answerer-profile-placeholder">
+                             {{ qa.answererId.charAt(0) }}
+                           </div>
+                         </div>
+                         <span class="answerer-name">{{ qa.answererId }}</span>
+                       </div>
                        <span class="answer-date">{{ qa.answerDate }}</span>
                      </div>
                      <p>{{ qa.answer }}</p>
@@ -259,7 +308,8 @@
             </div>
             
             <div v-if="lecture.qa.length === 0" class="no-qa">
-              <p>아직 Q&A가 없습니다.</p>
+              <p>아직 질문이 없습니다.</p>
+              <p class="no-qa-sub">첫 번째 질문을 남겨보세요!</p>
             </div>
           </div>
         </div>
@@ -270,7 +320,17 @@
         <!-- 구매 정보 -->
         <div class="purchase-section">
           <div class="price">{{ lecture.price.toLocaleString() }}원</div>
-                     <!-- 일반 사용자: 장바구니 버튼 -->
+          
+          <!-- 로그인한 사용자: 강의 구매하기 버튼 -->
+          <button 
+            v-if="showPurchaseButton"
+            class="enroll-btn purchase-btn" 
+            @click="purchaseLecture"
+          >
+            강의 구매하기
+          </button>
+          
+          <!-- 일반 사용자: 장바구니 버튼 -->
            <button 
              v-if="showCartButton"
              class="enroll-btn" 
@@ -296,9 +356,23 @@
             >
               강의 시청하기
             </button>
-          <div class="share-section" @click="showShareModal = true">
-            <span class="share-icon">📤</span>
-            <span>공유하기</span>
+          <div class="action-buttons">
+            <div class="share-section" @click="showShareModal = true">
+              <span class="share-icon">📤</span>
+              <span>공유하기</span>
+            </div>
+            <!-- 신고하기 버튼 -->
+            <div class="report-section">
+              <span class="report-icon">🚨</span>
+              <span>신고하기</span>
+            </div>
+                         <!-- 좋아요 버튼 -->
+             <div class="like-section">
+               <button class="like-button" :class="{ 'liked': isLiked }" @click="toggleLike">
+                 <span class="like-icon">❤️</span>
+                 <span class="like-count">{{ lecture.likeCount || 0 }}</span>
+               </button>
+             </div>
           </div>
         </div>
 
@@ -421,12 +495,12 @@
       </div>
     </div>
 
-    <!-- 리뷰 작성 모달 -->
-    <div v-if="showReviewModal" class="modal-overlay" @click="showReviewModal = false">
+    <!-- 리뷰 작성/수정 모달 -->
+    <div v-if="showReviewModal" class="modal-overlay" @click="closeReviewModal">
       <div class="modal" @click.stop>
         <div class="modal-header">
-          <h3>리뷰 작성</h3>
-          <button class="close-btn" @click="showReviewModal = false">×</button>
+          <h3>{{ isEditingReview ? '리뷰 수정' : '리뷰 작성' }}</h3>
+          <button class="close-btn" @click="closeReviewModal">×</button>
         </div>
         <div class="modal-content">
           <div class="rating-section">
@@ -437,7 +511,9 @@
                 :key="i" 
                 class="star-input" 
                 :class="{ filled: i <= newReview.rating }"
-                @click="newReview.rating = i"
+                @click="handleStarClick(i)"
+                @mouseenter="handleStarHover(i)"
+                @mouseleave="handleStarLeave"
               >★</span>
             </div>
           </div>
@@ -451,17 +527,17 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button class="cancel-btn" @click="showReviewModal = false">취소</button>
-          <button class="submit-btn" @click="submitReview">리뷰 등록</button>
+          <button class="cancel-btn" @click="closeReviewModal">취소</button>
+          <button class="submit-btn" @click="submitReview">{{ isEditingReview ? '리뷰 수정' : '리뷰 등록' }}</button>
         </div>
       </div>
     </div>
 
-    <!-- Q&A 작성 모달 -->
+    <!-- Q&A 작성/수정 모달 -->
     <div v-if="showQAModal" class="modal-overlay" @click="showQAModal = false">
       <div class="modal" @click.stop>
         <div class="modal-header">
-          <h3>질문하기</h3>
+          <h3>{{ isEditingQA ? '질문 수정하기' : '질문하기' }}</h3>
           <button class="close-btn" @click="showQAModal = false">×</button>
         </div>
         <div class="modal-content">
@@ -473,10 +549,13 @@
               rows="5"
             ></textarea>
           </div>
+
+
+
         </div>
         <div class="modal-footer">
           <button class="cancel-btn" @click="showQAModal = false">취소</button>
-          <button class="submit-btn" @click="submitQuestion">질문 등록</button>
+          <button class="submit-btn" @click="submitQuestion">{{ isEditingQA ? '질문 수정' : '질문 등록' }}</button>
         </div>
       </div>
     </div>
@@ -559,36 +638,102 @@
        </div>
      </div>
 
-     <!-- 구매 제한 모달 -->
+     <!-- 구매 필요 모달 -->
      <div v-if="showPurchaseRequiredModal" class="modal-overlay" @click="showPurchaseRequiredModal = false">
        <div class="cart-modal" @click.stop>
          <div class="modal-header">
-           <h3>구매 필요</h3>
+           <h3>강의 구매 필요</h3>
            <button class="close-btn" @click="showPurchaseRequiredModal = false">×</button>
          </div>
          <div class="modal-content">
-           <div class="modal-icon">🔒</div>
-           <p class="modal-message">이 강의를 시청하려면 구매가 필요합니다.</p>
-           <p class="modal-submessage">첫 번째 강의만 미리보기가 가능합니다.</p>
+           <div class="modal-icon">🛒</div>
+           <p class="modal-message">이 기능을 사용하려면 강의를 구매해야 합니다.</p>
+           <p class="modal-submessage">강의를 구매하시면 리뷰 작성과 Q&A 참여가 가능합니다.</p>
          </div>
          <div class="modal-actions">
-           <button class="btn-primary" @click="showPurchaseRequiredModal = false">확인</button>
+           <button class="btn-primary" @click="goToPurchase">강의 구매하기</button>
+           <button class="btn-secondary" @click="showPurchaseRequiredModal = false">취소</button>
          </div>
        </div>
      </div>
+
+     <!-- 구매 필요 모달 -->
+     <div v-if="showPurchaseRequiredModal" class="modal-overlay" @click="showPurchaseRequiredModal = false">
+       <div class="cart-modal" @click.stop>
+         <div class="modal-header">
+           <h3>강의 구매 필요</h3>
+           <button class="close-btn" @click="showPurchaseRequiredModal = false">×</button>
+         </div>
+         <div class="modal-content">
+           <div class="modal-icon">🛒</div>
+           <p class="modal-message">이 기능을 사용하려면 강의를 구매해야 합니다.</p>
+           <p class="modal-submessage">강의를 구매하시면 리뷰 작성과 Q&A 참여가 가능합니다.</p>
+         </div>
+         <div class="modal-actions">
+           <button class="btn-primary" @click="goToPurchase">강의 구매하기</button>
+           <button class="btn-secondary" @click="showPurchaseRequiredModal = false">취소</button>
+         </div>
+       </div>
+     </div>
+
+     <!-- 로그인 필요 모달 -->
+     <div v-if="showLoginRequiredModal" class="modal-overlay" @click="showLoginRequiredModal = false">
+       <div class="cart-modal" @click.stop>
+         <div class="modal-header">
+           <h3>로그인 필요</h3>
+           <button class="close-btn" @click="showLoginRequiredModal = false">×</button>
+         </div>
+         <div class="modal-content">
+           <div class="modal-icon">🔐</div>
+           <p class="modal-message">로그인이 필요한 서비스입니다.</p>
+           <p class="modal-submessage">로그인 후 리뷰 작성과 Q&A 참여가 가능합니다.</p>
+         </div>
+         <div class="modal-actions">
+           <button class="btn-primary" @click="goToLogin">로그인하기</button>
+           <button class="btn-secondary" @click="showLoginRequiredModal = false">취소</button>
+         </div>
+       </div>
+     </div>
+
+    <!-- 삭제 확인 모달 -->
+    <DeleteConfirmModal
+      v-model="showDeleteConfirmModal"
+      :title="deleteConfirmData.title"
+      :message="deleteConfirmData.message"
+      :item-info="deleteConfirmData.itemInfo"
+      @confirm="handleDeleteConfirm"
+      @cancel="handleDeleteCancel"
+    />
+
+    <!-- 강의 삭제 확인 모달 -->
+    <DeleteConfirmModal
+      v-model="showLectureDeleteModal"
+      title="강의 삭제"
+      message="정말로 이 강의를 삭제하시겠습니까?"
+      :item-info="`강의명: ${lecture?.title || ''}`"
+      @confirm="deleteLecture"
+      @cancel="cancelLectureDelete"
+    />
+
+
   </div>
 </template>
 
 <script>
 import Header from '@/components/Header.vue';
-import { useCartStore } from '@/store/cart/cart.js';
+import DeleteConfirmModal from '@/components/common/DeleteConfirmModal.vue';
+
 import { lectureService } from '@/store/lecture/lectureService';
+import { useCartStore } from '@/store/cart/cart';
+import { getUserIdFromToken } from '@/utils/api';
+
 
 export default {
   name: 'LectureDetail',
-  components: { Header },
+  components: { Header, DeleteConfirmModal },
   data() {
     return {
+      cartStore: null, // 장바구니 스토어 인스턴스
       activeTab: 'reviews',
       lecture: null,
       showShareModal: false,
@@ -600,6 +745,10 @@ export default {
        showSuccessModal: false,
        showConfirmModal: false,
        showPurchaseRequiredModal: false,
+      showLoginRequiredModal: false,
+      showDeleteConfirmModal: false,
+      showLectureDeleteModal: false,
+      deleteConfirmData: {},
       notificationData: {},
       errorMessage: '',
       successMessage: '',
@@ -608,8 +757,16 @@ export default {
         rating: 0,
         content: ''
       },
+      selectedRating: 0, // 클릭으로 선택된 별점 저장용
+      // 리뷰 수정 관련 상태
+      isEditingReview: false, // 리뷰 수정 모드인지 여부
+      editingReviewId: null, // 수정 중인 리뷰 ID
+      // Q&A 수정 관련 상태
+      isEditingQA: false, // Q&A 수정 모드인지 여부
+      editingQAId: null, // 수정 중인 Q&A ID
       newQuestion: {
-        content: ''
+        content: '',
+        parentId: null
       },
       // 구매 상태 (실제로는 API에서 확인)
       isPurchased: false,
@@ -624,29 +781,67 @@ export default {
        // 비디오 재생 상태
        isVideoPlaying: false,
        previewVideoUrl: '',
-       // 장바구니 스토어
-       cartStore: null,
+       activeLessonIndex: -1, // 현재 재생 중인 강의 인덱스
+
        // 백엔드에서 확인한 장바구니 상태
        isInCart: false,
                // 비디오 썸네일 관련
-        videoThumb: null   // 생성된 영상 썸네일
+        videoThumb: null,   // 생성된 영상 썸네일
+        // 좋아요 상태 (실제로는 API에서 확인)
+        isLiked: false
     };
   },
   computed: {
-    // 페이지네이션된 리뷰 목록
+    // 페이지네이션된 리뷰 목록 (현재 사용자 작성글 우선, 나머지는 등록순)
     paginatedReviews() {
       if (!this.lecture || !this.lecture.reviews) return [];
+      
+      // 리뷰 정렬: 현재 사용자 작성글을 상단에, 나머지는 등록순
+      const sortedReviews = [...this.lecture.reviews].sort((a, b) => {
+        // 현재 사용자가 작성한 리뷰인지 확인
+        const aIsCurrentUser = a.reviewerId === this.currentUserId;
+        const bIsCurrentUser = b.reviewerId === this.currentUserId;
+        
+        // 현재 사용자 작성글이 우선순위
+        if (aIsCurrentUser && !bIsCurrentUser) return -1;
+        if (!aIsCurrentUser && bIsCurrentUser) return 1;
+        
+        // 둘 다 현재 사용자이거나 둘 다 다른 사용자인 경우 등록순 정렬
+        // date 필드를 기준으로 최신순 정렬 (더 최근 날짜가 위로)
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        return dateB - dateA;
+      });
+      
       const startIndex = 0;
       const endIndex = this.currentReviewsPage * this.reviewsPerPage;
-      return this.lecture.reviews.slice(startIndex, endIndex);
+      return sortedReviews.slice(startIndex, endIndex);
     },
     
-    // 페이지네이션된 Q&A 목록
+    // 페이지네이션된 Q&A 목록 (현재 사용자 작성글 우선, 나머지는 등록순)
     paginatedQA() {
       if (!this.lecture || !this.lecture.qa) return [];
+      
+      // Q&A 정렬: 현재 사용자 작성글을 상단에, 나머지는 등록순
+      const sortedQA = [...this.lecture.qa].sort((a, b) => {
+        // 현재 사용자가 작성한 Q&A인지 확인
+        const aIsCurrentUser = a.questionerId === this.currentUserId;
+        const bIsCurrentUser = b.questionerId === this.currentUserId;
+        
+        // 현재 사용자 작성글이 우선순위
+        if (aIsCurrentUser && !bIsCurrentUser) return -1;
+        if (!aIsCurrentUser && bIsCurrentUser) return 1;
+        
+        // 둘 다 현재 사용자이거나 둘 다 다른 사용자인 경우 등록순 정렬
+        // questionDate 필드를 기준으로 최신순 정렬 (더 최근 날짜가 위로)
+        const dateA = new Date(a.questionDate);
+        const dateB = new Date(b.questionDate);
+        return dateB - dateA;
+      });
+      
       const startIndex = 0;
       const endIndex = this.currentQAPage * this.qaPerPage;
-      return this.lecture.qa.slice(startIndex, endIndex);
+      return sortedQA.slice(startIndex, endIndex);
     },
     
     // 리뷰 더 보기 버튼 표시 여부
@@ -664,37 +859,106 @@ export default {
     // 사용자 역할별 화면 제어 computed 속성들
     // 강의 작성자인지 확인 (CHEF, OWNER)
     isAuthor() {
-      return (this.userRole === 'CHEF' || this.userRole === 'OWNER') && this.currentUserId === this.lecture?.instructor?.id;
+              // 사용자 정보에서 직접 역할 확인
+        const userInfo = localStorage.getItem('user');
+        let userRole = 'GENERAL';
+        
+        if (userInfo) {
+          try {
+            const user = JSON.parse(userInfo);
+            userRole = user.role;
+          } catch (error) {
+            console.error('사용자 정보 파싱 오류:', error);
+          }
+        }
+      
+      const result = (userRole === 'CHEF' || userRole === 'OWNER') && this.currentUserId === this.lecture?.instructor?.id;
+      
+      console.log('=== isAuthor 디버깅 ===');
+      console.log('localStorage userRole:', userRole);
+      console.log('this.userRole:', this.userRole);
+      console.log('currentUserId:', this.currentUserId);
+      console.log('lecture?.instructor?.id:', this.lecture?.instructor?.id);
+      console.log('isAuthor result:', result);
+      console.log('========================');
+      
+      return result;
     },
     
     // 강의 구매자인지 확인
     isPurchaser() {
-      return this.userRole === 'PURCHASER' || this.isPurchased;
+      return this.isPurchased;
     },
     
     // 관리자인지 확인
     isAdmin() {
-      return this.userRole === 'ADMIN';
+      const isAdmin = this.userRole === 'ADMIN';
+      return isAdmin;
     },
     
-    // 일반 사용자(미구매자)인지 확인
+    // 로그인하지 않은 사용자인지 확인
     isGuest() {
-      return this.userRole === 'GENERAL' && !this.isPurchased;
+      const result = !this.currentUserId;
+      return result;
     },
     
-    // 장바구니 버튼 표시 여부 (일반 사용자만)
+    // 강의 구매하기 버튼 표시 여부 (로그인하지 않은 사용자만)
+    showPurchaseButton() {
+      return !this.currentUserId;
+    },
+    
+    // 장바구니에 담기 버튼 표시 여부 (로그인한 사용자 중 구매하지 않은 사용자, 장바구니에 없는 경우, 강사이면서 강의 등록자가 아닌 경우)
     showCartButton() {
-      return this.isGuest && !this.isInCart;
+      console.log('=== showCartButton 디버깅 ===');
+      console.log('isAuthor:', this.isAuthor);
+      console.log('currentUserId:', this.currentUserId);
+      console.log('isPurchased:', this.isPurchased);
+      console.log('isInCart:', this.isInCart);
+      
+      // 강사이면서 강의 등록자인 경우 버튼 숨김
+      if (this.isAuthor) {
+        console.log('강사이면서 강의 등록자이므로 버튼 숨김');
+        return false;
+      }
+      
+      const result = this.currentUserId && !this.isPurchased && !this.isInCart;
+      console.log('showCartButton result:', result);
+      console.log('========================');
+      return result;
     },
     
-    // 장바구니에서 제거 버튼 표시 여부 (일반 사용자만)
+    // 장바구니에서 제거 버튼 표시 여부 (로그인한 사용자 중 구매하지 않은 사용자, 강사이면서 강의 등록자가 아닌 경우)
     showRemoveFromCartButton() {
-      return this.isGuest && this.isInCart;
+      console.log('=== showRemoveFromCartButton 디버깅 ===');
+      console.log('isAuthor:', this.isAuthor);
+      console.log('currentUserId:', this.currentUserId);
+      console.log('isPurchased:', this.isPurchased);
+      console.log('isInCart:', this.isInCart);
+      
+      // 강사이면서 강의 등록자인 경우 버튼 숨김
+      if (this.isAuthor) {
+        console.log('강사이면서 강의 등록자이므로 버튼 숨김');
+        return false;
+      }
+      
+      const result = this.currentUserId && !this.isPurchased && this.isInCart;
+      console.log('showRemoveFromCartButton result:', result);
+      console.log('========================');
+      return result;
     },
     
-    // 강의 수정 버튼 표시 여부 (모든 사용자에게 표시)
+    // 강의 수정 버튼 표시 여부 (등록자만 표시)
     showEditButton() {
-      return true;
+      // 토큰에서 현재 사용자 ID 가져오기
+      const currentUserId = getUserIdFromToken();
+      
+      // 강의 정보가 없거나 등록자 정보가 없으면 false
+      if (!this.lecture || !this.lecture.instructor || !currentUserId) {
+        return false;
+      }
+      
+      // 현재 사용자 ID와 강의 등록자 ID가 일치하는지 확인
+      return currentUserId === this.lecture.instructor.id;
     },
     
     // 강의 삭제 버튼 표시 여부 (자영업자/요리사, 관리자)
@@ -702,29 +966,64 @@ export default {
       return this.isAuthor || this.isAdmin;
     },
     
-    // 리뷰 작성 가능 여부 (구매자, 자영업자/요리사, 관리자)
+    // 리뷰 작성 가능 여부 (구매자만, 강의 작성자는 자신의 강의에 리뷰 작성 불가)
     canWriteReview() {
-      return this.isPurchaser || this.isAuthor || this.isAdmin;
+      const result = this.isPurchased && !this.isAuthor;
+      return result;
     },
     
     // Q&A 작성 가능 여부 (구매자, 자영업자/요리사, 관리자)
     canWriteQA() {
-      return this.isPurchaser || this.isAuthor || this.isAdmin;
+      return this.isPurchased || this.isAuthor || this.isAdmin;
     },
     
     // 강의 시청 가능 여부 (구매자, 자영업자/요리사, 관리자)
     canWatchLecture() {
-      return this.isPurchaser || this.isAuthor || this.isAdmin;
+      return this.isPurchased || this.isAuthor || this.isAdmin;
     },
     
-    // 자물쇠 표시 여부 (일반 사용자만)
-    showLockIcon() {
-      return this.isGuest;
+
+    
+    // 이미 리뷰를 작성했는지 확인
+    hasUserReviewed() {
+      if (!this.currentUserId) {
+        return false;
+      }
+      
+      if (!this.lecture) {
+        return false;
+      }
+      
+      if (!this.lecture.reviews) {
+        return false;
+      }
+      
+      const matchingReviews = this.lecture.reviews.filter(review => {
+        return review.reviewerId === this.currentUserId;
+      });
+      
+      return matchingReviews.length > 0;
     },
     
-    // 구매 완료 버튼 표시 여부 (일반 사용자만)
-    showPurchaseButton() {
-      return this.isGuest;
+    // 리뷰 작성 버튼 표시 여부 (로그인한 사용자 중 리뷰 작성 가능하고 아직 리뷰를 작성하지 않은 사용자)
+    showReviewWriteButton() {
+      const result = !this.isGuest && this.canWriteReview && !this.hasUserReviewed;
+      return result;
+    }
+  },
+  watch: {
+    // previewVideoUrl이 변경될 때 썸네일 재생성
+    previewVideoUrl(newUrl) {
+      if (newUrl) {
+        this.$nextTick(() => {
+          if (this.$refs.hiddenVideo) {
+            // 비디오가 이미 로드된 경우 썸네일 생성
+            if (this.$refs.hiddenVideo.readyState >= 1) {
+              this.captureFirstFrame();
+            }
+          }
+        });
+      }
     }
   },
   methods: {
@@ -733,46 +1032,60 @@ export default {
       try {
         // TODO: 실제 로그인 API에서 사용자 정보 가져오기
         // 현재는 localStorage에서 임시로 가져옴
-        const userInfo = localStorage.getItem('userInfo');
+        const userInfo = localStorage.getItem('user');
+        
         if (userInfo) {
           const user = JSON.parse(userInfo);
           this.currentUserId = user.id;
           
-                     // 강의 작성자인지 확인 (CHEF, OWNER 모두 자영업자/요리사)
-           if (this.lecture && this.lecture.instructor && user.id === this.lecture.instructor.id) {
-             this.userRole = user.role === 'OWNER' ? 'OWNER' : 'CHEF';
-           }
-           // 관리자인지 확인
-           else if (user.role === 'ADMIN') {
-             this.userRole = 'ADMIN';
-           }
-           // 구매자인지 확인
-           else if (this.isPurchased) {
-             this.userRole = 'PURCHASER';
-           }
-           // 일반 사용자
-           else {
-             this.userRole = 'GENERAL';
-           }
-                 } else {
-           this.userRole = 'GENERAL';
-         }
-        
-        console.log('사용자 역할 확인:', this.userRole);
-             } catch (error) {
-         console.error('사용자 역할 확인 실패:', error);
-         this.userRole = 'GENERAL';
-       }
+          console.log('=== checkUserRole 디버깅 ===');
+          console.log('user.id:', user.id);
+          console.log('user.role:', user.role);
+          console.log('this.lecture:', this.lecture);
+          console.log('this.lecture?.instructor:', this.lecture?.instructor);
+          console.log('this.lecture?.instructor?.id:', this.lecture?.instructor?.id);
+          
+          // 강의 작성자인지 확인 (CHEF, OWNER 모두 자영업자/요리사)
+          if (this.lecture && this.lecture.instructor && user.id === this.lecture.instructor.id) {
+            this.userRole = user.role === 'OWNER' ? 'OWNER' : 'CHEF';
+            console.log('강의 작성자로 설정됨:', this.userRole);
+          }
+          // 관리자인지 확인
+          else if (user.role === 'ADMIN') {
+            this.userRole = 'ADMIN';
+            console.log('관리자로 설정됨');
+          }
+          // 구매자인지 확인 (구매 상태는 별도로 확인)
+          else if (this.isPurchased) {
+            this.userRole = 'PURCHASER';
+            console.log('구매자로 설정됨');
+          }
+          // 일반 사용자
+          else {
+            this.userRole = 'GENERAL';
+            console.log('일반 사용자로 설정됨');
+          }
+          console.log('최종 userRole:', this.userRole);
+          console.log('========================');
+        } else {
+          this.userRole = 'GENERAL';
+          console.log('사용자 정보가 없어서 GENERAL로 설정됨');
+        }
+      } catch (error) {
+        console.error('사용자 역할 확인 실패:', error);
+        this.userRole = 'GENERAL';
+      }
     },
     
-    // 장바구니 상태 확인 (백엔드 API 사용)
+             // 장바구니 상태 확인 (백엔드 API 사용)
     async checkCartStatus(lectureId) {
       try {
         const response = await lectureService.getCartItems();
         if (response.success) {
-          // 현재 강의가 장바구니에 있는지 확인
-          this.isInCart = response.data.some(item => item.lectureId === lectureId);
-          console.log('장바구니 상태 확인:', this.isInCart);
+          // 장바구니 목록에서 현재 강의 ID가 있는지 확인
+          this.isInCart = response.data.some(item => 
+            item.lectureId === lectureId || item.id === lectureId
+          );
         }
       } catch (error) {
         console.error('장바구니 상태 확인 실패:', error);
@@ -780,9 +1093,55 @@ export default {
       }
     },
 
+     // 좋아요 상태 확인 (백엔드 API 사용)
+     async checkLikeStatus(lectureId) {
+       try {
+         const response = await lectureService.checkLectureLikeStatus(lectureId);
+         if (response.success) {
+           this.isLiked = response.data.liked || false;
+
+         }
+       } catch (error) {
+         console.error('좋아요 상태 확인 실패:', error);
+         this.isLiked = false;
+       }
+     },
+
+     
+
+     // 구매 여부 확인 (백엔드 API 사용)
+     async checkPurchaseStatus(lectureId) {
+       try {
+         const response = await lectureService.getPurchasedLectures();
+         
+         if (response.success) {
+           // 구매한 강의 목록에서 현재 강의 ID가 있는지 확인
+           // purchase 객체에서 id 또는 lectureId 필드를 확인
+           const isPurchased = response.data.content.some(purchase => 
+             purchase.id === lectureId || purchase.lectureId === lectureId
+           );
+           
+           // 구매 상태가 변경된 경우에만 업데이트
+           if (this.isPurchased !== isPurchased) {
+             this.isPurchased = isPurchased;
+             
+             // UI 강제 업데이트
+             this.$nextTick(() => {
+               this.$forceUpdate();
+             });
+           }
+         }
+       } catch (error) {
+         console.error('구매 상태 확인 실패:', error);
+         this.isPurchased = false;
+         this.$nextTick(() => {
+           this.$forceUpdate();
+         });
+       }
+     },
+
          // 강의 데이터를 받아오는 메서드 (백엔드 API 호출)
      async fetchLectureData(lectureId) {
-       console.log('강의 ID:', lectureId, typeof lectureId);
        
                // 썸네일 상태 초기화
         this.videoThumb = null;
@@ -792,55 +1151,117 @@ export default {
         
         if (response.success) {
           const lectureData = response.data;
-          console.log('백엔드에서 받은 강의 데이터:', lectureData);
+
+
           
-                     // 백엔드 데이터를 프론트엔드 형식으로 변환
-           this.lecture = {
-             id: lectureData.lectureId,
-             title: lectureData.title,
-             description: lectureData.description,
-             category: this.getCategoryName(lectureData.category),
-             level: this.getLevelName(lectureData.level),
-             price: lectureData.price,
-             reviewCount: lectureData.reviewCount,
-             qnaCount: lectureData.qnaCount,
-             totalDuration: this.calculateTotalDuration(lectureData.lectureVideoResDtoList),
-             instructor: {
-               name: lectureData.name,
-               title: '요리 전문가'
-             },
-             lessons: this.convertVideosToLessons(lectureData.lectureVideoResDtoList),
-             reviews: this.convertReviews(lectureData.lectureReviewResDtoList),
-             qa: this.convertQA(lectureData.qnaList),
-             recipe: this.convertRecipe(lectureData.ingredResDtoList, lectureData.lectureStepResDtoList),
-             // 백엔드에서 제공하는 평균 평점 사용
-             rating: lectureData.reviewAvg || 0,
-             ratingCount: lectureData.reviewCount,
-                           students: lectureData.purchaseCount || 0, // 구매한 수강생 수
-             // 장바구니용 필드들
-             image: lectureData.thumbUrl || '/src/assets/images/smu_mascort1.jpg', // 썸네일 URL
-             teacher: lectureData.name // 강사명
-           };
+          try {
+            // 백엔드 데이터를 프론트엔드 형식으로 변환
+            this.lecture = {
+              id: lectureData.lectureId,
+              title: lectureData.title,
+              description: lectureData.description,
+              category: this.getCategoryName(lectureData.category),
+              level: this.getLevelName(lectureData.level),
+              price: lectureData.price,
+              reviewCount: lectureData.reviewCount,
+              qnaCount: lectureData.qnaCount,
+              totalDuration: this.calculateTotalDuration(lectureData.lectureVideoResDtoList),
+              instructor: {
+                name: lectureData.name,
+                title: '요리 전문가',
+                id: lectureData.submittedById
+              },
+              lessons: this.convertVideosToLessons(lectureData.lectureVideoResDtoList),
+              reviews: this.convertReviews(lectureData.lectureReviewResDtoList || []),
+              qa: this.convertQA(lectureData.qnaList || []),
+              recipe: this.convertRecipe(lectureData.ingredResDtoList, lectureData.lectureStepResDtoList),
+              // 백엔드에서 제공하는 평균 평점 사용
+              rating: lectureData.reviewAvg || 0,
+              ratingCount: lectureData.reviewCount,
+              students: lectureData.purchaseCount || 0, // 구매한 수강생 수
+              // 장바구니용 필드들
+              image: lectureData.thumbUrl || '/src/assets/images/smu_mascort1.jpg', // 썸네일 URL
+              teacher: lectureData.name, // 강사명
+              // 강사 프로필 이미지 URL 추가
+              submittedByProfile: lectureData.submittedByProfile
+            };
+            
+            // 이미지 URL 디버깅 로그
+            console.log('=== 이미지 URL 디버깅 ===');
+            console.log('강사 프로필 이미지 URL (submittedByProfile):', this.lecture.submittedByProfile);
+            console.log('강사 프로필 이미지 URL 타입:', typeof this.lecture.submittedByProfile);
+            console.log('강사 프로필 이미지 URL 존재 여부:', !!this.lecture.submittedByProfile);
+            
+            // 리뷰어 프로필 이미지 URL 디버깅
+            if (this.lecture.reviews && this.lecture.reviews.length > 0) {
+              console.log('=== 리뷰어 프로필 이미지 URL 디버깅 ===');
+              this.lecture.reviews.forEach((review, index) => {
+                console.log(`리뷰 ${index + 1} - 리뷰어: ${review.writer}`);
+                console.log(`리뷰 ${index + 1} - 프로필 URL (profileUrl):`, review.profileUrl);
+                console.log(`리뷰 ${index + 1} - 프로필 URL 타입:`, typeof review.profileUrl);
+                console.log(`리뷰 ${index + 1} - 프로필 URL 존재 여부:`, !!review.profileUrl);
+              });
+            } else {
+              console.log('리뷰가 없습니다.');
+            }
+            
+            // Q&A 작성자 프로필 이미지 URL 디버깅
+            if (this.lecture.qa && this.lecture.qa.length > 0) {
+              console.log('=== Q&A 작성자 프로필 이미지 URL 디버깅 ===');
+              this.lecture.qa.forEach((qa, index) => {
+                console.log(`Q&A ${index + 1} - 질문자: ${qa.questionerId}`);
+                console.log(`Q&A ${index + 1} - 질문자 프로필 URL (parentProfileUrl):`, qa.parentProfileUrl);
+                console.log(`Q&A ${index + 1} - 질문자 프로필 URL 타입:`, typeof qa.parentProfileUrl);
+                console.log(`Q&A ${index + 1} - 질문자 프로필 URL 존재 여부:`, !!qa.parentProfileUrl);
+                
+                if (qa.hasAnswer) {
+                  console.log(`Q&A ${index + 1} - 답변자: ${qa.answererId}`);
+                  console.log(`Q&A ${index + 1} - 답변자 프로필 URL (answerProfileUrl):`, qa.answerProfileUrl);
+                  console.log(`Q&A ${index + 1} - 답변자 프로필 URL 타입:`, typeof qa.answerProfileUrl);
+                  console.log(`Q&A ${index + 1} - 답변자 프로필 URL 존재 여부:`, !!qa.answerProfileUrl);
+                }
+              });
+            } else {
+              console.log('Q&A가 없습니다.');
+            }
+            console.log('=== 이미지 URL 디버깅 끝 ===');
+          } catch (error) {
+            console.error('강의 데이터 변환 오류:', error);
+            this.showError('강의 데이터를 처리하는 중 오류가 발생했습니다.');
+            return;
+          }
         } else {
           console.error('강의 상세 조회 실패:', response.message);
           this.showError('강의 정보를 불러오는데 실패했습니다.');
         }
         
-                                   // 사용자 역할 및 장바구니 상태 확인
-          await this.checkUserRole(lectureId);
-          await this.checkCartStatus(lectureId);
+                                              // 사용자 역할 및 장바구니 상태 확인
+           await this.checkUserRole(lectureId);
+           await this.checkCartStatus(lectureId);
+           
+           // 구매 상태 확인
+           await this.checkPurchaseStatus(lectureId);
+           
+           // 좋아요 상태 확인
+           await this.checkLikeStatus(lectureId);
+           
+           // 강의 데이터가 완전히 로드된 후 사용자 역할을 다시 확인
+           this.$nextTick(async () => {
+             if (this.lecture && this.lecture.instructor) {
+               console.log('강의 데이터 로드 완료 후 사용자 역할 재확인');
+               await this.checkUserRole(lectureId);
+             }
+           });
          
                    // 미리보기 비디오 URL 설정
           const previewLesson = this.lecture.lessons.find(lesson => lesson.isPreview && lesson.videoUrl);
           if (previewLesson && previewLesson.videoUrl) {
             this.previewVideoUrl = previewLesson.videoUrl;
-            console.log('미리보기 비디오 URL 설정:', this.previewVideoUrl);
           } else {
             // 미리보기 강의가 없으면 첫 번째 강의 사용
             const firstLesson = this.lecture.lessons.find(lesson => lesson.videoUrl);
             if (firstLesson && firstLesson.videoUrl) {
               this.previewVideoUrl = firstLesson.videoUrl;
-              console.log('첫 번째 강의 비디오 URL 설정:', this.previewVideoUrl);
             }
           }
           
@@ -849,7 +1270,10 @@ export default {
             this.$nextTick(() => {
               // 숨겨진 비디오가 로드되면 썸네일 생성
               if (this.$refs.hiddenVideo) {
-                console.log('숨겨진 비디오 요소 확인됨, 썸네일 생성 시작');
+                // 비디오가 이미 로드된 경우 썸네일 생성
+                if (this.$refs.hiddenVideo.readyState >= 1) {
+                  this.captureFirstFrame();
+                }
               }
             });
           }
@@ -929,34 +1353,75 @@ export default {
       });
     },
     
-         // 리뷰 데이터 변환
-     convertReviews(reviews) {
-       if (!reviews || reviews.length === 0) return [];
-       
-       return reviews.map(review => ({
-         id: Math.random().toString(36).substr(2, 9),
-         writer: review.writer,
-         rating: review.rating,
-         content: review.content,
-         date: new Date().toLocaleDateString('ko-KR')
-       }));
-     },
+             // 리뷰 데이터 변환
+    convertReviews(reviews) {
+      if (!reviews || reviews.length === 0) return [];
+      
+      const self = this; // this 컨텍스트를 명시적으로 저장
+      
+      return reviews.map((review, index) => {
+        try {
+          const convertedReview = {
+            id: Math.random().toString(36).substr(2, 9),
+            writer: review.writer || '익명',
+            rating: review.rating || 0,
+            content: review.content || '',
+            date: self.formatReviewDate(review.updateAt, review.createAt),
+            reviewerId: review.reviewerId || null,
+            profileUrl: review.profileUrl || null
+          };
+          
+          return convertedReview;
+        } catch (error) {
+          console.error(`리뷰 ${index + 1} 변환 오류:`, error, '리뷰 데이터:', review);
+          // 오류가 발생해도 기본값으로 반환
+          return {
+            id: Math.random().toString(36).substr(2, 9),
+            writer: '익명',
+            rating: 0,
+            content: '리뷰를 불러오는 중 오류가 발생했습니다.',
+            date: '',
+            reviewerId: null,
+            profileUrl: null
+          };
+        }
+      });
+    },
     
          // Q&A 데이터 변환 (질문-답글 구조)
      convertQA(qaList) {
-       if (!qaList || qaList.length === 0) return [];
+
        
-       return qaList.map(qa => ({
-         id: Math.random().toString(36).substr(2, 9),
+       if (!qaList || qaList.length === 0) {
+
+         return [];
+       }
+       
+       const convertedQA = qaList.map(qa => ({
+         id: qa.qnaId || qa.parentId, // Use qnaId if available, fallback to parentId
+         qnaId: qa.qnaId, // Store the actual qnaId for API calls
          questionerId: qa.parentName || '익명',
+         questionerUUID: qa.parentId, // Add UUID for comparison
          question: qa.parentContent,
-         questionDate: this.formatDate(qa.parentCreatedAt),
+         questionDate: this.formatQADate(qa.parentCreatedAt),
+         questionUpdatedAt: qa.questionUpdatedAt ? this.formatQADate(qa.questionUpdatedAt) : null,
          // 답글이 있는 경우에만 답글 정보 포함
          hasAnswer: !!(qa.answerContent && qa.answerName),
          answer: qa.answerContent || null,
          answererId: qa.answerName || null,
-         answerDate: qa.answerCreatedAt ? this.formatDate(qa.answerCreatedAt) : null
+         answererUUID: qa.answerId || null, // Add UUID for comparison
+         answerDate: qa.answerCreatedAt ? this.formatQADate(qa.answerCreatedAt) : null,
+         answerUpdatedAt: qa.answerUpdatedAt ? this.formatQADate(qa.answerUpdatedAt) : null,
+         // 상태 정보
+         parentStatus: qa.parentStatus,
+         answerStatus: qa.answerStatus,
+         // 프로필 이미지 URL 추가
+         parentProfileUrl: qa.parentProfileUrl || null,
+         answerProfileUrl: qa.answerProfileUrl || null
        }));
+       
+       
+       return convertedQA;
      },
      
      // 날짜 포맷팅 메서드
@@ -964,6 +1429,76 @@ export default {
        if (!dateString) return '';
        const date = new Date(dateString);
        return date.toLocaleDateString('ko-KR');
+     },
+     
+     // Q&A 날짜 포맷팅 메서드 (updateAt 우선, 없으면 createAt 사용)
+     formatQADate(updateAt, createAt) {
+       try {
+         const dateString = updateAt || createAt;
+         if (!dateString) return '';
+         
+         // LocalDateTime 객체인 경우 처리
+         if (typeof dateString === 'object' && dateString !== null) {
+           // 객체에서 날짜 정보 추출 시도
+           if (dateString.year && dateString.month && dateString.day) {
+             const date = new Date(dateString.year, dateString.month - 1, dateString.day);
+             return date.toLocaleDateString('ko-KR');
+           }
+           // 다른 형식의 객체인 경우 JSON으로 변환 시도
+           return '';
+         }
+         
+         // 문자열인 경우
+         if (typeof dateString === 'string') {
+           const date = new Date(dateString);
+           if (isNaN(date.getTime())) {
+             console.warn('유효하지 않은 날짜 문자열:', dateString);
+             return '';
+           }
+           return date.toLocaleDateString('ko-KR');
+         }
+         
+         console.warn('지원하지 않는 날짜 형식:', dateString);
+         return '';
+       } catch (error) {
+         console.error('Q&A 날짜 포맷팅 오류:', error, '입력값:', updateAt, createAt);
+         return '';
+       }
+     },
+     
+     // 리뷰 날짜 포맷팅 메서드 (updateAt 우선, 없으면 createAt 사용)
+     formatReviewDate(updateAt, createAt) {
+       try {
+         const dateString = updateAt || createAt;
+         if (!dateString) return '';
+         
+         // LocalDateTime 객체인 경우 처리
+         if (typeof dateString === 'object' && dateString !== null) {
+           // 객체에서 날짜 정보 추출 시도
+           if (dateString.year && dateString.month && dateString.day) {
+             const date = new Date(dateString.year, dateString.month - 1, dateString.day);
+             return date.toLocaleDateString('ko-KR');
+           }
+           // 다른 형식의 객체인 경우 JSON으로 변환 시도
+           return '';
+         }
+         
+         // 문자열인 경우
+         if (typeof dateString === 'string') {
+           const date = new Date(dateString);
+           if (isNaN(date.getTime())) {
+             console.warn('유효하지 않은 날짜 문자열:', dateString);
+             return '';
+           }
+           return date.toLocaleDateString('ko-KR');
+         }
+         
+         console.warn('지원하지 않는 날짜 형식:', dateString);
+         return '';
+       } catch (error) {
+         console.error('날짜 포맷팅 오류:', error, '입력값:', updateAt, createAt);
+         return '';
+       }
      },
     
     // 레시피 데이터 변환
@@ -982,45 +1517,89 @@ export default {
        // 첫 번째 미리보기 비디오 찾기
        const previewLesson = this.lecture.lessons.find(lesson => lesson.isPreview && lesson.videoUrl);
        
-       if (previewLesson && previewLesson.videoUrl) {
-         this.previewVideoUrl = previewLesson.videoUrl;
-         this.isVideoPlaying = true;
-         
-         // 비디오 요소가 렌더링된 후 재생
-         this.$nextTick(() => {
-           if (this.$refs.previewVideo) {
-             this.$refs.previewVideo.play().catch(error => {
-               console.error('비디오 재생 실패:', error);
-               this.showError('비디오 재생에 실패했습니다.');
-               this.isVideoPlaying = false;
-             });
-           }
-         });
-       } else {
+                     if (previewLesson && previewLesson.videoUrl) {
+                // 미리보기 강의의 인덱스 찾기
+                const previewIndex = this.lecture.lessons.findIndex(lesson => lesson.isPreview && lesson.videoUrl);
+                this.playVideo(previewLesson, previewIndex);
+              } else {
          this.showError('미리보기 비디오를 찾을 수 없습니다.');
        }
      },
      
+     // 비디오 로드 시작
+     onVideoLoadStart() {
+
+     },
+
+     // 비디오 재생 가능
+     onVideoCanPlay() {
+
+     },
+
+     // 비디오 에러 처리
+     onVideoError(event) {
+       console.error('비디오 에러:', event);
+       this.showError('비디오를 재생할 수 없습니다.');
+     },
+
      // 비디오 종료 시 처리
      onVideoEnded() {
+       console.log('비디오 종료됨, 다음 강의 자동 재생 시도');
+       
+       // 다음 강의가 있는지 확인
+       if (this.activeLessonIndex >= 0 && this.activeLessonIndex < this.lecture.lessons.length - 1) {
+         const nextIndex = this.activeLessonIndex + 1;
+         const nextLesson = this.lecture.lessons[nextIndex];
+         
+         // 비로그인 사용자인 경우 자동 재생 방지
+         if (this.isGuest) {
+           console.log('비로그인 사용자 - 자동 재생 방지');
+           this.showPurchaseRequiredModal = true;
+           this.isVideoPlaying = false;
+           this.previewVideoUrl = '';
+           this.activeLessonIndex = -1;
+           return;
+         }
+         
+         // 다음 강의가 시청 가능한지 확인
+         if (nextLesson && nextLesson.videoUrl && (this.canWatchLecture || nextLesson.isPreview)) {
+           console.log('다음 강의 자동 재생:', nextLesson);
+           this.playVideo(nextLesson, nextIndex);
+           return;
+         }
+       }
+       
+       // 다음 강의가 없거나 시청할 수 없는 경우
        this.isVideoPlaying = false;
        this.previewVideoUrl = '';
+       this.activeLessonIndex = -1;
      },
      
-     // 비디오 재생 메서드
-     playVideo(lesson) {
-       console.log('비디오 재생 시도:', lesson);
-       
+
+     
+     // 비디오 재생 메서드 (메인 영역에서 재생)
+     playVideo(lesson, lessonIndex = -1) {
        if (lesson.videoUrl) {
-         console.log('비디오 URL:', lesson.videoUrl);
-         
          // URL이 유효한지 확인
          try {
            const url = new URL(lesson.videoUrl);
-           console.log('유효한 URL:', url.href);
            
-           // 새 탭에서 비디오 URL 열기
-           window.open(lesson.videoUrl, '_blank');
+           // 메인 비디오 영역에서 재생
+           this.previewVideoUrl = lesson.videoUrl;
+           this.isVideoPlaying = true;
+           this.activeLessonIndex = lessonIndex; // 현재 재생 중인 강의 인덱스 설정
+           
+           // 비디오 요소가 렌더링된 후 재생
+           this.$nextTick(() => {
+             if (this.$refs.previewVideo) {
+               this.$refs.previewVideo.load();
+               this.$refs.previewVideo.play().catch(error => {
+                 console.error('비디오 재생 실패:', error);
+                 this.showError('비디오 재생에 실패했습니다.');
+                 this.isVideoPlaying = false;
+               });
+             }
+           });
          } catch (error) {
            console.error('잘못된 URL 형식:', lesson.videoUrl);
            this.showError('잘못된 비디오 URL 형식입니다.');
@@ -1030,6 +1609,14 @@ export default {
          this.showError('비디오 URL이 없습니다.');
        }
      },
+     
+
+
+
+
+
+     
+
     
     
 
@@ -1129,8 +1716,8 @@ export default {
       }
     },
 
-    // 리뷰 제출
-    submitReview() {
+    // 리뷰 제출 (등록 또는 수정)
+    async submitReview() {
       if (this.newReview.rating === 0) {
         this.showError('평점을 선택해주세요.');
         return;
@@ -1141,54 +1728,132 @@ export default {
         return;
       }
 
-      // 새로운 리뷰 객체 생성
-      const review = {
-        id: Date.now(),
-        reviewerId: 'user123', // 실제로는 로그인된 사용자 ID
-        rating: this.newReview.rating,
-        content: this.newReview.content,
-        date: new Date().toLocaleDateString('ko-KR')
-      };
+      try {
+        // 디버깅: lecture 객체와 lectureId 확인
+        
+        
+        // lectureId가 없으면 id를 사용
+        const lectureId = this.lecture.lectureId || this.lecture.id;
+        
+        
+        // 리뷰 데이터 준비
+        const reviewData = {
+          rating: this.newReview.rating,
+          content: this.newReview.content,
+          lectureId: lectureId
+        };
 
-      // 리뷰 추가
-      this.lecture.reviews.push(review);
+        
+        
+        let response;
+        if (this.isEditingReview) {
+          // 리뷰 수정 API 호출
+          
+          response = await lectureService.modifyReview(reviewData);
+          
+        } else {
+          // 리뷰 등록 API 호출
+          
+          response = await lectureService.createReview(reviewData);
+          
+        }
 
-      // 평점 업데이트
-      this.updateLectureRating();
+        // 백엔드 응답 구조에 따라 성공 여부 확인
+        // ResponseDto.ok("리뷰가 등록되었습니다.", HttpStatus.CREATED) 형태의 응답
+        if (response && (response.success === true || response.code === 201 || response.code === 200)) {
+          // 성공 메시지 표시 (상태 변경 전에 저장)
+          const successMessage = this.isEditingReview ? '리뷰가 성공적으로 수정되었습니다.' : '리뷰가 성공적으로 등록되었습니다.';
+          
+          // 모달 닫기 및 폼 초기화
+          this.closeReviewModal();
 
-      // 모달 닫기 및 폼 초기화
-      this.showReviewModal = false;
-      this.newReview = { rating: 0, content: '' };
+          this.showSuccess(successMessage);
 
-      this.showSuccess('리뷰가 등록되었습니다!');
+          // 강의 상세 정보 새로고침 (리뷰 목록 업데이트)
+          await this.fetchLectureData(this.lecture.id);
+        } else {
+          // 실패 시에도 모달은 닫고 에러 메시지만 표시
+          const wasEditing = this.isEditingReview;
+          this.closeReviewModal();
+          this.showError(wasEditing ? '리뷰 수정에 실패했습니다.' : '리뷰 등록에 실패했습니다.');
+        }
+      } catch (error) {
+        console.error('리뷰 처리 오류:', error);
+        // 에러 발생 시에도 모달은 닫기
+        const wasEditing = this.isEditingReview;
+        this.closeReviewModal();
+        this.showError(wasEditing ? '리뷰 수정 중 오류가 발생했습니다.' : '리뷰 등록 중 오류가 발생했습니다.');
+      }
     },
 
-    // Q&A 제출
-    submitQuestion() {
+    // Q&A 제출 (API 연동)
+    async submitQuestion() {
       if (!this.newQuestion.content.trim()) {
         this.showError('질문 내용을 작성해주세요.');
         return;
       }
 
-      // 새로운 Q&A 객체 생성
-      const qa = {
-        id: Date.now(),
-        questionerId: 'user123', // 실제로는 로그인된 사용자 ID
-        question: this.newQuestion.content,
-        questionDate: new Date().toLocaleDateString('ko-KR'),
-        answer: null,
-        answererId: null,
-        answerDate: null
-      };
-
-      // Q&A 추가
-      this.lecture.qa.push(qa);
-
-      // 모달 닫기 및 폼 초기화
-      this.showQAModal = false;
-      this.newQuestion = { content: '' };
-
-      this.showSuccess('질문이 등록되었습니다!');
+      try {
+        if (this.isEditingQA) {
+          // Q&A 수정
+          
+          
+          // Q&A 수정 데이터 준비
+          const qnaData = {
+            content: this.newQuestion.content.trim()
+          };
+          
+          // API 호출
+          const response = await lectureService.updateQna(this.editingQAId, qnaData);
+          
+          
+          if (response && (response.success === true || response.code === 200)) {
+            // 성공 시 모달 닫기 및 폼 초기화
+            this.showQAModal = false;
+            this.isEditingQA = false;
+            this.editingQAId = null;
+            this.newQuestion = { content: '', parentId: null };
+            
+            // 성공 메시지 표시
+            this.showSuccess('질문이 성공적으로 수정되었습니다.');
+            
+            // 강의 데이터 새로고침 (Q&A 목록 업데이트)
+            await this.fetchLectureData(this.lecture.id);
+          } else {
+            this.showError('질문 수정에 실패했습니다.');
+          }
+        } else {
+          // Q&A 등록
+          
+          
+          // Q&A 데이터 준비
+          const qnaData = {
+            content: this.newQuestion.content.trim(),
+            parentId: this.newQuestion.parentId // 질문자의 경우 null, 답변자의 경우 질문 ID
+          };
+          
+          // API 호출
+          const response = await lectureService.createQna(this.lecture.id, qnaData);
+          
+          
+          if (response && (response.success === true || response.code === 200 || response.code === 201)) {
+            // 성공 시 모달 닫기 및 폼 초기화
+            this.showQAModal = false;
+            this.newQuestion = { content: '', parentId: null };
+            
+            // 성공 메시지 표시
+            this.showSuccess('질문이 성공적으로 등록되었습니다.');
+            
+            // 강의 데이터 새로고침 (Q&A 목록 업데이트)
+            await this.fetchLectureData(this.lecture.id);
+          } else {
+            this.showError('질문 등록에 실패했습니다.');
+          }
+        }
+      } catch (error) {
+        console.error('Q&A 처리 중 오류:', error);
+        this.showError(this.isEditingQA ? '질문 수정 중 오류가 발생했습니다.' : '질문 등록 중 오류가 발생했습니다.');
+      }
     },
 
     // 강의 평점 업데이트
@@ -1205,16 +1870,28 @@ export default {
     },
 
           // 강의 구매
-      purchaseLecture() {
-               // 실제로는 결제 API 호출
-       this.isPurchased = true;
-       this.userRole = 'PURCHASER';
-        this.showNotification({
-          title: '구매 완료',
-          icon: '🎉',
-          message: '강의가 구매되었습니다!',
-          submessage: '이제 리뷰를 작성할 수 있습니다.'
-        });
+      async purchaseLecture() {
+        try {
+          // 실제로는 결제 API 호출
+          // TODO: 실제 결제 API 호출 로직 추가
+          
+          // 구매 상태 업데이트
+          this.isPurchased = true;
+          this.userRole = 'PURCHASER';
+          
+          // 구매 상태를 백엔드에서 다시 확인하여 동기화
+          await this.checkPurchaseStatus(this.lecture.id);
+          
+          this.showNotification({
+            title: '구매 완료',
+            icon: '🎉',
+            message: '강의가 구매되었습니다!',
+            submessage: '이제 리뷰를 작성할 수 있습니다.'
+          });
+        } catch (error) {
+          console.error('구매 처리 중 오류:', error);
+          this.showError('구매 처리 중 오류가 발생했습니다.');
+        }
       },
       
       // 강의 시청 페이지로 이동
@@ -1228,139 +1905,319 @@ export default {
          // 강의 수정 페이지로 라우팅
          this.$router.push(`/lectures/edit/${this.lecture.id}`);
        },
+
+       // 강의 삭제 확인 모달 표시
+       showDeleteConfirm() {
+         this.showLectureDeleteModal = true;
+       },
+
+       // 강의 삭제 실행
+       async deleteLecture() {
+         try {
+           await this.deleteLectureFromServer();
+           this.showSuccess('강의가 삭제되었습니다.');
+           this.$router.push('/lectures');
+         } catch (error) {
+           this.showError('강의 삭제에 실패했습니다.');
+         } finally {
+           this.showLectureDeleteModal = false;
+         }
+       },
+
+       // 강의 삭제 취소
+       cancelLectureDelete() {
+         this.showLectureDeleteModal = false;
+       },
       
-      // 강의 삭제
-      deleteLecture() {
-        this.showConfirm({
-          title: '강의 삭제',
-          icon: '🗑️',
-          message: '정말로 이 강의를 삭제하시겠습니까?',
-          submessage: '삭제된 강의는 복구할 수 없습니다.',
-          confirmText: '삭제하기',
-          callback: async () => {
-            try {
-              // TODO: 실제 삭제 API 호출
-              await this.deleteLectureFromServer();
-              this.showSuccess('강의가 삭제되었습니다.');
-              this.$router.push('/lectures');
-            } catch (error) {
-              this.showError('강의 삭제에 실패했습니다.');
-            }
-          }
-        });
-      },
+
       
       // 서버에서 강의 삭제
       async deleteLectureFromServer() {
-        // TODO: 실제 API 호출 구현
-        console.log('강의 삭제 API 호출:', this.lecture.id);
-        return new Promise((resolve) => {
-          setTimeout(resolve, 1000);
-        });
+        try {
+          const result = await lectureService.deleteLecture(this.lecture.id);
+   
+          return result;
+        } catch (error) {
+          console.error('강의 삭제 오류:', error);
+          throw error;
+        }
       },
       
       // 리뷰 수정 가능 여부 확인
       canEditReview(review) {
-        return this.currentUserId && (
-          review.writerId === this.currentUserId || 
-          this.isAuthor || 
-          this.isAdmin
-        );
+        return this.currentUserId && review.reviewerId && this.currentUserId === review.reviewerId;
       },
       
       // Q&A 수정 가능 여부 확인
       canEditQA(qa) {
-        return this.currentUserId && (
-          qa.questionerId === this.currentUserId || 
-          this.isAuthor || 
-          this.isAdmin
-        );
+        if (!this.currentUserId) { return false; }
+        if (this.isAuthor || this.isAdmin) { return true; }
+        return this.currentUserId && qa.questionerUUID && this.currentUserId === qa.questionerUUID;
       },
       
       // 리뷰 수정
       editReview(review) {
-        // TODO: 리뷰 수정 모달 또는 페이지로 이동
-        console.log('리뷰 수정:', review);
-        this.showNotification({
-          title: '리뷰 수정',
-          icon: '✏️',
-          message: '리뷰 수정 기능은 준비 중입니다.'
-        });
+ 
+        this.isEditingReview = true;
+        this.editingReviewId = review.id;
+        this.newReview = {
+          rating: review.rating,
+          content: review.content
+        };
+        this.selectedRating = review.rating;
+        this.showReviewModal = true;
       },
       
-      // 리뷰 삭제
-      deleteReview(review) {
-        this.showConfirm({
-          title: '리뷰 삭제',
-          icon: '🗑️',
-          message: '정말로 이 리뷰를 삭제하시겠습니까?',
-          confirmText: '삭제하기',
-          callback: async () => {
-            try {
-              // TODO: 실제 삭제 API 호출
-              await this.deleteReviewFromServer(review.id);
-              this.lecture.reviews = this.lecture.reviews.filter(r => r.id !== review.id);
-              this.showSuccess('리뷰가 삭제되었습니다.');
-            } catch (error) {
+              // 리뷰 삭제
+        deleteReview(review) {
+   
+          
+          // 삭제 확인 모달 표시
+          this.deleteConfirmData = {
+            title: '리뷰 삭제',
+            message: '정말로 이 리뷰를 삭제하시겠습니까?',
+            itemInfo: {
+              title: `"${review.content.substring(0, 30)}${review.content.length > 30 ? '...' : ''}"`
+            },
+            review: review
+          };
+          this.showDeleteConfirmModal = true;
+        },
+
+        // 리뷰 삭제 확인 처리
+        async confirmDeleteReview() {
+          try {
+            const review = this.deleteConfirmData.review;
+            const lectureId = this.lecture.lectureId || this.lecture.id;
+     
+            
+            const response = await lectureService.deleteReview(lectureId);
+     
+            
+            if (response && (response.success === true || response.code === 200)) {
+              // 모달 닫기
+              this.showDeleteConfirmModal = false;
+              
+              // 약간의 지연 후 성공 메시지 표시
+              setTimeout(() => {
+                this.showSuccess('리뷰가 성공적으로 삭제되었습니다.');
+              }, 300);
+              
+              // 강의 데이터 새로고침
+              await this.fetchLectureData(this.lecture.id);
+            } else {
               this.showError('리뷰 삭제에 실패했습니다.');
             }
+          } catch (error) {
+            console.error('리뷰 삭제 중 오류:', error);
+            this.showError('리뷰 삭제 중 오류가 발생했습니다.');
+          } finally {
+            this.showDeleteConfirmModal = false;
+            this.deleteConfirmData = {};
           }
-        });
-      },
+        },
+
+        // 삭제 확인 모달 취소
+        cancelDeleteReview() {
+          this.showDeleteConfirmModal = false;
+          this.deleteConfirmData = {};
+        },
+
+        // Q&A 삭제 확인 처리
+        async confirmDeleteQA() {
+          try {
+            const qa = this.deleteConfirmData.qa;
+     
+            
+            const response = await lectureService.deleteQna(qa.id);
+     
+            
+            if (response && (response.success === true || response.code === 200)) {
+              // 모달 닫기
+              this.showDeleteConfirmModal = false;
+              
+              // 약간의 지연 후 성공 메시지 표시
+              setTimeout(() => {
+                this.showSuccess('질문이 성공적으로 삭제되었습니다.');
+              }, 300);
+              
+              // 강의 데이터 새로고침
+              await this.fetchLectureData(this.lecture.id);
+            } else {
+              this.showError('질문 삭제에 실패했습니다.');
+            }
+          } catch (error) {
+            console.error('Q&A 삭제 중 오류:', error);
+            this.showError('질문 삭제 중 오류가 발생했습니다.');
+          } finally {
+            this.showDeleteConfirmModal = false;
+            this.deleteConfirmData = {};
+          }
+        },
+
+        // Q&A 삭제 확인 모달 취소
+        cancelDeleteQA() {
+          this.showDeleteConfirmModal = false;
+          this.deleteConfirmData = {};
+        },
+
+        // 삭제 확인 처리 (리뷰 또는 Q&A)
+        handleDeleteConfirm() {
+          if (this.deleteConfirmData.review) {
+            this.confirmDeleteReview();
+          } else if (this.deleteConfirmData.qa) {
+            this.confirmDeleteQA();
+          }
+        },
+
+        // 삭제 취소 처리 (리뷰 또는 Q&A)
+        handleDeleteCancel() {
+          if (this.deleteConfirmData.review) {
+            this.cancelDeleteReview();
+          } else if (this.deleteConfirmData.qa) {
+            this.cancelDeleteQA();
+          }
+        },
+
+
       
       // Q&A 수정
       editQA(qa) {
-        // TODO: Q&A 수정 모달 또는 페이지로 이동
-        console.log('Q&A 수정:', qa);
-        this.showNotification({
-          title: 'Q&A 수정',
-          icon: '✏️',
-          message: 'Q&A 수정 기능은 준비 중입니다.'
-        });
+ 
+        this.isEditingQA = true;
+        this.editingQAId = qa.qnaId || qa.id; // Use qnaId if available, fallback to id
+        this.newQuestion = {
+          content: qa.question,
+          parentId: null
+        };
+        this.showQAModal = true;
       },
       
       // Q&A 삭제
       deleteQA(qa) {
-        this.showConfirm({
+ 
+        
+        // 삭제 확인 모달 표시
+        this.deleteConfirmData = {
           title: 'Q&A 삭제',
-          icon: '🗑️',
           message: '정말로 이 질문을 삭제하시겠습니까?',
-          confirmText: '삭제하기',
-          callback: async () => {
-            try {
-              // TODO: 실제 삭제 API 호출
-              await this.deleteQAFromServer(qa.id);
-              this.lecture.qa = this.lecture.qa.filter(q => q.id !== qa.id);
-              this.showSuccess('질문이 삭제되었습니다.');
-            } catch (error) {
-              this.showError('질문 삭제에 실패했습니다.');
-            }
-          }
-        });
+          itemInfo: {
+            title: `"${qa.question.substring(0, 30)}${qa.question.length > 30 ? '...' : ''}"`
+          },
+          qa: qa
+        };
+        this.showDeleteConfirmModal = true;
       },
       
-      // 서버에서 리뷰 삭제
-      async deleteReviewFromServer(reviewId) {
-        // TODO: 실제 API 호출 구현
-        console.log('리뷰 삭제 API 호출:', reviewId);
-        return new Promise((resolve) => {
-          setTimeout(resolve, 1000);
-        });
-      },
+
       
-      // 서버에서 Q&A 삭제
-      async deleteQAFromServer(qaId) {
-        // TODO: 실제 API 호출 구현
-        console.log('Q&A 삭제 API 호출:', qaId);
-        return new Promise((resolve) => {
-          setTimeout(resolve, 1000);
-        });
+
+
+      // 리뷰 모달 닫기
+      closeReviewModal() {
+        this.showReviewModal = false;
+        this.isEditingReview = false;
+        this.editingReviewId = null;
+        this.newReview = { rating: 0, content: '' };
+        this.selectedRating = 0;
+      },
+
+      // 리뷰 작성 처리 (로그인 및 구매 확인)
+      handleReviewWrite() {
+        // 로그인하지 않은 경우
+        if (this.isGuest) {
+          this.showLoginRequiredModal = true;
+          return;
+        }
+        
+        // 강의 작성자는 자신의 강의에 리뷰를 작성할 수 없음
+        if (this.isAuthor) {
+          this.showError('강의 작성자는 자신의 강의에 리뷰를 작성할 수 없습니다.');
+          return;
+        }
+        
+        // 로그인했지만 구매하지 않은 경우
+        if (!this.isPurchased) {
+          this.showPurchaseRequiredModal = true;
+          return;
+        }
+        
+        // 구매한 경우 바로 작성 모달 열기
+        // 새 리뷰 작성 모드로 설정
+        this.isEditingReview = false;
+        this.editingReviewId = null;
+        this.newReview = { rating: 0, content: '' };
+        this.selectedRating = 0;
+        this.showReviewModal = true;
+      },
+
+      // Q&A 작성 처리 (로그인 및 구매 확인)
+      handleQAWrite() {
+        // 로그인하지 않은 경우
+        if (this.isGuest) {
+          this.showLoginRequiredModal = true;
+          return;
+        }
+        
+        // 로그인했지만 구매하지 않은 경우
+        if (!this.isPurchased && !this.isAuthor && !this.isAdmin) {
+          this.showPurchaseRequiredModal = true;
+          return;
+        }
+        
+        // 구매했거나 작성자/관리자인 경우 바로 작성 모달 열기
+        // 새 질문 작성 모드로 설정
+        this.isEditingQA = false;
+        this.editingQAId = null;
+        this.newQuestion = { content: '', parentId: null };
+        this.showQAModal = true;
+      },
+
+      // Q&A 답변 작성 처리
+      handleAnswerQA(qa) {
+ 
+        
+        // 답변 작성 모드로 설정
+        this.isEditingQA = false;
+        this.editingQAId = null;
+        this.newQuestion = {
+          content: '',
+          parentId: qa.id // 질문의 ID를 parentId로 설정
+        };
+        this.showQAModal = true;
+      },
+
+      // 강의 구매 페이지로 이동
+      goToPurchase() {
+        this.showPurchaseRequiredModal = false;
+        // 장바구니에 추가 후 장바구니 페이지로 이동
+        this.enrollLecture();
+      },
+
+      // 로그인 페이지로 이동
+      goToLogin() {
+        this.showLoginRequiredModal = false;
+        this.$router.push('/login');
+      },
+
+      // 강의 구매 처리 (기존 purchaseLecture 메서드 수정)
+      async purchaseLecture() {
+        try {
+          // 장바구니에 추가
+          await lectureService.addToCart([this.lecture.id]);
+          
+          this.isInCart = true;
+          // 장바구니 페이지로 이동
+          this.$router.push('/cart');
+        } catch (error) {
+          console.error('강의 구매 처리 오류:', error);
+          this.showError('장바구니 추가에 실패했습니다.');
+        }
       },
 
     // 장바구니에 강의 추가/제거 (토글 기능)
     async enrollLecture() {
-      console.log('enrollLecture 메서드 호출됨');
-      console.log('현재 강의:', this.lecture);
+      
       
       if (!this.lecture) {
         this.showError('강의 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
@@ -1376,16 +2233,18 @@ export default {
           confirmText: '제거하기',
           callback: async () => {
             try {
-              // 백엔드 API로 장바구니 삭제 요청
-              const response = await lectureService.removeFromCart(this.lecture.id);
+              // 백엔드 API를 통해 장바구니에서 제거
+              await lectureService.removeFromCart(this.lecture.id);
               
-              if (response.success) {
-                // 백엔드 성공 시 상태 업데이트
-                this.isInCart = false;
-                this.showSuccess('장바구니에서 강의가 제거되었습니다.');
-              } else {
-                this.showError(response.message || '장바구니에서 제거에 실패했습니다.');
+              // 성공 시 상태 업데이트
+              this.isInCart = false;
+              
+              // 장바구니 스토어 업데이트
+              if (this.cartStore) {
+                await this.cartStore.fetchServerCartList();
               }
+              
+              this.showSuccess('장바구니에서 강의가 제거되었습니다.');
             } catch (error) {
               console.error('장바구니 삭제 오류:', error);
               this.showError('장바구니에서 제거에 실패했습니다. 다시 시도해주세요.');
@@ -1396,31 +2255,81 @@ export default {
       }
 
       try {
-        // 백엔드 API로 장바구니 추가 요청
-        const response = await lectureService.addToCart([this.lecture.id]);
+        // 백엔드 API를 통해 장바구니에 추가
+        await lectureService.addToCart([this.lecture.id]);
         
-        if (response.success) {
-          // 백엔드 성공 시 상태 업데이트
-          this.isInCart = true;
-          this.showCartModal = true;
-        } else {
-          this.showError(response.message || '장바구니 추가에 실패했습니다.');
+        // 성공 시 상태 업데이트
+        this.isInCart = true;
+        
+        // 장바구니 스토어 업데이트
+        if (this.cartStore) {
+          await this.cartStore.fetchServerCartList();
         }
+        
+        this.showCartModal = true;
       } catch (error) {
         console.error('장바구니 추가 오류:', error);
-        if (error.message && error.message.includes('이미 장바구니에 담긴 강의입니다')) {
-          this.showError('이미 장바구니에 담긴 강의입니다.');
-        } else {
-          this.showError('장바구니 추가에 실패했습니다. 다시 시도해주세요.');
-        }
+        this.showError('장바구니 추가에 실패했습니다. 다시 시도해주세요.');
       }
     },
 
-    // 장바구니로 이동
-    goToCart() {
-      this.showCartModal = false;
-      this.$router.push('/cart');
+    // 강의 구매하기
+    purchaseLecture() {
+      
+      
+      if (!this.lecture) {
+        this.showError('강의 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+        return;
+      }
+
+      // 로그인 확인
+      if (!this.currentUserId) {
+        this.showLoginRequiredModal = true;
+        return;
+      }
+
+      // 장바구니에 추가 후 장바구니 페이지로 이동
+      this.enrollLecture();
     },
+
+         // 장바구니로 이동
+     goToCart() {
+       this.showCartModal = false;
+       this.$router.push('/cart');
+     },
+
+     // 좋아요 토글
+     async toggleLike() {
+       if (!this.lecture) {
+         this.showError('강의 정보를 불러오는 중입니다.');
+         return;
+       }
+
+       try {
+         const response = await lectureService.toggleLectureLike(this.lecture.id);
+         
+         if (response.success) {
+           // 좋아요 상태 토글
+           this.isLiked = !this.isLiked;
+           
+           // 좋아요 수 업데이트
+           if (this.isLiked) {
+             this.lecture.likeCount = (this.lecture.likeCount || 0) + 1;
+           } else {
+             this.lecture.likeCount = Math.max(0, (this.lecture.likeCount || 0) - 1);
+           }
+           
+           // 성공 메시지 표시
+           const message = this.isLiked ? '좋아요를 눌렀습니다!' : '좋아요를 취소했습니다.';
+           this.showSuccess(message);
+         } else {
+           this.showError(response.message || '좋아요 처리에 실패했습니다.');
+         }
+       } catch (error) {
+         console.error('좋아요 토글 오류:', error);
+         this.showError('좋아요 처리에 실패했습니다. 다시 시도해주세요.');
+       }
+     },
     
     // 리뷰 더 보기 버튼 클릭
     loadMoreReviews() {
@@ -1527,23 +2436,30 @@ export default {
 
            // 강의 클릭 처리 (역할별 접근 제어)
       handleLessonClick(lesson, index) {
-        // 첫 번째 강의(인덱스 0)는 미리보기 가능
-        if (index === 0) {
-          this.playVideo(lesson);
+        // 비디오 URL이 없는 경우
+        if (!lesson.videoUrl) {
+          this.showError('비디오를 사용할 수 없습니다.');
+          return;
+        }
+
+        // 강의 시청 가능한 사용자 (구매자, 작성자, 관리자) 또는 미리보기 강의
+        if (this.canWatchLecture || lesson.isPreview) {
+          console.log('강의 클릭 처리:', lesson, 'isPreview:', lesson.isPreview, 'canWatchLecture:', this.canWatchLecture);
+          
+          // 모든 강의를 메인 영역에서 재생
+          console.log('강의 - 메인 영역에서 재생');
+          this.playVideo(lesson, index);
           return;
         }
         
-        // 강의 시청 가능한 사용자 (구매자, 작성자, 관리자)
-        if (this.canWatchLecture) {
-          this.playVideo(lesson);
+        // 로그인하지 않은 사용자: 로그인 필요 안내
+        if (this.isGuest) {
+          this.showLoginRequiredModal = true;
           return;
         }
         
-                 // 일반 사용자: 구매 필요 안내
-         if (this.isGuest) {
-           this.showPurchaseRequiredModal = true;
-           return;
-         }
+        // 로그인했지만 구매하지 않은 사용자: 구매 필요 안내
+        this.showPurchaseRequiredModal = true;
       },
 
            // 강의 제목 툴팁 생성 (역할별)
@@ -1552,38 +2468,82 @@ export default {
           return '비디오를 사용할 수 없습니다';
         }
         
-        if (index === 0) {
+        // 미리보기 강의인 경우
+        if (lesson.isPreview) {
           return '클릭하여 비디오 재생 (미리보기)';
         }
         
+        // 강의 시청 가능한 사용자 (구매자, 작성자, 관리자)
         if (this.canWatchLecture) {
           return '클릭하여 비디오 재생';
         }
         
+        // 로그인하지 않은 사용자
         if (this.isGuest) {
-          return '구매 후 시청 가능';
+          return '로그인 후 시청 가능';
         }
         
-        return '클릭하여 비디오 재생';
+        // 로그인했지만 구매하지 않은 사용자
+        return '구매 후 시청 가능';
+      },
+
+      // 별점 호버 기능
+      handleStarHover(starIndex) {
+        // 호버 시 해당 별까지 모두 채우기
+        this.newReview.rating = starIndex;
+      },
+
+      // 별점 호버 해제
+      handleStarLeave() {
+        // 호버 해제 시 원래 선택된 별점으로 복원
+        // 클릭으로 선택된 별점이 있다면 그 값으로, 없다면 0으로
+        this.newReview.rating = this.selectedRating;
+      },
+
+      // 별점 클릭 시 선택된 별점 저장
+      handleStarClick(starIndex) {
+        this.newReview.rating = starIndex;
+        // 클릭으로 선택된 별점을 저장 (호버 해제 시 복원용)
+        this.selectedRating = starIndex;
       },
 
      
   },
-  mounted() {
-    // 장바구니 스토어 초기화
-    this.cartStore = useCartStore();
-    
-    // URL 파라미터에서 강의 ID를 가져와서 데이터 로드
-    const lectureId = this.$route.params.id;
-    if (lectureId) {
-      this.fetchLectureData(lectureId);
+      async mounted() {
+      // 장바구니 스토어 초기화
+      this.cartStore = useCartStore();
+      
+      // 현재 사용자 ID 가져오기
+      this.currentUserId = getUserIdFromToken();
+      
+      // URL 파라미터에서 강의 ID를 가져와서 데이터 로드
+      const lectureId = this.$route.params.id;
+      if (lectureId) {
+        this.fetchLectureData(lectureId);
+        
+        // URL 쿼리 파라미터에서 결제 완료 여부 확인
+        const urlParams = new URLSearchParams(window.location.search);
+        const paymentCompleted = urlParams.get('paymentCompleted');
+        
+        // 결제 완료 후 돌아온 경우 구매 상태를 다시 확인
+        if (paymentCompleted === 'true') {
+   
+          setTimeout(async () => {
+            await this.checkPurchaseStatus(lectureId);
+            await this.checkCartStatus(lectureId);
+            // URL에서 paymentCompleted 파라미터 제거
+            const newUrl = new URL(window.location);
+            newUrl.searchParams.delete('paymentCompleted');
+            window.history.replaceState({}, '', newUrl);
+          }, 1000);
+        }
+      }
+      
+      // Kakao SDK 초기화
+      if (typeof Kakao !== 'undefined' && !Kakao.isInitialized()) {
+        Kakao.init("3a1a982f8ee6ddbc64171c2f80850243");
+      }
     }
-    
-    // Kakao SDK 초기화
-    if (typeof Kakao !== 'undefined' && !Kakao.isInitialized()) {
-      Kakao.init("3a1a982f8ee6ddbc64171c2f80850243");
-    }
-  }
 };
 </script>
 
@@ -1643,6 +2603,26 @@ export default {
    background: #138496;
    transform: translateY(-1px);
    box-shadow: 0 2px 8px rgba(23, 162, 184, 0.3);
+ }
+
+ .delete-lecture-btn {
+   background: #dc3545;
+   color: white;
+   border: none;
+   padding: 10px 16px;
+   border-radius: 6px;
+   font-size: 14px;
+   font-weight: 600;
+   cursor: pointer;
+   transition: all 0.2s ease;
+   white-space: nowrap;
+   margin-left: 12px;
+ }
+
+ .delete-lecture-btn:hover {
+   background: #c82333;
+   transform: translateY(-1px);
+   box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
  }
 
 .tags {
@@ -1838,21 +2818,30 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 20px;
-  border: 1px solid #eee;
+  border: 1px solid #000000;
   border-radius: 8px;
-  background: white;
+  background: #fff8f0;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  position: relative;
 }
 
 .lesson-item:hover {
   border-color: #ff7a00;
-  box-shadow: 0 2px 8px rgba(255, 122, 0, 0.1);
+  box-shadow: 0 4px 16px rgba(255, 122, 0, 0.15);
+  transform: translateY(-2px);
+  background: #fff5e6;
 }
 
 .lesson-item.preview {
-  border-color: #ff7a00;
   background: #fff8f0;
+}
+
+.lesson-item.active {
+  border-color: #ff7a00;
+  border-width: 2px;
+  background: #fff8f0;
+  box-shadow: 0 1px 4px rgba(255, 122, 0, 0.15);
 }
 
 .lesson-info {
@@ -1917,6 +2906,8 @@ export default {
   font-weight: 600;
 }
 
+
+
 .instructor-section {
   margin-bottom: 40px;
 }
@@ -1944,6 +2935,14 @@ export default {
   font-size: 24px;
   font-weight: 600;
   color: #666;
+  overflow: hidden;
+}
+
+.instructor-profile-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
 }
 
 .instructor-details h3 {
@@ -1992,6 +2991,9 @@ export default {
   font-weight: 600;
   cursor: pointer;
   margin-bottom: 24px;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .reviews-list, .qa-list {
@@ -2017,6 +3019,38 @@ export default {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.reviewer-profile {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.reviewer-profile-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.reviewer-profile-placeholder {
+  width: 100%;
+  height: 100%;
+  background: #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 600;
+  color: #666;
+}
+
+.reviewer-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .reviewer-name, .questioner-name, .answerer-name {
@@ -2059,6 +3093,32 @@ export default {
   gap: 8px;
 }
 
+.questioner-profile {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.questioner-profile-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.questioner-profile-placeholder {
+  width: 100%;
+  height: 100%;
+  background: #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #666;
+}
+
 .answer {
   margin-top: 12px;
   margin-left: 20px;
@@ -2072,6 +3132,38 @@ export default {
   border-left: 3px solid #ff7a00;
 }
 
+.answerer-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.answerer-profile {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.answerer-profile-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.answerer-profile-placeholder {
+  width: 100%;
+  height: 100%;
+  background: #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #666;
+}
+
 .purchase-notice {
   text-align: center;
   padding: 20px;
@@ -2082,7 +3174,79 @@ export default {
 
 .purchase-notice p {
   margin: 0 0 16px 0;
+}
+
+.no-qa {
+  text-align: center;
+  padding: 40px 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-top: 24px;
+}
+
+.no-qa p {
+  margin: 0;
   color: #666;
+}
+
+.no-qa-sub {
+  margin-top: 8px !important;
+  font-size: 14px;
+  color: #999 !important;
+}
+
+.qa-actions {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.qa-edit-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.qa-edit-actions button {
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.qa-edit-actions .edit-btn:hover {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.qa-edit-actions .delete-btn:hover {
+  background: #ffebee;
+  color: #d32f2f;
+}
+
+.qa-answer-action {
+  margin-top: 12px;
+  text-align: right;
+}
+
+.answer-btn {
+  background: #17a2b8;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.answer-btn:hover {
+  background: #138496;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(23, 162, 184, 0.3);
 }
 
 .purchase-btn {
@@ -2177,14 +3341,63 @@ export default {
   transform: none;
 }
 
+.enroll-btn.purchase-btn {
+  background: #ff6b35;
+  font-weight: 700;
+}
+
+.enroll-btn.purchase-btn:hover {
+  background: #e55a2b;
+  transform: translateY(-1px);
+}
+
+.action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
 .share-section {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   color: #666;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
+  padding: 6px 12px;
+  background: #f8f9fa;
+  border-radius: 20px;
+  border: 2px solid #e9ecef;
+  transition: all 0.3s ease;
+}
+
+.share-section:hover {
+  background: #e9ecef;
+  border-color: #dee2e6;
+  transform: translateY(-2px);
+}
+
+.report-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #666;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 6px 12px;
+  background: #f8f9fa;
+  border-radius: 20px;
+  border: 2px solid #e9ecef;
+  transition: all 0.3s ease;
+}
+
+.report-section:hover {
+  background: #e9ecef;
+  border-color: #dee2e6;
+  transform: translateY(-2px);
 }
 
 
@@ -2822,12 +4035,12 @@ export default {
 
 
    /* 구매하지 않은 강의 스타일 */
-  .lesson-item:not(.preview) {
+  .lesson-item:not(.preview):not(.can-watch) {
     opacity: 0.8;
     position: relative;
   }
 
-  .lesson-item:not(.preview)::after {
+  .lesson-item:not(.preview):not(.can-watch)::after {
     content: '🔒';
     position: absolute;
     top: 10px;
@@ -2879,6 +4092,88 @@ export default {
     gap: 5px;
   }
   
+  /* 리뷰 콘텐츠의 수정/삭제 텍스트 스타일 (우측 하단) */
+  .review-content .review-edit-actions {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: #666;
+    z-index: 10;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 2px 4px;
+    border-radius: 4px;
+  }
+  
+  .review-content .edit-text,
+  .review-content .delete-text {
+    cursor: pointer;
+    transition: color 0.2s ease;
+  }
+  
+  .review-content .edit-text:hover {
+    color: #17a2b8;
+  }
+  
+  .review-content .delete-text:hover {
+    color: #dc3545;
+  }
+  
+  .review-content .separator {
+    color: #666;
+  }
+
+  .question-content .edit-text,
+  .question-content .delete-text {
+    cursor: pointer;
+    transition: color 0.2s ease;
+  }
+
+  .question-content .edit-text:hover {
+    color: #17a2b8;
+  }
+
+  .question-content .delete-text:hover {
+    color: #dc3545;
+  }
+
+  .question-content .separator {
+    color: #666;
+  }
+  
+  /* 리뷰 수정/삭제 텍스트 스타일 */
+  .review-content {
+    position: relative;
+    padding-bottom: 25px; /* 수정/삭제 버튼을 위한 공간 */
+    min-height: 40px; /* 최소 높이 보장 */
+  }
+
+  /* Q&A 콘텐츠의 수정/삭제 텍스트 스타일 (우측 하단) */
+  .question-content .qa-edit-actions {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: #666;
+    z-index: 10;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 2px 4px;
+    border-radius: 4px;
+  }
+
+  /* Q&A 수정/삭제 텍스트 스타일 */
+  .question-content {
+    position: relative;
+    padding-bottom: 25px; /* 수정/삭제 버튼을 위한 공간 */
+    min-height: 40px; /* 최소 높이 보장 */
+  }
+  
   .review-edit-actions .edit-btn,
   .qa-edit-actions .edit-btn {
     background: #17a2b8;
@@ -2901,13 +4196,178 @@ export default {
     cursor: pointer;
   }
   
-  .review-edit-actions .edit-btn:hover,
-  .qa-edit-actions .edit-btn:hover {
-    background: #138496;
-  }
+   .review-edit-actions .edit-btn:hover,
+ .qa-edit-actions .edit-btn:hover {
+   background: #138496;
+ }
+ 
+ /* 좋아요 버튼 스타일 */
+ .like-section {
+   display: flex;
+   align-items: center;
+ }
+ 
+ .like-button {
+   display: flex;
+   align-items: center;
+   gap: 4px;
+   padding: 6px 12px;
+   background: #fff;
+   border: 2px solid #ff6b6b;
+   border-radius: 20px;
+   color: #ff6b6b;
+   font-weight: 600;
+   font-size: 13px;
+   cursor: pointer;
+   transition: all 0.3s ease;
+   box-shadow: 0 2px 4px rgba(255, 107, 107, 0.2);
+   min-width: 70px;
+   justify-content: center;
+ }
+ 
+ .like-button:hover {
+   background: #ff6b6b;
+   color: #fff;
+   transform: translateY(-2px);
+   box-shadow: 0 4px 8px rgba(255, 107, 107, 0.3);
+ }
+ 
+ .like-button.liked {
+   background: #ff6b6b;
+   color: #fff;
+   border-color: #ff6b6b;
+ }
+ 
+ .like-button.liked:hover {
+   background: #ff5252;
+   border-color: #ff5252;
+ }
+ 
+ .like-icon {
+   font-size: 14px;
+   transition: transform 0.3s ease;
+ }
+ 
+ .like-button:hover .like-icon {
+   transform: scale(1.1);
+ }
+ 
+  .like-count {
+   font-weight: 700;
+   min-width: 20px;
+   text-align: center;
+ }
   
   .review-edit-actions .delete-btn:hover,
   .qa-edit-actions .delete-btn:hover {
     background: #c82333;
+  }
+
+  /* 비디오 모달 스타일 */
+  .video-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 1000;
+  }
+
+  .video-modal {
+    background: #000;
+    border-radius: 12px;
+    max-width: 90vw;
+    max-height: 90vh;
+    width: 100%;
+    height: auto;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .video-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    background: #1a1a1a;
+    color: white;
+    border-bottom: 1px solid #333;
+  }
+
+  .video-modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  .video-modal-header .close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.2s;
+  }
+
+  .video-modal-header .close-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .video-modal-content {
+    padding: 0;
+  }
+
+  .video-player-container {
+    width: 100%;
+    height: auto;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .video-player {
+    width: 100%;
+    height: auto;
+    max-height: 70vh;
+    background: #000;
+  }
+
+  .video-error {
+    padding: 40px;
+    text-align: center;
+    color: #999;
+  }
+
+  .video-error p {
+    margin: 0;
+    font-size: 16px;
+  }
+
+  @media (max-width: 768px) {
+    .video-modal {
+      max-width: 95vw;
+      max-height: 95vh;
+    }
+    
+    .video-modal-header {
+      padding: 15px;
+    }
+    
+    .video-modal-header h3 {
+      font-size: 16px;
+    }
+    
+    .video-player {
+      max-height: 60vh;
+    }
   }
 </style> 
