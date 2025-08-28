@@ -20,19 +20,13 @@ class EventSourcePolyfill {
     
     // 중복 처리 방지를 위한 처리된 데이터 추적
     this.processedData = new Set();
+    this.processedDataMaxSize = 100; // 최대 100개까지만 추적하여 메모리 누수 방지
     
     this.connect();
   }
 
   connect() {
     try {
-      console.log('🔍 SSE Polyfill 연결 시도:', {
-        url: this.url,
-        method: 'GET',
-        headers: this.headers,
-        withCredentials: this.withCredentials
-      });
-      
       this.xhr = new XMLHttpRequest();
       this.xhr.open('GET', this.url, true);
       
@@ -40,7 +34,6 @@ class EventSourcePolyfill {
       if (this.headers) {
         Object.keys(this.headers).forEach(key => {
           const value = this.headers[key];
-          console.log(`🔍 헤더 설정: ${key} = ${value}`);
           this.xhr.setRequestHeader(key, value);
         });
       }
@@ -52,23 +45,13 @@ class EventSourcePolyfill {
       
       // 이벤트 핸들러 설정
       this.xhr.onreadystatechange = (event) => {
-        console.log('🔍 onreadystatechange 이벤트 발생:', {
-          readyState: this.xhr.readyState,
-          status: this.xhr.status,
-          statusText: this.xhr.statusText
-        });
         this.handleStateChange();
       };
       
       this.xhr.onerror = (event) => {
-        console.log('🔍 onerror 이벤트 발생:', event);
         this.handleError(new Error('Network error'));
       };
       
-      // 백엔드에서 1시간 타임아웃을 설정하므로 프론트엔드 타임아웃은 제거
-      // this.xhr.timeout = 300000; // 제거
-      
-      console.log('🔍 SSE Polyfill XMLHttpRequest 전송됨');
       this.xhr.send();
       
     } catch (error) {
@@ -78,21 +61,7 @@ class EventSourcePolyfill {
   }
 
   handleStateChange() {
-    console.log('🔍 handleStateChange 호출됨:', {
-      readyState: this.xhr.readyState,
-      status: this.xhr.status,
-      statusText: this.xhr.statusText,
-      responseHeaders: this.xhr.getAllResponseHeaders()
-    });
-    
     if (this.xhr.readyState === 4) {
-      console.log('🔍 SSE Polyfill 응답 상태:', {
-        status: this.xhr.status,
-        statusText: this.xhr.statusText,
-        responseHeaders: this.xhr.getAllResponseHeaders(),
-        readyState: this.xhr.readyState
-      });
-      
       if (this.xhr.status === 200) {
         this.readyState = 1; // OPEN
         this.isConnected = true;
@@ -121,7 +90,6 @@ class EventSourcePolyfill {
       }
     } else if (this.xhr.readyState === 3) {
       // LOADING 상태 - 스트리밍 데이터 수신 중
-      console.log('🔍 SSE 스트리밍 데이터 수신 중...');
       this._processResponse();
     }
   }
@@ -164,12 +132,16 @@ class EventSourcePolyfill {
                   // 중복 처리 방지: 이미 처리된 알림인지 확인
                   const notificationKey = `${jsonData.targetId || jsonData.id}_${jsonData.content}`;
                   if (this.processedData.has(notificationKey)) {
-                    console.log('🔍 중복 알림 감지, 건너뜀:', notificationKey);
                     continue;
                   }
                   
-                  console.log('🔍 새 알림 처리:', notificationKey);
                   this.processedData.add(notificationKey);
+                  
+                  // 메모리 관리: 처리된 데이터 크기 제한
+                  if (this.processedData.size > this.processedDataMaxSize) {
+                    const firstKey = this.processedData.values().next().value;
+                    this.processedData.delete(firstKey);
+                  }
                   
                   if (this.onmessage) {
                     this.onmessage({ 
@@ -235,6 +207,11 @@ class EventSourcePolyfill {
     
     // 중복 처리 방지 데이터 정리
     this.processedData.clear();
+    
+    // 이벤트 핸들러 정리
+    this.onopen = null;
+    this.onmessage = null;
+    this.onerror = null;
   }
 
   addEventListener(event, callback) {
@@ -283,13 +260,6 @@ export const ssePolyfillService = {
       console.error('🔍 SSE 연결 실패: 인증 토큰이 없습니다.');
       throw new Error('인증 토큰이 없습니다. 로그인이 필요합니다.');
     }
-    
-    console.log('🔍 SSE 연결 시도:', {
-      url,
-      hasToken: !!authStore.accessToken,
-      tokenLength: authStore.accessToken.length,
-      tokenPrefix: authStore.accessToken.substring(0, 20) + '...'
-    });
     
     const options = {
       withCredentials: true,

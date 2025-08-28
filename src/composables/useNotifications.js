@@ -19,8 +19,6 @@ export function useNotifications() {
     try {
       // 이미 연결되어 있는지 확인
       if (notificationStore.isConnected) {
-        console.log('🔍 이미 SSE 연결이 활성화되어 있습니다.');
-        isConnected.value = true;
         return;
       }
       
@@ -36,7 +34,6 @@ export function useNotifications() {
   // 실시간 알림 연결 중지
   const stopNotificationStream = () => {
     // 전역 SSE 연결은 중지하지 않고 로컬 상태만 업데이트
-    console.log('🔍 컴포넌트 언마운트: 로컬 연결 상태만 업데이트');
     isConnected.value = false
   }
 
@@ -64,7 +61,6 @@ export function useNotifications() {
   const requestNotificationPermission = async () => {
     if ('Notification' in window && Notification.permission === 'default') {
       const permission = await Notification.requestPermission()
-      console.log('브라우저 알림 권한:', permission)
       return permission === 'granted'
     }
     return Notification.permission === 'granted'

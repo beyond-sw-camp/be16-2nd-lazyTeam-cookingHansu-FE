@@ -4,6 +4,7 @@ import { authService } from '@/services/auth/authService';
 import { apiGet } from '@/utils/api';
 import { useNotificationStore } from '@/store/notification/notification';
 
+
 // Auth 관련 상태 관리 스토어
 // OAuth2 소셜 로그인 기반의 토큰 관리, 로그인 상태 관리, 사용자 정보 관리
 // 토큰 만료 시간 체크, 토큰 갱신, 로그아웃 처리
@@ -275,7 +276,6 @@ export const useAuthStore = defineStore('auth', {
             // 토큰이 만료된 경우 자동 갱신 시도
             try {
               await this.refreshToken();
-
               
               // 토큰 갱신 성공 시 알림 구독 시작
               try {
@@ -286,7 +286,6 @@ export const useAuthStore = defineStore('auth', {
               } catch (error) {
                 console.warn('알림 구독 시작 실패:', error);
               }
-
             } catch (error) {
               console.warn('Token refresh failed during initialization:', error.message);
               // 토큰 갱신 실패 시에도 기본 정보는 유지
@@ -449,6 +448,12 @@ export const useAuthStore = defineStore('auth', {
       localStorage.setItem('user', JSON.stringify(user));
       localStorage.setItem('provider', provider);
       
+      // 사용자 역할 설정 (user 객체에서 role 추출)
+      if (user && user.role) {
+        localStorage.setItem('userRole', user.role);
+        console.log('🔍 사용자 역할 설정:', user.role);
+      }
+      
       // 로그인 성공 후 알림 구독 시작
       try {
         const notificationStore = useNotificationStore();
@@ -480,8 +485,10 @@ export const useAuthStore = defineStore('auth', {
       }
       localStorage.setItem('user', JSON.stringify(authData.user));
       localStorage.setItem('provider', 'admin');
+      localStorage.setItem('userRole', 'ADMIN');
+      localStorage.setItem('adminAccessToken', authData.accessToken);
       
-
+      console.log('🔍 관리자 인증 정보 설정 완료');
     },
 
     // 토큰 갱신
@@ -594,6 +601,8 @@ export const useAuthStore = defineStore('auth', {
       localStorage.removeItem('expiresIn');
       localStorage.removeItem('user');
       localStorage.removeItem('provider');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('adminAccessToken');
     },
 
     // 에러 설정

@@ -5,7 +5,6 @@ import { useAuthStore } from '@/store/auth/auth';
 
 export const useNotificationStore = defineStore('notification', {
   state: () => {
-    console.log('🔍 Notification Store 초기화');
     return {
       // 알림 목록
       notifications: [],
@@ -16,14 +15,13 @@ export const useNotificationStore = defineStore('notification', {
       // 에러 상태
       error: null,
       
-      // 읽지 않은 알림 개수
+      // 읽지 않은 알림 개수 (헤더용)
       unreadCount: 0,
       
-      // 페이지네이션
-      currentPage: 0,
-      totalPages: 1,
+      // 커서 기반 페이지네이션
+      nextCursor: null,
       hasMore: true,
-      pageSize: 10,
+      pageSize: 10, // 백엔드 기본값과 일치
       
       // SSE 연결 상태
       isConnected: false,
@@ -54,26 +52,50 @@ export const useNotificationStore = defineStore('notification', {
       this.loading = loading;
     },
 
-    // 알림 목록 조회
-    async fetchNotifications() {
+    // 헤더용: 읽지 않은 알림 개수만 조회 (가벼운 API)
+    async fetchUnreadCount() {
+      try {
+        const count = await notificationService.getUnreadCount();
+        this.unreadCount = count;
+        return count;
+      } catch (error) {
+        console.error('읽지 않은 알림 개수 조회 실패:', error);
+        this.unreadCount = 0;
+        return 0;
+      }
+    },
+
+    // 알림 목록 조회 (커서 기반 페이지네이션)
+    async fetchNotifications(cursor = null, size = 10) {
       this._setLoading(true);
       this.error = null;
       
       try {
-        console.log('🔍 알림 목록 조회 시작');
-        const response = await notificationService.getNotifications();
-        console.log('🔍 알림 서비스 응답:', response);
+        const response = await notificationService.getNotifications({ cursor, size });
         
-        this.notifications = response.notifications || [];
-        console.log('🔍 스토어에 설정된 알림:', this.notifications);
+        // 첫 페이지인 경우 기존 목록 교체, 그 외에는 추가
+        if (!cursor) {
+          this.notifications = response.notifications || [];
+          this.nextCursor = response.nextCursor;
+        } else {
+          this.notifications.push(...(response.notifications || []));
+          this.nextCursor = response.nextCursor;
+        }
+        
+        // 페이지네이션 정보 업데이트
+        this.hasMore = response.hasNext;
+        this.pageSize = response.size;
         
         // 중복 알림 정리
         this._cleanupDuplicateNotifications();
         
+        // 읽지 않은 개수 업데이트 (실제 읽지 않은 알림 개수로)
         this._updateUnreadCount();
-        console.log('🔍 읽지 않은 알림 개수:', this.unreadCount);
+        
+        return response;
       } catch (error) {
         this._handleError(error, '알림 목록을 불러오는데 실패했습니다.');
+        throw error;
       } finally {
         this._setLoading(false);
       }
@@ -85,29 +107,11 @@ export const useNotificationStore = defineStore('notification', {
         return { hasMore: this.hasMore };
       }
 
-      this._setLoading(true);
-      this.error = null;
-
       try {
-        const response = await notificationService.getNotifications({
-          page: this.currentPage + 1,
-          size: this.pageSize
-        });
-
-        // 새로운 알림을 기존 목록에 추가
-        this.notifications.push(...response.notifications);
-        
-        this.currentPage = response.currentPage;
-        this.totalPages = response.totalPages;
-        this.hasMore = response.hasNext;
-        this._updateUnreadCount();
-
+        const response = await this.fetchNotifications(this.nextCursor, this.pageSize);
         return { hasMore: this.hasMore };
       } catch (error) {
-        this._handleError(error, '추가 알림을 불러오는데 실패했습니다.');
         return { hasMore: this.hasMore };
-      } finally {
-        this._setLoading(false);
       }
     },
 
@@ -122,6 +126,9 @@ export const useNotificationStore = defineStore('notification', {
           notification.isRead = true;
           this._updateUnreadCount();
         }
+        
+        // 헤더의 읽지 않은 개수도 업데이트
+        await this.fetchUnreadCount();
       } catch (error) {
         this._handleError(error, '알림 읽음 처리에 실패했습니다.');
       }
@@ -135,6 +142,9 @@ export const useNotificationStore = defineStore('notification', {
         // 로컬 상태에서 제거
         this.notifications = this.notifications.filter(n => n.id !== notificationId);
         this._updateUnreadCount();
+        
+        // 헤더의 읽지 않은 개수도 업데이트
+        await this.fetchUnreadCount();
       } catch (error) {
         this._handleError(error, '알림 삭제에 실패했습니다.');
       }
@@ -145,7 +155,6 @@ export const useNotificationStore = defineStore('notification', {
       // 중복 알림 방지: 동일한 ID의 알림이 이미 존재하는지 확인
       const isDuplicate = this.notifications.some(n => n.id === notification.id);
       if (isDuplicate) {
-        console.log('🔍 중복 알림 감지, 건너뜀:', notification.id);
         return;
       }
       
@@ -156,69 +165,112 @@ export const useNotificationStore = defineStore('notification', {
       
       // 새 알림을 목록 맨 앞에 추가
       this.notifications.unshift(notification);
-      console.log('🔍 새 알림 추가됨:', notification.id || notification.targetId);
-      console.log('🔍 알림 목록 업데이트:', this.notifications);
       
+      // 알림 타입에 따른 처리
+      if (notification.chatRoomId) {
+        // 채팅 메시지인 경우 - 채팅방 목록 실시간 업데이트
+        this._updateChatRoomList(notification);
+      }
+      
+      // 읽지 않은 알림 개수 업데이트
       this._updateUnreadCount();
-      console.log('🔍 읽지 않은 알림 개수 업데이트:', this.unreadCount);
       
       // 브라우저 알림 표시 (사용자가 허용한 경우)
       this._showBrowserNotification(notification);
     },
 
-    // 읽지 않은 알림 개수 업데이트
+    // 채팅방 목록 실시간 업데이트
+    _updateChatRoomList(notification) {
+      try {
+        // chat store를 동적으로 import하여 순환 참조 방지
+        import('@/store/chat/chat').then(({ useChatStore }) => {
+          const chatStore = useChatStore();
+          
+          // 채팅방 목록에서 해당 채팅방 찾기
+          const chatRoom = chatStore.rooms.find(room => room.roomId === notification.chatRoomId);
+          
+          if (chatRoom) {
+            // 현재 사용자 ID 가져오기
+            const authStore = useAuthStore();
+            const currentUserId = authStore.user?.id;
+            
+            // 상대방이 보낸 메시지인지 확인
+            const isFromOtherUser = notification.senderId !== currentUserId;
+            
+            // 현재 선택된 채팅방인지 확인
+            const isCurrentRoom = chatStore.currentRoomId === notification.chatRoomId;
+            
+            // 채팅방 정보 실시간 업데이트
+            const updatedRoom = {
+              ...chatRoom,
+              lastMessage: notification.content,
+              lastMessageTime: new Date().toISOString()
+            };
+            
+            // newMessageCount 처리 로직
+            if (isFromOtherUser) {
+              if (isCurrentRoom) {
+                // 현재 채팅 중인 채팅방에서는 newMessageCount를 0으로 유지
+                updatedRoom.newMessageCount = 0;
+              } else {
+                // 다른 채팅방에서는 newMessageCount 증가
+                updatedRoom.newMessageCount = (chatRoom.newMessageCount || 0) + 1;
+              }
+            } else {
+              // 내가 보낸 메시지인 경우 newMessageCount는 그대로 유지
+              updatedRoom.newMessageCount = chatRoom.newMessageCount || 0;
+            }
+            
+            // 채팅방 목록에서 해당 채팅방 업데이트
+            const roomIndex = chatStore.rooms.findIndex(room => room.roomId === notification.chatRoomId);
+            if (roomIndex !== -1) {
+              chatStore.rooms[roomIndex] = updatedRoom;
+              
+              // 채팅방을 목록 맨 위로 이동 (최신 메시지가 온 채팅방)
+              chatStore.rooms.splice(roomIndex, 1);
+              chatStore.rooms.unshift(updatedRoom);
+            }
+          }
+        }).catch(error => {
+          console.error('🔍 chat store import 실패:', error);
+        });
+      } catch (error) {
+        console.error('🔍 채팅방 목록 업데이트 실패:', error);
+      }
+    },
+
+    // 읽지 않은 알림 개수 업데이트 (로컬 상태 기반)
     _updateUnreadCount() {
       const unreadCount = this.notifications.filter(n => {
         // isRead가 undefined, null, false인 경우 모두 읽지 않은 것으로 처리
         return n && (n.isRead === false || n.isRead === null || n.isRead === undefined);
       }).length;
       
-      const previousCount = this.unreadCount;
-      this.unreadCount = unreadCount;
-      
-      console.log('🔍 _updateUnreadCount 호출:', {
-        totalNotifications: this.notifications.length,
-        notifications: this.notifications.map(n => ({ id: n.id, isRead: n.isRead })),
-        calculatedUnreadCount: unreadCount,
-        previousUnreadCount: previousCount,
-        change: unreadCount - previousCount
-      });
-      
-      // 카운트 변화가 예상과 다른 경우 경고
-      if (unreadCount > previousCount + 1) {
-        console.warn('🔍 ⚠️ 읽지 않은 알림 개수가 예상보다 많이 증가했습니다:', {
-          previous: previousCount,
-          current: unreadCount,
-          increase: unreadCount - previousCount
-        });
-      }
+      // 로컬 상태의 읽지 않은 개수 업데이트 (목록 페이지용)
+      // 헤더의 개수는 별도 API로 관리
     },
 
     // SSE Polyfill 연결 시작 (중복 구독 방지)
     async startNotificationSubscription() {
       // 이미 연결되어 있거나 구독 중인 경우 중지
       if (this.isConnected && this.eventSource) {
-        console.log('🔍 SSE 연결이 이미 활성화되어 있습니다.');
         return;
       }
 
       // 구독 시도 중인 경우 중지
       if (this.isSubscribing) {
-        console.log('🔍 이미 구독 시도 중입니다.');
         return;
       }
 
       // 인증 상태 확인
       const authStore = useAuthStore();
       if (!authStore.isAuthenticated || !authStore.accessToken) {
-        console.log('🔍 사용자가 인증되지 않았습니다. 알림 구독을 건너뜁니다.');
         return;
       }
 
       // 마지막 연결 시도로부터 1초 이내인 경우 중지 (연속 시도 방지)
       const now = Date.now();
       if (now - this.lastConnectionAttempt < 1000) {
-        console.log('🔍 너무 빠른 재연결 시도입니다. 잠시 후 다시 시도해주세요.');
         return;
       }
 
@@ -231,9 +283,6 @@ export const useNotificationStore = defineStore('notification', {
           this.stopNotificationSubscription();
         }
 
-        console.log('🔍 SSE Polyfill 연결 시작...');
-        console.log('🔍 API URL:', `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/notifications/subscribe`);
-        
         // SSE Polyfill을 사용하여 JWT 토큰을 헤더에 포함
         this.eventSource = ssePolyfillService.createAuthenticatedEventSource(
           `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/notifications/subscribe`
@@ -242,17 +291,14 @@ export const useNotificationStore = defineStore('notification', {
 
         // 연결 성공 이벤트
         this.eventSource.addEventListener('connect', (event) => {
-          console.log('🔍 알림 SSE Polyfill 연결 성공:', event.data);
+          // 연결 성공 처리
         });
-
-
 
         // 메시지 이벤트 처리 (알림 및 connect 이벤트)
         this.eventSource.addEventListener('message', (event) => {
           try {
             // connect 이벤트인지 확인
             if (event.data === 'ok') {
-              console.log('🔍 SSE 연결 성공 확인');
               return;
             }
             
@@ -261,8 +307,10 @@ export const useNotificationStore = defineStore('notification', {
               try {
                 const notification = JSON.parse(event.data);
                 if (notification.recipientId || notification.content) {
-                  console.log('🔍 새 알림 수신:', notification);
                   this._processNewNotification(notification);
+                  
+                  // 헤더의 읽지 않은 개수도 실시간 업데이트
+                  this.fetchUnreadCount();
                 }
               } catch (parseError) {
                 console.log('🔍 알림 데이터 파싱 실패:', event.data);
@@ -281,7 +329,6 @@ export const useNotificationStore = defineStore('notification', {
           
           // 401 에러인 경우 재연결 시도하지 않음
           if (error.message && error.message.includes('401')) {
-            console.warn('🔍 인증 실패 (401). SSE 연결을 중단합니다.');
             this._handleAuthError();
             return;
           }
@@ -290,7 +337,6 @@ export const useNotificationStore = defineStore('notification', {
           console.warn('🔍 SSE 연결 에러로 인해 연결을 중단합니다.');
         };
 
-        console.log('알림 SSE Polyfill 구독 시작됨');
       } catch (error) {
         console.error('알림 SSE Polyfill 구독 시작 실패:', error);
         this.isConnected = false;
@@ -307,13 +353,11 @@ export const useNotificationStore = defineStore('notification', {
         this.eventSource = null;
         this.isConnected = false;
         this.isSubscribing = false;
-        console.log('알림 SSE Polyfill 구독 중지됨');
       }
     },
 
     // 인증 에러 처리
     _handleAuthError() {
-      console.warn('🔍 SSE 인증 에러로 인해 알림 구독을 중단합니다.');
       this.isConnected = false;
       this.isSubscribing = false;
       
@@ -321,22 +365,11 @@ export const useNotificationStore = defineStore('notification', {
       const authStore = useAuthStore();
       if (!authStore.accessToken) {
         console.error('🔍 액세스 토큰이 없습니다. 사용자 재로그인이 필요합니다.');
-        // 사용자에게 로그인 상태 확인을 안내
         return;
       }
       
       // 토큰이 있지만 401 에러가 발생한 경우
       console.warn('🔍 토큰이 있지만 인증에 실패했습니다. 토큰이 만료되었을 수 있습니다.');
-      
-      // 필요시 토큰 갱신 시도 (auth store에 토큰 갱신 메서드가 있다면)
-      // try {
-      //   await authStore.refreshToken();
-      //   // 토큰 갱신 성공 시 SSE 연결 재시도
-      //   this.reconnectAttempts = 0;
-      //   this.startNotificationSubscription();
-      // } catch (error) {
-      //   console.error('🔍 토큰 갱신 실패:', error);
-      // }
     },
 
     // 브라우저 알림 표시
@@ -364,9 +397,9 @@ export const useNotificationStore = defineStore('notification', {
       this.loading = false;
       this.error = null;
       this.unreadCount = 0;
-      this.currentPage = 0;
-      this.totalPages = 1;
+      this.nextCursor = null;
       this.hasMore = true;
+      this.pageSize = 10;
       this.stopNotificationSubscription();
       this.isSubscribing = false;
       this.lastConnectionAttempt = 0;
@@ -376,13 +409,11 @@ export const useNotificationStore = defineStore('notification', {
     ensureNotificationSubscription() {
       // 이미 연결되어 있으면 재연결하지 않음
       if (this.isConnected && this.eventSource) {
-        console.log('🔍 SSE 연결이 이미 활성화되어 있습니다.');
         return;
       }
 
       // 연결이 끊어져 있으면 재연결
       if (!this.isConnected) {
-        console.log('🔍 SSE 연결이 끊어져 있습니다. 재연결을 시도합니다.');
         this.startNotificationSubscription();
       }
     },
@@ -410,26 +441,23 @@ export const useNotificationStore = defineStore('notification', {
       }
       
       if (uniqueNotifications.length !== this.notifications.length) {
-        console.log('🔍 중복 알림 정리:', {
-          before: this.notifications.length,
-          after: uniqueNotifications.length,
-          removed: this.notifications.length - uniqueNotifications.length
-        });
         this.notifications = uniqueNotifications;
         this._updateUnreadCount();
       }
+      
+      // 메모리 정리: Set 객체 해제
+      seenIds.clear();
     },
 
     // 로그아웃 시 완전한 정리
     clearAllData() {
-      console.log('🔍 알림 스토어 데이터 완전 정리');
       this.notifications = [];
       this.loading = false;
       this.error = null;
       this.unreadCount = 0;
-      this.currentPage = 0;
-      this.totalPages = 1;
+      this.nextCursor = null;
       this.hasMore = true;
+      this.pageSize = 10;
       this.stopNotificationSubscription();
       this.isSubscribing = false;
       this.lastConnectionAttempt = 0;

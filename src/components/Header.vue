@@ -356,7 +356,6 @@ const isAdmin = computed(() => {
   const adminLoggedIn = adminLoginStore.isLoggedIn;
   const userRoleValue = userRole.value;
   
-
   // adminLoginStore의 상태를 우선적으로 확인
   if (adminLoggedIn) {
     return true;
@@ -425,10 +424,17 @@ watch(mobileMenuOpen, (isOpen) => {
 watch(isLoggedIn, async (newValue) => {
   if (newValue) {
     await fetchProfileInfo();
-    try {
-      await cartStore.fetchServerCartList();
-    } catch (error) {
-      console.error('장바구니 정보 가져오기 실패:', error);
+    
+    // 일반 사용자인 경우 읽지 않은 알림 개수만 가져오기 (가벼운 API)
+    if (!isAdmin.value) {
+      try {
+        await notificationStore.fetchUnreadCount();
+        // SSE 연결 시작 (실시간 알림 수신용)
+        notificationStore.startNotificationSubscription();
+        await cartStore.fetchServerCartList();
+      } catch (error) {
+        console.error('🔍 Header: 로그인 후 읽지 않은 알림 개수, 장바구니 정보 조회 실패:', error);
+      }
     }
     // 일반 사용자인 경우 알림 목록 가져오고 SSE 연결 시작
     if (!isAdmin.value) {
@@ -446,13 +452,32 @@ watch(isLoggedIn, async (newValue) => {
     };
     
     // SSE 연결 중지
-    if (!isAdmin.value) {
-      notificationStore.clearAllData();
-    }
+    notificationStore.clearAllData();
     localStorage.removeItem('cartItems');
     cartStore.serverCartItems = [];
   }
 })
+
+
+// 관리자 로그인 상태도 감시
+watch(() => adminLoginStore.isLoggedIn, async (newValue, oldValue) => {
+  
+  if (newValue) {
+    await fetchProfileInfo();
+  } else {
+    // 관리자 로그아웃 시 프로필 정보 초기화
+    profileData.value = {
+      nickname: '',
+      profileImageUrl: ''
+    };
+  }
+}, { immediate: true })
+
+// isAdmin 상태 변화 감시 (디버깅용)
+watch(isAdmin, (newValue, oldValue) => {
+  // console.log('isAdmin 상태 변화:', { old: oldValue, new: newValue });
+});
+
 
 // 관리자 로그인 상태도 감시
 watch(() => adminLoginStore.isLoggedIn, async (newValue, oldValue) => {
@@ -473,27 +498,6 @@ watch(isAdmin, (newValue, oldValue) => {
 });
 
 
-// 관리자 로그인 상태도 감시
-watch(() => adminLoginStore.isLoggedIn, async (newValue, oldValue) => {
-  console.log('관리자 로그인 상태 변경 감지:', { old: oldValue, new: newValue });
-  
-  if (newValue) {
-    await fetchProfileInfo();
-  } else {
-    // 관리자 로그아웃 시 프로필 정보 초기화
-    profileData.value = {
-      nickname: '',
-      profileImageUrl: ''
-    };
-  }
-}, { immediate: true })
-
-// isAdmin 상태 변화 감시 (디버깅용)
-watch(isAdmin, (newValue, oldValue) => {
-  console.log('isAdmin 상태 변화:', { old: oldValue, new: newValue });
-});
-
-
 // 사용자 역할 변경 감시
 watch(userRole, async (newRole) => {
   if (isLoggedIn.value) {
@@ -505,38 +509,20 @@ watch(userRole, async (newRole) => {
 onMounted(async () => {
   window.addEventListener('resize', handleResize);
   
-
-  // 초기 상태 로깅
-  console.log('Header 컴포넌트 마운트 시 상태:', {
-    isLoggedIn: isLoggedIn.value,
-    adminLoggedIn: adminLoginStore.isLoggedIn,
-    userRole: userRole.value,
-    isAdmin: isAdmin.value,
-    adminStoreDetails: {
-      accessToken: adminLoginStore.accessToken,
-      admin: adminLoginStore.admin,
-      isLoggedIn: adminLoginStore.isLoggedIn,
-      isLoggedInType: typeof adminLoginStore.isLoggedIn
-    }
-  });
-  
   // 로그인된 상태라면 프로필 정보 가져오기
   if (isLoggedIn.value || adminLoginStore.isLoggedIn) {
     await fetchProfileInfo();
-    
-    // 일반 사용자인 경우 알림 목록 먼저 가져오고 SSE 연결
+    await fetchProfileInfo();
+    // 일반 사용자인 경우 읽지 않은 알림 개수만 가져오기 (가벼운 API)
     if (!isAdmin.value) {
       try {
-        await notificationStore.fetchNotifications();
+        await notificationStore.fetchUnreadCount();
+        // SSE 연결 시작 (실시간 알림 수신용)
+        notificationStore.startNotificationSubscription();
+        await cartStore.fetchServerCartList();
       } catch (error) {
-        console.error('🔍 Header: 알림 목록 조회 실패:', error);
+        console.error('🔍 Header: 읽지 않은 알림 개수, 장바구니 정보 조회 실패:', error);
       }
-    }
-    // 서버에서 장바구니 목록 가져오기
-    try {
-      await cartStore.fetchServerCartList();
-    } catch (error) {
-      console.error('장바구니 정보 가져오기 실패:', error);
     }
   }
 })
@@ -586,12 +572,11 @@ const goToLogin = () => {
 
 const logout = async () => {
   try {
-
     // 먼저 SSE 연결 중단 (재연결 시도 방지)
     if (!isAdmin.value) {
       notificationStore.clearAllData();
     }
-
+    
     if (isAdmin.value) {
       await adminLoginStore.logout();
     } else {

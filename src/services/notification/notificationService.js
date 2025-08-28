@@ -3,22 +3,41 @@ import { ssePolyfillService } from './ssePolyfillService'
 
 export const notificationService = {
   /**
-   * 알림 목록 조회 (백엔드 API에 맞게 수정)
+* 읽지 않은 알림 개수 조회 (헤더용 - 가벼운 API)
+   * @returns {Promise<number>} 읽지 않은 알림 개수
+   */
+  async getUnreadCount() {
+    try {
+      const response = await apiGet('/api/notifications/unread/count')
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const result = await response.json()
+      
+      // 백엔드 응답 구조에 맞게 수정
+      return result.data || 0
+    } catch (error) {
+      console.error('읽지 않은 알림 개수 조회 실패:', error)
+      return 0
+    }
+  },
+
+  /**
+   * 알림 목록 조회 (커서 기반 페이지네이션)
    * @param {Object} params - 조회 파라미터
-   * @param {number} params.page - 페이지 번호 (선택)
+   * @param {string} params.cursor - 커서 (첫 페이지는 null)
    * @param {number} params.size - 페이지 크기 (선택)
    * @returns {Promise<Object>} 알림 목록 및 페이지네이션 정보
-   */
-  async getNotifications(params = {}) {
-    try {
-      const { page = 0, size = 10 } = params;
-      
-      const queryParams = new URLSearchParams({
-        page: page.toString(),
-        size: size.toString()
-      })
 
-      const response = await apiGet(`/api/notifications?${queryParams}`)
+   * 읽지 않은 알림 개수 조회 (헤더용 - 가벼운 API)
+   * @returns {Promise<number>} 읽지 않은 알림 개수
+
+   */
+  async getUnreadCount() {
+    try {
+      const response = await apiGet('/api/notifications/unread/count')
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -35,13 +54,46 @@ export const notificationService = {
       });
       
       // 백엔드 응답 구조에 맞게 수정
+      return result.data || 0
+    } catch (error) {
+      console.error('읽지 않은 알림 개수 조회 실패:', error)
+      return 0
+    }
+  },
+
+  /**
+   * 알림 목록 조회 (커서 기반 페이지네이션)
+   * @param {Object} params - 조회 파라미터
+   * @param {string} params.cursor - 커서 (첫 페이지는 null)
+   * @param {number} params.size - 페이지 크기 (기본값: 10)
+   * 
+   * @returns {Promise<Object>} 알림 목록 및 커서 정보
+   */
+  async getNotifications(params = {}) {
+    try {
+      const { cursor = null, size = 10 } = params;
+      
+      let endpoint = `/api/notifications?size=${size}`;
+      if (cursor) {
+        endpoint += `&cursor=${cursor}`;
+      }
+
+      const response = await apiGet(endpoint)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const result = await response.json()
+      
+      // 백엔드 응답 구조에 맞게 수정 (커서 기반)
+      const responseData = result.data || {}
+      
       return {
-        notifications: result.data || [],
-        totalElements: result.data ? result.data.length : 0,
-        totalPages: 1,
-        currentPage: page,
-        hasNext: false,
-        hasPrevious: false
+        notifications: responseData.notifications || [],
+        nextCursor: responseData.nextCursor || null,
+        hasNext: responseData.hasNext || false,
+        size: size
       }
     } catch (error) {
       console.error('알림 목록 조회 실패:', error)
@@ -50,7 +102,7 @@ export const notificationService = {
   },
 
   /**
-   * 특정 알림을 읽음으로 표시 (백엔드 API에 맞게 수정)
+   * 특정 알림을 읽음으로 표시
    * @param {string} notificationId - 알림 ID
    * @returns {Promise<void>}
    */
@@ -62,22 +114,6 @@ export const notificationService = {
       }
     } catch (error) {
       console.error('알림 읽음 처리 실패:', error)
-      throw new Error('알림 상태 업데이트에 실패했습니다.')
-    }
-  },
-
-  /**
-   * 모든 알림을 읽음으로 표시
-   * @returns {Promise<void>}
-   */
-  async markAllAsRead() {
-    try {
-      const response = await apiPatch('/notifications/read-all')
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-    } catch (error) {
-      console.error('전체 알림 읽음 처리 실패:', error)
       throw new Error('알림 상태 업데이트에 실패했습니다.')
     }
   },
@@ -100,62 +136,17 @@ export const notificationService = {
   },
 
   /**
-   * 읽지 않은 알림 개수 조회
-   * @returns {Promise<number>}
+   * SSE 연결 및 알림 구독
+   * @returns {EventSourcePolyfill} SSE 연결 객체
    */
-  async getUnreadCount() {
+  subscribeToNotifications() {
     try {
-      const response = await apiGet('/notifications/unread-count')
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      const data = await response.json()
-      return data.count || 0
+      return ssePolyfillService.createAuthenticatedEventSource(
+        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/notifications/subscribe`
+      )
     } catch (error) {
-      console.error('읽지 않은 알림 개수 조회 실패:', error)
-      return 0
-    }
-  },
-
-  /**
-   * 알림 설정 조회
-   * @returns {Promise<Object>}
-   */
-  async getNotificationSettings() {
-    try {
-      const response = await apiGet('/notifications/settings')
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      const data = await response.json()
-      return data || {}
-    } catch (error) {
-      console.error('알림 설정 조회 실패:', error)
-      throw new Error('알림 설정을 불러오는데 실패했습니다.')
-    }
-  },
-
-  /**
-   * 알림 설정 업데이트
-   * @param {Object} settings - 업데이트할 알림 설정
-   * @param {boolean} settings.postCommentEnabled - 게시글 댓글 알림 활성화
-   * @param {boolean} settings.qnaCommentEnabled - Q&A 댓글 알림 활성화
-   * @param {boolean} settings.replyEnabled - 답글 알림 활성화
-   * @param {boolean} settings.approvalEnabled - 승인 알림 활성화
-   * @param {boolean} settings.chatEnabled - 채팅 알림 활성화
-   * @param {boolean} settings.paymentEnabled - 결제 알림 활성화
-   * @param {boolean} settings.noticeEnabled - 공지사항 알림 활성화
-   * @returns {Promise<void>}
-   */
-  async updateNotificationSettings(settings) {
-    try {
-      const response = await apiPut('/notifications/settings', settings)
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-    } catch (error) {
-      console.error('알림 설정 업데이트 실패:', error)
-      throw new Error('알림 설정 저장에 실패했습니다.')
+      console.error('SSE 구독 시작 실패:', error)
+      throw error
     }
   },
 

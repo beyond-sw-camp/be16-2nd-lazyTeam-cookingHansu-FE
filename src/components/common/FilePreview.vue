@@ -29,8 +29,8 @@
           <v-img 
             :src="fileItem.preview" 
             :alt="fileItem.file.name"
-            width="80" 
-            height="80" 
+            width="60" 
+            height="60" 
             cover 
             class="image-preview"
           />
@@ -154,8 +154,8 @@ const truncateFileName = (fileName) => {
 .file-preview-wrapper {
   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
   border-radius: 12px;
-  padding: 16px;
-  margin: 8px 16px 16px 16px;
+  padding: 12px;
+  margin: 8px 16px 12px 16px;
   border: 1px solid #e9ecef;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
@@ -164,7 +164,7 @@ const truncateFileName = (fileName) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .header-left {
@@ -189,15 +189,15 @@ const truncateFileName = (fileName) => {
 
 .file-preview-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 8px;
 }
 
 .file-item {
   position: relative;
   background: white;
   border-radius: 8px;
-  padding: 12px;
+  padding: 8px;
   text-align: center;
   transition: all 0.2s ease;
   border: 1px solid #f1f3f4;
@@ -223,8 +223,8 @@ const truncateFileName = (fileName) => {
 }
 
 .video-thumbnail {
-  width: 80px;
-  height: 80px;
+  width: 60px;
+  height: 60px;
   background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
   border-radius: 6px;
   display: flex;
@@ -249,8 +249,8 @@ const truncateFileName = (fileName) => {
 }
 
 .document-icon {
-  width: 80px;
-  height: 80px;
+  width: 60px;
+  height: 60px;
   background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
   border-radius: 6px;
   display: flex;
@@ -285,18 +285,18 @@ const truncateFileName = (fileName) => {
 }
 
 .file-name {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   color: #495057;
-  margin-bottom: 4px;
-  line-height: 1.2;
+  margin-bottom: 3px;
+  line-height: 1.1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .file-size {
-  font-size: 11px;
+  font-size: 10px;
   color: #6c757d;
   font-weight: 400;
 }
@@ -309,19 +309,19 @@ const truncateFileName = (fileName) => {
   }
   
   .file-preview-grid {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: 8px;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 6px;
   }
   
   .file-item {
-    padding: 8px;
+    padding: 6px;
   }
   
   .image-preview,
   .video-thumbnail,
   .document-icon {
-    width: 60px;
-    height: 60px;
+    width: 48px;
+    height: 48px;
   }
 }
 </style>
