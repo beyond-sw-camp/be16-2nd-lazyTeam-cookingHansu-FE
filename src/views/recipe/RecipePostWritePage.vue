@@ -113,16 +113,34 @@
                         style="width: 160px;" required />
                     </v-col>
                     <v-col cols="auto">
-                      <v-text-field v-model="post.servings" label="인분" placeholder="4" variant="outlined" type="number"
-                        style="max-width: 120px;" required />
+                      <v-text-field 
+                        v-model="post.servings" 
+                        label="인분" 
+                        placeholder="4" 
+                        variant="outlined" 
+                        type="number"
+                        min="1"
+                        max="20"
+                        style="max-width: 120px;" 
+                        required 
+                      />
                     </v-col>
                     <v-col cols="auto">
                       <v-select v-model="post.difficulty" :items="difficultyOptions" label="난이도" variant="outlined"
                         style="width: 160px;" required />
                     </v-col>
                     <v-col cols="auto">
-                      <v-text-field v-model="post.cookTime" label="조리 시간 (분)" placeholder="30" variant="outlined"
-                        type="number" style="max-width: 160px;" required />
+                      <v-text-field 
+                        v-model="post.cookTime" 
+                        label="조리 시간 (분)" 
+                        placeholder="30" 
+                        variant="outlined"
+                        type="number" 
+                        min="1"
+                        max="999"
+                        style="max-width: 160px;" 
+                        required 
+                      />
                     </v-col>
                   </v-row>
                 </v-col>
@@ -397,14 +415,27 @@ const submitPost = async () => {
 
     isSubmitting.value = true
 
+    // 음수 값 검증
+    const cookTime = parseInt(post.cookTime) || 0
+    const servings = parseInt(post.servings) || 1
+    
+    if (cookTime < 1) {
+      alert('조리 시간은 1분 이상이어야 합니다.')
+      return
+    }
+    if (servings < 1) {
+      alert('인분은 1인분 이상이어야 합니다.')
+      return
+    }
+
     // 데이터 변환
     const requestData = {
       title: post.title,
       description: post.content,  // content → description
       category: getCategoryEnum(post.category),  // 한식 → KOREAN
       level: getDifficultyEnum(post.difficulty), // 보통 → MEDIUM
-      cookTime: parseInt(post.cookTime) || 0,
-      serving: parseInt(post.servings) || 1,    // servings → serving
+      cookTime: cookTime,
+      serving: servings,    // servings → serving
       cookTip: post.cookingTip,                  // cookingTip → cookTip
       isOpen: post.isPublic,                     // isPublic → isOpen
       ingredients: post.ingredients.map(ing => ({

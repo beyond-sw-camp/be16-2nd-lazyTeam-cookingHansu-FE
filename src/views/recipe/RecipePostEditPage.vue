@@ -146,7 +146,7 @@
             </div>
 
             <!-- 재료 섹션 -->
-            <div class="mb-10">
+            <div class="mb-10 edit-ingredients-section">
               <div class="d-flex justify-space-between align-center mb-6">
                 <h2 class="text-h5 font-weight-bold">재료</h2>
                 <v-btn color="primary" @click="addIngredient">
@@ -155,15 +155,17 @@
                 </v-btn>
               </div>
 
-              <div v-for="(ingredient, index) in post.ingredients" :key="index" class="d-flex gap-3 mb-4">
-                <v-text-field v-model="ingredient.name" :label="`재료 ${index + 1}`" placeholder="예: 김치"
-                  variant="outlined" class="flex-grow-1" required />
-                <v-text-field v-model="ingredient.amount" :label="`양`" placeholder="예: 300g" variant="outlined"
-                  style="max-width: 120px;" required />
-                <v-btn variant="outlined" color="black" @click="removeIngredient(index)"
-                  :disabled="post.ingredients.length <= 1" style="width: 32px; height: 32px; min-width: 32px;">
-                  <v-icon size="small">mdi-minus</v-icon>
-                </v-btn>
+              <div class="edit-ingredients-list">
+                <div v-for="(ingredient, index) in post.ingredients" :key="index" class="d-flex gap-3 mb-4">
+                  <v-text-field v-model="ingredient.name" label="재료명" placeholder="예: 김치"
+                    variant="outlined" class="flex-grow-1" required />
+                  <v-text-field v-model="ingredient.amount" :label="`양`" placeholder="예: 300g" variant="outlined"
+                    style="max-width: 120px;" required />
+                  <v-btn variant="outlined" color="black" @click="removeIngredient(index)"
+                    :disabled="post.ingredients.length <= 1" style="width: 32px; height: 32px; min-width: 32px;">
+                    <v-icon size="small">mdi-minus</v-icon>
+                  </v-btn>
+                </div>
               </div>
             </div>
 
@@ -225,7 +227,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
@@ -243,6 +245,7 @@ const post = reactive({
   servings: '',
   cookingTip: '',
   isPublic: true,
+  authorNickname: null, // 작성자 닉네임 추가
   ingredients: [
     { name: '', amount: '' }
   ],
@@ -310,6 +313,41 @@ const getDifficultyText = (difficulty) => {
   return difficultyMap[difficulty] || '보통'
 }
 
+// 현재 사용자 정보
+const currentUser = ref(null)
+
+// 현재 사용자가 작성자인지 확인 (닉네임으로 비교)
+const isAuthor = computed(() => {
+  if (!post.authorNickname || !currentUser.value) return false
+  return currentUser.value.nickname === post.authorNickname
+})
+
+// 현재 사용자 정보 로드
+const loadCurrentUser = async () => {
+  const token = localStorage.getItem('accessToken')
+  if (!token) {
+    currentUser.value = null
+    return
+  }
+  
+  try {
+    const response = await fetch('http://localhost:8080/user/profile', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      currentUser.value = data.data
+      console.log('🔍 현재 사용자 정보 로드 성공:', currentUser.value)
+    }
+  } catch (error) {
+    console.error('사용자 정보 로드 실패:', error)
+    currentUser.value = null
+  }
+}
+
 // 기존 게시글 데이터 로드
 const loadPost = async () => {
   try {
@@ -319,6 +357,9 @@ const loadPost = async () => {
       router.push('/recipes')
       return
     }
+
+    // 현재 사용자 정보 로드 (API에서 가져오기)
+    await loadCurrentUser()
 
     const response = await fetch(`http://localhost:8080/api/posts/${postId}`, {
       headers: {
@@ -331,6 +372,11 @@ const loadPost = async () => {
       console.log('게시글 데이터 로드 성공:', data)
       
       if (data.data) {
+        // 작성자 닉네임 저장
+        post.authorNickname = data.data.user?.nickname || data.data.nickname || data.data.authorNickname
+        console.log('🔍 게시글 작성자 닉네임:', post.authorNickname)
+        console.log('🔍 게시글 전체 데이터:', data.data)
+        
         // 데이터 매핑
         post.title = data.data.title || ''
         post.content = data.data.description || ''
@@ -346,7 +392,7 @@ const loadPost = async () => {
         // 재료 데이터
         if (data.data.ingredients && data.data.ingredients.length > 0) {
           post.ingredients = data.data.ingredients.map(ingredient => ({
-            name: ingredient.name || ingredient.ingredientName || '',
+            name: (ingredient.name || ingredient.ingredientName || '') === '주재료' ? '' : (ingredient.name || ingredient.ingredientName || ''),
             amount: ingredient.amount || ingredient.quantity || ''
           }))
         } else {
@@ -362,6 +408,19 @@ const loadPost = async () => {
           }))
         } else {
           post.steps = [{ stepSequence: 1, content: '', comment: '' }]
+        }
+
+        // 작성자 권한 체크
+        console.log('🔍 권한 체크:', {
+          currentUserNickname: currentUser.value?.nickname,
+          postAuthorNickname: post.authorNickname,
+          isAuthor: isAuthor.value
+        })
+        
+        if (!isAuthor.value) {
+          alert('본인이 작성한 게시글만 수정할 수 있습니다.')
+          router.push(`/recipes/${postId}`)
+          return
         }
       }
     } else {
@@ -441,6 +500,12 @@ const updatePost = async () => {
   try {
     isUpdating.value = true
     
+    // 작성자 권한 재확인
+    if (!isAuthor.value) {
+      alert('본인이 작성한 게시글만 수정할 수 있습니다.')
+      return
+    }
+    
     // 기본 검증
     if (!post.title.trim() || !post.content.trim()) {
       alert('제목과 내용을 입력해주세요.')
@@ -449,6 +514,19 @@ const updatePost = async () => {
 
     if (post.ingredients.length === 0 || post.steps.length === 0) {
       alert('재료와 조리 과정을 입력해주세요.')
+      return
+    }
+
+    // 음수 값 검증
+    const cookTime = parseInt(post.cookTime) || 0
+    const servings = parseInt(post.servings) || 1
+    
+    if (cookTime < 1) {
+      alert('조리 시간은 1분 이상이어야 합니다.')
+      return
+    }
+    if (servings < 1) {
+      alert('인분은 1인분 이상이어야 합니다.')
       return
     }
     
@@ -461,8 +539,8 @@ const updatePost = async () => {
       description: post.content || '',
       category: getCategoryEnum(post.category), // '한식' → 'KOREAN' 변환
       level: getDifficultyEnum(post.difficulty),   // '보통' → 'MEDIUM' 변환
-      cookTime: parseInt(post.cookTime) || 0,
-      serving: parseInt(post.servings) || 1,
+      cookTime: cookTime,
+      serving: servings,
       cookTip: post.cookingTip || '',
       isOpen: post.isPublic,
       // 기존 썸네일 URL은 DTO 필드로 전달
@@ -529,6 +607,21 @@ const updatePost = async () => {
     } else {
       const errorData = await response.text()
       console.error('게시글 수정 실패:', response.status, errorData)
+      
+      // 권한 에러인 경우 특별 처리
+      if (response.status === 400) {
+        try {
+          const errorJson = JSON.parse(errorData)
+          if (errorJson.message && errorJson.message.includes('권한이 없습니다')) {
+            alert('본인이 작성한 게시글만 수정할 수 있습니다.')
+            router.push(`/recipes/${postId}`)
+            return
+          }
+        } catch (e) {
+          // JSON 파싱 실패 시 기본 메시지
+        }
+      }
+      
       alert('게시글 수정에 실패했습니다.')
     }
     
@@ -619,5 +712,14 @@ onMounted(() => {
   color: #1976d2;
   font-weight: bold;
   margin-right: 8px;
+}
+
+/* 재료 섹션 스타일 - RecipeDetailPage와 충돌 방지 */
+.edit-ingredients-section {
+  /* RecipeDetailPage의 ingredients-group 스타일과 분리 */
+}
+
+.edit-ingredients-list {
+  /* RecipeDetailPage의 ingredients-list 스타일과 분리 */
 }
 </style>

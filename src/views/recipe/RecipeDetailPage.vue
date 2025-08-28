@@ -32,11 +32,7 @@
                   <div class="title-row">
                     <div class="title-left">
                       <h1 class="recipe-title">{{ recipe.title }}</h1>
-                      <div class="author-simple">
-                        <span class="author-name-simple">{{ recipe.nickname || '작성자' }}</span>
-                        <span class="author-role-simple">{{ getUserTypeText(recipe.role) }}</span>
-            </div>
-          </div>
+                    </div>
                     <v-chip 
                       :color="getCategoryColor(recipe.category)" 
                       size="small" 
@@ -46,6 +42,25 @@
             </v-chip>
           </div>
                   <p class="recipe-subtitle">{{ recipe.description }}</p>
+                  
+                  <!-- 작성자 정보 (제목 아래로 이동) -->
+                  <div class="author-info-section">
+                    <v-avatar size="48" color="orange" class="author-avatar">
+                      <v-img 
+                        v-if="recipe.profileImageUrl" 
+                        :src="recipe.profileImageUrl" 
+                        :alt="recipe.nickname"
+                        cover
+                      />
+                      <span v-else class="text-caption text-white font-weight-bold">
+                        {{ getAuthorInitial(recipe.nickname) }}
+                      </span>
+                    </v-avatar>
+                    <div class="author-details">
+                      <div class="author-name-main">{{ recipe.nickname || '작성자' }}</div>
+                      <div class="author-role-main">{{ getUserTypeText(recipe.role) }}</div>
+                    </div>
+                  </div>
                   
                   <!-- 수정/삭제 버튼들 (작성자만 보임) -->
                   <div v-if="isAuthor" class="action-buttons">
@@ -214,9 +229,15 @@
               class="comment-item"
             >
               <div class="comment-header">
-                <div class="comment-author">
+                <div class="comment-info">
                   <v-avatar size="32" color="orange" class="mr-2">
-                    <span class="text-caption text-white font-weight-bold">
+                    <v-img 
+                      v-if="comment.profileImage" 
+                      :src="comment.profileImage" 
+                      :alt="comment.nickname"
+                      cover
+                    />
+                    <span v-else class="text-caption text-white font-weight-bold">
                       {{ getAuthorInitial(comment.nickname) }}
                     </span>
                   </v-avatar>
@@ -305,7 +326,12 @@
               
               <!-- 댓글 내용 (수정 모드가 아닐 때) -->
               <div v-if="!comment.isEditing" class="comment-content">
-                {{ comment.content }}
+                <div v-if="comment.isDeleted" class="deleted-comment">
+                  <em>삭제된 댓글입니다.</em>
+                </div>
+                <div v-else>
+                  {{ comment.content }}
+                </div>
               </div>
               
               <!-- 댓글 수정 폼 (수정 모드일 때) -->
@@ -372,20 +398,92 @@
                   class="reply-item"
                 >
                   <div class="reply-header">
-                    <v-avatar size="24" color="orange" class="mr-2">
-                      <span class="text-caption text-white font-weight-bold">
-                        {{ getAuthorInitial(reply.nickname) }}
-                      </span>
-                        </v-avatar>
-                    <div class="reply-author-info">
-                      <div class="reply-author-name">{{ reply.nickname }}</div>
-                      <div class="reply-time">{{ formatDate(reply.createdAt) }}</div>
-                          </div>
-                        </div>
-                  <div class="reply-content">
-                    {{ reply.content }}
+                    <div class="reply-info">
+                      <v-avatar size="24" color="orange" class="mr-2">
+                        <v-img 
+                          v-if="reply.profileImage" 
+                          :src="reply.profileImage" 
+                          :alt="reply.nickname"
+                          cover
+                        />
+                        <span v-else class="text-caption text-white font-weight-bold">
+                          {{ getAuthorInitial(reply.nickname) }}
+                        </span>
+                      </v-avatar>
+                      <div class="author-info">
+                        <div class="author-name">{{ reply.nickname }}</div>
+                        <div class="reply-time">{{ formatDate(reply.createdAt) }}</div>
                       </div>
                     </div>
+                    
+                    <div class="reply-actions">
+                      <!-- 답글 더보기 버튼 -->
+                      <v-menu
+                        v-model="reply.showMoreMenu"
+                        :close-on-content-click="false"
+                        location="bottom end"
+                      >
+                        <template v-slot:activator="{ props }">
+                          <v-btn 
+                            icon 
+                            size="small" 
+                            variant="text"
+                            v-bind="props"
+                            class="more-btn"
+                          >
+                            <v-icon size="16">mdi-dots-vertical</v-icon>
+                          </v-btn>
+                        </template>
+                        
+                        <v-list density="compact">
+                          <!-- 수정 버튼 (작성자만 표시) -->
+                          <v-list-item
+                            v-if="currentUser && currentUser.nickname === reply.nickname"
+                            @click="startEditComment(reply)"
+                            class="edit-menu-item"
+                          >
+                            <template v-slot:prepend>
+                              <v-icon size="16" color="primary">mdi-pencil</v-icon>
+                            </template>
+                            <v-list-item-title>수정</v-list-item-title>
+                          </v-list-item>
+                          
+                          <!-- 삭제 버튼 (작성자만 표시) -->
+                          <v-list-item
+                            v-if="currentUser && currentUser.nickname === reply.nickname"
+                            @click="deleteComment(reply.id)"
+                            class="delete-menu-item"
+                          >
+                            <template v-slot:prepend>
+                              <v-icon size="16" color="error">mdi-delete</v-icon>
+                            </template>
+                            <v-list-item-title class="text-error">삭제</v-list-item-title>
+                          </v-list-item>
+                          
+                          <!-- 신고 버튼 (모든 사용자에게 표시) -->
+                          <v-list-item
+                            @click="reportComment(reply)"
+                            class="report-menu-item"
+                          >
+                            <template v-slot:prepend>
+                              <v-icon size="16" color="warning">mdi-flag</v-icon>
+                            </template>
+                            <v-list-item-title class="text-warning">신고</v-list-item-title>
+                          </v-list-item>
+                        </v-list>
+                      </v-menu>
+                    </div>
+                  </div>
+                  
+                  <div class="reply-content">
+                    <div v-if="reply.isDeleted" class="deleted-comment">
+                      <em>삭제된 답글입니다.</em>
+                    </div>
+                    <div v-else>
+                      {{ reply.content }}
+                    </div>
+                  </div>
+                </div>
                   </div>
                 </div>
               </div>
@@ -424,8 +522,20 @@
           {{ error }}
         </v-alert>
         <v-btn color="primary" @click="loadRecipe">다시 시도</v-btn>
-                    </div>
-                    </div>
+                          </div>
+    </div>
+    
+    <!-- 로그인 필요 모달 -->
+    <CommonModal
+      v-model="showLoginModal"
+      type="info"
+      title="로그인이 필요합니다"
+      message="이 기능을 사용하려면 로그인이 필요합니다. 로그인하시겠습니까?"
+      confirm-text="로그인하기"
+      cancel-text="취소"
+      @confirm="goToLogin"
+      @cancel="closeLoginModal"
+    />
   </div>
 </template>
 
@@ -433,6 +543,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
+import CommonModal from '@/components/common/CommonModal.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -445,6 +556,7 @@ const error = ref(null)
 const showDeleteModal = ref(false)
 const newComment = ref('')
 const currentUser = ref(null)
+const showLoginModal = ref(false)
 
 // 로그인 상태 확인
 const isLoggedIn = computed(() => {
@@ -663,6 +775,14 @@ const loadMoreComments = () => {
 const deleteComment = async (commentId) => {
   if (!confirm('댓글을 삭제하시겠습니까?')) return
   
+  // 답글이 있는 댓글인지 미리 확인
+  const commentToDelete = comments.value.find(comment => comment.id === commentId)
+  const hasReplies = commentToDelete && commentToDelete.replies && commentToDelete.replies.length > 0
+  
+  console.log('삭제할 댓글:', commentToDelete)
+  console.log('답글이 있는지:', hasReplies)
+  console.log('답글 개수:', commentToDelete?.replies?.length || 0)
+  
   try {
     const response = await fetch(`http://localhost:8080/post/comment/delete/${commentId}`, {
       method: 'DELETE',
@@ -673,13 +793,48 @@ const deleteComment = async (commentId) => {
 
     if (response.ok) {
       console.log('댓글 삭제 성공')
-      // 댓글 목록 새로고침
-      await loadComments()
-      alert('댓글이 삭제되었습니다!')
+      
+      if (hasReplies) {
+        // 답글이 있으면 삭제 상태만 표시
+        const commentIndex = comments.value.findIndex(comment => comment.id === commentId)
+        if (commentIndex !== -1) {
+          // Vue 반응성을 위해 새로운 객체로 교체
+          comments.value[commentIndex] = {
+            ...comments.value[commentIndex],
+            isDeleted: true,
+            content: ''
+          }
+        }
+        console.log('답글이 있는 댓글 삭제 처리 완료')
+        console.log('삭제 처리 후 댓글 상태:', comments.value[commentIndex])
+        console.log('isDeleted 값:', comments.value[commentIndex]?.isDeleted)
+        alert('댓글이 삭제되었습니다. 답글은 그대로 유지됩니다.')
+      } else {
+        // 답글이 없으면 댓글 목록 새로고침
+        await loadComments()
+        alert('댓글이 삭제되었습니다!')
+      }
     } else {
       const errorData = await response.text()
       console.error('댓글 삭제 실패:', response.status, errorData)
-      alert('댓글 삭제에 실패했습니다.')
+      console.error('삭제하려는 댓글 ID:', commentId)
+      console.error('댓글에 답글이 있는지:', hasReplies)
+      
+      // 백엔드 에러 메시지 표시
+      let errorMessage = '댓글 삭제에 실패했습니다.'
+      try {
+        const errorJson = JSON.parse(errorData)
+        if (errorJson.message) {
+          errorMessage = errorJson.message
+        }
+      } catch (e) {
+        // JSON 파싱 실패 시 원본 텍스트 사용
+        if (errorData) {
+          errorMessage = errorData
+        }
+      }
+      
+      alert(`댓글 삭제 실패: ${errorMessage}`)
     }
   } catch (error) {
     console.error('댓글 삭제 에러:', error)
@@ -784,7 +939,9 @@ const loadComments = async () => {
             createdAt: comment.createdAt,
             likeCount: comment.likeCount || 0,
             isLiked: comment.isLiked || false,
+            isDeleted: comment.isDeleted || false, // 삭제 상태 추가
             showMoreMenu: false, // 더보기 메뉴 상태
+            profileImage: comment.authorProfileImage,
             replies: comment.childComments ? comment.childComments.map(reply => ({
               id: reply.commentId || reply.id,
               nickname: reply.authorNickName || reply.nickname,
@@ -792,9 +949,10 @@ const loadComments = async () => {
               createdAt: reply.createdAt,
               likeCount: reply.likeCount || 0,
               isLiked: reply.isLiked || false,
-              profileImage: reply.authorProfileImage
-            })) : [],
-            profileImage: comment.authorProfileImage
+              isDeleted: reply.isDeleted || false, // 답글 삭제 상태도 추가
+              profileImage: reply.authorProfileImage,
+              showMoreMenu: false // 더보기 메뉴 상태
+            })) : []
           }
         })
         console.log('댓글 목록 변환 완료:', comments.value)
@@ -960,6 +1118,7 @@ const loadRecipe = async () => {
           updatedAt: data.data.updatedAt,
           nickname: data.data.user?.nickname,
           role: data.data.user?.role,
+          profileImageUrl: data.data.user?.profileImageUrl,
           ingredients: data.data.ingredients || [],
           steps: data.data.steps || []
         })
@@ -1016,10 +1175,15 @@ const deleteRecipe = async () => {
 }
 
 const showLoginAlert = () => {
-  alert('로그인이 필요한 기능입니다.')
+  showLoginModal.value = true
+}
+
+const closeLoginModal = () => {
+  showLoginModal.value = false
 }
 
 const goToLogin = () => {
+  closeLoginModal()
   router.push('/login')
 }
 
@@ -1075,10 +1239,17 @@ onMounted(async () => {
 
 // 현재 사용자 정보 로드
 const loadCurrentUser = async () => {
+  const token = localStorage.getItem('accessToken')
+  if (!token) {
+    // 비회원인 경우 사용자 정보를 로드하지 않음
+    currentUser.value = null
+    return
+  }
+  
   try {
     const response = await fetch('http://localhost:8080/user/profile', {
       headers: {
-        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+        'Authorization': `Bearer ${token}`
       }
     })
     
@@ -1088,6 +1259,7 @@ const loadCurrentUser = async () => {
     }
   } catch (error) {
     console.error('사용자 정보 로드 실패:', error)
+    currentUser.value = null
   }
 }
 </script>
@@ -1723,6 +1895,15 @@ const loadCurrentUser = async () => {
   margin-bottom: 15px;
 }
 
+.deleted-comment {
+  color: #999;
+  font-style: italic;
+  padding: 8px 12px;
+  background-color: #f5f5f5;
+  border-radius: 6px;
+  border-left: 3px solid #ddd;
+}
+
 .reply-form {
   margin: 15px 0;
   padding: 15px;
@@ -1905,6 +2086,96 @@ const loadCurrentUser = async () => {
 
 .report-menu-item:hover {
   background-color: #fff3e0;
+}
+
+/* 댓글 헤더 스타일 */
+.comment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+  width: 100%;
+}
+
+.comment-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.author-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.comment-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* 답글 헤더 스타일 - 댓글과 동일한 구조 */
+.reply-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+  width: 100%;
+}
+
+.reply-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.reply-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* 작성자 정보 섹션 스타일 */
+.author-info-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border: 1px solid #e9ecef;
+}
+
+.author-avatar {
+  margin-bottom: 4px;
+}
+
+.author-details {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.author-name-main {
+  font-weight: 700;
+  color: #333;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.author-role-main {
+  color: #666;
+  font-size: 14px;
+  font-weight: 500;
 }
 }
 

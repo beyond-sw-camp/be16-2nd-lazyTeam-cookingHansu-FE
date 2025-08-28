@@ -140,7 +140,7 @@ const goToRecipePostWrite = () => {
 }
 
 const goToPostDetail = (post) => {
-  router.push({ path: `/recipe/post-detail/${post.id}` })
+  router.push({ path: `/recipes/${post.id}` })
 }
 
 const changePage = (page) => {

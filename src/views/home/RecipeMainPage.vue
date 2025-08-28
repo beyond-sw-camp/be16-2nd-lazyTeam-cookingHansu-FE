@@ -14,7 +14,6 @@
     <div class="filter-card">
       <div class="filter-title-row">
         <div class="filter-title">레시피 필터</div>
-        <button class="write-btn" @click="goToPostWrite">게시글 등록하기</button>
         <button class="write-btn" @click="goToWrite">게시글 등록하기</button>
       </div>
       <div class="filter-row">
@@ -49,7 +48,7 @@
       </div>
     </div>
     <!-- 레시피 카드 리스트 (2행 4열) -->
-    <div class="recipe-grid">
+    <div v-if="pagedRecipes.length > 0" class="recipe-grid">
       <div v-for="recipe in pagedRecipes" :key="recipe.id" class="recipe-card" @click="handleCardClick(recipe)">
         <img :src="recipe.image" alt="썸네일" class="recipe-img" @error="onImgError" />
         <div class="card-content">
@@ -68,6 +67,15 @@
             <div class="time">{{ recipe.time }}</div>
           </div>
         </div>
+      </div>
+    </div>
+    
+    <!-- 게시글이 없을 때 표시 -->
+    <div v-else class="no-recipes-message">
+      <div class="no-recipes-content">
+        <div class="no-recipes-icon">📝</div>
+        <h3 class="no-recipes-title">게시글이 없습니다</h3>
+        <p class="no-recipes-description">검색 조건에 맞는 게시글이 없습니다.<br>다른 조건으로 검색해보세요.</p>
       </div>
     </div>
     <!-- 페이지네이션-->
@@ -118,7 +126,9 @@ export default {
       selectedRecipe: null,
       showClickEffect: false,
       recipes: [], // 하드코딩된 데이터 제거, 빈 배열로 초기화
+      allRecipes: [], // 서버에서 받은 모든 레시피 데이터
       totalItems: 0, // 서버에서 받은 총 레시피 수
+      showLoginModal: false, // 로그인 모달 표시 여부
     };
   },
   computed: {
@@ -131,11 +141,13 @@ export default {
       return this.recipes;
     },
     pagedRecipes() {
-      // 서버에서 페이지네이션된 데이터 사용
-      return this.recipes;
+      // 클라이언트 사이드 페이지네이션 적용
+      const startIndex = (this.currentPage - 1) * this.recipesPerPage;
+      const endIndex = startIndex + this.recipesPerPage;
+      return this.allRecipes.slice(startIndex, endIndex);
     },
     totalPages() {
-      return Math.max(1, Math.ceil(this.totalItems / this.recipesPerPage));
+      return Math.max(1, Math.ceil(this.allRecipes.length / this.recipesPerPage));
     },
   },
   watch: {
@@ -151,9 +163,10 @@ export default {
       this.currentPage = 1;
       this.fetchRecipes();
     },
-    currentPage() {
-      this.fetchRecipes();
-    },
+    // currentPage 변경 시에는 API 재요청하지 않고 클라이언트 사이드 페이지네이션만 적용
+    // currentPage() {
+    //   this.fetchRecipes();
+    // },
   },
   created() {
     this.fetchRecipes(); // 컴포넌트 생성 시 데이터 가져오기
@@ -182,10 +195,11 @@ export default {
         }
 
         // 빈 값은 undefined로 설정하여 쿼리 파라미터에서 제외
+        // 클라이언트 사이드 페이지네이션을 위해 모든 데이터를 한 번에 가져옴
         const params = {
           sort: sortParam,
-          page: this.currentPage - 1,
-          size: this.recipesPerPage,
+          page: 0, // 첫 페이지만 요청
+          size: 100, // 충분히 큰 수로 설정하여 모든 데이터 가져오기
         };
 
         if (this.selectedUserType) {
@@ -197,18 +211,45 @@ export default {
 
         console.log('📡 API 요청 파라미터:', JSON.stringify(params, null, 2));
         console.log('🔑 Authorization 토큰:', localStorage.getItem('accessToken') ? '있음' : '없음');
-
-        const response = await axios.get('http://localhost:8080/api/posts', {
-          params,
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-          },
+        console.log('📊 페이지네이션 정보:', {
+          currentPage: this.currentPage,
+          recipesPerPage: this.recipesPerPage,
+          totalItems: this.totalItems,
+          totalPages: this.totalPages
         });
+        console.log('🔍 API 요청 URL:', `http://localhost:8080/api/posts?page=${params.page}&size=${params.size}&sort=${params.sort}`);
+        console.log('🔍 실제 요청 파라미터 상세:', {
+          page: params.page,
+          size: params.size,
+          sort: params.sort,
+          role: params.role,
+          category: params.category
+        });
+
+        // 여러 API 엔드포인트 시도
+        let response;
+        try {
+          response = await axios.get('http://localhost:8080/api/posts', {
+            params,
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+            },
+          });
+        } catch (error) {
+          console.log('🔄 첫 번째 API 실패, 두 번째 시도...');
+          // 다른 엔드포인트 시도
+          response = await axios.get('http://localhost:8080/api/recipes', {
+            params,
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+            },
+          });
+        }
         
         console.log('✅ API 응답:', JSON.stringify(response.data, null, 2));
         
         // API 응답 데이터를 프론트엔드 형식에 맞게 변환
-        this.recipes = (response.data.data.content || []).map(post => {
+        const allRecipes = (response.data.data.content || []).map(post => {
           console.log('📝 개별 포스트 데이터:', {
             id: post.id,
             title: post.title,
@@ -232,10 +273,19 @@ export default {
           };
         });
         
-        this.totalItems = response.data.data.totalElements || 0;
+        // 모든 레시피 데이터를 저장 (클라이언트 사이드 페이지네이션용)
+        this.allRecipes = allRecipes;
+        
+        // 현재 페이지에 표시할 레시피만 선택
+        this.recipes = this.pagedRecipes;
+        
+        this.totalItems = response.data.data.totalElements || allRecipes.length;
         
         console.log('🎯 변환된 레시피 데이터:', JSON.stringify(this.recipes, null, 2));
         console.log('📊 총 아이템 수:', this.totalItems);
+        console.log('📋 현재 페이지 레시피 개수:', this.recipes.length);
+        console.log('📄 총 페이지 수:', this.totalPages);
+        console.log('✅ 페이지네이션 확인 - 한 페이지당 8개 제한:', this.recipes.length <= 8 ? '정상' : '문제있음');
         
       } catch (error) {
         console.error('❌ API 호출 실패:', error);
@@ -252,12 +302,24 @@ export default {
       }
     },
     changePage(page) {
-      if (page >= 1 && page <= this.totalPages) {
+      console.log('페이지 변경 요청:', page, '현재 페이지:', this.currentPage, '총 페이지:', this.totalPages);
+      
+      // 페이지 범위 체크
+      if (page >= 1 && page <= this.totalPages && page !== this.currentPage) {
         this.currentPage = page;
+        // 클라이언트 사이드 페이지네이션 적용
+        this.recipes = this.pagedRecipes;
+        console.log('페이지 변경됨:', this.currentPage, '표시할 레시피 개수:', this.recipes.length);
       } else if (page > this.totalPages) {
+        console.log('최대 페이지 초과, 마지막 페이지로 이동');
         this.currentPage = this.totalPages;
+        this.recipes = this.pagedRecipes;
       } else if (page < 1) {
+        console.log('최소 페이지 미만, 첫 페이지로 이동');
         this.currentPage = 1;
+        this.recipes = this.pagedRecipes;
+      } else {
+        console.log('같은 페이지이므로 변경하지 않음');
       }
     },
     goToLecture() {
@@ -265,9 +327,8 @@ export default {
     },
     goToWrite() {
       if (this.isLoggedIn) {
-        // 게시글 등록 페이지로 이동 (추후 구현 예정)
-        console.log('게시글 등록 페이지로 이동');
-        // this.$router.push({ name: "RecipeCreate" });
+        // 게시글 등록 페이지로 이동
+        this.$router.push('/recipe/post-write');
       } else {
         // 비회원인 경우 로그인 필요 모달 표시
         this.showLoginModal = true;
@@ -334,26 +395,11 @@ export default {
       // 레시피 상세 페이지로 이동
       this.$router.push(`/recipes/${recipe.id}`);
     },
-    goToPostWrite() {
-      this.$router.push('/recipe/post-write');
-    },
+
     
-    // 로그인 상태 확인
-    get isLoggedIn() {
-      const token = localStorage.getItem('accessToken');
-      console.log('🔐 로그인 상태 확인:', {
-        tokenExists: !!token,
-        tokenLength: token ? token.length : 0,
-        isLoggedIn: !!token
-      });
-      return !!token;
-    },
+
     
-    // 로그인 알림
-    showLoginAlert() {
-      alert('로그인이 필요한 기능입니다.');
-      this.$router.push('/login');
-    },
+
     
     // 필터 변경 시 목록 재조회
     onFilterChange() {
@@ -572,6 +618,41 @@ export default {
   color: #bbb;
   font-weight: 400;
   white-space: nowrap;
+}
+
+/* 게시글이 없을 때 메시지 스타일 */
+.no-recipes-message {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+  max-width: 1040px;
+  margin: 0 auto 24px auto;
+}
+
+.no-recipes-content {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.no-recipes-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.6;
+}
+
+.no-recipes-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.no-recipes-description {
+  font-size: 14px;
+  color: #666;
+  line-height: 1.5;
+  margin: 0;
 }
 </style>
 
