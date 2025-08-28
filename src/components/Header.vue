@@ -424,12 +424,14 @@ watch(isLoggedIn, async (newValue) => {
   if (newValue) {
     await fetchProfileInfo();
     
-    // 일반 사용자인 경우 알림 목록 가져오고 SSE 연결 시작
+    // 일반 사용자인 경우 읽지 않은 알림 개수만 가져오기 (가벼운 API)
     if (!isAdmin.value) {
       try {
-        await notificationStore.fetchNotifications();
+        await notificationStore.fetchUnreadCount();
+        // SSE 연결 시작 (실시간 알림 수신용)
+        notificationStore.startNotificationSubscription();
       } catch (error) {
-        console.error('🔍 Header: 로그인 후 알림 목록 조회 실패:', error);
+        console.error('🔍 Header: 로그인 후 읽지 않은 알림 개수 조회 실패:', error);
       }
     }
   } else {
@@ -479,12 +481,14 @@ onMounted(async () => {
   if (isLoggedIn.value || adminLoginStore.isLoggedIn) {
     await fetchProfileInfo();
     
-    // 일반 사용자인 경우 알림 목록 먼저 가져오고 SSE 연결
+    // 일반 사용자인 경우 읽지 않은 알림 개수만 가져오기 (가벼운 API)
     if (!isAdmin.value) {
       try {
-        await notificationStore.fetchNotifications();
+        await notificationStore.fetchUnreadCount();
+        // SSE 연결 시작 (실시간 알림 수신용)
+        notificationStore.startNotificationSubscription();
       } catch (error) {
-        console.error('🔍 Header: 알림 목록 조회 실패:', error);
+        console.error('🔍 Header: 읽지 않은 알림 개수 조회 실패:', error);
       }
     }
   }
