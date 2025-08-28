@@ -12,7 +12,7 @@
         </button>
       </div>
       <!-- 강의 등록하기 버튼 - CHEF, OWNER 역할일 때만 표시 -->
-      <div v-if="role === 'CHEF' || role === 'OWNER'" class="lecture-create-btn-container">
+      <div v-if="userRole === 'CHEF' || userRole === 'OWNER'" class="lecture-create-btn-container">
         <button class="lecture-create-btn" @click="goToLectureCreate">
           강의 등록하기
         </button>
@@ -37,13 +37,13 @@
         </div>
         <div class="filter-col">
           <label>정렬</label>
-                     <select v-model="selectedSort">
-             <option value="latest">최신순</option>
-             <option value="rating">평점 높은순</option>
-             <option value="popular">인기순</option>
-             <option value="price-low">가격 낮은순</option>
-             <option value="price-high">가격 높은순</option>
-           </select>
+          <select v-model="selectedSort">
+            <option value="latest">최신순</option>
+            <option value="rating">평점 높은순</option>
+            <option value="popular">인기순</option>
+            <option value="price-low">가격 낮은순</option>
+            <option value="price-high">가격 높은순</option>
+          </select>
         </div>
       </div>
     </div>
@@ -59,7 +59,7 @@
     </div>
 
     <!-- 강의 카드 리스트 -->
-    <div v-else class="lecture-grid">
+    <div v-else-if="pagedLectures.length > 0" class="lecture-grid">
       <div v-for="lecture in pagedLectures" :key="lecture.id" class="lecture-card" @click="handleCardClick(lecture)">
         <img :src="lecture.thumbUrl || '/src/assets/images/smu_mascort1.jpg'" class="lecture-img" />
         <div class="card-content">
@@ -88,6 +88,11 @@
       </div>
     </div>
     
+    <!-- 강의가 없을 때 메시지 -->
+    <div v-else class="no-lectures-container">
+      <div class="no-lectures-message">아직 강의가 등록되지 않았습니다.</div>
+    </div>
+    
     <!-- 페이지네이션 -->
     <Pagination
       :current-page="currentPage"
@@ -101,6 +106,8 @@
 import Header from '@/components/Header.vue';
 import Pagination from '@/components/common/Pagination.vue';
 import { lectureService } from '@/store/lecture/lectureService';
+import { getUserRoleFromToken } from '@/utils/api';
+import { useAuthStore } from '@/store/auth/auth';
 
 export default {
   name: 'LectureList',
@@ -114,10 +121,9 @@ export default {
       selectedSort: 'latest',
       selectedLecture: null,
       showClickEffect: false,
-      // 로그인 기능 미구현으로 인해 임시로 설정 (추후 실제 로그인 상태로 변경 예정)
-      role: 'CHEF', // 'CHEF', 'OWNER', 'USER' 중 하나로 설정하여 테스트 가능
-      // role: 'USER', // 일반 사용자로 테스트하려면 이 줄을 활성화
+      // 사용자 역할은 토큰에서 동적으로 가져옴
       lectures: [],
+      totalLectures: 0,
       loading: false,
       error: null
     };
@@ -147,13 +153,23 @@ export default {
       return filtered;
     },
     pagedLectures() {
-      const start = (this.currentPage - 1) * this.lecturesPerPage;
-      const end = start + this.lecturesPerPage;
-      return this.filteredLectures.slice(start, end);
+      // 백엔드에서 페이지네이션을 처리하므로 전체 강의 목록을 반환
+      return this.filteredLectures;
     },
-    totalPages() {
-      return Math.max(1, Math.ceil(this.filteredLectures.length / this.lecturesPerPage));
-    },
+         totalPages() {
+       const pages = Math.ceil(this.totalLectures / this.lecturesPerPage);
+       return Math.max(1, pages);
+     },
+         // 사용자 역할 (토큰에서 동적으로 가져옴)
+     userRole() {
+       const authStore = useAuthStore();
+       const tokenRole = getUserRoleFromToken();
+       const storeRole = authStore.getUserRole;
+       
+       // 스토어의 역할을 우선 사용, 없으면 토큰에서 추출
+       return storeRole || tokenRole;
+     },
+
   },
   watch: {
     selectedCategory() {
@@ -163,32 +179,45 @@ export default {
       this.currentPage = 1;
     },
   },
-  async created() {
-    await this.fetchLectures();
-  },
+     async created() {
+     await this.fetchLectures();
+   },
   methods: {
     async fetchLectures() {
       this.loading = true;
       this.error = null;
       
       try {
-        const response = await lectureService.getLectureList();
+        // 페이지 정보를 포함하여 API 호출
+        const response = await lectureService.getLectureList(this.currentPage - 1, this.lecturesPerPage);
         
-        if (response.success) {
-          console.log('백엔드 응답 데이터:', response.data);
+                 if (response.success) {
+          
           // 백엔드 응답 데이터를 프론트엔드 형식으로 변환
-          this.lectures = response.data.map(lecture => {
-            console.log('개별 강의 데이터:', lecture);
-            
-            return {
-              ...lecture,
-              // 좋아요 수는 더미 값으로 설정 (추후 구현 예정)
-              likesCount: Math.floor(Math.random() * 500) + 50,
-              // 백엔드에서 제공하는 평균 평점 사용
-              rating: lecture.reviewAvg || 0,
-            };
-          });
-          console.log('변환된 강의 데이터:', this.lectures);
+          let lectureData = [];
+          
+                     if (response.data.content && Array.isArray(response.data.content)) {
+             // Spring Boot Page 객체 구조
+             lectureData = response.data.content;
+             this.totalLectures = response.data.totalElements || 0;
+           } else if (Array.isArray(response.data)) {
+             // 배열 구조 (페이지네이션 없이 전체 데이터 반환)
+             lectureData = response.data;
+             this.totalLectures = response.data.length;
+           } else {
+             this.error = '데이터 구조 오류';
+             return;
+           }
+          
+                     this.lectures = lectureData.map(lecture => {
+             return {
+               ...lecture,
+               // 백엔드에서 제공하는 실제 좋아요 수 사용
+               likesCount: lecture.likeCount || 0,
+               // 백엔드에서 제공하는 평균 평점 사용
+               rating: lecture.reviewAvg || 0,
+             };
+           });
         } else {
           this.error = '강의 목록을 불러오는데 실패했습니다.';
         }
@@ -202,11 +231,13 @@ export default {
     goToRecipe() { 
       this.$router.push({ name: 'RecipeMainPage' }); 
     },
-    changePage(page) {
+    async changePage(page) {
       if (page >= 1) {
         this.currentPage = page;
+        await this.fetchLectures();
       } else {
         this.currentPage = 1;
+        await this.fetchLectures();
       }
     },
     categoryClass(category) {
@@ -218,54 +249,47 @@ export default {
         default: return '';
       }
     },
-         getCategoryName(category) {
-       switch (category) {
-         case 'KOREAN': return '한식';
-         case 'WESTERN': return '양식';
-         case 'JAPANESE': return '일식';
-         case 'CHINESE': return '중식';
-         default: return category;
-       }
-     },
-     getStarClass(starIndex, rating) {
+    getCategoryName(category) {
+      switch (category) {
+        case 'KOREAN': return '한식';
+        case 'WESTERN': return '양식';
+        case 'JAPANESE': return '일식';
+        case 'CHINESE': return '중식';
+        default: return category;
+      }
+    },
+         getStarClass(starIndex, rating) {
        const numRating = parseFloat(rating);
-       
-       // 디버깅용 로그 (모든 평점 출력)
-       if (starIndex === 1) {
-         console.log(`강의 평점: ${numRating}, Math.floor: ${Math.floor(numRating)}, Math.ceil: ${Math.ceil(numRating)}`);
-       }
-       
-       if (numRating === 0) {
-         return ''; // 별 없음
-       }
-       
-       // 정수 부분만큼 완전히 채워진 별
-       if (starIndex <= Math.floor(numRating)) {
-         return 'filled';
-       }
-       
-       // 소수점이 있는 경우 부분적으로 채워진 별
-       if (starIndex === Math.ceil(numRating) && numRating % 1 !== 0) {
-         const decimal = numRating % 1;
-         if (decimal <= 0.2) return 'partially-filled-1';
-         if (decimal <= 0.4) return 'partially-filled-2';
-         if (decimal <= 0.6) return 'partially-filled-3';
-         if (decimal <= 0.8) return 'partially-filled-4';
-         return 'partially-filled-5';
-       }
-       
-       return ''; // 빈 별
-     },
-    handleCardClick(lecture) {
-      console.log('강의 클릭:', lecture.id, lecture.title);
       
-      // 모든 강의 상세보기 가능
-      this.$router.push({ name: 'LectureDetail', params: { id: lecture.id } });
+      if (numRating === 0) {
+        return ''; // 별 없음
+      }
+      
+      // 정수 부분만큼 완전히 채워진 별
+      if (starIndex <= Math.floor(numRating)) {
+        return 'filled';
+      }
+      
+      // 소수점이 있는 경우 부분적으로 채워진 별
+      if (starIndex === Math.ceil(numRating) && numRating % 1 !== 0) {
+        const decimal = numRating % 1;
+        if (decimal <= 0.2) return 'partially-filled-1';
+        if (decimal <= 0.4) return 'partially-filled-2';
+        if (decimal <= 0.6) return 'partially-filled-3';
+        if (decimal <= 0.8) return 'partially-filled-4';
+        return 'partially-filled-5';
+      }
+      
+      return ''; // 빈 별
     },
-    goToLectureCreate() {
-      console.log('강의 등록 페이지로 이동');
-      this.$router.push({ name: 'LectureCreate' });
-    },
+         handleCardClick(lecture) {
+       // 모든 강의 상세보기 가능
+       this.$router.push({ name: 'LectureDetail', params: { id: lecture.id } });
+     },
+     goToLectureCreate() {
+       this.$router.push({ name: 'LectureCreate' });
+     },
+    
   },
 };
 </script>
@@ -280,7 +304,7 @@ export default {
   max-width: 1040px;
   margin-left: auto;
   margin-right: auto;
-  padding: 0 20px;
+  padding: 20px 20px 0 20px; /* 상단에 20px 여백 추가 */
   position: relative;
 }
 
@@ -526,5 +550,20 @@ export default {
   font-size: 12px;
 }
 
+/* 강의가 없을 때 메시지 스타일 */
+.no-lectures-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+  padding: 40px 20px;
+}
+
+.no-lectures-message {
+  color: #ff7a00;
+  font-size: 18px;
+  font-weight: 600;
+  text-align: center;
+}
 
 </style>
