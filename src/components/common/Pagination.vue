@@ -1,5 +1,5 @@
 <template>
-  <div v-if="totalPages > 1" class="pagination">
+  <div v-if="totalPages >= 1" class="pagination">
     <button @click="changePage(currentPage - 1)" :disabled="currentPage === 1" class="page-btn">
       &lt;
     </button>

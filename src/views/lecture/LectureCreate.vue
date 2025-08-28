@@ -529,9 +529,13 @@ export default {
             formData.append('multipartFile', this.thumbnailFile, this.thumbnailFile.name);
           }
 
-         // ❌ 헤더는 넣지 말기 (브라우저가 boundary 포함해서 자동 설정)
+         // Authorization 헤더 추가
+         const token = localStorage.getItem('accessToken');
          const response = await fetch('http://localhost:8080/lecture/post', {
            method: 'POST',
+           headers: {
+             'Authorization': `Bearer ${token}`
+           },
            body: formData
          });
 

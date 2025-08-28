@@ -55,7 +55,7 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
-    path: "/payment-details/:orderId",
+    path: "/payment-details/:lectureId",
     name: "PaymentDetails",
     component: PaymentDetails,
     meta: { requiresAuth: true },
@@ -145,9 +145,9 @@ const routes = [
       { path: 'recipes', name: 'RecipeMainPage', component: RecipeMainPage },
       { path: 'recipes/:id', name: 'RecipeDetail', component: RecipeMainPage },
       { path: 'lectures', name: 'LectureList', component: LectureList },
-      { path: 'lectures/:id', name: 'LectureDetail', component: LectureDetail },
       { path: 'lectures/create', name: 'LectureCreate', component: LectureCreate },
       { path: 'lectures/edit/:id', name: 'LectureEdit', component: LectureEdit },
+      { path: 'lectures/:id', name: 'LectureDetail', component: LectureDetail },
       { path: 'cart', name: 'CartPage', component: CartPage },
       {
         path: "chat",

@@ -72,7 +72,7 @@
                  @error="handleImageError"
                />
              </div>
-             <div class="item-info">
+             <div class="item-info" @click="goToLectureDetail(item.lectureId)" style="cursor: pointer;">
                <h3 class="item-title">{{ item.lectureTitle }}</h3>
                <p class="item-instructor">{{ item.writerNickName }}</p>
                <p class="item-price">{{ formatPrice(item.price) }}원</p>
@@ -141,8 +141,8 @@
   </template>
 
 <script>
-import { useCartStore } from '@/store/cart/cart.js'
 import { lectureService } from '@/store/lecture/lectureService'
+import { useCartStore } from '@/store/cart/cart'
 import CommonModal from '@/components/common/CommonModal.vue'
 
 export default {
@@ -153,9 +153,8 @@ export default {
 
   data() {
     return {
-      cartStore: useCartStore(),
+      cartStore: null, // 장바구니 스토어 인스턴스
       selectedItems: [], // 선택된 아이템들의 ID 배열
-      cartItems: [], // 백엔드에서 가져온 장바구니 아이템들
       loading: false,
       // 모달 관련 상태
       showClearCartModal: false,
@@ -164,6 +163,10 @@ export default {
     }
   },
   computed: {
+    // 장바구니 스토어에서 아이템 가져오기
+    cartItems() {
+      return this.cartStore ? this.cartStore.serverCartItems : []
+    },
     // 선택된 아이템들의 총 금액
     selectedTotalAmount() {
       return this.cartItems
@@ -177,6 +180,14 @@ export default {
     }
   },
   methods: {
+  // 장바구니 스토어 초기화
+  initCartStore() {
+    if (!this.cartStore) {
+      this.cartStore = useCartStore()
+      console.log('장바구니 스토어 초기화 완료:', this.cartStore)
+    }
+  },
+  
   // 썸네일 URL 처리 (없거나 깨진 경우 기본 이미지 반환)
   getThumbnailUrl(thumbnailUrl) {
     if (!thumbnailUrl || thumbnailUrl === 'undefined' || thumbnailUrl === 'null') {
@@ -218,20 +229,15 @@ export default {
   // 장바구니에서 강의 제거 (단건)
   async removeFromCart(lectureId) {
     try {
-      // 백엔드 API로 장바구니 삭제 요청
-      const response = await lectureService.removeFromCart(lectureId);
-      
-      if (response.success) {
-        // 백엔드 성공 시 장바구니 목록 새로고침
-        await this.fetchCartItems();
-        // 선택된 아이템에서도 제거
-        this.selectedItems = this.selectedItems.filter(id => id !== lectureId)
-        console.log('강의가 장바구니에서 제거되었습니다.');
-        // 모달 닫기
-        this.showRemoveItemModal = false;
-      } else {
-        console.error('장바구니 삭제 실패:', response.message);
-        alert('장바구니에서 제거에 실패했습니다. 다시 시도해주세요.');
+      await lectureService.removeFromCart(lectureId);
+      // 선택된 아이템에서도 제거
+      this.selectedItems = this.selectedItems.filter(id => id !== lectureId)
+      console.log('강의가 장바구니에서 제거되었습니다.');
+      // 모달 닫기
+      this.showRemoveItemModal = false;
+      // 장바구니 목록 새로고침 (스토어 업데이트)
+      if (this.cartStore) {
+        await this.cartStore.fetchServerCartList();
       }
     } catch (error) {
       console.error('장바구니 삭제 오류:', error);
@@ -250,19 +256,14 @@ export default {
   // 장바구니 전체 비우기
   async clearAllItems() {
     try {
-      // 백엔드 API로 장바구니 전체 삭제 요청
-      const response = await lectureService.clearCart();
-      
-      if (response.success) {
-        // 백엔드 성공 시 장바구니 목록 새로고침
-        await this.fetchCartItems();
-        this.selectedItems = [];
-        console.log('장바구니가 모두 비워졌습니다.');
-        // 모달 닫기
-        this.showClearCartModal = false;
-      } else {
-        console.error('장바구니 전체 삭제 실패:', response.message);
-        alert('장바구니 비우기에 실패했습니다. 다시 시도해주세요.');
+      await lectureService.clearCart();
+      this.selectedItems = [];
+      console.log('장바구니가 모두 비워졌습니다.');
+      // 모달 닫기
+      this.showClearCartModal = false;
+      // 장바구니 목록 새로고침 (스토어 업데이트)
+      if (this.cartStore) {
+        await this.cartStore.fetchServerCartList();
       }
     } catch (error) {
       console.error('장바구니 전체 삭제 오류:', error);
@@ -272,19 +273,17 @@ export default {
 
   // 장바구니 데이터 가져오기
   async fetchCartItems() {
+    if (!this.cartStore) {
+      console.error('장바구니 스토어가 초기화되지 않았습니다.')
+      return
+    }
+    
     this.loading = true;
     try {
-      const response = await lectureService.getCartItems();
-      if (response.success) {
-        this.cartItems = response.data;
-        console.log('장바구니 데이터 로드 완료:', this.cartItems);
-      } else {
-        console.error('장바구니 조회 실패:', response.message);
-        this.cartItems = [];
-      }
+      await this.cartStore.fetchServerCartList();
+      console.log('장바구니 데이터 로드 완료:', this.cartItems);
     } catch (error) {
       console.error('장바구니 조회 오류:', error);
-      this.cartItems = [];
     } finally {
       this.loading = false;
     }
@@ -293,6 +292,11 @@ export default {
   // 강의 목록 페이지로 이동
   goToLectures() {
     this.$router.push('/lectures')
+  },
+
+  // 강의 상세 페이지로 이동
+  goToLectureDetail(lectureId) {
+    this.$router.push(`/lectures/${lectureId}`)
   },
 
   // 결제 버튼 눌렀을 때 실행되는 메인 함수
@@ -323,10 +327,10 @@ export default {
   },
 
   // 결제 성공 후 선택된 아이템들을 장바구니에서 제거
-  removeSelectedItemsFromCart() {
-    this.selectedItems.forEach(itemId => {
-      this.cartStore.removeFromCart(itemId)
-    })
+  async removeSelectedItemsFromCart() {
+    for (const itemId of this.selectedItems) {
+      await lectureService.removeFromCart(itemId);
+    }
     this.selectedItems = []
   },
 
@@ -342,9 +346,13 @@ export default {
   // prepay: 백엔드에 주문 정보 저장
   async saveOrderToBackend(orderId, amount, lectureIds) {
     try {
+      const token = localStorage.getItem('accessToken');
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/purchase/prepay`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ orderId, amount, lectureIds })
       })
 
@@ -390,8 +398,12 @@ export default {
    },
 
    mounted() {
+     console.log('CartPage mounted 시작')
+     // 장바구니 스토어 초기화
+     this.initCartStore();
      // 페이지 로드 시 장바구니 데이터 가져오기
      this.fetchCartItems();
+     console.log('CartPage mounted 완료')
    }
  
  }
