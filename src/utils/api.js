@@ -1,7 +1,64 @@
 // 공통 API 유틸리티
 
 // API 기본 URL
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
+// JWT 토큰에서 사용자 ID 추출
+export const getUserIdFromToken = () => {
+  const token = localStorage.getItem('accessToken');
+  if (!token) return null;
+  try {
+    const payload = token.split('.')[1];
+    const decodedPayload = JSON.parse(atob(payload));
+    console.log('Decoded JWT Payload:', decodedPayload); // Added for debugging
+    
+    if (decodedPayload.userId) {
+      console.log('Found userId in token:', decodedPayload.userId);
+      return decodedPayload.userId;
+    }
+    if (decodedPayload.uuid) {
+      console.log('Found uuid in token:', decodedPayload.uuid);
+      return decodedPayload.uuid;
+    }
+    
+    console.warn('No explicit UUID field (userId/uuid) found in token. Falling back to "sub" field. This might be an email:', decodedPayload.sub);
+    return decodedPayload.sub;
+  } catch (error) {
+    console.error('토큰에서 사용자 ID 추출 오류:', error);
+    return null;
+  }
+};
+
+// JWT 토큰에서 사용자 역할 추출
+export const getUserRoleFromToken = () => {
+  try {
+    // localStorage가 존재하는지 확인
+    if (typeof localStorage === 'undefined' || !localStorage) {
+      return null;
+    }
+    
+    const token = localStorage.getItem('accessToken');
+    
+    if (!token) {
+      return null;
+    }
+    
+    // JWT 토큰의 payload 부분 추출 (두 번째 부분)
+    const payload = token.split('.')[1];
+    
+    if (!payload) {
+      return null;
+    }
+    
+    // Base64 디코딩
+    const decodedPayload = JSON.parse(atob(payload));
+    
+    // 사용자 역할 반환 (백엔드에서 설정한 필드명에 따라 조정 필요)
+    return decodedPayload.role || decodedPayload.authorities || decodedPayload.userRole;
+  } catch (error) {
+    return null;
+  }
+};
 
 // API 헤더 설정
 export const getHeaders = () => {
@@ -9,10 +66,16 @@ export const getHeaders = () => {
     'Content-Type': 'application/json',
   };
   
-  // 일반 사용자 JWT 토큰이 있으면 헤더에 추가
-  const token = localStorage.getItem('accessToken');
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+  // JWT 토큰이 있으면 헤더에 추가
+  try {
+    if (typeof localStorage !== 'undefined' && localStorage) {
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    }
+  } catch (error) {
+    console.error('localStorage 접근 오류:', error);
   }
   
   // 관리자 JWT 토큰이 있으면 헤더에 추가 (관리자 API용)
@@ -52,6 +115,13 @@ export const apiGet = async (endpoint) => {
 export const apiPost = async (endpoint, data = null) => {
   console.log('API POST 요청 URL:', `${API_BASE_URL}${endpoint}`);
   console.log('API 요청 데이터:', data);
+  console.log('API 요청 헤더:', getHeaders());
+  
+  if (data) {
+    console.log('JSON.stringify(data):', JSON.stringify(data));
+    console.log('data.lectureId:', data.lectureId);
+    console.log('data.lectureId 타입:', typeof data.lectureId);
+  }
   
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -59,6 +129,9 @@ export const apiPost = async (endpoint, data = null) => {
       headers: getHeaders(),
       body: data ? JSON.stringify(data) : null,
     });
+    
+    console.log('API POST 응답 상태:', response.status);
+    console.log('API POST 응답 헤더:', response.headers);
     
     return response;
   } catch (error) {

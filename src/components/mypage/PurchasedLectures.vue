@@ -6,44 +6,44 @@
 
     <div class="lectures-grid">
       <div v-for="lecture in pagedLectures" :key="lecture.id" class="lecture-card">
-        <div class="lecture-image">
-          <img :src="lecture.image" :alt="lecture.title" />
+        <div class="lecture-image" @click="goToLectureDetail(lecture.id)">
+          <img :src="lecture.thumbUrl" :alt="lecture.title" />
         </div>
         <div class="lecture-content">
           <div class="lecture-header">
-            <span class="category-badge" :class="categoryClass(lecture.category)">{{ lecture.category }}</span>
+            <span class="category-badge" :class="categoryClass(lecture.category)">{{ getCategoryName(lecture.category) }}</span>
 
-            <router-link :to="{ name: 'PaymentDetails', params: { orderId: 'ORDER_20250111_001' } }" class="payment-history-link">결제 내역</router-link>
+            <router-link :to="{ name: 'PaymentDetails', params: { lectureId: lecture.id } }" class="payment-history-link">결제 내역</router-link>
 
           </div>
-          <h3 class="lecture-title">{{ lecture.title }}</h3>
+          <h3 class="lecture-title" @click="goToLectureDetail(lecture.id)">{{ lecture.title }}</h3>
           <p class="lecture-description">{{ lecture.description }}</p>
           <div class="lecture-rating-stats">
             <div class="lecture-rating">
               <span class="stars">
-                <span v-for="i in 5" :key="i" class="star" :class="{ filled: i <= Math.round(lecture.rating) }">
+                <span v-for="i in 5" :key="i" class="star" :class="{ filled: i <= Math.round(lecture.reviewAvg || 0) }">
                   ★
                 </span>
               </span>
-              <span class="rating-count">({{ lecture.ratingCount }})</span>
+              <span class="rating-count">({{ lecture.reviewCount }})</span>
             </div>
             <div class="lecture-stats">
               <span class="stat-item">
                 <span class="stat-icon">❤️</span>
-                {{ lecture.likes }}
+                {{ lecture.likeCount }}
               </span>
               <span class="stat-item">
                 <span class="stat-icon">💬</span>
-                {{ lecture.comments }}
+                {{ lecture.qnaCount }}
               </span>
               <span class="stat-item">
                 <span class="stat-icon">👥</span>
-                {{ lecture.students }}
+                {{ lecture.purchaseCount }}
               </span>
             </div>
           </div>
           <div class="lecture-bottom">
-            <div class="lecture-date">{{ lecture.date }}</div>
+            <div class="lecture-date">{{ lecture.date || '' }}</div>
           </div>
         </div>
       </div>
@@ -66,6 +66,7 @@
 
 <script>
 import Pagination from '../common/Pagination.vue';
+import { apiGet } from '../../utils/api.js';
 
 export default {
   name: 'PurchasedLectures',
@@ -76,100 +77,71 @@ export default {
     return {
       currentPage: 1,
       lecturesPerPage: 6,
-      lectures: [
-        {
-          id: 1,
-          title: '전문가와 함께하는 한식 기초',
-          description: '한식의 기본기를 탄탄히 다지는 강의입니다. 초보자도 쉽게 따라 할 수 있어요!',
-          image: '/src/assets/images/smu_mascort1.jpg',
-          category: '한식',
-          rating: 5,
-          ratingCount: 127,
-          likes: 50,
-          comments: 20,
-          students: 120,
-          date: '3일 전'
-        },
-        {
-          id: 2,
-          title: '홈메이드 파스타 마스터클래스',
-          description: '집에서 만드는 정통 이탈리안 파스타 강의입니다. 면부터 소스까지!',
-          image: '/src/assets/images/smu_mascort3.jpg',
-          category: '양식',
-          rating: 4.5,
-          ratingCount: 89,
-          likes: 50,
-          comments: 20,
-          students: 120,
-          date: '5일 전'
-        },
-        {
-          id: 3,
-          title: '일본 가정식 요리 마스터',
-          description: '일본 가정에서 먹는 정통 요리들을 배워보세요!',
-          image: '/src/assets/images/smu_mascort2.jpg',
-          category: '일식',
-          rating: 4.8,
-          ratingCount: 95,
-          likes: 45,
-          comments: 18,
-          students: 98,
-          date: '1주일 전'
-        },
-        {
-          id: 4,
-          title: '중국 요리의 모든 것',
-          description: '중국 요리의 기본부터 고급 요리까지!',
-          image: '/src/assets/images/smu_mascort4.jpg',
-          category: '중식',
-          rating: 4.2,
-          ratingCount: 76,
-          likes: 38,
-          comments: 15,
-          students: 85,
-          date: '2주일 전'
-        },
-        {
-          id: 5,
-          title: '디저트 베이킹 기초',
-          description: '집에서 만드는 맛있는 디저트들!',
-          image: '/src/assets/images/smu_mascort1.jpg',
-          category: '디저트',
-          rating: 4.6,
-          ratingCount: 103,
-          likes: 52,
-          comments: 22,
-          students: 110,
-          date: '3주일 전'
-        }
-      ]
+      lectures: [],
+      totalPages: 0,
+      totalElements: 0,
+      loading: false
     };
   },
   computed: {
     pagedLectures() {
-      const start = (this.currentPage - 1) * this.lecturesPerPage;
-      const end = start + this.lecturesPerPage;
-      return this.lectures.slice(start, end);
-    },
-    totalPages() {
-      return Math.ceil(this.lectures.length / this.lecturesPerPage);
+      return this.lectures;
     }
   },
+  async mounted() {
+    await this.fetchPurchasedLectures();
+  },
   methods: {
-    changePage(page) {
+    async fetchPurchasedLectures() {
+      try {
+        this.loading = true;
+        const params = new URLSearchParams({
+          page: this.currentPage - 1, // API는 0-based pagination
+          size: this.lecturesPerPage
+        });
+        
+        const response = await apiGet(`/api/my/lectures?${params.toString()}`);
+        const data = await response.json();
+
+        if (data.success) {
+          this.lectures = data.data.content;
+          this.totalPages = data.data.totalPages;
+          this.totalElements = data.data.totalElements;
+        }
+      } catch (error) {
+        console.error('구매한 강의 조회 실패:', error);
+      } finally {
+        this.loading = false;
+      }
+    },
+    async changePage(page) {
       if (page >= 1 && page <= this.totalPages) {
         this.currentPage = page;
+        await this.fetchPurchasedLectures();
       }
     },
     categoryClass(category) {
       switch (category) {
-        case '한식': return 'cat-korean';
-        case '양식': return 'cat-western';
-        case '일식': return 'cat-japanese';
-        case '중식': return 'cat-chinese';
-        case '디저트': return 'cat-dessert';
+        case 'KOREAN': return 'cat-korean';
+        case 'WESTERN': return 'cat-western';
+        case 'JAPANESE': return 'cat-japanese';
+        case 'CHINESE': return 'cat-chinese';
+        case 'DESSERT': return 'cat-dessert';
         default: return '';
       }
+    },
+    getCategoryName(category) {
+      switch (category) {
+        case 'KOREAN': return '한식';
+        case 'WESTERN': return '양식';
+        case 'JAPANESE': return '일식';
+        case 'CHINESE': return '중식';
+        case 'DESSERT': return '디저트';
+        default: return category;
+      }
+    },
+    goToLectureDetail(lectureId) {
+      this.$router.push(`/lectures/${lectureId}`);
     }
   }
 };
@@ -193,7 +165,7 @@ export default {
 
 .lectures-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 24px;
 }
 
@@ -216,6 +188,12 @@ export default {
   width: 100%;
   height: 180px;
   overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.lecture-image:hover {
+  transform: scale(1.02);
 }
 
 .lecture-image img {
@@ -289,6 +267,12 @@ export default {
   color: #222;
   margin: 0 0 8px 0;
   line-height: 1.3;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.lecture-title:hover {
+  color: #ff7a00;
 }
 
 .lecture-description {

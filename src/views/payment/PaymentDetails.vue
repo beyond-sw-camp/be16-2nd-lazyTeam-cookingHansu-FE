@@ -3,13 +3,37 @@
     <Header />
     
     <div class="payment-details-container">
-      <!-- 페이지 제목 -->
-      <div class="page-header">
-        <h1>주문 상세 내역</h1>
-        <p class="order-number">주문번호: {{ orderDetails.orderNumber }}</p>
+      <!-- 로딩 화면 -->
+      <div v-if="loading" class="loading-container">
+        <div class="loading-spinner"></div>
+        <p>결제내역을 불러오는 중...</p>
       </div>
 
-      <div class="details-grid">
+      <!-- 에러 화면 -->
+      <div v-else-if="error" class="error-container">
+        <div class="error-icon">⚠️</div>
+        <h3>오류가 발생했습니다</h3>
+        <p>{{ error }}</p>
+        <button @click="fetchPaymentHistory" class="retry-btn">다시 시도</button>
+      </div>
+
+      <!-- 페이지 제목 -->
+      <div v-else class="page-header">
+        <div class="header-content">
+          <button @click="goBack" class="back-button">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M15 18L9 12L15 6" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            뒤로가기
+          </button>
+          <div class="title-section">
+            <h1>주문 상세 내역</h1>
+            <p class="order-number">주문번호: {{ orderDetails.orderId || '로딩 중...' }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="!loading && !error" class="details-grid">
         
         <div class="left-column">
           <!-- 주문 정보 -->
@@ -25,23 +49,15 @@
             </h2>
             <div class="info-item">
               <span class="label">주문일시:</span>
-              <span class="value">{{ orderDetails.orderDate }}</span>
+              <span class="value">{{ formatDate(orderDetails.createdAt) || '로딩 중...' }}</span>
             </div>
             <div class="info-item">
               <span class="label">주문번호:</span>
-              <span class="value">{{ orderDetails.orderNumber }}</span>
+              <span class="value">{{ orderDetails.orderId || '로딩 중...' }}</span>
             </div>
             <div class="info-item">
               <span class="label">결제수단:</span>
-              <span class="value">{{ orderDetails.paymentMethod }}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">카드정보:</span>
-              <span class="value">{{ orderDetails.cardInfo }}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">할부:</span>
-              <span class="value">{{ orderDetails.installment }}</span>
+              <span class="value">{{ getPaymentMethodName(orderDetails.payMethod) || '로딩 중...' }}</span>
             </div>
           </div>
 
@@ -58,17 +74,14 @@
               구매한 강의
             </h2>
             <div class="courses-list">
-              <div v-for="course in orderDetails.courses" :key="course.id" class="course-item">
+              <div class="course-item">
                 <div class="course-image">
-                  <img :src="course.image" :alt="course.title" />
+                  <img :src="orderDetails.thumbUrl" :alt="orderDetails.title || '강의 이미지'" />
                 </div>
                 <div class="course-info">
-                  <h3 class="course-title">{{ course.title }}</h3>
-                  <p class="course-instructor">{{ course.instructor }}</p>
+                  <h3 class="course-title">{{ orderDetails.title || '로딩 중...' }}</h3>
                   <div class="course-price">
-                    <span class="current-price">₩{{ course.currentPrice.toLocaleString() }}</span>
-                    <span class="original-price">₩{{ course.originalPrice.toLocaleString() }}</span>
-                    <span class="discount-rate">{{ course.discountRate }}% 할인</span>
+                    <span class="current-price">₩{{ orderDetails.price ? orderDetails.price.toLocaleString() : '로딩 중...' }}</span>
                   </div>
                 </div>
               </div>
@@ -89,11 +102,11 @@
             </h2>
             <div class="info-item">
               <span class="label">이름:</span>
-              <span class="value">{{ orderDetails.buyerName }}</span>
+              <span class="value">{{ orderDetails.buyerName || '로딩 중...' }}</span>
             </div>
             <div class="info-item">
               <span class="label">이메일:</span>
-              <span class="value">{{ orderDetails.buyerEmail }}</span>
+              <span class="value">{{ orderDetails.buyerEmail || '로딩 중...' }}</span>
             </div>
           </div>
 
@@ -107,17 +120,9 @@
               결제 정보
             </h2>
             <div class="payment-summary">
-              <div class="summary-item">
-                <span class="label">상품금액:</span>
-                <span class="value">₩{{ orderDetails.subtotal.toLocaleString() }}</span>
-              </div>
-              <div class="summary-item discount">
-                <span class="label">할인금액:</span>
-                <span class="value">-₩{{ orderDetails.discount.toLocaleString() }}</span>
-              </div>
               <div class="summary-item total">
                 <span class="label">최종 결제금액:</span>
-                <span class="value">₩{{ orderDetails.total.toLocaleString() }}</span>
+                <span class="value">₩{{ orderDetails.price ? orderDetails.price.toLocaleString() : '로딩 중...' }}</span>
               </div>
             </div>
             <button class="study-btn" @click="goToStudy">강의 수강하기</button>
@@ -133,6 +138,7 @@
 <script>
 import Header from '@/components/Header.vue';
 import Footer from '@/components/Footer.vue';
+import { paymentService } from '@/services/payment/paymentService.js';
 
 export default {
   name: 'PaymentDetails',
@@ -143,41 +149,93 @@ export default {
   data() {
     return {
       orderDetails: {
-        orderNumber: 'ORDER_20250111_001',
-        orderDate: '2025년 1월 11일 16:32',
-        paymentMethod: '신용카드',
-        cardInfo: '****_****_****-1234',
-        installment: '일시불',
-        buyerName: '최지혜',
-        buyerEmail: 'user@example.com',
-        subtotal: 120000,
-        discount: 40000,
-        total: 80000,
-        courses: [
-          {
-            id: 1,
-            title: '한식 기초 요리법 완주 - 초보자도 쉽게 따라하는 집밥 레시피',
-            instructor: '김미영 셰프',
-            image: '/src/assets/images/smu_mascort1.jpg',
-            currentPrice: 45000,
-            originalPrice: 65000,
-            discountRate: 30
-          },
-          
-        ]
-      }
+        id: '',
+        title: '',
+        price: 0,
+        thumbUrl: '',
+        createdAt: '',
+        orderId: '',
+        payMethod: '',
+        buyerName: '',
+        buyerEmail: '',
+        lectureId: ''
+      },
+      loading: false,
+      error: null
     };
   },
+  computed: {
+    hasData() {
+      return this.orderDetails && this.orderDetails.id;
+    }
+  },
+  async mounted() {
+    await this.fetchPaymentHistory();
+  },
   methods: {
+    async fetchPaymentHistory() {
+      try {
+        this.loading = true;
+        const lectureId = this.$route.params.lectureId;
+        
+        console.log('강의 ID:', lectureId);
+        
+        if (!lectureId) {
+          console.error('강의 ID가 없습니다.');
+          return;
+        }
+
+        const data = await paymentService.getPaymentHistory(lectureId);
+        console.log('받은 데이터:', data);
+        this.orderDetails = data;
+        this.error = null;
+        console.log('orderDetails 업데이트됨:', this.orderDetails);
+      } catch (error) {
+        console.error('결제내역 조회 실패:', error);
+        this.error = '결제내역을 불러오는데 실패했습니다.';
+        // 에러 처리 (필요시 사용자에게 알림)
+      } finally {
+        this.loading = false;
+      }
+    },
+    formatDate(dateString) {
+      if (!dateString) return '';
+      
+      const date = new Date(dateString);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      
+      return `${year}년 ${month}월 ${day}일 ${hours}:${minutes}`;
+    },
+    getPaymentMethodName(payMethod) {
+      switch (payMethod) {
+        case 'EASY_PAY':
+          return '간편결제';
+        case 'CARD':
+          return '신용카드';
+        case 'BANK_TRANSFER':
+          return '계좌이체';
+        case 'VIRTUAL_ACCOUNT':
+          return '가상계좌';
+        default:
+          return payMethod || '결제수단';
+      }
+    },
     goToStudy() {
       // 구매한 강의의 상세 페이지로 이동
-      if (this.orderDetails.courses && this.orderDetails.courses.length > 0) {
-        const courseId = this.orderDetails.courses[0].id;
-        this.$router.push(`/lectures/${courseId}`);
+      if (this.orderDetails.lectureId) {
+        this.$router.push(`/lectures/${this.orderDetails.lectureId}`);
       } else {
         // 구매한 강의가 없는 경우 강의 목록으로 이동
         this.$router.push('/lectures');
       }
+    },
+    goBack() {
+      // 마이페이지의 구매한 강의목록으로 이동
+      this.$router.push({ name: 'MyPage', query: { tab: 'lectures' } });
     }
   }
 };
@@ -194,6 +252,131 @@ export default {
   max-width: 1100px;
   margin: 0 auto;
   padding: 40px 20px;
+}
+
+.page-header {
+  margin-bottom: 40px;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.back-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.back-button:hover {
+  background-color: #f5f5f5;
+  color: #333;
+}
+
+.back-button svg {
+  width: 20px;
+  height: 20px;
+}
+
+.title-section {
+  flex: 1;
+}
+
+.title-section h1 {
+  margin: 0 0 8px 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: #222;
+}
+
+.order-number {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  text-align: center;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #ff7a00;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-container p {
+  color: #666;
+  font-size: 16px;
+  margin: 0;
+}
+
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  text-align: center;
+}
+
+.error-icon {
+  font-size: 48px;
+  margin-bottom: 20px;
+}
+
+.error-container h3 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  color: #e74c3c;
+}
+
+.error-container p {
+  color: #666;
+  font-size: 16px;
+  margin: 0 0 24px 0;
+}
+
+.retry-btn {
+  background: #ff7a00;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.retry-btn:hover {
+  background: #e66a00;
 }
 
 .page-header {
