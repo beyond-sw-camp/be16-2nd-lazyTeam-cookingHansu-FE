@@ -155,7 +155,7 @@
 
                   <div v-if="msg.files && msg.files.filter(f => f.fileType === 'VIDEO').length > 0" class="mt-1">
                     <div v-for="file in msg.files.filter(f => f.fileType === 'VIDEO')" :key="file.id" class="mb-1">
-                      <video :src="file.fileUrl" controls :width="200" :height="150" class="rounded" :alt="file.fileName" />
+                      <video :src="file.fileUrl" controls :width="120" :height="90" class="rounded" :alt="file.fileName" />
                     </div>
                   </div>
 
@@ -195,7 +195,7 @@
 
                   <div v-if="msg.files && msg.files.filter(f => f.fileType === 'VIDEO').length > 0" class="mt-1">
                     <div v-for="file in msg.files.filter(f => f.fileType === 'VIDEO')" :key="file.id" class="mb-1">
-                      <video :src="file.fileUrl" controls :width="200" :height="150" class="rounded" :alt="file.fileName" />
+                      <video :src="file.fileUrl" controls :width="120" :height="90" class="rounded" :alt="file.fileName" />
                     </div>
                   </div>
 
@@ -718,13 +718,13 @@ const formatDateSeparator = (ts) => {
 };
 
 const getImageGridLayout = (count) => {
-  const imageSize = '72px';
+  const imageSize = '48px';
   const gap = '3px';
-  const maxPerRow = 4;
-  const widthPx = (72 * Math.min(count, maxPerRow)) + (3 * (Math.min(count, maxPerRow) - 1));
+  const maxPerRow = 5;
+  const widthPx = (48 * Math.min(count, maxPerRow)) + (3 * (Math.min(count, maxPerRow) - 1));
   return { imageSize, gap, maxPerRow, containerWidth: `${widthPx}px` };
 };
-const getImageItemStyle = () => ({ width: '72px', height: '72px' });
+const getImageItemStyle = () => ({ width: '48px', height: '48px' });
 
 // 방 이름 변경/나가기
 const editRoomName = () => {

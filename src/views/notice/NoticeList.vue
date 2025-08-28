@@ -255,7 +255,7 @@ const createTestChatRoom = async () => {
     }
     
     // 테스트용 상대방 ID (고정) - 실제 서비스에서는 다른 사용자 ID를 사용해야 함
-    const inviteeId = 'af705516-2529-49ae-ab4b-861453cecf6a';
+    const inviteeId = '5a1af30b-aec4-425d-90ec-7218532a7720';
     
     console.log('테스트용 채팅방 생성 시작:', { myId, inviteeId });
     
