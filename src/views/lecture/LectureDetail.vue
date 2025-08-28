@@ -1864,7 +1864,9 @@ export default {
       // Q&A 수정 가능 여부 확인
       canEditQA(qa) {
         if (!this.currentUserId) { return false; }
-        if (this.isAuthor || this.isAdmin) { return true; }
+        // 관리자는 모든 Q&A 수정/삭제 가능
+        if (this.isAdmin) { return true; }
+        // 질문자 본인만 수정/삭제 가능 (답변자는 수정/삭제 불가)
         return this.currentUserId && qa.questionerUUID && this.currentUserId === qa.questionerUUID;
       },
       
