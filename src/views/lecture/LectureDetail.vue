@@ -12,7 +12,7 @@
            <div class="title-section">
              <h1 class="lecture-title">{{ lecture.title }}</h1>
              <!-- 강의 상단 수정/삭제 버튼 -->
-             <div v-if="showEditButton" class="top-edit-button">
+             <div v-if="ready && showEditButton" class="top-edit-button">
                <button 
                  class="edit-lecture-btn" 
                  @click="editLecture"
@@ -318,7 +318,7 @@
       <!-- 사이드바 -->
       <div class="sidebar">
         <!-- 구매 정보 -->
-        <div class="purchase-section">
+        <div v-if="ready" class="purchase-section">
           <!-- 가격 표시 (구매한 사용자나 강의 작성자에게는 숨김) -->
           <div v-if="!isPurchaser && !isAuthor" class="price">{{ lecture.price.toLocaleString() }}원</div>
           
@@ -725,6 +725,7 @@ export default {
   components: { Header, DeleteConfirmModal },
   data() {
     return {
+      ready: false, // 초기화 완료 상태
       cartStore: null, // 장바구니 스토어 인스턴스
       activeTab: 'reviews',
       lecture: null,
@@ -1190,6 +1191,9 @@ export default {
               }
             });
           }
+          
+          // 모든 초기화가 완료되면 ready 상태를 true로 설정
+          this.ready = true;
       } catch (error) {
         console.error('강의 상세 조회 오류:', error);
         this.showError('서버 연결에 실패했습니다.');
@@ -2425,7 +2429,7 @@ export default {
       // URL 파라미터에서 강의 ID를 가져와서 데이터 로드
       const lectureId = this.$route.params.id;
       if (lectureId) {
-        this.fetchLectureData(lectureId);
+        await this.fetchLectureData(lectureId);
         
         // URL 쿼리 파라미터에서 결제 완료 여부 확인
         const urlParams = new URLSearchParams(window.location.search);
