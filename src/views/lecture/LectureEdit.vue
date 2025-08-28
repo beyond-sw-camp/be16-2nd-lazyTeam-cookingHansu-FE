@@ -487,7 +487,7 @@ export default {
         
         try {
          
-         // ✅ JSON은 반드시 Blob(application/json)으로
+                   // ✅ JSON은 반드시 Blob(application/json)으로
          const lectureUpdateDto = {
            title: this.formData.title,
            description: this.formData.description,
@@ -496,7 +496,7 @@ export default {
            price: this.formData.price
          };
          
-                   const lectureIngredientsListDto = this.formData.ingredients.length > 0 
+         const lectureIngredientsListDto = this.formData.ingredients.length > 0 
             ? this.formData.ingredients.map((ing, index) => ({
                 ...ing,
                 sequence: index + 1
@@ -510,43 +510,57 @@ export default {
               }))
             : [];
           
-                                          // 현재 화면에 있는 강의들만 새로 생성
-           const lectureVideoDto = this.formData.videos.length > 0
-             ? this.formData.videos.map((video, index) => {
-                 const videoInput = this.$refs[`videoInput-${index}`];
-                 const hasNewVideo = videoInput && Array.isArray(videoInput) && videoInput[0] && videoInput[0].files[0];
-                 const hasExistingVideo = video.videoUrl && video.videoUrl.trim();
-                 const hasVideo = hasNewVideo || hasExistingVideo; // 새 파일 또는 기존 영상 URL
-                 const hasTitle = video.title.trim();
-                 
-                 // 비디오와 제목이 모두 있는 경우만 DTO에 포함
-                 if (hasVideo && hasTitle) {
-                   return {
-                     title: video.title,
-                     sequence: index + 1,
-                     videoUrl: hasNewVideo ? '' : video.videoUrl, // 새 파일이면 빈 문자열, 기존 영상이면 URL
-                     duration: video.duration || 0 // 기존 영상의 길이 (새 파일이면 0)
-                   };
-                 }
-                 return null;
-               }).filter(item => item !== null) // null 값 제거
-             : [];
+                     // 현재 화면에 있는 강의들만 새로 생성
+            const lectureVideoDto = this.formData.videos.length > 0
+              ? this.formData.videos.map((video, index) => {
+                  const videoInput = this.$refs[`videoInput-${index}`];
+                  const hasNewVideo = videoInput && Array.isArray(videoInput) && videoInput[0] && videoInput[0].files[0];
+                  const hasExistingVideo = video.videoUrl && video.videoUrl.trim();
+                  const hasTitle = video.title.trim();
+                  
+                  // 제목이 있는 모든 비디오를 DTO에 포함 (비디오 파일은 나중에 별도로 처리)
+                  if (hasTitle) {
+                    return {
+                      title: video.title,
+                      sequence: index + 1,
+                      videoUrl: hasNewVideo ? '' : (hasExistingVideo ? video.videoUrl : ''), // 새 파일이면 빈 문자열, 기존 영상이면 URL, 둘 다 없으면 빈 문자열
+                      duration: video.duration || 0
+                    };
+                  }
+                  return null;
+                }).filter(item => item !== null) // null 값 제거
+              : [];
 
-                   formData.append('lectureUpdateDto',
-            new Blob([JSON.stringify(lectureUpdateDto)], { type: 'application/json' })
-          );
-          
-          formData.append('lectureIngredientsListDto',
-            new Blob([JSON.stringify(lectureIngredientsListDto)], { type: 'application/json' })
-          );
-          
-          formData.append('lectureStepDto',
-            new Blob([JSON.stringify(lectureStepDto)], { type: 'application/json' })
-          );
-          
-          formData.append('lectureVideoDto',
-            new Blob([JSON.stringify(lectureVideoDto)], { type: 'application/json' })
-          );
+                     // 필수 데이터가 있는 경우에만 Blob 생성하여 추가
+           const hasValidUpdateDto = lectureUpdateDto.title && 
+                                    lectureUpdateDto.description && 
+                                    lectureUpdateDto.category && 
+                                    lectureUpdateDto.level && 
+                                    lectureUpdateDto.price > 0;
+           
+           if (hasValidUpdateDto) {
+             formData.append('lectureUpdateDto',
+               new Blob([JSON.stringify(lectureUpdateDto)], { type: 'application/json' })
+             );
+           }
+           
+           if (lectureIngredientsListDto.length > 0) {
+             formData.append('lectureIngredientsListDto',
+               new Blob([JSON.stringify(lectureIngredientsListDto)], { type: 'application/json' })
+             );
+           }
+           
+           if (lectureStepDto.length > 0) {
+             formData.append('lectureStepDto',
+               new Blob([JSON.stringify(lectureStepDto)], { type: 'application/json' })
+             );
+           }
+           
+           if (lectureVideoDto.length > 0) {
+             formData.append('lectureVideoDto',
+               new Blob([JSON.stringify(lectureVideoDto)], { type: 'application/json' })
+             );
+           }
           
           // 파일들 추가
           const thumbnailInput = this.$refs.thumbnailInput;
@@ -554,73 +568,203 @@ export default {
             formData.append('multipartFile', thumbnailInput.files[0], thumbnailInput.files[0].name);
           }
           
-                     // 새로 업로드된 파일만 추가
-           let videoFilesCount = 0;
-           this.formData.videos.forEach((video, index) => {
-             const videoInput = this.$refs[`videoInput-${index}`];
-             const hasNewVideo = videoInput && Array.isArray(videoInput) && videoInput[0] && videoInput[0].files[0];
-             const hasTitle = video.title.trim();
-             
-             // 새로 업로드된 파일이 있는 경우만 파일을 추가
-             if (hasNewVideo && hasTitle) {
-               formData.append('lectureVideoFiles', videoInput[0].files[0], videoInput[0].files[0].name);
-               videoFilesCount++;
+                                // 새로 업로드된 파일만 추가 (순서 보장)
+            let videoFilesCount = 0;
+            const newVideoIndices = []; // 새 비디오 파일의 인덱스 추적
+            const newVideoFiles = []; // 새 비디오 파일들을 순서대로 저장
+            
+            // 먼저 새 비디오 파일들을 수집
+            this.formData.videos.forEach((video, index) => {
+              const videoInput = this.$refs[`videoInput-${index}`];
+              const hasNewVideo = videoInput && Array.isArray(videoInput) && videoInput[0] && videoInput[0].files[0];
+              const hasTitle = video.title.trim();
+              
+              // 새로 업로드된 파일이 있는 경우 수집
+              if (hasNewVideo && hasTitle) {
+                newVideoIndices.push(index); // 새 비디오의 인덱스 저장
+                newVideoFiles.push({
+                  file: videoInput[0].files[0],
+                  index: index,
+                  sequence: index + 1
+                });
+                videoFilesCount++;
+              }
+            });
+            
+            // 순서대로 파일을 FormData에 추가
+            newVideoFiles.forEach((videoFile, fileIndex) => {
+              formData.append('lectureVideoFiles', videoFile.file, videoFile.file.name);
+              // 파일 순서와 인덱스 정보를 함께 전송
+              formData.append(`lectureVideoFile_${fileIndex}_index`, videoFile.index.toString());
+              formData.append(`lectureVideoFile_${fileIndex}_sequence`, videoFile.sequence.toString());
+            });
+            
+                         // 새 비디오 파일의 인덱스 정보도 함께 전송
+             if (newVideoIndices.length > 0) {
+               formData.append('newVideoIndices', 
+                 new Blob([JSON.stringify(newVideoIndices)], { type: 'application/json' })
+               );
+               // 파일 순서 정보도 추가
+               formData.append('newVideoFileOrder', 
+                 new Blob([JSON.stringify(newVideoFiles.map(vf => vf.index))], { type: 'application/json' })
+               );
              }
-           });
           
           console.log('lectureVideoDto 사이즈:', lectureVideoDto.length);
           console.log('lectureVideoFiles 사이즈:', videoFilesCount);
+          
+          // FormData 추가 전 검증 로그
+          console.log('=== FormData 추가 전 검증 ===');
+          console.log('hasValidUpdateDto:', hasValidUpdateDto);
+          console.log('lectureIngredientsListDto.length:', lectureIngredientsListDto.length);
+          console.log('lectureStepDto.length:', lectureStepDto.length);
+          console.log('lectureVideoDto.length:', lectureVideoDto.length);
+                     console.log('썸네일 파일 존재:', !!thumbnailInput.files[0]);
+           console.log('비디오 파일 개수:', videoFilesCount);
+           console.log('새 비디오 인덱스:', newVideoIndices);
+           console.log('새 비디오 파일 순서:', newVideoFiles.map(vf => ({ index: vf.index, sequence: vf.sequence, filename: vf.file.name })));
          
-                   // 백엔드로 보내는 데이터 콘솔 출력
-          console.log('=== 강의 수정 데이터 ===');
-          console.log('lectureId:', this.lectureId);
-          console.log('lectureUpdateDto:', lectureUpdateDto);
-          console.log('lectureIngredientsListDto:', lectureIngredientsListDto);
-          console.log('lectureStepDto:', lectureStepDto);
-          console.log('lectureVideoDto:', lectureVideoDto);
-          console.log('FormData 내용:');
-          for (let [key, value] of formData.entries()) {
-            if (value instanceof Blob) {
-              try {
-                const text = await value.text();
-                console.log(`${key}:`, JSON.parse(text));
-              } catch (parseError) {
-                console.log(`${key}:`, 'Blob (파싱 실패)');
-              }
-            } else {
-              console.log(`${key}:`, value);
-            }
+                     // 백엔드로 보내는 데이터 콘솔 출력
+           console.log('=== 강의 수정 데이터 ===');
+           console.log('lectureId:', this.lectureId);
+           console.log('lectureUpdateDto:', lectureUpdateDto);
+           console.log('lectureIngredientsListDto:', lectureIngredientsListDto);
+           console.log('lectureStepDto:', lectureStepDto);
+           console.log('lectureVideoDto:', lectureVideoDto);
+           
+           // 각 비디오의 상세 정보 출력
+           console.log('=== 각 비디오 상세 정보 ===');
+           this.formData.videos.forEach((video, index) => {
+             const videoInput = this.$refs[`videoInput-${index}`];
+             const hasNewVideo = videoInput && Array.isArray(videoInput) && videoInput[0] && videoInput[0].files[0];
+             const hasExistingVideo = video.videoUrl && video.videoUrl.trim();
+             
+             console.log(`비디오 ${index + 1}:`, {
+               title: video.title,
+               originalVideoUrl: video.videoUrl,
+               hasNewVideo: hasNewVideo,
+               hasExistingVideo: hasExistingVideo,
+               newVideoFile: hasNewVideo ? videoInput[0].files[0].name : null,
+               finalVideoUrl: hasNewVideo ? '' : (hasExistingVideo ? video.videoUrl : '')
+             });
+           });
+                     console.log('FormData 내용:');
+           let formDataEntryCount = 0;
+           for (let [key, value] of formData.entries()) {
+             formDataEntryCount++;
+             if (value instanceof Blob) {
+               // 파일인지 JSON인지 구분
+               if (key === 'lectureVideoFiles' || key === 'multipartFile') {
+                 console.log(`${key}:`, `파일 (${value.size} bytes, ${value.type})`);
+               } else {
+                 try {
+                   const text = await value.text();
+                   if (text && text.trim()) {
+                     const parsedData = JSON.parse(text);
+                     console.log(`${key}:`, parsedData);
+                     
+                     // lectureVideoDto인 경우 각 비디오의 URL 상태 확인
+                     if (key === 'lectureVideoDto') {
+                       console.log('=== lectureVideoDto 내 각 비디오 URL 상태 ===');
+                       parsedData.forEach((video, index) => {
+                         console.log(`DTO 비디오 ${index + 1}:`, {
+                           title: video.title,
+                           videoUrl: video.videoUrl,
+                           sequence: video.sequence,
+                           duration: video.duration
+                         });
+                       });
+                     }
+                   } else {
+                     console.log(`${key}:`, '빈 Blob');
+                   }
+                 } catch (parseError) {
+                   console.log(`${key}:`, 'Blob (파싱 실패)');
+                 }
+               }
+             } else {
+               console.log(`${key}:`, value);
+             }
+           }
+          console.log(`총 FormData 항목 수: ${formDataEntryCount}`);
+          console.log('FormData 키 목록:');
+          for (let [key] of formData.entries()) {
+            console.log(`- ${key}`);
           }
-          console.log('전체 FormData 객체:', formData);
           console.log('=====================');
          
          // API 호출
          console.log('lectureService.updateLecture 호출 직전');
          console.log('this.lectureId:', this.lectureId);
-         console.log('formData:', formData);
+         console.log('FormData 키 개수:', Array.from(formData.keys()).length);
+         console.log('FormData 키들:', Array.from(formData.keys()));
          console.log('lectureService:', lectureService);
          
-         const response = await lectureService.updateLecture(this.lectureId, formData);
-        
-                           if (response.success) {
-            this.showModalDialog('success', '수정 완료', '강의가 성공적으로 수정되었습니다!', '확인', '', false, () => {
-              this.$router.push(`/lectures/${this.lectureId}`).then(() => {
-                // 라우터 이동 완료 후 스크롤
-                this.$nextTick(() => {
-                  window.scrollTo(0, 0);
-                });
-              });
-            });
-          } else {
-           this.showError(response.message || '강의 수정에 실패했습니다.');
-         }
+                   const response = await lectureService.updateLecture(this.lectureId, formData);
+          
+          console.log('=== 강의 수정 응답 ===');
+          console.log('응답 성공 여부:', response.success);
+          console.log('응답 메시지:', response.message);
+          console.log('응답 데이터:', response.data);
+          
+                     if (response.success) {
+             console.log('강의 수정 성공!');
+             
+             // 수정된 강의 데이터를 다시 조회하여 확인
+             try {
+               console.log('=== 수정된 강의 데이터 재조회 ===');
+               const updatedLectureResponse = await lectureService.getLectureDetail(this.lectureId);
+               if (updatedLectureResponse.success) {
+                 console.log('수정된 강의 데이터:', updatedLectureResponse.data);
+                 console.log('수정된 비디오 목록:', updatedLectureResponse.data.lectureVideoResDtoList);
+                 
+                 // 새로 추가된 비디오들의 URL 상태 확인
+                 const newVideos = updatedLectureResponse.data.lectureVideoResDtoList.filter((video, index) => 
+                   newVideoIndices.includes(index)
+                 );
+                 console.log('새로 추가된 비디오들의 URL 상태:', newVideos);
+               }
+             } catch (error) {
+               console.error('수정된 강의 데이터 조회 실패:', error);
+             }
+             
+             this.showModalDialog('success', '수정 완료', '강의가 성공적으로 수정되었습니다!', '확인', '', false, () => {
+               this.$router.push(`/lectures/${this.lectureId}`).then(() => {
+                 // 라우터 이동 완료 후 스크롤
+                 this.$nextTick(() => {
+                   window.scrollTo(0, 0);
+                 });
+               });
+             });
+           } else {
+             console.log('강의 수정 실패:', response.message);
+             this.showError(response.message || '강의 수정에 실패했습니다.');
+           }
              } catch (error) {
                  console.log('=== 에러 발생 시 FormData ===');
                  console.log('FormData 객체:', formData);
                  console.log('FormData entries:');
-                 for (let [key, value] of formData.entries()) {
-                   console.log(`${key}:`, value);
-                 }
+                                   for (let [key, value] of formData.entries()) {
+                    if (value instanceof Blob) {
+                      // 파일인지 JSON인지 구분
+                      if (key === 'lectureVideoFiles' || key === 'multipartFile') {
+                        console.log(`${key}:`, `파일 (${value.size} bytes, ${value.type})`);
+                      } else {
+                        try {
+                          const text = await value.text();
+                          if (text && text.trim()) {
+                            console.log(`${key}:`, JSON.parse(text));
+                          } else {
+                            console.log(`${key}:`, '빈 Blob');
+                          }
+                        } catch (parseError) {
+                          console.log(`${key}:`, 'Blob (파싱 실패)');
+                        }
+                      }
+                    } else {
+                      console.log(`${key}:`, value);
+                    }
+                  }
                  console.log('=====================');
          console.error('강의 수정 실패:', error);
          
@@ -705,15 +849,10 @@ export default {
               return false;
             }
             
-            // 둘 중 하나라도 있으면 다른 하나도 무조건 있어야 함
-            if ((hasVideo && !hasTitle) || (hasTitle && !hasVideo)) {
-              if (hasVideo && !hasTitle) {
-                console.log(`비디오 ${i + 1} 제목 검증 실패`);
-                this.showError(`${i + 1}번째 강의의 제목을 입력해주세요.`);
-              } else {
-                console.log(`비디오 ${i + 1} 파일 검증 실패`);
-                this.showError(`${i + 1}번째 강의의 영상을 업로드해주세요.`);
-              }
+            // 비디오 파일이 있는데 제목이 없는 경우만 에러
+            if (hasVideo && !hasTitle) {
+              console.log(`비디오 ${i + 1} 제목 검증 실패`);
+              this.showError(`${i + 1}번째 강의의 제목을 입력해주세요.`);
               return false;
             }
           }

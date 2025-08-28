@@ -164,7 +164,7 @@ export const lectureService = {
       
       // multipart/form-data에서는 Content-Type 헤더를 설정하지 않음 (브라우저가 자동 설정)
       const response = await fetch(url, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         body: formData
       });
