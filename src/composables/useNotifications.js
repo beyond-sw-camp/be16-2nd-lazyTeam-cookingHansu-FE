@@ -14,39 +14,43 @@ export function useNotifications() {
   }
 
 
-  // 실시간 알림 연결 시작
+  // 실시간 알림 연결 시작 (SSE Polyfill 사용)
   const startNotificationStream = () => {
-    const userId = getCurrentUserId()
-    if (userId) {
-      notificationStore.connectToNotificationStream(userId)
+    try {
+      // 이미 연결되어 있는지 확인
+      if (notificationStore.isConnected) {
+        return;
+      }
+      
+      // SSE Polyfill을 사용하여 JWT 토큰으로 인증
+      notificationStore.startNotificationSubscription()
       isConnected.value = true
+    } catch (error) {
+      console.error('알림 스트림 시작 실패:', error)
+      isConnected.value = false
     }
   }
 
   // 실시간 알림 연결 중지
   const stopNotificationStream = () => {
-    notificationStore.disconnectFromNotificationStream()
-          isConnected.value = false
+    // 전역 SSE 연결은 중지하지 않고 로컬 상태만 업데이트
+    isConnected.value = false
   }
 
   // 알림 목록 불러오기
   const loadNotifications = async () => {
-    const userId = getCurrentUserId()
-    if (userId) {
-      try {
-        await notificationStore.fetchNotifications({ userId })
-      } catch (error) {
-        console.error('알림 목록 로드 실패:', error)
-      }
+    try {
+      await notificationStore.fetchNotifications()
+    } catch (error) {
+      console.error('알림 목록 로드 실패:', error)
     }
   }
 
   // 알림 읽음 처리
   const markNotificationAsRead = async (notificationId) => {
-    const userId = getCurrentUserId()
-    if (userId && notificationId) {
+    if (notificationId) {
       try {
-        await notificationStore.markAsRead(notificationId, userId)
+        await notificationStore.markAsRead(notificationId)
       } catch (error) {
         console.error('알림 읽음 처리 실패:', error)
       }
@@ -57,7 +61,6 @@ export function useNotifications() {
   const requestNotificationPermission = async () => {
     if ('Notification' in window && Notification.permission === 'default') {
       const permission = await Notification.requestPermission()
-      console.log('브라우저 알림 권한:', permission)
       return permission === 'granted'
     }
     return Notification.permission === 'granted'
@@ -67,7 +70,14 @@ export function useNotifications() {
   onMounted(async () => {
     await requestNotificationPermission()
     await loadNotifications()
-    startNotificationStream()
+
+    // 이미 연결되어 있는지 확인하고, 연결 상태 동기화
+    isConnected.value = notificationStore.isConnected;
+
+    // 연결이 안 되어 있다면 연결 시도 (하지만 중복 방지 로직이 있음)
+    if (!isConnected.value) {
+      startNotificationStream()
+    }
   })
 
   // 컴포넌트 언마운트시 연결 해제

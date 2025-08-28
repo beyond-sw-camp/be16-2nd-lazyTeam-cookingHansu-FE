@@ -316,6 +316,28 @@ router.beforeEach(async (to, from, next) => {
     return;
   }
 
+  // ✅ 추가: 채팅 페이지 진입 시 채팅방 선택 상태 초기화 (autoSelect가 아닌 경우만)
+  if (to.path === '/chat' && authStore.isAuthenticated) {
+    try {
+      // autoSelect 파라미터가 있으면 채팅방 선택 유지
+      if (to.query.autoSelect === 'true') {
+        console.log('✅ 라우터 가드: autoSelect 파라미터 감지, 채팅방 선택 상태 유지');
+        next();
+        return;
+      }
+      
+      // 일반 페이지 이동일 때만 채팅방 선택 상태 초기화
+      const { useChatStore } = await import('@/store/chat/chat');
+      const chatStore = useChatStore();
+      if (chatStore.currentRoomId) {
+        console.log('🔄 라우터 가드: 일반 페이지 이동 시 채팅방 선택 상태 초기화');
+        chatStore.currentRoomId = null;
+      }
+    } catch (error) {
+      console.log('채팅 스토어 초기화 실패:', error);
+    }
+  }
+
   // 로그인된 사용자가 메인 페이지나 다른 페이지로 이동할 때 등록 상태 확인
   if (authStore.isAuthenticated && authStore.user && 
       (to.path === "/" || to.path === "/recipes" || to.path === "/lectures" || to.path === "/mypage")) {
