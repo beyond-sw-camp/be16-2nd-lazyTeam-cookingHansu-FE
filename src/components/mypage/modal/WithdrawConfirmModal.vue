@@ -15,7 +15,10 @@
             <li>모든 개인정보가 삭제됩니다</li>
             <li>작성한 게시글과 레시피가 삭제됩니다</li>
             <li>구매한 강의 정보가 삭제됩니다</li>
+            <li>북마크와 좋아요 정보가 삭제됩니다</li>
+            <li>채팅 기록이 삭제됩니다</li>
           </ul>
+          <p class="warning-note"><strong>※ 이 작업은 되돌릴 수 없습니다.</strong></p>
         </div>
         
         <div class="confirm-checkbox">
@@ -34,10 +37,10 @@
         <button class="cancel-btn" @click="closeModal">취소</button>
         <button 
           class="withdraw-btn" 
-          :disabled="!confirmChecked"
+          :disabled="!confirmChecked || loading"
           @click="confirmWithdraw"
         >
-          탈퇴하기
+          {{ loading ? '처리 중...' : '탈퇴하기' }}
         </button>
       </div>
     </div>
@@ -45,6 +48,9 @@
 </template>
 
 <script>
+import { apiDelete } from '@/utils/api';
+import { useAuthStore } from '@/store/auth/auth';
+
 export default {
   name: 'WithdrawConfirmModal',
   props: {
@@ -55,13 +61,20 @@ export default {
   },
   data() {
     return {
-      confirmChecked: false
+      confirmChecked: false,
+      loading: false
     };
   },
   methods: {
     closeModal() {
       this.$emit('close');
       this.confirmChecked = false;
+      this.loading = false;
+    },
+    
+    validateForm() {
+      // 체크박스 상태에 따른 유효성 검사
+      return this.confirmChecked;
     },
     
     async confirmWithdraw() {
@@ -69,24 +82,32 @@ export default {
         return;
       }
       
+      this.loading = true;
+      
       try {
-        const response = await fetch('http://localhost:8080/api/my/delete', {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
+        const response = await apiDelete('/user/delete');
         
         if (response.ok) {
+          // authStore 초기화
+          const authStore = useAuthStore();
+          authStore.logout();
+          
+          // 로컬 스토리지에서 토큰 삭제
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
+          
           // 회원탈퇴 성공
           this.$emit('withdraw-success');
           this.closeModal();
         } else {
-          throw new Error('회원탈퇴에 실패했습니다.');
+          const errorData = await response.json();
+          throw new Error(errorData.message || '회원탈퇴에 실패했습니다.');
         }
       } catch (error) {
         console.error('회원탈퇴 오류:', error);
         this.$emit('withdraw-error', error.message);
+      } finally {
+        this.loading = false;
       }
     }
   }
@@ -114,17 +135,19 @@ export default {
   width: 100%;
   max-width: 500px;
   max-height: 90vh;
-  overflow-y: auto;
+  overflow: hidden;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 24px 24px 0 24px;
+  padding: 20px 24px;
   border-bottom: 1px solid #eee;
-  padding-bottom: 16px;
+  flex-shrink: 0;
   position: relative;
 }
 
@@ -135,7 +158,7 @@ export default {
 
 .modal-header h3 {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
   color: #333;
   position: absolute;
@@ -165,7 +188,10 @@ export default {
 }
 
 .modal-body {
-  padding: 24px;
+  padding: 20px 24px;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .warning-message {
@@ -189,8 +215,22 @@ export default {
   line-height: 1.4;
 }
 
+.warning-note {
+  color: #dc3545 !important;
+  font-size: 14px;
+  margin-top: 16px !important;
+  padding: 12px;
+  background: #fff5f5;
+  border-radius: 8px;
+  border-left: 4px solid #dc3545;
+}
+
 .confirm-checkbox {
   margin-top: 20px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
 }
 
 .confirm-checkbox label {
@@ -208,13 +248,16 @@ export default {
   height: 18px;
   margin-top: 2px;
   cursor: pointer;
+  accent-color: #dc3545;
 }
 
 .modal-footer {
   display: flex;
   gap: 12px;
-  padding: 24px;
+  padding: 16px 24px;
   border-top: 1px solid #eee;
+  flex-shrink: 0;
+  background: white;
 }
 
 .cancel-btn,
@@ -227,6 +270,7 @@ export default {
   transition: all 0.2s;
   border: none;
   font-size: 14px;
+  min-height: 44px;
 }
 
 .cancel-btn {
@@ -252,16 +296,61 @@ export default {
   cursor: not-allowed;
 }
 
+/* 반응형 디자인 */
 @media (max-width: 768px) {
-  .modal-content {
-    margin: 20px;
-    max-height: calc(100vh - 40px);
+  .modal-overlay {
+    padding: 10px;
   }
   
+  .modal-content {
+    max-width: 100%;
+    max-height: 95vh;
+  }
+  
+  .modal-header {
+    padding: 16px 20px;
+  }
+  
+  .modal-body {
+    padding: 16px 20px;
+  }
+  
+  .modal-footer {
+    padding: 12px 20px;
+  }
+  
+  .modal-header h3 {
+    font-size: 16px;
+  }
+  
+  .warning-message p {
+    font-size: 14px;
+  }
+  
+  .warning-message li {
+    font-size: 13px;
+  }
+  
+  .confirm-checkbox label {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
   .modal-header,
   .modal-body,
   .modal-footer {
-    padding: 16px;
+    padding: 12px 16px;
+  }
+  
+  .cancel-btn,
+  .withdraw-btn {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+  
+  .warning-message ul {
+    padding-left: 16px;
   }
 }
-</style> 
+</style>

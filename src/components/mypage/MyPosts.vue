@@ -2,30 +2,36 @@
   <div class="my-posts">
     <div class="section-header">
       <h2>내 게시글</h2>
-      <button class="write-post-btn">
-        <span class="plus-icon">+</span>
-        게시글 작성
-      </button>
     </div>
 
-    <div class="posts-grid">
+    <div v-if="loading" class="loading-state">
+      <div class="loading-spinner"></div>
+      <p>게시글을 불러오는 중...</p>
+    </div>
+
+    <div v-else-if="posts.length > 0" class="posts-grid">
       <div v-for="post in pagedPosts" :key="post.id" class="post-card">
         <div class="post-image">
-          <img :src="post.image" :alt="post.title" />
+          <img 
+            v-if="post.thumbnailUrl" 
+            :src="post.thumbnailUrl" 
+            :alt="post.title" 
+          />
+          <div v-else class="no-image">이미지 없음</div>
         </div>
         <div class="post-content">
           <h3 class="post-title">{{ post.title }}</h3>
-          <p class="post-description">{{ post.content }}</p>
+          <p class="post-description">{{ post.description }}</p>
           <div class="post-meta">
-            <div class="post-date">{{ post.date }}</div>
+            <div class="post-date">{{ formatDate(post.createdAt) }}</div>
             <div class="post-stats">
               <span class="stat-item">
-                <span class="stat-icon">🔖</span>
-                {{ post.views }}
+                <span class="stat-icon">❤️</span>
+                {{ post.likeCount }}
               </span>
               <span class="stat-item">
-                <span class="stat-icon">❤️</span>
-                {{ post.likes }}
+                <span class="stat-icon">🔖</span>
+                {{ post.bookmarkCount }}
               </span>
             </div>
           </div>
@@ -35,25 +41,30 @@
 
     <!-- 페이지네이션 -->
     <Pagination 
+      v-if="posts.length > 0"
       :current-page="currentPage"
       :total-pages="totalPages"
       @page-change="changePage"
     />
 
-    <div v-if="posts.length === 0" class="empty-state">
+    <div v-if="!loading && posts.length === 0" class="empty-state">
       <div class="empty-icon">📝</div>
       <h3>아직 작성한 게시글이 없어요</h3>
       <p>첫 번째 게시글을 작성해보세요!</p>
-      <button class="write-first-post-btn">
-        <span class="plus-icon">+</span>
-        게시글 작성하기
-      </button>
+    </div>
+
+    <div v-if="error" class="error-state">
+      <div class="error-icon">❌</div>
+      <h3>게시글을 불러오는데 실패했습니다</h3>
+      <p>{{ error }}</p>
+      <button @click="fetchPosts" class="retry-btn">다시 시도</button>
     </div>
   </div>
 </template>
 
 <script>
 import Pagination from '../common/Pagination.vue';
+import { apiGet } from '@/utils/api';
 
 export default {
   name: 'MyPosts',
@@ -64,80 +75,9 @@ export default {
     return {
       currentPage: 1,
       postsPerPage: 6,
-      posts: [
-        {
-          id: 1,
-          title: '김치찌개 만들면서 깨달은 요리 철학',
-          content: '오늘 김치찌개를 끓이면서 느낀 점들을 공유해요. 요리는 정말 마음이 중요한 것 같아요...',
-          image: '/src/assets/images/smu_mascort1.jpg',
-          date: '2024.01.05',
-          views: 18,
-          likes: 42
-        },
-        {
-          id: 2,
-          title: '한국 요리 초보자를 위한 팁',
-          content: '요리를 시작한 지 6개월된 초보가 공유하는 실용적인 팁들. 실패담도 포함...',
-          image: '/src/assets/images/smu_mascort2.jpg',
-          date: '2024.01.03',
-          views: 9,
-          likes: 28
-        },
-        {
-          id: 3,
-          title: '요리 도구 추천 리뷰',
-          content: '1년간 사용해본 요리 도구들 솔직 후기. 꼭 필요한 것과 불필요한 것들...',
-          image: '/src/assets/images/smu_mascort3.jpg',
-          date: '2024.01.01',
-          views: 14,
-          likes: 35
-        },
-        {
-          id: 4,
-          title: '집밥 vs 외식, 나의 선택은?',
-          content: '한 달간 집밥만 해먹기 도전 후기. 건강과 경제적 효과, 그리고 의외의 발견들...',
-          image: '/src/assets/images/smu_mascort4.jpg',
-          date: '2023.12.28',
-          views: 11,
-          likes: 29
-        },
-        {
-          id: 5,
-          title: '요리 초보자를 위한 기초 팁',
-          content: '요리를 처음 시작하는 분들을 위한 기본적인 팁들을 모아봤어요...',
-          image: '/src/assets/images/smu_mascort1.jpg',
-          date: '2023.12.25',
-          views: 15,
-          likes: 31
-        },
-        {
-          id: 6,
-          title: '집에서 만드는 간단한 디저트',
-          content: '집에서 쉽게 만들 수 있는 디저트 레시피를 공유해요...',
-          image: '/src/assets/images/smu_mascort2.jpg',
-          date: '2023.12.22',
-          views: 12,
-          likes: 26
-        },
-        {
-          id: 7,
-          title: '건강한 아침 식사 아이디어',
-          content: '바쁜 아침에도 건강하게 먹을 수 있는 식사 아이디어...',
-          image: '/src/assets/images/smu_mascort3.jpg',
-          date: '2023.12.20',
-          views: 8,
-          likes: 19
-        },
-        {
-          id: 8,
-          title: '계절별 요리 재료 활용법',
-          content: '계절에 맞는 재료를 활용한 요리 팁들을 정리해봤어요...',
-          image: '/src/assets/images/smu_mascort4.jpg',
-          date: '2023.12.18',
-          views: 10,
-          likes: 22
-        }
-      ]
+      posts: [],
+      loading: false,
+      error: null
     };
   },
   computed: {
@@ -150,11 +90,44 @@ export default {
       return Math.ceil(this.posts.length / this.postsPerPage);
     }
   },
+  async mounted() {
+    await this.fetchPosts();
+  },
   methods: {
+    async fetchPosts() {
+      this.loading = true;
+      this.error = null;
+      
+      try {
+        const response = await apiGet('/api/my/posts');
+        
+        if (response.ok) {
+          const result = await response.json();
+          this.posts = result.data || [];
+        } else {
+          throw new Error('게시글을 불러오는데 실패했습니다.');
+        }
+      } catch (error) {
+        console.error('게시글 조회 오류:', error);
+        this.error = error.message || '게시글을 불러오는데 실패했습니다.';
+      } finally {
+        this.loading = false;
+      }
+    },
     changePage(page) {
       if (page >= 1 && page <= this.totalPages) {
         this.currentPage = page;
       }
+    },
+    formatDate(dateString) {
+      if (!dateString) return '';
+      
+      const date = new Date(dateString);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      
+      return `${year}.${month}.${day}`;
     }
   }
 };
@@ -179,27 +152,64 @@ export default {
   margin: 0;
 }
 
-.write-post-btn {
+.loading-state {
+  text-align: center;
+  padding: 80px 20px;
+  color: #666;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #ff7a00;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-state {
+  text-align: center;
+  padding: 80px 20px;
+  color: #666;
+}
+
+.error-icon {
+  font-size: 64px;
+  margin-bottom: 24px;
+}
+
+.error-state h3 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: #dc3545;
+}
+
+.error-state p {
+  font-size: 16px;
+  margin: 0 0 32px 0;
+  color: #666;
+}
+
+.retry-btn {
   background: #ff7a00;
   color: white;
   border: none;
-  padding: 12px 20px;
+  padding: 12px 24px;
   border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
   transition: background 0.2s;
 }
 
-.write-post-btn:hover {
+.retry-btn:hover {
   background: #e66a00;
-}
-
-.plus-icon {
-  font-size: 18px;
-  font-weight: bold;
 }
 
 .posts-grid {
@@ -233,6 +243,17 @@ export default {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.no-image {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+  color: #999;
+  font-size: 14px;
 }
 
 .post-content {
@@ -316,34 +337,11 @@ export default {
   color: #666;
 }
 
-.write-first-post-btn {
-  background: #ff7a00;
-  color: white;
-  border: none;
-  padding: 16px 32px;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 16px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  transition: background 0.2s;
-}
-
-.write-first-post-btn:hover {
-  background: #e66a00;
-}
-
 @media (max-width: 768px) {
   .section-header {
     flex-direction: column;
     gap: 16px;
     align-items: stretch;
-  }
-  
-  .write-post-btn {
-    justify-content: center;
   }
   
   .posts-grid {
