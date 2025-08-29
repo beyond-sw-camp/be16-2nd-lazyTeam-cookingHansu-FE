@@ -3,11 +3,6 @@
     <Header />
     
     <div class="main-container">
-      <div class="back-button-container">
-        <v-btn variant="outlined" @click="goBack" prepend-icon="mdi-arrow-left">
-          뒤로가기
-        </v-btn>
-      </div>
 
       <div v-if="loading" class="text-center py-12">
         <v-progress-circular indeterminate size="64" color="primary"></v-progress-circular>
@@ -18,125 +13,164 @@
         <div class="recipe-main-section">
           <div class="recipe-main-box">
             <div class="recipe-image-container">
-      <v-img
+              <!-- 썸네일 상단 버튼들 -->
+              <div class="image-overlay-buttons">
+                <v-btn 
+                  icon 
+                  size="small" 
+                  variant="elevated"
+                  color="white"
+                  class="overlay-btn"
+                  @click="toggleLike"
+                >
+                  <v-icon :color="isLiked === true ? 'red' : 'grey'">mdi-heart</v-icon>
+                </v-btn>
+                <v-btn 
+                  icon 
+                  size="small" 
+                  variant="elevated"
+                  color="white"
+                  class="overlay-btn"
+                  @click="toggleBookmark"
+                >
+                  <v-icon :color="isBookmarked === true ? 'blue' : 'grey'">mdi-bookmark</v-icon>
+                </v-btn>
+                <v-btn 
+                  icon 
+                  size="small" 
+                  variant="elevated"
+                  color="white"
+                  class="overlay-btn"
+                  @click="shareRecipe"
+                >
+                  <v-icon color="grey">mdi-share</v-icon>
+                </v-btn>
+              </div>
+              
+              <v-img
                 :src="recipe.thumbnailUrl || defaultThumbnail"
                 height="400"
-        cover
+                cover
                 class="recipe-image"
-            />
-          </div>
+              />
+            </div>
             
             <div class="recipe-info">
               <div class="recipe-header">
                 <div class="title-section">
                   <div class="title-row">
                     <div class="title-left">
-                      <h1 class="recipe-title">{{ recipe.title }}</h1>
-                    </div>
-                    <v-chip 
-                      :color="getCategoryColor(recipe.category)" 
-                      size="small" 
-                      class="category-chip"
-                    >
-                      {{ getCategoryText(recipe.category) }}
-            </v-chip>
-          </div>
-                  <p class="recipe-subtitle">{{ recipe.description }}</p>
-                  
-                  <!-- 작성자 정보 (제목 아래로 이동) -->
-                  <div class="author-info-section">
-                    <v-avatar size="48" color="orange" class="author-avatar">
-                      <v-img 
-                        v-if="recipe.profileImageUrl" 
-                        :src="recipe.profileImageUrl" 
-                        :alt="recipe.nickname"
-                        cover
-                      />
-                      <span v-else class="text-caption text-white font-weight-bold">
-                        {{ getAuthorInitial(recipe.nickname) }}
-                      </span>
-                    </v-avatar>
-                    <div class="author-details">
-                      <div class="author-name-main">{{ recipe.nickname || '작성자' }}</div>
-                      <div class="author-role-main">{{ getUserTypeText(recipe.role) }}</div>
-                    </div>
-                  </div>
-                  
-                  <!-- 수정/삭제 버튼들 (작성자만 보임) -->
-                  <div v-if="isAuthor" class="action-buttons">
-                                          <v-btn 
-                        color="success" 
-                        variant="outlined" 
-                        @click="editRecipe"
-                        class="edit-btn"
-                        size="x-small"
-                      >
-                        <v-icon start size="14">mdi-pencil</v-icon>
-                        수정
-                      </v-btn>
-                      <v-btn 
-                        color="error" 
-                        variant="outlined" 
-                        @click="confirmDelete"
-                        class="delete-btn"
-                        size="x-small"
-                      >
-                        <v-icon start size="12">mdi-delete</v-icon>
-                        삭제
-                      </v-btn>
-            </div>
-            </div>
-            </div>
-              
-              <!-- 좋아요, 북마크, 조회수 카운트 -->
-              <div class="engagement-stats">
-                <div class="stat-item" :class="{ clickable: isLoggedIn }" @click="isLoggedIn ? toggleLike() : showLoginAlert()">
-                  <v-icon :color="isLiked ? 'red' : 'grey'" size="20">mdi-heart</v-icon>
-                  <span class="stat-count">{{ recipe.likeCount || 0 }}</span>
-          </div>
-                <div class="stat-item" :class="{ clickable: isLoggedIn }" @click="isLoggedIn ? toggleBookmark() : showLoginAlert()">
-                  <v-icon :color="isBookmarked ? 'blue' : 'grey'" size="20">mdi-bookmark</v-icon>
-                  <span class="stat-count">{{ recipe.bookmarkCount || 0 }}</span>
-                </div>
-                <div class="stat-item">
-                  <v-icon color="grey" size="20">mdi-eye</v-icon>
-                  <span class="stat-count">{{ recipe.viewCount || 0 }}</span>
-                </div>
-                <div class="stat-item">
-                  <v-icon color="grey" size="20">mdi-comment</v-icon>
-                  <span class="stat-count">{{ getTotalCommentCount() }}</span>
-        </div>
-      </div>
-      
-              <div class="recipe-meta-info">
-                <h3 class="meta-title">레시피 정보</h3>
-                
-                <div class="meta-items">
-                  <div class="meta-item">
-                    <div class="meta-label">조리시간</div>
-                    <div class="meta-value">{{ recipe.cookTime }}분</div>
-                  </div>
-                  
-                  <div class="meta-item">
-                    <div class="meta-label">난이도</div>
-                    <div class="meta-value">
-                      <div class="difficulty-text">
-                        {{ getDifficultyText(recipe.level) }}
+                      <h1 class="recipe-title">
+                        {{ recipe.title }}
+                        <v-chip 
+                          :color="getCategoryColor(recipe.category)" 
+                          size="small" 
+                          class="category-chip-inline"
+                        >
+                          {{ getCategoryText(recipe.category) }}
+                        </v-chip>
+                      </h1>
+                      <p class="recipe-subtitle">{{ recipe.description }}</p>
+                      
+                      <!-- 작성자 프로필 섹션 (서브타이틀 아래) -->
+                      <div class="author-profile-section">
+                        <div class="author-profile-card">
+                          <v-avatar size="60" class="author-avatar">
+                            <v-img 
+                              v-if="recipe.profileImageUrl" 
+                              :src="recipe.profileImageUrl" 
+                              :alt="recipe.nickname + ' 프로필 이미지'"
+                              @error="handleProfileImageError('recipe')"
+                            ></v-img>
+                            <span v-else class="author-avatar-placeholder">
+                              {{ getAuthorInitial(recipe.nickname) }}
+                            </span>
+                          </v-avatar>
+                          <div class="author-info">
+                            <h3 class="author-name">{{ recipe.nickname }}</h3>
+                            <p class="author-role">{{ getUserTypeText(recipe.role) }}</p>
+                          </div>
+                        </div>
                       </div>
-      </div>
-    </div>
+                    </div>
+                    
+                    <!-- 레시피 정보 섹션을 타이틀 옆에 배치 -->
+                    <div class="recipe-meta-info">
+                      <div class="meta-items">
+                        <div class="meta-item">
+                          <div class="meta-label">조리시간</div>
+                          <div class="meta-value">{{ recipe.cookTime }}분</div>
+                        </div>
+                        
+                        <div class="meta-item">
+                          <div class="meta-label">난이도</div>
+                          <div class="meta-value">
+                            <div class="difficulty-text">
+                              {{ getDifficultyText(recipe.level) }}
+                            </div>
+                          </div>
+                        </div>
 
-                  <div class="meta-item">
-                    <div class="meta-label">인분</div>
-                    <div class="meta-value">{{ recipe.serving }}인분</div>
-                  </div>
-                  
-                  <div class="meta-item">
-                    <div class="meta-label">조회수</div>
-                    <div class="meta-value">{{ recipe.viewCount || 0 }}회</div>
+                        <div class="meta-item">
+                          <div class="meta-label">인분</div>
+                          <div class="meta-value">{{ recipe.serving }}인분</div>
+                        </div>
+                        
+                        <div class="meta-item">
+                          <div class="meta-label">조회수</div>
+                          <div class="meta-value">{{ recipe.viewCount || 0 }}회</div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
+              
+              <!-- 좋아요, 북마크, 조회수 카운트 (숫자만 표시) -->
+              <div class="engagement-stats">
+                <div class="stats-left">
+                  <div class="stat-item">
+                    <v-icon color="grey" size="20">mdi-heart</v-icon>
+                    <span class="stat-count">{{ recipe.likeCount || 0 }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <v-icon color="grey" size="20">mdi-bookmark</v-icon>
+                    <span class="stat-count">{{ recipe.bookmarkCount || 0 }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <v-icon color="grey" size="20">mdi-eye</v-icon>
+                    <span class="stat-count">{{ recipe.viewCount || 0 }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <v-icon color="grey" size="20">mdi-comment</v-icon>
+                    <span class="stat-count">{{ getTotalCommentCount() }}</span>
+                  </div>
+                </div>
+                
+                <!-- 수정/삭제 버튼들 (작성자만 보임) -->
+                <div v-if="isAuthor" class="action-buttons">
+                  <v-btn 
+                    color="success" 
+                    variant="outlined" 
+                    @click="editRecipe"
+                    class="edit-btn"
+                    size="small"
+                  >
+                    <v-icon start size="14">mdi-pencil</v-icon>
+                    수정
+                  </v-btn>
+                  <v-btn 
+                    color="error" 
+                    variant="outlined" 
+                    @click="confirmDelete"
+                    class="delete-btn"
+                    size="small"
+                  >
+                    <v-icon start size="12">mdi-delete</v-icon>
+                    삭제
+                  </v-btn>
+                </div>
+                            </div>
             </div>
               </div>
             </div>
@@ -147,22 +181,17 @@
             <!-- 재료 섹션 -->
             <div class="ingredients-section">
               <h2 class="section-title">재료</h2>
-              <div class="ingredients-container">
-                <div class="ingredients-group">
-                  <h4 class="group-title">주재료</h4>
-                  <div class="ingredients-list">
-                    <div 
-                      v-for="ingredient in recipe.ingredients" 
-                      :key="ingredient.id" 
-                      class="ingredient-item"
-                    >
-                      <span class="ingredient-name">{{ ingredient.name }}</span>
-                      <span class="ingredient-amount">{{ ingredient.amount }}</span>
-                    </div>
-                  </div>
+              <div class="ingredients-list">
+                <div 
+                  v-for="ingredient in recipe.ingredients" 
+                  :key="ingredient.id" 
+                  class="ingredient-item"
+                >
+                  <span class="ingredient-name">{{ ingredient.name }}</span>
+                  <span class="ingredient-amount">{{ ingredient.amount }}</span>
                 </div>
+              </div>
             </div>
-          </div>
 
             <!-- 조리과정 섹션 -->
             <div class="cooking-steps-section">
@@ -191,8 +220,6 @@
                   </div>
                 </div>
         </div>
-        
-
         
         <div class="comments-section">
           <h3 class="comments-title">댓글 ({{ getTotalCommentCount() }})</h3>
@@ -230,33 +257,26 @@
             >
               <div class="comment-header">
                 <div class="comment-info">
-                  <v-avatar size="32" color="orange" class="mr-2">
+                  <v-avatar size="40" class="comment-avatar">
                     <v-img 
-                      v-if="comment.profileImage" 
-                      :src="comment.profileImage" 
-                      :alt="comment.nickname"
-                      cover
-                    />
-                    <span v-else class="text-caption text-white font-weight-bold">
+                      v-if="comment.authorProfileImage" 
+                      :src="comment.authorProfileImage" 
+                      :alt="comment.nickname + ' 프로필 이미지'"
+                      @error="handleCommentProfileImageError(comment)"
+                    ></v-img>
+                    <span v-else class="comment-avatar-placeholder">
                       {{ getAuthorInitial(comment.nickname) }}
                     </span>
                   </v-avatar>
-                  <div class="author-info">
-                    <div class="author-name">{{ comment.nickname }}</div>
-                    <div class="comment-time">{{ formatDate(comment.createdAt) }}</div>
+                  <div class="comment-author-info">
+                    <h4 class="comment-author-name">
+                      {{ comment.nickname }}
+                      <span v-if="isCommentAuthor(comment)" class="author-badge">작성자</span>
+                    </h4>
+                    <p class="comment-time">{{ formatDate(comment.createdAt) }}</p>
                   </div>
                 </div>
                 <div class="comment-actions">
-                  <v-btn 
-                    icon 
-                    size="small" 
-                    variant="text"
-                    @click="toggleCommentLike(comment)"
-                    :color="comment.isLiked ? 'red' : 'grey'"
-                  >
-                    <v-icon size="16">mdi-heart</v-icon>
-                  </v-btn>
-                  <span class="like-count">{{ comment.likeCount || 0 }}</span>
                   <v-btn 
                     size="small" 
                     variant="text"
@@ -397,87 +417,118 @@
                         :key="reply.id"
                   class="reply-item"
                 >
-                  <div class="reply-header">
-                    <div class="reply-info">
-                      <v-avatar size="24" color="orange" class="mr-2">
-                        <v-img 
-                          v-if="reply.profileImage" 
-                          :src="reply.profileImage" 
-                          :alt="reply.nickname"
-                          cover
-                        />
-                        <span v-else class="text-caption text-white font-weight-bold">
-                          {{ getAuthorInitial(reply.nickname) }}
-                        </span>
-                      </v-avatar>
-                      <div class="author-info">
-                        <div class="author-name">{{ reply.nickname }}</div>
-                        <div class="reply-time">{{ formatDate(reply.createdAt) }}</div>
-                      </div>
-                    </div>
-                    
-                    <div class="reply-actions">
-                      <!-- 답글 더보기 버튼 -->
-                      <v-menu
-                        v-model="reply.showMoreMenu"
-                        :close-on-content-click="false"
-                        location="bottom end"
-                      >
-                        <template v-slot:activator="{ props }">
-                          <v-btn 
-                            icon 
-                            size="small" 
-                            variant="text"
-                            v-bind="props"
-                            class="more-btn"
-                          >
-                            <v-icon size="16">mdi-dots-vertical</v-icon>
-                          </v-btn>
-                        </template>
-                        
-                        <v-list density="compact">
-                          <!-- 수정 버튼 (작성자만 표시) -->
-                          <v-list-item
-                            v-if="currentUser && currentUser.nickname === reply.nickname"
-                            @click="startEditComment(reply)"
-                            class="edit-menu-item"
-                          >
-                            <template v-slot:prepend>
-                              <v-icon size="16" color="primary">mdi-pencil</v-icon>
-                            </template>
-                            <v-list-item-title>수정</v-list-item-title>
-                          </v-list-item>
-                          
-                          <!-- 삭제 버튼 (작성자만 표시) -->
-                          <v-list-item
-                            v-if="currentUser && currentUser.nickname === reply.nickname"
-                            @click="deleteComment(reply.id)"
-                            class="delete-menu-item"
-                          >
-                            <template v-slot:prepend>
-                              <v-icon size="16" color="error">mdi-delete</v-icon>
-                            </template>
-                            <v-list-item-title class="text-error">삭제</v-list-item-title>
-                          </v-list-item>
-                          
-                          <!-- 신고 버튼 (모든 사용자에게 표시) -->
-                          <v-list-item
-                            @click="reportComment(reply)"
-                            class="report-menu-item"
-                          >
-                            <template v-slot:prepend>
-                              <v-icon size="16" color="warning">mdi-flag</v-icon>
-                            </template>
-                            <v-list-item-title class="text-warning">신고</v-list-item-title>
-                          </v-list-item>
-                        </v-list>
-                      </v-menu>
-                    </div>
+              <div class="comment-header">
+                <div class="comment-info">
+                  <v-avatar size="40" class="comment-avatar">
+                    <v-img 
+                      v-if="reply.authorProfileImage" 
+                      :src="reply.authorProfileImage" 
+                      :alt="reply.nickname + ' 프로필 이미지'"
+                      @error="handleCommentProfileImageError(reply)"
+                    ></v-img>
+                    <span v-else class="comment-avatar-placeholder">
+                      {{ getAuthorInitial(reply.nickname) }}
+                    </span>
+                  </v-avatar>
+                  <div class="comment-author-info">
+                    <h4 class="comment-author-name">
+                      {{ reply.nickname }}
+                      <span v-if="isCommentAuthor(reply)" class="author-badge">작성자</span>
+                    </h4>
+                    <p class="comment-time">{{ formatDate(reply.createdAt) }}</p>
                   </div>
+                </div>
+                <div class="comment-actions">
+                  <!-- 더보기 버튼 -->
+                  <v-menu
+                    v-model="reply.showMoreMenu"
+                    :close-on-content-click="false"
+                    location="bottom end"
+                  >
+                    <template v-slot:activator="{ props }">
+                      <v-btn 
+                        icon 
+                        size="small" 
+                        variant="text"
+                        v-bind="props"
+                        class="more-btn"
+                      >
+                        <v-icon size="16">mdi-dots-vertical</v-icon>
+                      </v-btn>
+                    </template>
+                    
+                    <v-list density="compact">
+                      <!-- 수정 버튼 (작성자만 표시) -->
+                      <v-list-item
+                        v-if="currentUser && currentUser.nickname === reply.nickname"
+                        @click="startEditComment(reply)"
+                        class="edit-menu-item"
+                      >
+                        <template v-slot:prepend>
+                          <v-icon size="16" color="primary">mdi-pencil</v-icon>
+                        </template>
+                        <v-list-item-title>수정</v-list-item-title>
+                      </v-list-item>
+                      
+                      <!-- 삭제 버튼 (작성자만 표시) -->
+                      <v-list-item
+                        v-if="currentUser && currentUser.nickname === reply.nickname"
+                        @click="deleteComment(reply.id)"
+                        class="delete-menu-item"
+                      >
+                        <template v-slot:prepend>
+                          <v-icon size="16" color="error">mdi-delete</v-icon>
+                        </template>
+                        <v-list-item-title class="text-error">삭제</v-list-item-title>
+                      </v-list-item>
+                      
+                      <!-- 신고 버튼 (모든 사용자에게 표시) -->
+                      <v-list-item
+                        @click="reportComment(reply)"
+                        class="report-menu-item"
+                      >
+                        <template v-slot:prepend>
+                          <v-icon size="16" color="warning">mdi-flag</v-icon>
+                        </template>
+                        <v-list-item-title class="text-warning">신고</v-list-item-title>
+                      </v-list-item>
+                    </v-list>
+                  </v-menu>
+                </div>
+              </div>
                   
                   <div class="reply-content">
                     <div v-if="reply.isDeleted" class="deleted-comment">
                       <em>삭제된 답글입니다.</em>
+                    </div>
+                    <div v-else-if="reply.isEditing" class="comment-edit-form">
+                      <v-textarea
+                        v-model="reply.editText"
+                        placeholder="답글을 수정하세요..."
+                        rows="3"
+                        variant="outlined"
+                        density="compact"
+                        class="comment-edit-input"
+                        auto-grow
+                        no-resize
+                      ></v-textarea>
+                      <div class="comment-edit-actions">
+                        <v-btn 
+                          size="small" 
+                          variant="outlined"
+                          @click="cancelEditComment(reply)"
+                        >
+                          취소
+                        </v-btn>
+                        <v-btn 
+                          size="small" 
+                          color="primary"
+                          @click="updateComment(reply)"
+                          :disabled="!reply.editText.trim()"
+                        >
+                          수정 완료
+                        </v-btn>
+                      </div>
                     </div>
                     <div v-else>
                       {{ reply.content }}
@@ -536,6 +587,42 @@
       @confirm="goToLogin"
       @cancel="closeLoginModal"
     />
+
+    <!-- 공유 모달 -->
+    <div v-if="showShareModal" class="share-modal-overlay" @click="showShareModal = false">
+      <div class="share-modal" @click.stop>
+        <div class="share-modal-header">
+          <h3>공유하기</h3>
+          <button class="close-btn" @click="showShareModal = false">×</button>
+        </div>
+        <div class="share-options">
+          <div class="share-option facebook-option" @click="shareToFacebook">
+            <div class="share-icon">
+              <img src="/src/assets/images/Facebook_Logo_Primary.png" alt="Facebook" />
+            </div>
+            <span>페이스북</span>
+          </div>
+          <div class="share-option kakaotalk-option" @click="shareToKakaoTalk">
+            <div class="share-icon">
+              <img src="/src/assets/images/kakaotalk_sharing_btn_small.png" alt="KakaoTalk" />
+            </div>
+            <span>카카오톡</span>
+          </div>
+          <div class="share-option instagram-option" @click="shareToInstagram">
+            <div class="share-icon">
+              <img src="/src/assets/images/Instagram_Glyph_Gradient.png" alt="Instagram" />
+            </div>
+            <span>인스타그램</span>
+          </div>
+          <div class="share-option link-option" @click="copyToClipboard">
+            <div class="share-icon">
+              <img src="/src/assets/images/lecture_shared_icon.png" alt="Link" />
+            </div>
+            <span>링크 복사</span>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -557,21 +644,69 @@ const showDeleteModal = ref(false)
 const newComment = ref('')
 const currentUser = ref(null)
 const showLoginModal = ref(false)
+const showShareModal = ref(false)
 
 // 로그인 상태 확인
 const isLoggedIn = computed(() => {
   return !!localStorage.getItem('accessToken')
 })
 
-// 현재 사용자가 작성자인지 확인
+// JWT 토큰에서 사용자 정보 추출
+const getCurrentUserIdFromToken = () => {
+  try {
+    const token = localStorage.getItem('accessToken')
+    if (!token) {
+      console.log('🔍 JWT 토큰이 없습니다')
+      return null
+    }
+    
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    console.log('🔍 JWT 토큰 페이로드:', payload)
+    
+    // 다양한 필드명으로 사용자 ID 찾기
+    const userId = payload.sub || payload.userId || payload.id || payload.user_id || payload.userId
+    console.log('🔍 추출된 사용자 ID:', userId)
+    
+    return userId
+  } catch (error) {
+    console.error('JWT 토큰 파싱 실패:', error)
+    return null
+  }
+}
+
+// 현재 사용자가 작성자인지 확인 (JWT 토큰 기반)
 const isAuthor = computed(() => {
-  if (!recipe.nickname || !currentUser.value) return false
-  return currentUser.value.nickname === recipe.nickname
+  // JWT 토큰에서 사용자 ID 추출
+  const currentUserId = getCurrentUserIdFromToken()
+  
+  if (!currentUserId) {
+    console.log('🔍 isAuthor: JWT 토큰에서 사용자 ID 추출 실패')
+    return false
+  }
+  
+  if (!recipe.authorId) {
+    console.log('🔍 isAuthor: 레시피 작성자 ID 없음')
+    return false
+  }
+  
+  // 타입 변환하여 비교 (문자열과 숫자 모두 지원)
+  const isMatch = String(currentUserId) === String(recipe.authorId)
+  console.log('🔍 isAuthor 체크 (JWT 토큰 기준):', {
+    currentUserIdFromToken: currentUserId,
+    currentUserIdType: typeof currentUserId,
+    recipeAuthorId: recipe.authorId,
+    recipeAuthorIdType: typeof recipe.authorId,
+    currentUserNickname: currentUser.value?.nickname,
+    recipeNickname: recipe.nickname,
+    isMatch: isMatch
+  })
+  
+  return isMatch
 })
 
-// 좋아요, 북마크 상태
-const isLiked = ref(false)
-const isBookmarked = ref(false)
+// 좋아요, 북마크 상태 (초기값을 null로 설정하여 로딩 상태 구분)
+const isLiked = ref(null)
+const isBookmarked = ref(null)
 
 const comments = ref([])
 
@@ -590,7 +725,8 @@ const recipe = reactive({
   bookmarkCount: 0,
   viewCount: 0,
     nickname: '',
-  role: ''
+  role: '',
+  authorId: null // 작성자 ID 추가
 })
 
 const getDifficultyText = (level) => {
@@ -646,6 +782,70 @@ const getUserTypeText = (role) => {
 
 const getAuthorInitial = (nickname) => {
   return nickname ? nickname.charAt(0) : 'U'
+}
+
+// 프로필 이미지 URL 추출 함수
+const getProfileImageUrl = (user) => {
+  if (!user) return null
+  
+  // 다양한 필드명에서 프로필 이미지 URL 찾기
+  const possibleFields = [
+    'authorProfileImage',
+    'authorProfileUrl', 
+    'profileImageUrl',
+    'profileImage',
+    'user?.profileImageUrl',
+    'user?.profileImage'
+  ]
+  
+  for (const field of possibleFields) {
+    const value = field.includes('?.') ? 
+      user.user?.[field.split('?.')[1]] : 
+      user[field]
+    
+    if (value && typeof value === 'string' && value.trim()) {
+      return value.trim()
+    }
+  }
+  
+  return null
+}
+
+// 프로필 이미지 에러 핸들러
+const handleProfileImageError = (type) => {
+  console.log(`${type} 프로필 이미지 로드 실패`)
+  if (type === 'recipe') {
+    recipe.value.profileImageUrl = null
+  }
+}
+
+const handleCommentProfileImageError = (comment) => {
+  console.log('댓글 프로필 이미지 로드 실패:', comment.nickname)
+  comment.authorProfileImage = null
+}
+
+// 댓글 작성자가 레시피 작성자인지 확인
+const isCommentAuthor = (comment) => {
+  return comment.nickname === recipe.nickname
+}
+
+
+
+// 작성자 팔로우 기능
+const followAuthor = async () => {
+  if (!isLoggedIn.value) {
+    showLoginModal.value = true
+    return
+  }
+  
+  try {
+    // TODO: 팔로우 API 호출 구현
+    console.log('팔로우 기능 구현 예정:', recipe.authorId)
+    alert('팔로우 기능은 준비 중입니다.')
+  } catch (error) {
+    console.error('팔로우 오류:', error)
+    alert('팔로우 중 오류가 발생했습니다.')
+  }
 }
 
 
@@ -715,10 +915,7 @@ const submitComment = async () => {
   }
 }
 
-const toggleCommentLike = (comment) => {
-  comment.isLiked = !comment.isLiked
-  comment.likeCount += comment.isLiked ? 1 : -1
-}
+
 
 const showReplyForm = (comment) => {
   comment.showReplyForm = true
@@ -808,7 +1005,7 @@ const deleteComment = async (commentId) => {
         console.log('답글이 있는 댓글 삭제 처리 완료')
         console.log('삭제 처리 후 댓글 상태:', comments.value[commentIndex])
         console.log('isDeleted 값:', comments.value[commentIndex]?.isDeleted)
-        alert('댓글이 삭제되었습니다. 답글은 그대로 유지됩니다.')
+        alert('댓글이 삭제되었습니다.')
       } else {
         // 답글이 없으면 댓글 목록 새로고침
         await loadComments()
@@ -892,11 +1089,21 @@ const saveEditComment = async (comment) => {
 
 // 전체 댓글수 계산 (댓글 + 대댓글)
 const getTotalCommentCount = () => {
-  let totalCount = comments.value.length
+  let totalCount = 0
   
   comments.value.forEach(comment => {
+    // 삭제되지 않은 댓글만 카운트
+    if (!comment.isDeleted) {
+      totalCount++
+    }
+    
+    // 삭제되지 않은 답글은 댓글 삭제 여부와 관계없이 카운트
     if (comment.replies && Array.isArray(comment.replies)) {
-      totalCount += comment.replies.length
+      comment.replies.forEach(reply => {
+        if (!reply.isDeleted) {
+          totalCount++
+        }
+      })
     }
   })
   
@@ -926,36 +1133,49 @@ const loadComments = async () => {
       console.log('댓글 목록 로드 성공:', data)
       
       if (data.data) {
-        comments.value = data.data.map(comment => {
+        // 댓글을 오래된 순으로 정렬 (createdAt 기준 오름차순)
+        const sortedComments = data.data.sort((a, b) => {
+          const dateA = new Date(a.createdAt)
+          const dateB = new Date(b.createdAt)
+          return dateA - dateB // 오래된 순 (오름차순)
+        })
+        
+        comments.value = sortedComments.map(comment => {
           console.log('댓글 원본 데이터:', comment)
           console.log('댓글 날짜:', comment.createdAt, '타입:', typeof comment.createdAt)
           console.log('대댓글 데이터:', comment.childComments)
           console.log('대댓글 필드들:', Object.keys(comment))
+          console.log('댓글 프로필 이미지 필드들:', {
+            authorProfileImage: comment.authorProfileImage,
+            authorProfileUrl: comment.authorProfileUrl,
+            profileImageUrl: comment.profileImageUrl,
+            profileImage: comment.profileImage,
+            userProfileImage: comment.user?.profileImageUrl,
+            userProfileUrl: comment.user?.profileImageUrl
+          })
           
           return {
             id: comment.commentId || comment.id,
             nickname: comment.authorNickName || comment.nickname,
             content: comment.content,
             createdAt: comment.createdAt,
-            likeCount: comment.likeCount || 0,
-            isLiked: comment.isLiked || false,
             isDeleted: comment.isDeleted || false, // 삭제 상태 추가
             showMoreMenu: false, // 더보기 메뉴 상태
-            profileImage: comment.authorProfileImage,
-            replies: comment.childComments ? comment.childComments.map(reply => ({
-              id: reply.commentId || reply.id,
-              nickname: reply.authorNickName || reply.nickname,
-              content: reply.content,
-              createdAt: reply.createdAt,
-              likeCount: reply.likeCount || 0,
-              isLiked: reply.isLiked || false,
-              isDeleted: reply.isDeleted || false, // 답글 삭제 상태도 추가
-              profileImage: reply.authorProfileImage,
-              showMoreMenu: false // 더보기 메뉴 상태
-            })) : []
+            authorProfileImage: getProfileImageUrl(comment),
+            replies: comment.childComments ? comment.childComments
+              .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)) // 대댓글도 오래된 순으로 정렬
+              .map(reply => ({
+                id: reply.commentId || reply.id,
+                nickname: reply.authorNickName || reply.nickname,
+                content: reply.content,
+                createdAt: reply.createdAt,
+                isDeleted: reply.isDeleted || false, // 답글 삭제 상태도 추가
+                authorProfileImage: getProfileImageUrl(reply),
+                showMoreMenu: false // 더보기 메뉴 상태
+              })) : []
           }
         })
-        console.log('댓글 목록 변환 완료:', comments.value)
+        console.log('댓글 목록 변환 완료 (오래된 순 정렬):', comments.value)
       } else {
         console.log('댓글 데이터가 없음')
         comments.value = []
@@ -971,6 +1191,11 @@ const loadComments = async () => {
 
 // 좋아요 토글
 const toggleLike = async () => {
+  if (!isLoggedIn.value) {
+    showLoginModal.value = true
+    return
+  }
+
   try {
     const response = await fetch(`http://localhost:8080/api/interactions/posts/${recipe.id}/likes`, {
       method: 'POST',
@@ -980,6 +1205,10 @@ const toggleLike = async () => {
     })
 
     if (response.ok) {
+      // null 상태에서 시작하는 경우 false로 초기화
+      if (isLiked.value === null) {
+        isLiked.value = false
+      }
       isLiked.value = !isLiked.value
       if (isLiked.value) {
         recipe.likeCount = (recipe.likeCount || 0) + 1
@@ -997,6 +1226,11 @@ const toggleLike = async () => {
 
 // 북마크 토글
 const toggleBookmark = async () => {
+  if (!isLoggedIn.value) {
+    showLoginModal.value = true
+    return
+  }
+
   try {
     const response = await fetch(`http://localhost:8080/api/interactions/posts/${recipe.id}/bookmarks`, {
       method: 'POST',
@@ -1006,6 +1240,10 @@ const toggleBookmark = async () => {
     })
 
     if (response.ok) {
+      // null 상태에서 시작하는 경우 false로 초기화
+      if (isBookmarked.value === null) {
+        isBookmarked.value = false
+      }
       isBookmarked.value = !isBookmarked.value
       if (isBookmarked.value) {
         recipe.bookmarkCount = (recipe.bookmarkCount || 0) + 1
@@ -1019,6 +1257,88 @@ const toggleBookmark = async () => {
   } catch (error) {
     console.error('북마크 토글 에러:', error)
   }
+}
+
+// 레시피 공유 기능
+const shareRecipe = () => {
+  showShareModal.value = true
+}
+
+// 공유 기능 메서드들
+const getShareUrl = () => {
+  return `${window.location.origin}/recipes/${recipe.id}`
+}
+
+const getShareText = () => {
+  return `${recipe.title} - ${recipe.description}`
+}
+
+const shareToFacebook = () => {
+  const url = encodeURIComponent(getShareUrl())
+  const text = encodeURIComponent(getShareText())
+  const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}&quote=${text}`
+  window.open(facebookUrl, '_blank', 'width=600,height=400')
+  showShareModal.value = false
+}
+
+const shareToKakaoTalk = () => {
+  // Kakao SDK 초기화
+  if (typeof Kakao !== 'undefined') {
+    if (!Kakao.isInitialized()) {
+      Kakao.init('3a1a982f8ee6ddbc64171c2f80850243') // 실제 앱 키로 교체 필요
+    }
+    
+    Kakao.Link.sendDefault({
+      objectType: 'feed',
+      content: {
+        title: `🍳 ${recipe.title}`,
+        description: recipe.description,
+        imageUrl: recipe.thumbnailUrl || 'https://yourdomain.com/images/share-thumb.png',
+        link: {
+          mobileWebUrl: getShareUrl(),
+          webUrl: getShareUrl(),
+        },
+      },
+    })
+  } else {
+    // Kakao SDK가 없는 경우 링크 복사로 대체
+    copyToClipboard()
+  }
+  showShareModal.value = false
+}
+
+const shareToInstagram = () => {
+  // 인스타그램 공유 개선: 모바일에서는 인스타그램 앱으로, 데스크톱에서는 링크 복사
+  if (isMobile()) {
+    // 모바일에서는 인스타그램 앱으로 공유 시도
+    const shareUrl = `instagram://library?AssetPickerSourceType=1`
+    window.location.href = shareUrl
+    
+    // 3초 후 링크 복사로 대체 (인스타그램 앱이 없거나 실패한 경우)
+    setTimeout(() => {
+      copyToClipboard()
+    }, 3000)
+  } else {
+    // 데스크톱에서는 링크 복사
+    copyToClipboard()
+  }
+  showShareModal.value = false
+}
+
+const isMobile = () => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+}
+
+const copyToClipboard = async () => {
+  try {
+    const shareText = `${getShareText()}\n\n${getShareUrl()}`
+    await navigator.clipboard.writeText(shareText)
+    alert('링크가 클립보드에 복사되었습니다!')
+  } catch (error) {
+    console.error('클립보드 복사 실패:', error)
+    alert('링크 복사에 실패했습니다.')
+  }
+  showShareModal.value = false
 }
 
 const loadRecipe = async () => {
@@ -1118,9 +1438,38 @@ const loadRecipe = async () => {
           updatedAt: data.data.updatedAt,
           nickname: data.data.user?.nickname,
           role: data.data.user?.role,
-          profileImageUrl: data.data.user?.profileImageUrl,
+          profileImageUrl: getProfileImageUrl(data.data.user),
+          authorId: data.data.user?.id, // 작성자 ID 추가
           ingredients: data.data.ingredients || [],
           steps: data.data.steps || []
+        })
+        
+        console.log('🔍 레시피 데이터 로드 완료:', {
+          recipeId: recipe.id,
+          authorId: recipe.authorId,
+          authorNickname: recipe.nickname,
+          userData: data.data.user,
+          profileImageUrl: data.data.user?.profileImageUrl,
+          profileImage: data.data.user?.profileImage,
+          authorProfileImage: data.data.user?.authorProfileImage,
+          authorProfileUrl: data.data.user?.authorProfileUrl
+        })
+        
+        // 좋아요/북마크 상태 설정 (백엔드에서 받아온 데이터 사용)
+        // 로그인한 사용자만 상태를 확인하고, 비로그인 사용자는 false로 설정
+        if (isLoggedIn.value) {
+          isLiked.value = data.data.isLiked !== undefined ? data.data.isLiked : false
+          isBookmarked.value = data.data.isBookmarked !== undefined ? data.data.isBookmarked : false
+        } else {
+          isLiked.value = false
+          isBookmarked.value = false
+        }
+        
+        console.log('🔍 좋아요/북마크 상태:', {
+          isLiked: isLiked.value,
+          isBookmarked: isBookmarked.value,
+          likeCount: recipe.likeCount,
+          bookmarkCount: recipe.bookmarkCount
         })
         
         // 댓글 목록 로드
@@ -1228,9 +1577,7 @@ const reportComment = async (comment) => {
   }
 }
 
-const goBack = () => {
-  router.go(-1)
-}
+
 
 onMounted(async () => {
   await loadCurrentUser()
@@ -1256,6 +1603,9 @@ const loadCurrentUser = async () => {
     if (response.ok) {
       const data = await response.json()
       currentUser.value = data.data
+      console.log('🔍 현재 사용자 정보 로드 성공:', currentUser.value)
+    } else {
+      console.error('사용자 정보 로드 실패:', response.status, response.statusText)
     }
   } catch (error) {
     console.error('사용자 정보 로드 실패:', error)
@@ -1277,9 +1627,7 @@ const loadCurrentUser = async () => {
   padding: 0 40px;
 }
 
-.back-button-container {
-  margin: 20px 0;
-}
+
 
 .recipe-main-section {
   display: flex;
@@ -1296,7 +1644,7 @@ const loadCurrentUser = async () => {
   padding: 35px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   max-width: 1000px;
-  margin-left: 60px;
+  margin: 20px auto 0 auto;
   width: 100%;
 }
 
@@ -1305,17 +1653,29 @@ const loadCurrentUser = async () => {
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  position: relative;
 }
 
 .recipe-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.3s ease;
+  cursor: default; /* 커서 확대 효과 제거 */
 }
 
-.recipe-image:hover {
-  transform: scale(1.05);
+.image-overlay-buttons {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+
+.overlay-btn {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .recipe-info {
@@ -1336,13 +1696,21 @@ const loadCurrentUser = async () => {
   width: 100%;
 }
 
+.title-with-category {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
 .recipe-title {
   font-size: 2.5rem;
   font-weight: 700;
   color: #333;
-  margin-bottom: 10px;
+  margin-bottom: 0;
   line-height: 1.2;
   word-wrap: break-word;
+  flex: 1;
 }
 
 .category-chip {
@@ -1408,63 +1776,29 @@ const loadCurrentUser = async () => {
   border-color: #d32f2f !important;
 }
 
-.author-info {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  margin-bottom: 20px;
-  padding: 15px;
-  background-color: #f8f9fa;
-  border-radius: 10px;
-  border: 1px solid #e9ecef;
-}
 
-.author-avatar {
-  flex-shrink: 0;
-}
-
-.author-details {
-  flex: 1;
-}
-
-.author-name {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 5px;
-}
-
-.author-role {
-  font-size: 0.9rem;
-  color: #666;
-}
 
 .engagement-stats {
   display: flex;
-  gap: 20px;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 20px;
   padding: 15px;
   background-color: #f8f9fa;
   border-radius: 10px;
   border: 1px solid #e9ecef;
+}
+
+.stats-left {
+  display: flex;
+  gap: 20px;
 }
 
 .stat-item {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.stat-item.clickable {
-  cursor: pointer;
-  transition: all 0.2s ease;
-  padding: 8px;
-  border-radius: 8px;
-}
-
-.stat-item.clickable:hover {
-  background-color: #f0f0f0;
-  transform: scale(1.05);
+  cursor: default; /* 클릭 효과 제거 */
 }
 
 .stat-count {
@@ -1473,18 +1807,35 @@ const loadCurrentUser = async () => {
   color: #333;
 }
 
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: -5px;
+}
+
+.action-buttons-top {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 15px;
+  justify-content: flex-end;
+}
+
 .recipe-meta-info {
-  padding: 20px;
+  padding: 12px;
   background-color: #f8f9fa;
-  border-radius: 12px;
+  border-radius: 8px;
   border: 1px solid #e9ecef;
+  flex: 0 0 280px;
+  min-width: 280px;
 }
 
 /* 타이틀 행 */
 .title-row {
   display: flex;
   align-items: flex-start;
-  gap: 15px;
+  gap: 30px;
   margin-bottom: 10px;
 }
 
@@ -1493,6 +1844,7 @@ const loadCurrentUser = async () => {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-width: 0;
 }
 
 .recipe-title {
@@ -1521,6 +1873,8 @@ const loadCurrentUser = async () => {
 
 .category-chip {
   flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: 8px;
 }
 
 /* 재료와 조리과정 컨테이너 */
@@ -1529,31 +1883,28 @@ const loadCurrentUser = async () => {
   border-radius: 12px;
   padding: 35px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-  margin-top: 20px;
-  margin-left: 60px;
+  margin: 20px auto 0 auto;
   max-width: 1000px;
   overflow: hidden;
 }
 
 .detail-sections-container {
   display: flex;
-  gap: 30px;
+  gap: 32px;
+  margin: 32px auto;
+  justify-content: center;
   align-items: flex-start;
   flex-wrap: nowrap;
+  max-width: 1200px;
+  padding: 0 20px;
 }
 
-.meta-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #333;
-  margin-bottom: 20px;
-  text-align: center;
-}
+
 
 .meta-items {
-  display: flex;
-  justify-content: space-around;
-  gap: 20px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
 }
 
 .meta-item {
@@ -1565,23 +1916,23 @@ const loadCurrentUser = async () => {
 }
 
 .meta-label {
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   color: #666;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   font-weight: 500;
 }
 
 .meta-value {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 600;
   color: #333;
 }
 
 .difficulty-text {
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 600;
   color: #333;
-  padding: 4px 8px;
+  padding: 2px 6px;
   background-color: #f5f5f5;
   border-radius: 4px;
 }
@@ -1589,20 +1940,31 @@ const loadCurrentUser = async () => {
 
 
 .ingredients-section {
-  flex: 0 0 280px;
-  min-width: 280px;
-  max-width: 280px;
+  flex: 0 0 400px;
+  min-width: 400px;
+  max-width: 400px;
   overflow: hidden;
   word-wrap: break-word;
   overflow-wrap: break-word;
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 25px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e9ecef;
 }
 
 .cooking-steps-section {
-  flex: 2;
+  flex: 0 0 500px;
   min-width: 500px;
+  max-width: 500px;
   overflow: hidden;
   word-wrap: break-word;
   overflow-wrap: break-word;
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 25px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e9ecef;
 }
 
 .section-title {
@@ -1636,7 +1998,7 @@ const loadCurrentUser = async () => {
 .ingredients-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 16px;
 }
 
 .ingredient-item {
@@ -1693,15 +2055,15 @@ const loadCurrentUser = async () => {
 
 .step-number {
   flex-shrink: 0;
-  width: 35px;
-  height: 35px;
-  background-color: #f44336;
+  width: 30px;
+  height: 30px;
+  background-color: #ff7a00;
   color: #fff;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 700;
 }
 
@@ -1730,7 +2092,7 @@ const loadCurrentUser = async () => {
   margin: 8px 0 0 0;
   font-style: italic;
   padding-left: 8px;
-  border-left: 2px solid #f44336;
+  border-left: 2px solid #ff7a00;
 }
 
 .cooking-tip-section {
@@ -1756,13 +2118,66 @@ const loadCurrentUser = async () => {
 
 
 
+/* 작성자 프로필 섹션 (서브타이틀 아래) */
+.author-profile-section {
+  margin: 20px 0;
+}
+
+.author-profile-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0;
+  background-color: transparent;
+  border: none;
+  width: auto;
+  height: auto;
+}
+
+.author-avatar {
+  flex-shrink: 0;
+  border: 3px solid #9e9e9e;
+}
+
+.author-avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 600;
+  color: #666;
+  background: #e0e0e0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+}
+
+.author-info {
+  flex: 1;
+  text-align: left;
+}
+
+.author-name {
+  margin: 0 0 4px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.author-role {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+}
+
+
+
 .comments-section {
   background-color: #fff;
   border-radius: 12px;
   padding: 35px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-  margin-top: 20px;
-  margin-left: 60px;
+  margin: 20px auto 0 auto;
   max-width: 1000px;
 }
 
@@ -1838,10 +2253,10 @@ const loadCurrentUser = async () => {
   margin-bottom: 10px;
 }
 
-.comment-author {
+.comment-info {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .author-info {
@@ -1867,11 +2282,7 @@ const loadCurrentUser = async () => {
   gap: 10px;
 }
 
-.like-count {
-  font-size: 0.9rem;
-  color: #666;
-  min-width: 20px;
-}
+
 
 .reply-btn {
   font-size: 0.8rem;
@@ -1916,7 +2327,7 @@ const loadCurrentUser = async () => {
   margin-bottom: 10px;
 }
 
-.reply-actions {
+.reply-form .reply-actions {
   display: flex;
   gap: 10px;
   justify-content: flex-end;
@@ -1935,34 +2346,13 @@ const loadCurrentUser = async () => {
   margin-bottom: 10px;
 }
 
-.reply-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-}
 
-.reply-author-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.reply-author-name {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 2px;
-}
-
-.reply-time {
-  font-size: 0.7rem;
-  color: #666;
-}
 
 .reply-content {
-  font-size: 0.9rem;
+  font-size: 1rem;
   color: #333;
-  line-height: 1.5;
+  line-height: 1.6;
+  margin-bottom: 15px;
 }
 
 .load-more-comments {
@@ -1979,8 +2369,31 @@ const loadCurrentUser = async () => {
   .recipe-main-box {
     flex: none;
     max-width: 100%;
-    margin-left: 0;
+    margin: 20px auto 0 auto;
     padding: 30px;
+  }
+  
+  .author-profile-card {
+    gap: 12px;
+  }
+  
+  .author-avatar {
+    width: 50px !important;
+    height: 50px !important;
+  }
+  
+  .comment-avatar,
+  .reply-avatar {
+    width: 36px !important;
+    height: 36px !important;
+  }
+  
+  .author-name {
+    font-size: 16px;
+  }
+  
+  .author-role {
+    font-size: 13px;
   }
   
   .recipe-detail-content {
@@ -2001,8 +2414,15 @@ const loadCurrentUser = async () => {
     padding: 0 20px;
   }
   
+  .title-with-category {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
   .recipe-title {
     font-size: 2rem;
+    margin-bottom: 0;
   }
   
   .recipe-description {
@@ -2013,12 +2433,23 @@ const loadCurrentUser = async () => {
     font-size: 1.5rem;
 }
 
-.recipe-header {
+  .recipe-header {
     flex-direction: column;
     gap: 15px;
   }
   
   .title-section {
+    max-width: 100%;
+  }
+  
+  .title-row {
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .recipe-meta-info {
+    flex: none;
+    min-width: auto;
     max-width: 100%;
   }
   
@@ -2028,7 +2459,28 @@ const loadCurrentUser = async () => {
   
   .meta-items {
     flex-direction: column;
-    gap: 15px;
+    gap: 10px;
+  }
+  
+  .meta-item {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .meta-item:last-child {
+    border-bottom: none;
+  }
+  
+  .meta-label {
+    margin-bottom: 0;
+    font-size: 0.9rem;
+  }
+  
+  .meta-value {
+    font-size: 0.9rem;
   }
   
   .ingredients-container {
@@ -2064,8 +2516,19 @@ const loadCurrentUser = async () => {
   }
   
   .comment-actions {
-  align-self: flex-start;
-}
+    align-self: flex-start;
+  }
+  
+  .engagement-stats {
+    flex-direction: column;
+    gap: 15px;
+    align-items: flex-start;
+  }
+  
+  .stats-left {
+    flex-wrap: wrap;
+    gap: 15px;
+  }
 
 /* 더보기 메뉴 스타일 */
 .more-btn {
@@ -2097,18 +2560,62 @@ const loadCurrentUser = async () => {
   width: 100%;
 }
 
-.comment-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1;
+
+.comment-avatar {
+  flex-shrink: 0;
+  border: 3px solid #9e9e9e;
+  width: 40px !important;
+  height: 40px !important;
 }
 
-.author-info {
+.comment-avatar-placeholder {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 600;
+  color: #666;
+  background: #e0e0e0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
 }
+
+.comment-author-info {
+  flex: 1;
+  text-align: left;
+}
+
+.comment-author-name {
+  margin: 0 0 4px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  display: flex;
+  align-items: center;
+}
+
+.comment-time {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.author-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #ff7a00, #ff9500);
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 1px 3px rgba(255, 122, 0, 0.3);
+}
+
+
 
 .comment-actions {
   display: flex;
@@ -2122,61 +2629,37 @@ const loadCurrentUser = async () => {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 8px;
+  margin-bottom: 0;
   width: 100%;
 }
 
-.reply-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+
+
+
+
+.reply-author-info {
   flex: 1;
+  text-align: left;
 }
 
-.reply-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
-  flex-shrink: 0;
-}
-
-/* 작성자 정보 섹션 스타일 */
-.author-info-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  margin: 16px 0;
-  padding: 16px;
-  background: #f8f9fa;
-  border-radius: 12px;
-  border: 1px solid #e9ecef;
-}
-
-.author-avatar {
-  margin-bottom: 4px;
-}
-
-.author-details {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-}
-
-.author-name-main {
-  font-weight: 700;
-  color: #333;
+.reply-author-name {
+  margin: 0 0 4px 0;
   font-size: 18px;
-  line-height: 1.2;
+  font-weight: 600;
+  color: #333;
+  display: flex;
+  align-items: center;
 }
 
-.author-role-main {
+.reply-time {
+  margin: 0;
   color: #666;
   font-size: 14px;
-  font-weight: 500;
 }
+
+
+
+
 }
 
 @media (max-width: 480px) {
@@ -2187,7 +2670,7 @@ const loadCurrentUser = async () => {
   .recipe-main-box {
     padding: 20px;
     max-width: 100%;
-    margin-left: 0;
+    margin: 20px auto 0 auto;
   }
   
   .recipe-detail-content {
@@ -2206,16 +2689,213 @@ const loadCurrentUser = async () => {
     flex-direction: column;
   }
   
+  .author-profile-card {
+    gap: 10px;
+  }
+  
+  .author-avatar {
+    width: 45px !important;
+    height: 45px !important;
+  }
+  
+  .comment-avatar,
+  .reply-avatar {
+    width: 32px !important;
+    height: 32px !important;
+  }
+  
+  .author-name {
+    font-size: 15px;
+  }
+  
+  .author-role {
+    font-size: 12px;
+  }
+  
+  .detail-sections-container {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
   .ingredients-section {
     min-width: auto;
     max-width: 100%;
-    flex: 1;
+    flex: none;
+    width: 100%;
   }
   
   .cooking-steps-section {
     min-width: auto;
     max-width: 100%;
-    flex: 1;
+    flex: none;
+    width: 100%;
+  }
+}
+
+/* 공유 모달 스타일 */
+.share-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.share-modal {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.share-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.share-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  background: #f0f0f0;
+}
+
+.share-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.share-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: white;
+}
+
+.share-option:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.share-option .share-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.share-option .share-icon img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.share-option.facebook-option {
+  background: #1877f2;
+  border-color: #1877f2;
+}
+
+.share-option.facebook-option span {
+  color: white;
+}
+
+.share-option.kakaotalk-option {
+  background: #fee500;
+  border-color: #fee500;
+}
+
+.share-option.kakaotalk-option span {
+  color: #000;
+}
+
+.share-option.instagram-option {
+  background: white;
+  border-color: #e9ecef;
+}
+
+.share-option.instagram-option span {
+  color: #333;
+}
+
+.share-option.link-option {
+  background: white;
+  border-color: #e9ecef;
+}
+
+.share-option.link-option span {
+  color: #333;
+}
+
+.share-option span {
+  font-size: 16px;
+  font-weight: 600;
+  flex: 1;
+}
+
+@media (max-width: 480px) {
+  .share-options {
+    gap: 8px;
+  }
+  
+  .share-option {
+    padding: 14px 16px;
+  }
+  
+  .share-option .share-icon {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .share-option .share-icon img {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .share-option span {
+    font-size: 14px;
+  }
+  
+  .share-modal {
+    width: 95%;
+    margin: 20px;
   }
 }
 </style>
