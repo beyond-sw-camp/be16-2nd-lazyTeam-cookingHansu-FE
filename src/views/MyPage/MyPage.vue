@@ -37,6 +37,7 @@
         :class="{ active: currentTab === tab.id }"
         @click="currentTab = tab.id"
         class="tab-button"
+        v-show="tab.id !== 'sold-lectures' || isSeller"
       >
         {{ tab.name }}
       </button>
@@ -46,6 +47,7 @@
     <div class="tab-content">
       <MyPosts v-if="currentTab === 'posts'" />
       <PurchasedLectures v-if="currentTab === 'lectures'" />
+      <SoldLectures v-if="currentTab === 'sold-lectures'" />
       <Bookmarks v-if="currentTab === 'bookmarks'" />
       <Likes v-if="currentTab === 'likes'" />
     </div>
@@ -77,6 +79,7 @@
 import Header from '@/components/Header.vue';
 import MyPosts from '@/components/mypage/MyPosts.vue';
 import PurchasedLectures from '@/components/mypage/PurchasedLectures.vue';
+import SoldLectures from '@/components/mypage/SoldLectures.vue';
 import Bookmarks from '@/components/mypage/Bookmarks.vue';
 import Likes from '@/components/mypage/Likes.vue';
 import ProfileEditModal from '@/components/mypage/modal/ProfileEditModal.vue';
@@ -90,6 +93,7 @@ export default {
     Header,
     MyPosts,
     PurchasedLectures,
+    SoldLectures,
     Bookmarks,
     Likes,
     ProfileEditModal,
@@ -100,6 +104,7 @@ export default {
       currentTab: this.getInitialTab(),
       showProfileModal: false,
       showWithdrawModal: false,
+      isSeller: false,
       userProfile: {
         nickname: '',
         email: '',
@@ -110,6 +115,7 @@ export default {
       tabs: [
         { id: 'posts', name: '내 게시글' },
         { id: 'lectures', name: '구매한 강의' },
+        { id: 'sold-lectures', name: '판매한 강의' },
         { id: 'bookmarks', name: '북마크' },
         { id: 'likes', name: '좋아요' }
       ],
@@ -119,6 +125,7 @@ export default {
   },
   async mounted() {
     await this.fetchUserProfile();
+    this.checkSellerRole();
   },
   watch: {
     currentTab(newTab) {
@@ -145,7 +152,13 @@ export default {
     getInitialTab() {
       const urlParams = new URLSearchParams(window.location.search);
       const tab = urlParams.get('tab');
-      const validTabs = ['posts', 'lectures', 'bookmarks', 'likes'];
+      const validTabs = ['posts', 'lectures', 'sold-lectures', 'bookmarks', 'likes'];
+
+      // 판매자가 아닌데 sold-lectures 탭을 요청한 경우 posts로 리다이렉트
+      if (tab === 'sold-lectures' && !this.isSeller) {
+        return 'posts';
+      }
+
       return tab && validTabs.includes(tab) ? tab : 'posts';
     },
     updateUrlWithTab(tab) {
@@ -188,6 +201,46 @@ export default {
         type: 'error',
         message: '회원탈퇴에 실패했습니다: ' + errorMessage
       });
+    },
+    
+    // 판매자 역할 확인
+    checkSellerRole() {
+      try {
+        const token = localStorage.getItem('accessToken');
+        console.log('=== 판매자 역할 확인 시작 ===');
+        console.log('토큰:', token);
+        
+        if (token) {
+          const parts = token.split('.');
+          console.log('토큰 파트 개수:', parts.length);
+          
+          if (parts.length >= 2) {
+            const payload = JSON.parse(atob(parts[1]));
+            console.log('토큰 페이로드:', payload);
+            console.log('페이로드 키들:', Object.keys(payload));
+            
+            // role 필드 확인
+            const userRole = payload.role;
+            console.log('사용자 역할:', userRole);
+            console.log('역할 타입:', typeof userRole);
+            
+            this.isSeller = ['CHEF', 'OWNER'].includes(userRole);
+            console.log('판매자 여부:', this.isSeller);
+            console.log('=== 판매자 역할 확인 완료 ===');
+          } else {
+            console.error('토큰 형식이 올바르지 않습니다.');
+            this.isSeller = false;
+          }
+        } else {
+          console.log('토큰이 없습니다.');
+          this.isSeller = false;
+        }
+      } catch (error) {
+        console.error('토큰 파싱 오류:', error);
+        console.error('오류 상세:', error.message);
+        this.isSeller = false;
+      }
+
     }
   }
 };
