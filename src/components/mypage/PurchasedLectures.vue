@@ -60,7 +60,7 @@
       <div class="empty-icon">📚</div>
       <h3>아직 구매한 강의가 없어요</h3>
       <p>관심 있는 강의를 구매하고 학습을 시작해보세요!</p>
-      <button class="browse-lectures-btn">강의 둘러보기</button>
+      <button class="browse-lectures-btn" @click="goToLectures">강의 둘러보기</button>
     </div>
   </div>
 </template>
@@ -145,6 +145,9 @@ export default {
     },
     goToLectureDetail(lectureId) {
       this.$router.push(`/lectures/${lectureId}`);
+    },
+    goToLectures() {
+      this.$router.push('/lectures');
     }
   }
 };
