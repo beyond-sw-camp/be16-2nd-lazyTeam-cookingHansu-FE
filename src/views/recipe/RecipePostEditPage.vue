@@ -1,60 +1,51 @@
 <template>
-  <div>
-    <v-container class="py-8 mt-16">
+  <div style="background-color: white; min-height: 100vh;" class="white-background">
+    <v-container class="py-8 mt-12" max-width="900px">
       <v-row>
         <v-col cols="12">
-          <!-- 헤더 -->
-          <div class="d-flex justify-space-between align-center mb-8">
-            <div>
-              <nav class="breadcrumb mb-3">
-                <span class="text-grey-darken-1">홈</span>
-                <v-icon size="16" class="mx-2 text-grey">mdi-chevron-right</v-icon>
-                <span class="text-grey-darken-1">레시피</span>
-                <v-icon size="16" class="mx-2 text-grey">mdi-chevron-right</v-icon>
-                <span class="text-primary font-weight-bold">게시글 수정</span>
-              </nav>
-              <h1 class="text-h3 font-weight-bold mb-3">레시피 게시글 수정</h1>
-              <p class="text-body-1 text-grey-darken-2">
-                기존 레시피 게시글을 수정하고 업데이트하세요
-              </p>
-            </div>
-
-            <!-- 공개 설정 스위치 -->
-            <div class="public-setting-switch">
-              <div class="d-flex align-center gap-3">
-                <span class="text-body-1 font-weight-medium">공개 설정</span>
-                <v-switch v-model="post.isPublic" :true-value="true" :false-value="false" color="primary" hide-details
-                  inset />
-                <span class="text-body-2 text-grey-darken-1">
-                  {{ post.isPublic ? '공개' : '비공개' }}
-                </span>
-              </div>
-              <v-alert v-if="!post.isPublic" type="info" variant="tonal" density="compact" class="mt-2">
-                <template v-slot:prepend>
-                  <v-icon>mdi-information</v-icon>
-                </template>
-                <span class="text-body-2">비공개로 설정하면 본인만 볼 수 있습니다</span>
-              </v-alert>
-            </div>
-          </div>
-
           <!-- 메인 폼 -->
-          <v-card elevation="0" class="pa-8">
+          <v-card elevation="0" class="pa-12">
+            <!-- 헤더 -->
+            <div class="d-flex justify-space-between align-center mb-6 header-container">
+              <div>
+                <h1 class="text-h3 font-weight-bold mb-3">레시피 게시글 수정</h1>
+                <p class="text-body-1 text-grey-darken-2">
+                  기존 레시피 게시글을 수정하고 업데이트하세요
+                </p>
+              </div>
+
+              <!-- 공개 설정 스위치 -->
+              <div class="public-setting-switch">
+                <div class="d-flex align-center gap-3">
+                  <span class="text-body-1 font-weight-medium">공개 설정</span>
+                  <v-switch v-model="post.isPublic" :true-value="true" :false-value="false" color="primary" hide-details
+                    inset />
+                  <span class="text-body-2 text-grey-darken-1">
+                    {{ post.isPublic ? '공개' : '비공개' }}
+                  </span>
+                </div>
+              </div>
+            </div>
             <!-- 기본 정보 섹션 -->
-            <div class="mb-10">
-              <h2 class="text-h5 mb-6 font-weight-bold">기본 정보</h2>
+            <div class="section-container mb-8">
+              <div class="section-header">
+                <h2 class="section-title">기본 정보</h2>
+              </div>
+              <div class="section-content">
 
               <v-row>
                 <v-col cols="12">
-                  <v-text-field v-model="post.title" label="게시글 제목 *" placeholder="예: 오늘 만든 김치찌개 후기" variant="outlined"
-                    class="mb-6" required />
+                  <div class="field-label mb-2">레시피 제목 <span class="required-dot">*</span></div>
+                  <v-text-field v-model="post.title" placeholder="예: 집에서 만드는 진짜 비빔밥" variant="outlined"
+                    class="mb-4" required hide-details />
 
-                  <v-textarea v-model="post.content" label="게시글 내용 *" placeholder="레시피를 만들면서 느낀 점, 팁, 후기 등을 자유롭게 작성해주세요"
-                    variant="outlined" rows="5" class="mb-6" required />
+                  <div class="field-label mb-2">레시피 내용 <span class="required-dot">*</span></div>
+                  <v-textarea v-model="post.content" placeholder="한국의 대표 음식 비빔밥을 집에서도 쉽고 맛있게 만들어보세요. 영양가 있는 여러 나물과 고소한 참기름의 조화가 일품입니다."
+                    variant="outlined" rows="4" class="mb-4" required hide-details />
 
                   <!-- 썸네일 이미지 -->
-                  <div class="image-input-section mb-6">
-                    <h3 class="text-subtitle-1 font-weight-bold mb-3">썸네일 이미지</h3>
+                  <div class="image-input-section mb-4">
+                    <h3 class="text-subtitle-1 font-weight-bold mb-2">썸네일 이미지</h3>
 
                     <!-- 이미지 업로드 영역 -->
                     <div class="image-upload-area">
@@ -73,11 +64,11 @@
                         </div>
 
                         <!-- 이미지 미리보기 -->
-                        <img v-else :src="post.imageUrl" alt="이미지 미리보기" class="image-preview" />
+                        <img v-else :src="post.imageUrl || defaultImageUrl" alt="이미지 미리보기" class="image-preview" />
                       </div>
 
-                      <!-- 이미지 제거 버튼 -->
-                      <div v-if="post.imageUrl" class="image-actions mt-3">
+                      <!-- 이미지 제거 버튼 (기본 이미지가 아닐 때만 표시) -->
+                      <div v-if="post.imageUrl && post.imageUrl !== defaultImageUrl" class="image-actions mt-3">
                         <v-btn variant="outlined" color="error" size="small" @click="clearImage">
                           <v-icon start>mdi-delete</v-icon>
                           이미지 제거
@@ -105,12 +96,12 @@
                   </div>
 
                   <!-- 카테고리, 인분, 난이도, 조리시간을 가로로 배치 -->
-                  <v-row align="center" class="mb-6">
-                    <v-col cols="auto">
+                  <v-row class="mb-4">
+                    <v-col cols="12" sm="3">
                       <v-select v-model="post.category" :items="categoryOptions" label="카테고리" variant="outlined"
-                        style="width: 160px;" required />
+                        required />
                     </v-col>
-                    <v-col cols="auto">
+                    <v-col cols="12" sm="3">
                       <v-text-field 
                         v-model="post.servings" 
                         label="인분" 
@@ -119,99 +110,114 @@
                         type="number"
                         min="1"
                         max="20"
-                        style="max-width: 120px;" 
+                        hide-spin-buttons
                         required 
                       />
                     </v-col>
-                    <v-col cols="auto">
+                    <v-col cols="12" sm="3">
                       <v-select v-model="post.difficulty" :items="difficultyOptions" label="난이도" variant="outlined"
-                        style="width: 160px;" required />
+                        required />
                     </v-col>
-                    <v-col cols="auto">
+                    <v-col cols="12" sm="3">
                       <v-text-field 
                         v-model="post.cookTime" 
-                        label="조리 시간 (분)" 
-                        placeholder="30" 
+                        label="조리시간" 
+                        placeholder="30분" 
                         variant="outlined"
                         type="number" 
                         min="1"
                         max="999"
-                        style="max-width: 160px;" 
+                        hide-spin-buttons
                         required 
                       />
                     </v-col>
                   </v-row>
                 </v-col>
               </v-row>
+              </div>
             </div>
 
             <!-- 재료 섹션 -->
-            <div class="mb-10 edit-ingredients-section">
-              <div class="d-flex justify-space-between align-center mb-6">
-                <h2 class="text-h5 font-weight-bold">재료</h2>
+            <div class="section-container mb-8">
+              <div class="section-header">
+                <h2 class="section-title">재료</h2>
                 <v-btn color="primary" @click="addIngredient">
                   <v-icon start>mdi-plus</v-icon>
                   재료 추가
                 </v-btn>
               </div>
+              <div class="section-content">
 
-              <div class="edit-ingredients-list">
-                <div v-for="(ingredient, index) in post.ingredients" :key="index" class="d-flex gap-3 mb-4">
-                  <v-text-field v-model="ingredient.name" label="재료명" placeholder="예: 김치"
-                    variant="outlined" class="flex-grow-1" required />
+              <div class="mb-4">
+                <div v-for="(ingredient, index) in post.ingredients" :key="index" class="d-flex mb-3 align-items-center">
+                  <span class="ingredient-number mr-3" style="min-width: 32px;">{{ index + 1 }}.</span>
+                  <v-text-field v-model="ingredient.name" :label="`재료명`" placeholder="예: 김치"
+                    variant="outlined" style="flex: 2; min-width: 180px; margin-right: 20px;" required />
                   <v-text-field v-model="ingredient.amount" :label="`양`" placeholder="예: 300g" variant="outlined"
-                    style="max-width: 120px;" required />
+                    style="flex: 1; min-width: 120px; margin-right: 20px;" required />
                   <v-btn variant="outlined" color="black" @click="removeIngredient(index)"
-                    :disabled="post.ingredients.length <= 1" style="width: 32px; height: 32px; min-width: 32px;">
-                    <v-icon size="small">mdi-minus</v-icon>
+                    :disabled="post.ingredients.length <= 1" style="width: 32px; height: 32px; min-width: 32px; margin-bottom: 8px;">
+                    <v-icon size="large" color="#d32f2f">mdi-minus</v-icon>
                   </v-btn>
                 </div>
+              </div>
               </div>
             </div>
 
             <!-- 조리 순서 섹션 -->
-            <div class="mb-10">
-              <div class="d-flex justify-space-between align-center mb-6">
-                <h2 class="text-h5 font-weight-bold">조리 순서</h2>
+            <div class="section-container mb-8">
+              <div class="section-header">
+                <h2 class="section-title">조리 순서</h2>
                 <v-btn color="primary" @click="addStep">
                   <v-icon start>mdi-plus</v-icon>
                   단계 추가
                 </v-btn>
               </div>
+              <div class="section-content">
 
-              <div v-for="(step, index) in post.steps" :key="index" class="mb-8">
-                <div class="d-flex" style="gap: 10px;">
-                  <v-avatar color="primary" size="35" class="mt-2">
-                    <span class="text-white font-weight-bold text-body-2">{{ index + 1 }}</span>
-                  </v-avatar>
+              <div v-for="(step, index) in post.steps" :key="index" class="mb-6">
+                <div class="d-flex align-items-end" style="gap: 20px;">
+                  <div class="step-number" style="margin-bottom: 8px;">{{ index + 1 }}</div>
 
-                  <div class="flex-grow-1" style="max-width: calc(100% - 42px);">
+                <div style="width: calc(100% - 55px);">
                     <v-textarea v-model="step.content" :label="`조리 순서 ${index + 1}를 상세히 설명해주세요`"
-                      placeholder="예: 돼지고기를 한입 크기로 썰어 준비합니다" variant="outlined" rows="3" class="mb-3" required />
+                      placeholder="예: 돼지고기를 한입 크기로 썰어 준비합니다" variant="outlined" rows="2" class="mb-2" required />
 
                     <!-- 추가 코멘트 (레시피와의 차이점) -->
-                    <v-textarea v-model="step.comment" :label="`▷ 코멘트 (선택사항)`"
-                      placeholder="이 단계에서 주의할 점이나 팁, 개인적인 경험을 공유해주세요" variant="outlined" rows="2" class="mb-3" />
+                    <div class="comment-section">
+                      <div class="comment-header">
+                        <v-icon color="#1976d2" size="small" class="mr-2">mdi-comment-text-outline</v-icon>
+                        <span class="comment-label">코멘트 (선택사항)</span>
+                      </div>
+                      <v-textarea v-model="step.comment"
+                        placeholder="이 단계에서 주의할 점이나 팁을 공유해주세요" variant="outlined" rows="2" class="comment-textarea" hide-details />
+                    </div>
                   </div>
 
                   <v-btn variant="outlined" color="black" @click="removeStep(index)" :disabled="post.steps.length <= 1"
-                    style="width: 32px; height: 32px; min-width: 32px;">
-                    <v-icon size="small">mdi-minus</v-icon>
+                    style="width: 32px; height: 32px; min-width: 32px; margin-bottom: 8px;">
+                    <v-icon size="large" color="#d32f2f">mdi-minus</v-icon>
                   </v-btn>
                 </div>
+              </div>
               </div>
             </div>
 
             <!-- 요리 팁 섹션 -->
-            <div class="mb-10">
-              <h2 class="text-h5 mb-6 font-weight-bold">요리 팁</h2>
-              <v-textarea v-model="post.cookingTip" label="요리 팁 (선택사항)"
-                placeholder="이 레시피를 더 맛있게 만들 수 있는 팁이나 변형 방법을 공유해주세요" variant="outlined" rows="4" />
+            <div class="section-container mb-8">
+              <div class="section-header">
+                <h2 class="section-title">요리 팁</h2>
+              </div>
+              <div class="section-content">
+                <div class="field-label mb-2">요리 팁 (선택사항)</div>
+                <v-textarea v-model="post.cookingTip"
+                  placeholder="이 레시피를 더 맛있게 만들 수 있는 팁이나 변형 방법을 공유해주세요" variant="outlined" rows="3" hide-details />
+              </div>
             </div>
 
             <!-- 하단 버튼들 -->
-            <div class="d-flex justify-center gap-12 mt-10">
-              <v-btn variant="outlined" size="large" class="px-8" @click="goBack">
+            <div class="d-flex justify-center mt-6">
+              <v-btn variant="outlined" size="large" class="px-8 mr-12" @click="goBack">
                 취소
               </v-btn>
               <v-btn color="primary" size="large" class="px-8" @click="updatePost" :loading="isUpdating"
@@ -257,6 +263,9 @@ const post = reactive({
 // 이미지 업로드 관련 상태
 const imageInput = ref(null)
 const isUpdating = ref(false)
+
+// 기본 이미지 URL
+const defaultImageUrl = '/cooking.png' // public 폴더의 기본 이미지
 
 // 옵션 데이터
 const categoryOptions = [
@@ -380,7 +389,7 @@ const loadPost = async () => {
         // 데이터 매핑
         post.title = data.data.title || ''
         post.content = data.data.description || ''
-        post.imageUrl = data.data.thumbnailUrl || ''
+        post.imageUrl = data.data.thumbnailUrl || defaultImageUrl
 
         post.category = getCategoryText(data.data.category)
         post.difficulty = getDifficultyText(data.data.level)
@@ -489,7 +498,7 @@ const handleImageDrop = (event) => {
 
 const clearImage = () => {
   post.imageFile = null
-  post.imageUrl = ''
+  post.imageUrl = defaultImageUrl // 기본 이미지로 설정
   if (imageInput.value) {
     imageInput.value.value = ''
   }
@@ -533,6 +542,19 @@ const updatePost = async () => {
     console.log('🚀 updatePost 함수 호출됨!')
     console.log('현재 post 데이터:', post)
     
+    // 이미지 처리 로직
+    let thumbnailUrl = post.imageUrl || null;
+    
+    // 새로운 이미지 파일이 있으면 업로드, 없으면 기존 이미지 유지
+    if (post.imageFile && post.imageFile.size > 0) {
+      // 새로운 이미지가 있으면 업로드 (백엔드에서 처리)
+      console.log('새로운 이미지 파일 업로드:', post.imageFile.name);
+    } else if (!post.imageUrl || post.imageUrl === '') {
+      // 이미지가 없으면 기본 이미지로 설정
+      thumbnailUrl = defaultImageUrl;
+      console.log('기본 이미지로 설정:', defaultImageUrl);
+    }
+    
     // PostUpdateRequestDto에 해당하는 데이터를 하나의 객체로 만듭니다.
     const requestDto = {
       title: post.title,
@@ -543,8 +565,8 @@ const updatePost = async () => {
       serving: servings,
       cookTip: post.cookingTip || '',
       isOpen: post.isPublic,
-      // 기존 썸네일 URL은 DTO 필드로 전달
-      thumbnailUrl: post.imageUrl || null,
+      // 썸네일 URL 설정
+      thumbnailUrl: thumbnailUrl,
       ingredients: post.ingredients.map(ing => ({
         name: ing.name,
         amount: ing.amount
@@ -576,6 +598,9 @@ const updatePost = async () => {
     if (post.imageFile && post.imageFile.size > 0) {
       console.log('새로운 썸네일 파일 전송:', post.imageFile.name, post.imageFile.size);
       formData.append('thumbnail', post.imageFile);
+    } else if (!post.imageUrl || post.imageUrl === '') {
+      // 이미지가 없으면 기본 이미지로 설정 (백엔드에서 처리)
+      console.log('기본 이미지로 설정 요청');
     }
     
     // FormData 내용 확인 로그
@@ -714,12 +739,133 @@ onMounted(() => {
   margin-right: 8px;
 }
 
-/* 재료 섹션 스타일 - RecipeDetailPage와 충돌 방지 */
-.edit-ingredients-section {
-  /* RecipeDetailPage의 ingredients-group 스타일과 분리 */
+/* 공개 설정 스위치 스타일 */
+.public-setting-switch {
+  background: white;
+  padding: 16px 20px;
+  border-radius: 12px;
+  border: none;
+  min-width: 280px;
+  box-shadow: none;
 }
 
-.edit-ingredients-list {
-  /* RecipeDetailPage의 ingredients-list 스타일과 분리 */
+.public-setting-switch .v-switch {
+  pointer-events: auto;
+}
+
+/* 코멘트 텍스트에어리어 라벨 스타일 */
+.comment-textarea :deep(.v-label) {
+  color: #1976d2 !important;
+  font-weight: 500;
+}
+
+.comment-textarea :deep(.v-field__outline) {
+  --v-field-border-color: #1976d2;
+}
+
+.comment-textarea :deep(.v-field--focused .v-field__outline) {
+  --v-field-border-color: #1976d2;
+}
+
+.header-container {
+  position: relative;
+}
+
+/* 재료 번호 스타일 */
+.ingredient-number {
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translateY(-8px);
+}
+
+/* 조리 순서 번호 스타일 */
+.step-number {
+  width: 30px;
+  height: 30px;
+  background-color: #ff7a00;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.875rem;
+  flex-shrink: 0;
+}
+
+/* 섹션 스타일 */
+.section-container {
+  background-color: white;
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid #e0e0e0;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+}
+
+.section-title {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #333;
+  margin: 0;
+}
+
+.section-content {
+  padding-top: 8px;
+}
+
+.field-label {
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: #333;
+}
+
+.required-dot {
+  color: #e53e3e;
+  font-weight: bold;
+}
+
+/* 마이너스 아이콘 굵기 */
+.v-icon[color="#d32f2f"] {
+  font-weight: 900;
+  font-size: 1.5em;
+  text-shadow: 1px 1px 0px #d32f2f, 2px 2px 0px #d32f2f;
+  -webkit-text-stroke: 0.5px #d32f2f;
+}
+
+/* 코멘트 섹션 스타일 */
+.comment-section {
+  background-color: #f8f9ff;
+  border: 1px solid #e3f2fd;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 8px;
+}
+
+.comment-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.comment-label {
+  color: #1976d2;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.comment-textarea :deep(.v-field) {
+  background-color: white;
+  border-radius: 4px;
 }
 </style>
