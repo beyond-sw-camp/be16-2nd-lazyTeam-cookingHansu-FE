@@ -70,9 +70,9 @@
             v-model="formData.info" 
             placeholder="자기소개를 입력하세요 (선택사항)"
             rows="3"
-            maxlength="200"
+            maxlength="10"
           ></textarea>
-          <small class="char-count">{{ formData.info.length }}/200</small>
+          <small class="char-count">{{ formData.info.length }}/10</small>
         </div>
       </div>
 
