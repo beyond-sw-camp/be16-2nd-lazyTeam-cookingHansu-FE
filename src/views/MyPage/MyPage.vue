@@ -152,19 +152,14 @@ export default {
     getInitialTab() {
       const urlParams = new URLSearchParams(window.location.search);
       const tab = urlParams.get('tab');
-<<<<<<< HEAD
-      const validTabs = ['recipes', 'posts', 'lectures', 'sold-lectures', 'bookmarks', 'likes'];
-      
-      // 판매자가 아닌데 sold-lectures 탭을 요청한 경우 recipes로 리다이렉트
+      const validTabs = ['posts', 'lectures', 'sold-lectures', 'bookmarks', 'likes'];
+
+      // 판매자가 아닌데 sold-lectures 탭을 요청한 경우 posts로 리다이렉트
       if (tab === 'sold-lectures' && !this.isSeller) {
-        return 'recipes';
+        return 'posts';
       }
-      
-      return tab && validTabs.includes(tab) ? tab : 'recipes';
-=======
-      const validTabs = ['posts', 'lectures', 'bookmarks', 'likes'];
+
       return tab && validTabs.includes(tab) ? tab : 'posts';
->>>>>>> 589c2ec19c69f7af43519b7f19a7d0d4fe5b8d36
     },
     updateUrlWithTab(tab) {
       const url = new URL(window.location);
@@ -202,8 +197,10 @@ export default {
       setTimeout(() => this.$router.push('/login'), 2000);
     },
     handleWithdrawError(errorMessage) {
-<<<<<<< HEAD
-      alert('회원탈퇴에 실패했습니다: ' + errorMessage);
+      this.showMessage({
+        type: 'error',
+        message: '회원탈퇴에 실패했습니다: ' + errorMessage
+      });
     },
     
     // 판매자 역할 확인
@@ -243,12 +240,7 @@ export default {
         console.error('오류 상세:', error.message);
         this.isSeller = false;
       }
-=======
-      this.showMessage({
-        type: 'error',
-        message: '회원탈퇴에 실패했습니다: ' + errorMessage
-      });
->>>>>>> 589c2ec19c69f7af43519b7f19a7d0d4fe5b8d36
+
     }
   }
 };

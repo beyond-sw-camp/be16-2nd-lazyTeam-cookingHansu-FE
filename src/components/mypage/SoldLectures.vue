@@ -214,8 +214,13 @@ export default {
       if (lecture.status === 'APPROVED') {
         console.log('승인된 강의 - 상세 페이지로 이동');
         this.$router.push(`/lectures/${lecture.id}`);
+      } else if (lecture.status === 'REJECTED') {
+        console.log('거부된 강의 - 수정 페이지로 이동');
+        // 수정 후 판매된 강의 페이지로 돌아오기 위한 플래그 설정
+        localStorage.setItem('lectureEditFrom', 'sold-lectures');
+        this.$router.push(`/lectures/edit/${lecture.id}`);
       } else {
-        console.log('승인되지 않은 강의 - 모달 표시');
+        console.log('승인 대기 중인 강의 - 모달 표시');
         this.openUnapprovedModal(lecture.status);
       }
     },

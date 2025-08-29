@@ -781,9 +781,12 @@ export default {
              }
              
                            // 어디서 왔는지 확인하여 적절한 페이지로 라우팅
-              const fromSoldLectures = this.$route.query.from === 'sold-lectures';
+              const fromSoldLectures = localStorage.getItem('lectureEditFrom') === 'sold-lectures';
               
               this.showModalDialog('success', '수정 완료', '강의가 성공적으로 수정되었습니다!', '확인', '', false, () => {
+                // localStorage 정리
+                localStorage.removeItem('lectureEditFrom');
+                
                 if (fromSoldLectures) {
                   // SoldLectures에서 온 경우
                   this.$router.push('/mypage?sold-lectures').then(() => {

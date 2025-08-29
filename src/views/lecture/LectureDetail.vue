@@ -1813,11 +1813,11 @@ export default {
         this.$router.push(`/lecture/${this.lecture.id}/player`);
       },
       
-             // 강의 수정
-       editLecture() {
-         // 강의 수정 페이지로 라우팅
-         this.$router.push(`/lectures/edit/${this.lecture.id}`);
-       },
+                   // 강의 수정
+      editLecture() {
+        // 강의 수정 페이지로 라우팅
+        this.$router.push(`/lectures/edit/${this.lecture.id}`);
+      },
 
        // 강의 삭제 확인 모달 표시
        showDeleteConfirm() {
