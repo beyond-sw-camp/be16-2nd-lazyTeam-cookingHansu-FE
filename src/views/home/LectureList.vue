@@ -306,6 +306,7 @@ export default {
   margin-right: auto;
   padding: 20px 20px 0 20px; /* 상단에 20px 여백 추가 */
   position: relative;
+  min-height: 60px; /* 최소 높이 설정으로 높이 변화 방지 */
 }
 
 .nav-buttons {
