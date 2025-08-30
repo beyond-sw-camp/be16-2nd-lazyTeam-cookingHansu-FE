@@ -10,8 +10,7 @@
         <div class="approval-icon">✅</div>
         <p class="approval-message">
           회원가입이 승인되었습니다!<br>
-          전체 서비스를 이용하시려면<br>
-          다시 로그인해주세요.
+          이제 모든 서비스를 이용하실 수 있습니다.
         </p>
       </div>
       
@@ -21,7 +20,7 @@
           @click="handleConfirm"
           :disabled="isLoading"
         >
-          {{ isLoading ? '처리 중...' : '로그인하러 가기' }}
+          {{ isLoading ? '처리 중...' : '확인' }}
         </button>
       </div>
     </div>
@@ -32,6 +31,7 @@
 import { ref } from 'vue'
 import { useAuthStore } from '@/store/auth/auth'
 import { useRouter } from 'vue-router'
+import { apiPost } from '@/utils/api'
 
 const props = defineProps({
   isVisible: {
@@ -58,18 +58,42 @@ const handleConfirm = async () => {
   isLoading.value = true
   
   try {
-    // 모달 닫기
+    // 1. 토큰 갱신
+    const refreshResponse = await apiPost('/user/refresh', {
+      refreshToken: authStore.refreshToken
+    })
+    
+    if (refreshResponse.ok) {
+      const refreshData = await refreshResponse.json()
+      if (refreshData.success && refreshData.data) {
+        // 새로운 토큰으로 auth store 업데이트
+        const { accessToken, refreshToken, expiresIn } = refreshData.data
+        authStore.accessToken = accessToken
+        authStore.refreshToken = refreshToken
+        authStore.expiresIn = Date.now() + expiresIn
+        
+        // 로컬 스토리지 업데이트
+        localStorage.setItem('accessToken', accessToken)
+        localStorage.setItem('refreshToken', refreshToken)
+        localStorage.setItem('expiresIn', authStore.expiresIn)
+      }
+    }
+    
+    // 2. 최신 사용자 정보 조회하여 역할 갱신
+    await authStore.getCurrentUser()
+    
+    // 3. 모달 닫기
     closeModal()
     
-    // 로그아웃 처리 (기존 세션 정리)
-    await authStore.logout()
-    
-    // 로그인 페이지로 이동
-    router.push('/login')
+    // 4. 홈페이지로 이동
+    if (router.currentRoute.value.path === '/login') {
+      router.push('/')
+    }
     
   } catch (error) {
-    
-    router.push('/login')
+    console.error('승인 처리 실패:', error)
+    // 갱신 실패 시에도 모달은 닫기
+    closeModal()
   } finally {
     isLoading.value = false
   }
