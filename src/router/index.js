@@ -177,6 +177,14 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+  scrollBehavior(to, from, savedPosition) {
+    // 뒤로가기/앞으로가기 시 저장된 위치로 스크롤
+    if (savedPosition) {
+      return savedPosition
+    }
+    // 새 페이지로 이동 시 상단으로 스크롤
+    return { top: 0 }
+  }
 });
 
 // 인증 가드
