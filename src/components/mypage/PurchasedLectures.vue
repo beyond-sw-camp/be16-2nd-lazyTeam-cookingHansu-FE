@@ -4,7 +4,7 @@
       <h2>구매한 강의</h2>
     </div>
 
-    <div class="lectures-grid">
+    <div v-if="ready" class="lectures-grid">
       <div v-for="lecture in pagedLectures" :key="lecture.id" class="lecture-card">
         <div class="lecture-image" @click="goToLectureDetail(lecture.id)">
           <img :src="lecture.thumbUrl" :alt="lecture.title" />
@@ -50,16 +50,17 @@
     </div>
 
     <Pagination 
+      v-if="ready"
       :current-page="currentPage"
       :total-pages="totalPages"
       @page-change="changePage"
     />
 
-    <div v-if="lectures.length === 0" class="empty-state">
+    <div v-if="ready && lectures.length === 0" class="empty-state">
       <div class="empty-icon">📚</div>
       <h3>아직 구매한 강의가 없어요</h3>
       <p>관심 있는 강의를 구매하고 학습을 시작해보세요!</p>
-      <button class="browse-lectures-btn">강의 둘러보기</button>
+      <button class="browse-lectures-btn" @click="goToLectures">강의 둘러보기</button>
     </div>
   </div>
 </template>
@@ -80,7 +81,8 @@ export default {
       lectures: [],
       totalPages: 0,
       totalElements: 0,
-      loading: false
+      loading: false,
+      ready: false
     };
   },
   computed: {
@@ -112,6 +114,7 @@ export default {
         console.error('구매한 강의 조회 실패:', error);
       } finally {
         this.loading = false;
+        this.ready = true;
       }
     },
     async changePage(page) {
@@ -142,6 +145,9 @@ export default {
     },
     goToLectureDetail(lectureId) {
       this.$router.push(`/lectures/${lectureId}`);
+    },
+    goToLectures() {
+      this.$router.push('/lectures');
     }
   }
 };

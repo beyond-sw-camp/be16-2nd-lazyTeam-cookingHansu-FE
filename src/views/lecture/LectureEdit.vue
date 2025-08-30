@@ -780,14 +780,29 @@ export default {
                console.error('수정된 강의 데이터 조회 실패:', error);
              }
              
-             this.showModalDialog('success', '수정 완료', '강의가 성공적으로 수정되었습니다!', '확인', '', false, () => {
-               this.$router.push(`/lectures/${this.lectureId}`).then(() => {
-                 // 라우터 이동 완료 후 스크롤
-                 this.$nextTick(() => {
-                   window.scrollTo(0, 0);
-                 });
-               });
-             });
+                           // 어디서 왔는지 확인하여 적절한 페이지로 라우팅
+              const fromSoldLectures = localStorage.getItem('lectureEditFrom') === 'sold-lectures';
+              
+              this.showModalDialog('success', '수정 완료', '강의가 성공적으로 수정되었습니다!', '확인', '', false, () => {
+                // localStorage 정리
+                localStorage.removeItem('lectureEditFrom');
+                
+                if (fromSoldLectures) {
+                  // SoldLectures에서 온 경우
+                  this.$router.push('/mypage?sold-lectures').then(() => {
+                    this.$nextTick(() => {
+                      window.scrollTo(0, 0);
+                    });
+                  });
+                } else {
+                  // 강의 상세페이지에서 온 경우
+                  this.$router.push(`/lectures/${this.lectureId}`).then(() => {
+                    this.$nextTick(() => {
+                      window.scrollTo(0, 0);
+                    });
+                  });
+                }
+              });
            } else {
              console.log('강의 수정 실패:', response.message);
              this.showError(response.message || '강의 수정에 실패했습니다.');

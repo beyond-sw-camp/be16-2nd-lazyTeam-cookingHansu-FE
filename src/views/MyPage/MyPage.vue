@@ -37,6 +37,7 @@
         :class="{ active: currentTab === tab.id }"
         @click="currentTab = tab.id"
         class="tab-button"
+        v-show="tab.id !== 'sold-lectures' || isSeller"
       >
         {{ tab.name }}
       </button>
@@ -44,9 +45,9 @@
 
     <!-- 탭 컨텐츠 -->
     <div class="tab-content">
-      <MyRecipes v-if="currentTab === 'recipes'" />
       <MyPosts v-if="currentTab === 'posts'" />
       <PurchasedLectures v-if="currentTab === 'lectures'" />
+      <SoldLectures v-if="currentTab === 'sold-lectures'" />
       <Bookmarks v-if="currentTab === 'bookmarks'" />
       <Likes v-if="currentTab === 'likes'" />
     </div>
@@ -76,21 +77,23 @@
 
 <script>
 import Header from '@/components/Header.vue';
-import MyRecipes from '@/components/mypage/MyRecipes.vue';
 import MyPosts from '@/components/mypage/MyPosts.vue';
 import PurchasedLectures from '@/components/mypage/PurchasedLectures.vue';
+import SoldLectures from '@/components/mypage/SoldLectures.vue';
 import Bookmarks from '@/components/mypage/Bookmarks.vue';
 import Likes from '@/components/mypage/Likes.vue';
-import ProfileEditModal from '@/models/mypage/ProfileEditModal.vue';
-import WithdrawConfirmModal from '@/components/common/WithdrawConfirmModal.vue';
+import ProfileEditModal from '@/components/mypage/modal/ProfileEditModal.vue';
+import WithdrawConfirmModal from '@/components/mypage/modal/WithdrawConfirmModal.vue';
+import { apiGet } from '@/utils/api';
+
 
 export default {
   name: 'MyPage',
   components: {
     Header,
-    MyRecipes,
     MyPosts,
     PurchasedLectures,
+    SoldLectures,
     Bookmarks,
     Likes,
     ProfileEditModal,
@@ -101,17 +104,18 @@ export default {
       currentTab: this.getInitialTab(),
       showProfileModal: false,
       showWithdrawModal: false,
+      isSeller: false,
       userProfile: {
         nickname: '',
         email: '',
         info: '',
-        profileImage: null,
+        profileImageUrl: null, // ✅ 키 맞춤
         userType: ''
       },
       tabs: [
-        { id: 'recipes', name: '내 레시피' },
         { id: 'posts', name: '내 게시글' },
         { id: 'lectures', name: '구매한 강의' },
+        { id: 'sold-lectures', name: '판매한 강의' },
         { id: 'bookmarks', name: '북마크' },
         { id: 'likes', name: '좋아요' }
       ],
@@ -120,22 +124,19 @@ export default {
     };
   },
   async mounted() {
-    // 컴포넌트가 마운트될 때 사용자 프로필 데이터 가져오기
     await this.fetchUserProfile();
+    this.checkSellerRole();
   },
   watch: {
     currentTab(newTab) {
-      // 탭이 변경될 때 URL 쿼리 파라미터 업데이트
       this.updateUrlWithTab(newTab);
     },
     showProfileModal(newVal) {
       if (newVal) {
-        // 모달이 열릴 때 배경 스크롤 비활성화 (더 확실한 방법)
         document.body.style.overflow = 'hidden';
         document.body.style.position = 'fixed';
         document.body.style.width = '100%';
       } else {
-        // 모달이 닫힐 때 배경 스크롤 활성화
         document.body.style.overflow = 'auto';
         document.body.style.position = 'static';
         document.body.style.width = 'auto';
@@ -143,30 +144,33 @@ export default {
     }
   },
   beforeUnmount() {
-    // 컴포넌트가 제거될 때 스크롤 복원
     document.body.style.overflow = 'auto';
+    document.body.style.position = 'static';
+    document.body.style.width = 'auto';
   },
   methods: {
     getInitialTab() {
-      // URL 쿼리 파라미터에서 탭 정보 가져오기
       const urlParams = new URLSearchParams(window.location.search);
       const tab = urlParams.get('tab');
-      const validTabs = ['recipes', 'posts', 'lectures', 'bookmarks', 'likes'];
-      return tab && validTabs.includes(tab) ? tab : 'recipes';
+      const validTabs = ['posts', 'lectures', 'sold-lectures', 'bookmarks', 'likes'];
+
+      // 판매자가 아닌데 sold-lectures 탭을 요청한 경우 posts로 리다이렉트
+      if (tab === 'sold-lectures' && !this.isSeller) {
+        return 'posts';
+      }
+
+      return tab && validTabs.includes(tab) ? tab : 'posts';
     },
-    
     updateUrlWithTab(tab) {
       const url = new URL(window.location);
       url.searchParams.set('tab', tab);
       window.history.replaceState({}, '', url);
     },
-    
     async fetchUserProfile() {
       try {
-        const response = await fetch('http://localhost:8080/api/my/profile');
+        const response = await apiGet('/api/my/profile');
         if (response.ok) {
           const result = await response.json();
-          console.log('프로필 데이터:', result.data);
           this.userProfile = result.data;
         } else {
           console.error('프로필 조회 실패');
@@ -186,16 +190,57 @@ export default {
         this.messageType = null;
       }, 3000);
     },
-    
-    // 회원탈퇴 성공 처리
     handleWithdrawSuccess() {
-      // 로그인 페이지로 리다이렉트
-      this.$router.push('/login');
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      this.showMessage({ type: 'success', message: '회원탈퇴가 완료되었습니다.' });
+      setTimeout(() => this.$router.push('/login'), 2000);
+    },
+    handleWithdrawError(errorMessage) {
+      this.showMessage({
+        type: 'error',
+        message: '회원탈퇴에 실패했습니다: ' + errorMessage
+      });
     },
     
-    // 회원탈퇴 실패 처리
-    handleWithdrawError(errorMessage) {
-      alert('회원탈퇴에 실패했습니다: ' + errorMessage);
+    // 판매자 역할 확인
+    checkSellerRole() {
+      try {
+        const token = localStorage.getItem('accessToken');
+        console.log('=== 판매자 역할 확인 시작 ===');
+        console.log('토큰:', token);
+        
+        if (token) {
+          const parts = token.split('.');
+          console.log('토큰 파트 개수:', parts.length);
+          
+          if (parts.length >= 2) {
+            const payload = JSON.parse(atob(parts[1]));
+            console.log('토큰 페이로드:', payload);
+            console.log('페이로드 키들:', Object.keys(payload));
+            
+            // role 필드 확인
+            const userRole = payload.role;
+            console.log('사용자 역할:', userRole);
+            console.log('역할 타입:', typeof userRole);
+            
+            this.isSeller = ['CHEF', 'OWNER'].includes(userRole);
+            console.log('판매자 여부:', this.isSeller);
+            console.log('=== 판매자 역할 확인 완료 ===');
+          } else {
+            console.error('토큰 형식이 올바르지 않습니다.');
+            this.isSeller = false;
+          }
+        } else {
+          console.log('토큰이 없습니다.');
+          this.isSeller = false;
+        }
+      } catch (error) {
+        console.error('토큰 파싱 오류:', error);
+        console.error('오류 상세:', error.message);
+        this.isSeller = false;
+      }
+
     }
   }
 };
@@ -569,4 +614,4 @@ export default {
     opacity: 1;
   }
 }
-</style> 
+</style>
