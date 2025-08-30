@@ -10,7 +10,8 @@
         <div class="approval-icon">✅</div>
         <p class="approval-message">
           회원가입이 승인되었습니다!<br>
-          이제 모든 서비스를 이용하실 수 있습니다.
+          전체 서비스를 이용하시려면<br>
+          다시 로그인해주세요.
         </p>
       </div>
       
@@ -20,7 +21,7 @@
           @click="handleConfirm"
           :disabled="isLoading"
         >
-          {{ isLoading ? '권한 갱신 중...' : '확인' }}
+          {{ isLoading ? '처리 중...' : '로그인하러 가기' }}
         </button>
       </div>
     </div>
@@ -57,56 +58,18 @@ const handleConfirm = async () => {
   isLoading.value = true
   
   try {
-    if (!authStore.accessToken) {
-      throw new Error('Access token이 없습니다.')
-    }
+    // 모달 닫기
+    closeModal()
     
-    // 사용자 정보 갱신
-    const userResponse = await fetch('http://localhost:8080/user/me', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authStore.accessToken}`
-      }
-    })
+    // 로그아웃 처리 (기존 세션 정리)
+    await authStore.logout()
     
-    if (userResponse.ok) {
-      const userData = await userResponse.json()
-      
-      // 새로운 사용자 정보로 업데이트
-      if (userData.data) {
-        authStore.user = userData.data
-        localStorage.setItem('user', JSON.stringify(userData.data))
-        
-        // 사용자 정보에서 역할 확인
-        let newRole = userData.data.role || 'GENERAL'
-        
-        // 역할 업데이트
-        authStore.user.role = newRole
-        localStorage.setItem('userRole', newRole)
-        
-        // 모달 닫기
-        closeModal()
-
-        // 페이지 이동
-        router.push('/mypage')
-        
-      } else {
-        throw new Error('사용자 정보를 받을 수 없습니다.')
-      }
-    } else {
-      throw new Error('사용자 정보 조회 실패')
-    }
+    // 로그인 페이지로 이동
+    router.push('/login')
     
   } catch (error) {
-    console.error('권한 갱신 실패:', error)
     
-    if (error.message.includes('Access token이 없습니다')) {
-      alert('세션이 만료되었습니다. 다시 로그인해주세요.')
-      router.push('/login')
-    } else {
-      alert('권한 갱신에 실패했습니다. 다시 시도해주세요.')
-    }
+    router.push('/login')
   } finally {
     isLoading.value = false
   }
@@ -209,7 +172,7 @@ const handleConfirm = async () => {
 }
 
 .confirm-btn {
-  background: linear-gradient(135deg, #ff6b35, #f7931e);
+  background: #ff6b35;
   color: white;
   border: none;
   padding: 12px 32px;
@@ -222,6 +185,7 @@ const handleConfirm = async () => {
 }
 
 .confirm-btn:hover:not(:disabled) {
+  background: #e55a2b;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
 }
