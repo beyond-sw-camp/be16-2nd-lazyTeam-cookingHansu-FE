@@ -79,6 +79,12 @@
         </div>
       </div>
     </div>
+
+    <!-- 승인 알림 모달 -->
+    <ApprovalNotificationModal 
+      :is-visible="showApprovalModal"
+      @close="closeApprovalModal"
+    />
   </div>
 </template>
 
@@ -86,6 +92,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useNotificationStore } from '@/store/notification/notification.js'
+import ApprovalNotificationModal from '@/components/notification/ApprovalNotificationModal.vue'
 import { formatDistanceToNow } from 'date-fns'
 import { ko } from 'date-fns/locale'
 
@@ -98,6 +105,7 @@ const userId = '00000000-0000-0000-0000-000000000000' // 결제 테스트 사용
 // 반응형 데이터
 const activeFilter = ref('ALL')
 const loading = ref(false)
+const showApprovalModal = ref(false)
 
 // computed로 hasMore 상태를 store에서 가져오기
 const hasMore = computed(() => notificationStore.hasMore)
@@ -199,8 +207,11 @@ const handleNotificationClick = async (notification) => {
       router.push('/chat')
       break
     case 'PAYMENT':
-    case 'APPROVAL':
       router.push('/mypage')
+      break
+    case 'APPROVAL':
+      // 승인 알림 모달 표시
+      showApprovalModal.value = true
       break
     case 'NOTICE':
       if (notification.relatedId) {
@@ -213,6 +224,11 @@ const handleNotificationClick = async (notification) => {
       console.log('알림 클릭 완료 - 페이지 이동 없음')
       break
   }
+}
+
+// 승인 모달 닫기
+const closeApprovalModal = () => {
+  showApprovalModal.value = false
 }
 
 // 알림 삭제 처리
