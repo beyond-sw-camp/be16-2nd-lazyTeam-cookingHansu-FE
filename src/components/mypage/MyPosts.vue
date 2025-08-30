@@ -14,8 +14,6 @@
     </div>
 
     <div v-else-if="posts.length > 0" class="posts-grid">
-      <div v-for="post in pagedPosts" :key="post.id" class="post-card">
-    <div class="posts-grid">
       <div v-for="post in pagedPosts" :key="post.id" class="post-card" @click="goToPostDetail(post)">
         <div class="post-image">
           <img 
@@ -140,6 +138,14 @@ export default {
       const day = String(date.getDate()).padStart(2, '0');
       
       return `${year}.${month}.${day}`;
+    },
+    goToPostDetail(post) {
+      // Navigate to post detail page
+      this.$router.push(`/recipe/${post.id}`);
+    },
+    goToRecipePostWrite() {
+      // Navigate to recipe post write page
+      this.$router.push('/recipe/write');
     }
   }
 };

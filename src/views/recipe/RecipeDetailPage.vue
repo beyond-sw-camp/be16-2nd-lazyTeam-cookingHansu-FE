@@ -294,7 +294,9 @@
                   </div>
                 </div>
                 <div class="comment-actions">
+                  <!-- 답글 버튼 (삭제된 댓글이 아닌 경우만) -->
                   <v-btn 
+                    v-if="!comment.isDeleted"
                     size="small" 
                     variant="text"
                     @click="showReplyForm(comment)"
@@ -303,8 +305,9 @@
                     답글
                   </v-btn>
                   
-                  <!-- 더보기 버튼 -->
+                  <!-- 더보기 버튼 (삭제된 댓글이 아닌 경우만) -->
                   <v-menu
+                    v-if="!comment.isDeleted"
                     v-model="comment.showMoreMenu"
                     :close-on-content-click="false"
                     location="bottom end"
@@ -324,7 +327,7 @@
                     <v-list density="compact">
                       <!-- 수정 버튼 (작성자만 표시) -->
                       <v-list-item
-                        v-if="currentUser && currentUser.nickname === comment.nickname"
+                        v-if="canEditComment(comment)"
                         @click="startEditComment(comment)"
                         class="edit-menu-item"
                       >
@@ -336,7 +339,7 @@
                       
                       <!-- 삭제 버튼 (작성자만 표시) -->
                       <v-list-item
-                        v-if="currentUser && currentUser.nickname === comment.nickname"
+                        v-if="canEditComment(comment)"
                         @click="deleteComment(comment.id)"
                         class="delete-menu-item"
                       >
@@ -473,8 +476,9 @@
                   </div>
                 </div>
                 <div class="comment-actions">
-                  <!-- 더보기 버튼 -->
+                  <!-- 더보기 버튼 (삭제된 답글이 아닌 경우만) -->
                   <v-menu
+                    v-if="!reply.isDeleted"
                     v-model="reply.showMoreMenu"
                     :close-on-content-click="false"
                     location="bottom end"
@@ -494,7 +498,7 @@
                     <v-list density="compact">
                       <!-- 수정 버튼 (작성자만 표시) -->
                       <v-list-item
-                        v-if="currentUser && currentUser.nickname === reply.nickname"
+                        v-if="canEditComment(reply)"
                         @click="startEditComment(reply)"
                         class="edit-menu-item"
                       >
@@ -506,7 +510,7 @@
                       
                       <!-- 삭제 버튼 (작성자만 표시) -->
                       <v-list-item
-                        v-if="currentUser && currentUser.nickname === reply.nickname"
+                        v-if="canEditComment(reply)"
                         @click="deleteComment(reply.id)"
                         class="delete-menu-item"
                       >
@@ -858,15 +862,57 @@ const handleCommentProfileImageError = (comment) => {
   comment.authorProfileImage = null
 }
 
-// 댓글 작성자가 레시피 작성자인지 확인
+// 댓글 작성자가 레시피 작성자인지 확인 (UUID 기반)
 const isCommentAuthor = (comment) => {
-  const isAuthor = comment.nickname === recipe.nickname
-  console.log('🔍 작성자 뱃지 체크:', {
+  // UUID로 비교 (더 정확함)
+  if (comment.authorUUID && recipe.authorId) {
+    return String(comment.authorUUID) === String(recipe.authorId)
+  }
+  
+  // UUID가 없는 경우 닉네임으로 fallback (하위 호환성)
+  return comment.nickname === recipe.nickname
+}
+
+// 댓글 수정/삭제 권한 확인 (UUID 기반)
+const canEditComment = (comment) => {
+  if (!isLoggedIn.value || !currentUser.value) {
+    console.log('🔍 canEditComment: 로그인하지 않았거나 사용자 정보 없음')
+    return false
+  }
+  
+  // 현재 사용자 UUID 가져오기 (JWT 토큰에서 추출)
+  const currentUserUUID = getCurrentUserIdFromToken() || currentUser.value.id || currentUser.value.uuid || currentUser.value.userId
+  
+  console.log('🔍 canEditComment 디버깅:', {
+    isLoggedIn: isLoggedIn.value,
+    currentUser: currentUser.value,
+    currentUserUUID: currentUserUUID,
+    currentUserNickname: currentUser.value.nickname,
+    commentAuthorUUID: comment.authorUUID,
     commentNickname: comment.nickname,
-    recipeNickname: recipe.nickname,
-    isAuthor: isAuthor
+    commentData: comment
   })
-  return isAuthor
+  
+  // 댓글 작성자 UUID가 없는 경우 nickname으로 fallback (하위 호환성)
+  if (!comment.authorUUID) {
+    console.log('🔍 canEditComment: 댓글 작성자 UUID 없음, nickname으로 fallback')
+    const nicknameMatch = currentUser.value.nickname === comment.nickname
+    console.log('🔍 nickname 비교 결과:', nicknameMatch)
+    return nicknameMatch
+  }
+  
+  // UUID로 비교
+  const canEdit = currentUserUUID && String(currentUserUUID) === String(comment.authorUUID)
+  console.log('🔍 canEditComment 체크 (UUID 기준):', {
+    currentUserUUID: currentUserUUID,
+    currentUserUUIDType: typeof currentUserUUID,
+    commentAuthorUUID: comment.authorUUID,
+    commentAuthorUUIDType: typeof comment.authorUUID,
+    commentNickname: comment.nickname,
+    canEdit: canEdit
+  })
+  
+  return canEdit
 }
 
 
@@ -1199,22 +1245,11 @@ const loadComments = async () => {
         })
         
         comments.value = sortedComments.map(comment => {
-          console.log('댓글 원본 데이터:', comment)
-          console.log('댓글 날짜:', comment.createdAt, '타입:', typeof comment.createdAt)
-          console.log('대댓글 데이터:', comment.childComments)
-          console.log('대댓글 필드들:', Object.keys(comment))
-          console.log('댓글 프로필 이미지 필드들:', {
-            authorProfileImage: comment.authorProfileImage,
-            authorProfileUrl: comment.authorProfileUrl,
-            profileImageUrl: comment.profileImageUrl,
-            profileImage: comment.profileImage,
-            userProfileImage: comment.user?.profileImageUrl,
-            userProfileUrl: comment.user?.profileImageUrl
-          })
           
           return {
             id: comment.commentId || comment.id,
             nickname: comment.authorNickName || comment.nickname,
+            authorUUID: comment.authorId, // 작성자 UUID (authorId가 UUID 타입)
             content: comment.content,
             createdAt: comment.createdAt,
             isDeleted: comment.isDeleted || false, // 삭제 상태 추가
@@ -1222,15 +1257,18 @@ const loadComments = async () => {
             authorProfileImage: getProfileImageUrl(comment),
             replies: comment.childComments ? comment.childComments
               .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)) // 대댓글도 오래된 순으로 정렬
-              .map(reply => ({
-                id: reply.commentId || reply.id,
-                nickname: reply.authorNickName || reply.nickname,
-                content: reply.content,
-                createdAt: reply.createdAt,
-                isDeleted: reply.isDeleted || false, // 답글 삭제 상태도 추가
-                authorProfileImage: getProfileImageUrl(reply),
-                showMoreMenu: false // 더보기 메뉴 상태
-              })) : []
+              .map(reply => {
+                return {
+                  id: reply.commentId || reply.id,
+                  nickname: reply.authorNickName || reply.nickname,
+                  authorUUID: reply.authorId, // 답글 작성자 UUID (authorId가 UUID 타입)
+                  content: reply.content,
+                  createdAt: reply.createdAt,
+                  isDeleted: reply.isDeleted || false, // 답글 삭제 상태도 추가
+                  authorProfileImage: getProfileImageUrl(reply),
+                  showMoreMenu: false // 더보기 메뉴 상태
+                }
+              }) : []
           }
         })
         console.log('댓글 목록 변환 완료 (오래된 순 정렬):', comments.value)
