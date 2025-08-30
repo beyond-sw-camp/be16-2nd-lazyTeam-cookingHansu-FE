@@ -329,6 +329,7 @@
                     variant="text"
                     @click="showReplyForm(comment)"
                     class="reply-btn"
+                    :title="`답글 개수: ${comment.replies ? comment.replies.length : 0}`"
                   >
                     답글
                   </v-btn>
@@ -1688,7 +1689,7 @@ const loadRecipe = async () => {
       }
     }
     
-    console.log('🔍 상세 조회 API 호출:', `http://localhost:8080/api/posts/${recipeId}`)
+
     
     // 상세 조회는 권한 없이도 가능하도록 헤더를 선택적으로 설정
     const headers = {}
@@ -1699,7 +1700,7 @@ const loadRecipe = async () => {
     
     // 백엔드 API 경로를 여러 개 시도해보기
     let response
-    let apiUrl = `http://localhost:8080/api/recipes/${recipeId}`
+          let apiUrl = `http://localhost:8080/api/posts/${recipeId}`
     
     console.log('🔄 첫 번째 시도:', apiUrl)
     response = await fetch(apiUrl, { headers })

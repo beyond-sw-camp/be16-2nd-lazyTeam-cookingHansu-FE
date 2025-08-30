@@ -152,8 +152,33 @@ export const useNotificationStore = defineStore('notification', {
 
     // 새 알림 처리 헬퍼 메서드
     _processNewNotification(notification) {
-      // 중복 알림 방지: 동일한 ID의 알림이 이미 존재하는지 확인
-      const isDuplicate = this.notifications.some(n => n.id === notification.id);
+      // 중복 알림 방지: ID 기반으로만 체크
+      const now = new Date();
+      
+      const isDuplicate = this.notifications.some(n => {
+        // ID가 있는 경우 ID로만 체크
+        if (notification.id && n.id === notification.id) {
+          return true;
+        }
+        
+        // ID가 없는 경우 1초 이내의 완전히 동일한 알림만 중복으로 간주
+        if (n.content === notification.content && 
+            n.recipientId === notification.recipientId &&
+            n.targetType === notification.targetType &&
+            n.targetId === notification.targetId) {
+          
+          // 시간 차이 계산 (1초로 단축)
+          const notificationTime = n.createdAt ? new Date(n.createdAt) : now;
+          const timeDiff = Math.abs(now.getTime() - notificationTime.getTime());
+          
+          if (timeDiff < 1000) {
+            return true;
+          }
+        }
+        
+        return false;
+      });
+      
       if (isDuplicate) {
         return;
       }
@@ -161,6 +186,10 @@ export const useNotificationStore = defineStore('notification', {
       // targetId를 id로 사용 (서버에서 id 필드가 없는 경우)
       if (!notification.id && notification.targetId) {
         notification.id = notification.targetId;
+      }
+      
+      if (!notification.createdAt) {
+        notification.createdAt = new Date().toISOString();
       }
       
       // 새 알림을 목록 맨 앞에 추가
@@ -172,9 +201,9 @@ export const useNotificationStore = defineStore('notification', {
         this._updateChatRoomList(notification);
       }
       
-      
-      // 읽지 않은 알림 개수 업데이트
-      this._updateUnreadCount();
+      // 헤더의 읽지 않은 알림 개수 즉시 업데이트
+      this.unreadCount += 1;
+
       
       // 브라우저 알림 비활성화
       // this._showBrowserNotification(notification);
@@ -302,7 +331,7 @@ export const useNotificationStore = defineStore('notification', {
             if (event.data === 'ok') {
               return;
             }
-            
+           
             // notify 이벤트 처리
             if (event.type === 'notify' && event.data) {
               try {
