@@ -192,9 +192,9 @@ const handleNotificationClick = async (notification) => {
   switch (notification.targetType) {
     case 'POSTCOMMENT':
     case 'REPLY':
-      // 레시피 상세 페이지로 이동 (relatedId가 있으면 해당 레시피로)
-      if (notification.relatedId) {
-        router.push(`/recipes/${notification.relatedId}`)
+      // 댓글/답글 알림의 경우 게시글 상세 페이지로 이동
+      if (notification.targetId) {
+        router.push(`/recipes/${notification.targetId}`)
       } else {
         router.push('/recipes')
       }

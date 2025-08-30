@@ -322,9 +322,9 @@
                   </div>
                 </div>
                 <div class="comment-actions">
-                  <!-- 답글 버튼 (삭제된 댓글이 아닌 경우만) -->
+                  <!-- 답글 버튼 (삭제된 댓글이 아닌 경우만, 그리고 답글이 없는 경우만) -->
                   <v-btn 
-                    v-if="!comment.isDeleted"
+                    v-if="!comment.isDeleted && (!comment.replies || comment.replies.length === 0)"
                     size="small" 
                     variant="text"
                     @click="showReplyForm(comment)"
@@ -433,6 +433,11 @@
               </div>
               
               <div v-if="comment.showReplyForm" class="reply-form">
+                <div class="reply-notice">
+                  <v-icon size="16" color="info">mdi-information</v-icon>
+                  <span>답글은 1개만 작성할 수 있습니다</span>
+                </div>
+                
                 <v-textarea
                   v-model="comment.replyText"
                   placeholder="답글을 작성해주세요...."
@@ -441,6 +446,7 @@
                   hide-details
                   class="reply-input"
                 ></v-textarea>
+                
                 <div class="reply-actions">
                   <v-btn 
                     size="small" 
@@ -602,6 +608,8 @@
                       {{ reply.content }}
                     </div>
                   </div>
+                  
+
                 </div>
                   </div>
                 </div>
@@ -699,9 +707,13 @@ import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import CommonModal from '@/components/common/CommonModal.vue'
+import { useNotifications } from '@/composables/useNotifications'
 
 const route = useRoute()
 const router = useRouter()
+
+// 실시간 알림 설정
+const { isConnected: notificationConnected } = useNotifications()
 
 // 기본 썸네일 이미지
 const defaultThumbnail = '/src/assets/images/smu_mascort1.jpg'
@@ -3355,5 +3367,21 @@ const loadCurrentUser = async () => {
     width: 95%;
     margin: 20px;
   }
+}
+
+.reply-notice {
+  display: flex;
+  align-items: center;
+  gap: 16px; /* 12px에서 16px로 증가 */
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  background-color: #e3f2fd;
+  border-radius: 6px;
+  color: #1976d2;
+  font-size: 0.9rem;
+}
+
+.reply-notice .v-icon {
+  font-size: 16px;
 }
 </style>
