@@ -172,11 +172,12 @@ export const useNotificationStore = defineStore('notification', {
         this._updateChatRoomList(notification);
       }
       
+      
       // 읽지 않은 알림 개수 업데이트
       this._updateUnreadCount();
       
-      // 브라우저 알림 표시 (사용자가 허용한 경우)
-      this._showBrowserNotification(notification);
+      // 브라우저 알림 비활성화
+      // this._showBrowserNotification(notification);
     },
 
     // 채팅방 목록 실시간 업데이트
@@ -371,6 +372,8 @@ export const useNotificationStore = defineStore('notification', {
       // 토큰이 있지만 401 에러가 발생한 경우
       console.warn('🔍 토큰이 있지만 인증에 실패했습니다. 토큰이 만료되었을 수 있습니다.');
     },
+
+    
 
     // 브라우저 알림 표시
     _showBrowserNotification(notification) {

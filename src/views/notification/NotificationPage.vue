@@ -207,7 +207,7 @@ const handleNotificationClick = async (notification) => {
       router.push('/chat')
       break
     case 'PAYMENT':
-      router.push('/mypage')
+      router.push('/mypage?tab=lectures')
       break
     case 'APPROVAL':
       // 승인 알림 모달 표시

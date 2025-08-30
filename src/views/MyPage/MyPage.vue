@@ -100,7 +100,7 @@ export default {
   },
   data() {
     return {
-      currentTab: this.getInitialTab(),
+      currentTab: 'posts',
       showProfileModal: false,
       showWithdrawModal: false,
       isSeller: false,
@@ -126,6 +126,9 @@ export default {
     await this.fetchUserProfile();
     this.updateUserRoleFromProfile();
     this.checkSellerRole();
+    
+         // URL 파라미터에서 탭 설정
+     this.currentTab = this.getInitialTab();
   },
   watch: {
     currentTab(newTab) {
@@ -149,17 +152,17 @@ export default {
     document.body.style.width = 'auto';
   },
   methods: {
-    getInitialTab() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const tab = urlParams.get('tab');
-      const validTabs = ['posts', 'lectures', 'sold-lectures', 'bookmarks', 'likes'];
-
-      if (tab === 'sold-lectures' && !this.isSeller) {
-        return 'posts';
-      }
-
-      return tab && validTabs.includes(tab) ? tab : 'posts';
-    },
+      getInitialTab() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tab = urlParams.get('tab');
+    const validTabs = ['posts', 'lectures', 'sold-lectures', 'bookmarks', 'likes'];
+    
+    if (tab === 'sold-lectures' && !this.isSeller) {
+      return 'posts';
+    }
+    
+    return tab && validTabs.includes(tab) ? tab : 'posts';
+  },
     updateUrlWithTab(tab) {
       const url = new URL(window.location);
       url.searchParams.set('tab', tab);
@@ -201,59 +204,41 @@ export default {
         message: '회원탈퇴에 실패했습니다: ' + errorMessage
       });
     },
-    checkSellerRole() {
-      try {
-        const token = localStorage.getItem('accessToken');
-        const userRole = localStorage.getItem('userRole');
-        
-        console.log('=== 판매자 역할 확인 시작 ===');
-        console.log('localStorage accessToken:', token);
-        console.log('localStorage userRole:', userRole);
-        
-        if (token) {
-          const parts = token.split('.');
-          console.log('토큰 파트 개수:', parts.length);
-          
-          if (parts.length >= 2) {
-            const payload = JSON.parse(atob(parts[1]));
-            console.log('토큰 페이로드:', payload);
-            console.log('페이로드 키들:', Object.keys(payload));
-            
-            const tokenRole = payload.role;
-            
-            this.isSeller = ['CHEF', 'OWNER'].includes(tokenRole) || ['CHEF', 'OWNER'].includes(userRole);
-            console.log('판매자 여부:', this.isSeller);
-            console.log('=== 판매자 역할 확인 완료 ===');
-          } else {
-            console.error('토큰 형식이 올바르지 않습니다.');
-            this.isSeller = false;
-          }
-        } else {
-          console.log('토큰이 없습니다.');
-          this.isSeller = false;
-        }
-      } catch (error) {
-        console.error('토큰 파싱 오류:', error);
-        console.error('오류 상세:', error.message);
-        this.isSeller = false;
-      }
-    },
-    updateUserRoleFromProfile() {
-      try {
-        console.log(' 사용자 프로필에서 역할 확인:', this.userProfile);
-        
-        if (this.userProfile.chef && this.userProfile.chef.approvalStatus === 'APPROVED') {
-          localStorage.setItem('userRole', 'CHEF');
-        } else if (this.userProfile.owner && this.userProfile.owner.approvalStatus === 'APPROVED') {
-          localStorage.setItem('userRole', 'OWNER');
-        }
-        
-        console.log('🔍 업데이트 후 localStorage userRole:', localStorage.getItem('userRole'));
-        
-      } catch (error) {
-        console.error('❌ 역할 업데이트 실패:', error);
-      }
-    }
+         checkSellerRole() {
+       try {
+         const token = localStorage.getItem('accessToken');
+         const userRole = localStorage.getItem('userRole');
+         
+         if (token) {
+           const parts = token.split('.');
+           
+           if (parts.length >= 2) {
+             const payload = JSON.parse(atob(parts[1]));
+             const tokenRole = payload.role;
+             
+             this.isSeller = ['CHEF', 'OWNER'].includes(tokenRole) || ['CHEF', 'OWNER'].includes(userRole);
+           } else {
+             console.error('토큰 형식이 올바르지 않습니다.');
+             this.isSeller = false;
+           }
+         } else {
+           this.isSeller = false;
+         }
+       } catch (error) {
+         console.error('토큰 파싱 오류:', error);
+         this.isSeller = false;
+       }
+     },
+         updateUserRoleFromProfile() {
+       try {
+         if (this.userProfile.chef && this.userProfile.chef.approvalStatus === 'APPROVED') {
+           localStorage.setItem('userRole', 'CHEF');
+         } else if (this.userProfile.owner && this.userProfile.owner.approvalStatus === 'APPROVED') {
+           localStorage.setItem('userRole', 'OWNER');
+         }
+       } catch (error) {
+       }
+     }
   }
 };
 </script>
