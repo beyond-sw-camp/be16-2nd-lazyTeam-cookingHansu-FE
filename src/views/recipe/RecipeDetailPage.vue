@@ -156,7 +156,7 @@
                     class="edit-btn"
                     size="small"
                   >
-                    <v-icon start size="14">mdi-pencil</v-icon>
+                    <v-icon start size="16">mdi-pencil</v-icon>
                     수정
                   </v-btn>
                   <v-btn 
@@ -166,7 +166,7 @@
                     class="delete-btn"
                     size="small"
                   >
-                    <v-icon start size="12">mdi-delete</v-icon>
+                    <v-icon start size="16">mdi-delete</v-icon>
                     삭제
                   </v-btn>
                 </div>
@@ -271,7 +271,24 @@
                   <div class="comment-author-info">
                     <h4 class="comment-author-name">
                       {{ comment.nickname }}
-                      <span v-if="isCommentAuthor(comment)" class="author-badge">작성자</span>
+                      <span 
+                        v-if="isCommentAuthor(comment)" 
+                        style="
+                          display: inline-block;
+                          background: linear-gradient(135deg, #ff7a00, #ff9500);
+                          color: white;
+                          font-size: 10px;
+                          font-weight: 600;
+                          padding: 2px 6px;
+                          border-radius: 10px;
+                          margin-left: 8px;
+                          text-transform: uppercase;
+                          letter-spacing: 0.5px;
+                          box-shadow: 0 1px 3px rgba(255, 122, 0, 0.3);
+                        "
+                      >
+                        작성자
+                      </span>
                     </h4>
                     <p class="comment-time">{{ formatDate(comment.createdAt) }}</p>
                   </div>
@@ -360,7 +377,7 @@
                   v-model="comment.editText"
                   placeholder="댓글을 수정해주세요...."
                   variant="outlined"
-                  rows="2"
+                  rows="3"
                   hide-details
                   class="comment-edit-input"
                 ></v-textarea>
@@ -388,7 +405,7 @@
                   v-model="comment.replyText"
                   placeholder="답글을 작성해주세요...."
                   variant="outlined"
-                  rows="2"
+                  rows="3"
                   hide-details
                   class="reply-input"
                 ></v-textarea>
@@ -433,7 +450,24 @@
                   <div class="comment-author-info">
                     <h4 class="comment-author-name">
                       {{ reply.nickname }}
-                      <span v-if="isCommentAuthor(reply)" class="author-badge">작성자</span>
+                      <span 
+                        v-if="isCommentAuthor(reply)" 
+                        style="
+                          display: inline-block;
+                          background: linear-gradient(135deg, #ff7a00, #ff9500);
+                          color: white;
+                          font-size: 10px;
+                          font-weight: 600;
+                          padding: 2px 6px;
+                          border-radius: 10px;
+                          margin-left: 8px;
+                          text-transform: uppercase;
+                          letter-spacing: 0.5px;
+                          box-shadow: 0 1px 3px rgba(255, 122, 0, 0.3);
+                        "
+                      >
+                        작성자
+                      </span>
                     </h4>
                     <p class="comment-time">{{ formatDate(reply.createdAt) }}</p>
                   </div>
@@ -523,10 +557,10 @@
                         <v-btn 
                           size="small" 
                           color="primary"
-                          @click="updateComment(reply)"
+                          @click="saveEditComment(reply)"
                           :disabled="!reply.editText.trim()"
                         >
-                          수정 완료
+                          저장
                         </v-btn>
                       </div>
                     </div>
@@ -826,7 +860,13 @@ const handleCommentProfileImageError = (comment) => {
 
 // 댓글 작성자가 레시피 작성자인지 확인
 const isCommentAuthor = (comment) => {
-  return comment.nickname === recipe.nickname
+  const isAuthor = comment.nickname === recipe.nickname
+  console.log('🔍 작성자 뱃지 체크:', {
+    commentNickname: comment.nickname,
+    recipeNickname: recipe.nickname,
+    isAuthor: isAuthor
+  })
+  return isAuthor
 }
 
 
@@ -874,6 +914,12 @@ const formatDate = (date) => {
 
 const submitComment = async () => {
   if (!newComment.value.trim()) return
+  
+  // 500자 제한 체크
+  if (newComment.value.length > 500) {
+    alert('댓글은 500자 이내로 작성해주세요.')
+    return
+  }
   
   console.log('댓글 제출 시작:', {
     postId: recipe.id,
@@ -929,6 +975,12 @@ const cancelReply = (comment) => {
 
 const submitReply = async (comment) => {
   if (!comment.replyText.trim()) return
+  
+  // 500자 제한 체크
+  if (comment.replyText.length > 500) {
+    alert('답글은 500자 이내로 작성해주세요.')
+    return
+  }
   
   try {
     const response = await fetch('http://localhost:8080/post/comment/create', {
@@ -1054,6 +1106,12 @@ const cancelEditComment = (comment) => {
 // 댓글 수정 저장
 const saveEditComment = async (comment) => {
   if (!comment.editText.trim()) return
+  
+  // 500자 제한 체크
+  if (comment.editText.length > 500) {
+    alert('댓글은 500자 이내로 작성해주세요.')
+    return
+  }
   
   try {
     const response = await fetch(`http://localhost:8080/post/comment/update/${comment.id}`, {
@@ -1733,7 +1791,7 @@ const loadCurrentUser = async () => {
 
 .action-buttons {
   display: flex;
-    gap: 8px;
+  gap: 12px;
   flex-shrink: 0;
   min-width: 140px;
   justify-content: flex-end;
@@ -1940,9 +1998,9 @@ const loadCurrentUser = async () => {
 
 
 .ingredients-section {
-  flex: 0 0 400px;
-  min-width: 400px;
-  max-width: 400px;
+  flex: 0 0 30%;
+  min-width: 300px;
+  max-width: 30%;
   overflow: hidden;
   word-wrap: break-word;
   overflow-wrap: break-word;
@@ -1954,9 +2012,9 @@ const loadCurrentUser = async () => {
 }
 
 .cooking-steps-section {
-  flex: 0 0 500px;
+  flex: 0 0 70%;
   min-width: 500px;
-  max-width: 500px;
+  max-width: 70%;
   overflow: hidden;
   word-wrap: break-word;
   overflow-wrap: break-word;
@@ -2006,14 +2064,14 @@ const loadCurrentUser = async () => {
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  background-color: #f9f9f9;
+  background-color: #ffffff;
   border-radius: 8px;
   border: 1px solid #eee;
   transition: all 0.2s ease;
 }
 
 .ingredient-item:hover {
-  background-color: #f0f0f0;
+  background-color: #f8f9fa;
   border-color: #ddd;
 }
 
@@ -2040,14 +2098,14 @@ const loadCurrentUser = async () => {
   align-items: flex-start;
   gap: 20px;
   padding: 20px;
-  background-color: #f9f9f9;
+  background-color: #ffffff;
   border-radius: 12px;
   border: 1px solid #eee;
   transition: all 0.2s ease;
 }
 
 .step-item:hover {
-  background-color: #f0f0f0;
+  background-color: #f8f9fa;
   border-color: #ddd;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -2136,7 +2194,17 @@ const loadCurrentUser = async () => {
 
 .author-avatar {
   flex-shrink: 0;
-  border: 3px solid #9e9e9e;
+  border: 1px solid #e0e0e0 !important;
+  box-shadow: 0 0 0 1px #e0e0e0;
+}
+
+.author-avatar :deep(.v-avatar__underlay) {
+  border: 1px solid #e0e0e0 !important;
+}
+
+.author-avatar :deep(.v-img) {
+  border: 1px solid #e0e0e0 !important;
+  border-radius: 50% !important;
 }
 
 .author-avatar-placeholder {
@@ -2190,19 +2258,38 @@ const loadCurrentUser = async () => {
   padding-bottom: 10px;
 }
 
-.comment-form {
+/* 공통 폼 스타일 */
+.comment-form,
+.reply-form,
+.comment-edit-form {
   display: flex;
-  gap: 15px;
-  margin-bottom: 30px;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding: 16px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
 }
 
-.comment-input {
-  flex: 1;
+.comment-input,
+.reply-input,
+.comment-edit-input {
+  width: 100%;
+  min-height: 80px;
+}
+
+.comment-input :deep(.v-field__input),
+.reply-input :deep(.v-field__input),
+.comment-edit-input :deep(.v-field__input) {
+  min-height: 80px;
+  font-size: 1rem;
+  line-height: 1.5;
+  padding: 12px;
 }
 
 .comment-submit-btn {
-  flex-shrink: 0;
+  align-self: flex-end;
   min-width: 120px;
 }
 
@@ -2236,14 +2323,15 @@ const loadCurrentUser = async () => {
 .comments-list {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 0px;
 }
 
 .comment-item {
   padding: 20px;
-  background-color: #f8f9fa;
+  background-color: #ffffff;
   border-radius: 10px;
-  /* 테두리 제거 */
+  margin-bottom: 16px;
+  border: 1px solid #e0e0e0;
 }
 
 .comment-header {
@@ -2315,22 +2403,20 @@ const loadCurrentUser = async () => {
   border-left: 3px solid #ddd;
 }
 
-.reply-form {
-  margin: 15px 0;
-  padding: 15px;
-  background-color: #fff;
-  border-radius: 8px;
-  border: 1px solid #e0e0e0;
+/* 공통 버튼 액션 스타일 */
+.comment-edit-actions,
+.reply-actions {
+  display: flex !important;
+  gap: 12px !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  width: 100% !important;
 }
 
-.reply-input {
-  margin-bottom: 10px;
-}
-
-.reply-form .reply-actions {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
+.comment-edit-actions .v-btn,
+.reply-actions .v-btn {
+  flex-shrink: 0 !important;
+  min-width: 70px !important;
 }
 
 .replies-list {
@@ -2342,8 +2428,10 @@ const loadCurrentUser = async () => {
   padding: 15px;
   background-color: #fff;
   border-radius: 8px;
-  /* 테두리 제거 */
   margin-bottom: 10px;
+  border-left: 3px solid #e0e0e0;
+  padding-left: 20px;
+  position: relative;
 }
 
 
@@ -2500,9 +2588,11 @@ const loadCurrentUser = async () => {
     align-self: center;
   }
   
-  .comment-form {
-    flex-direction: column;
-    gap: 10px;
+  .comment-form,
+  .reply-form,
+  .comment-edit-form {
+    gap: 12px;
+    padding: 12px;
   }
   
   .comment-submit-btn {
@@ -2563,9 +2653,19 @@ const loadCurrentUser = async () => {
 
 .comment-avatar {
   flex-shrink: 0;
-  border: 3px solid #9e9e9e;
+  border: 2px solid #e0e0e0 !important;
+  box-shadow: 0 0 0 2px #e0e0e0;
   width: 40px !important;
   height: 40px !important;
+}
+
+.comment-avatar :deep(.v-avatar__underlay) {
+  border: 2px solid #e0e0e0 !important;
+}
+
+.comment-avatar :deep(.v-img) {
+  border: 2px solid #e0e0e0 !important;
+  border-radius: 50% !important;
 }
 
 .comment-avatar-placeholder {
@@ -2623,6 +2723,8 @@ const loadCurrentUser = async () => {
   gap: 8px;
   margin-left: auto;
 }
+
+
 
 /* 답글 헤더 스타일 - 댓글과 동일한 구조 */
 .reply-header {
@@ -2718,17 +2820,17 @@ const loadCurrentUser = async () => {
   }
   
   .ingredients-section {
-    min-width: auto;
-    max-width: 100%;
     flex: none;
     width: 100%;
+    min-width: auto;
+    max-width: 100%;
   }
   
   .cooking-steps-section {
-    min-width: auto;
-    max-width: 100%;
     flex: none;
     width: 100%;
+    min-width: auto;
+    max-width: 100%;
   }
 }
 
