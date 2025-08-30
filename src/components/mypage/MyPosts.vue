@@ -2,30 +2,42 @@
   <div class="my-posts">
     <div class="section-header">
       <h2>내 게시글</h2>
+    </div>
+
+    <div v-if="loading" class="loading-state">
+      <div class="loading-spinner"></div>
+      <p>게시글을 불러오는 중...</p>
       <button class="write-post-btn" @click="goToRecipePostWrite">
         <span class="plus-icon">+</span>
         게시글 작성
       </button>
     </div>
 
+    <div v-else-if="posts.length > 0" class="posts-grid">
+      <div v-for="post in pagedPosts" :key="post.id" class="post-card">
     <div class="posts-grid">
       <div v-for="post in pagedPosts" :key="post.id" class="post-card" @click="goToPostDetail(post)">
         <div class="post-image">
-          <img :src="post.image" :alt="post.title" />
+          <img 
+            v-if="post.thumbnailUrl" 
+            :src="post.thumbnailUrl" 
+            :alt="post.title" 
+          />
+          <div v-else class="no-image">이미지 없음</div>
         </div>
         <div class="post-content">
           <h3 class="post-title">{{ post.title }}</h3>
-          <p class="post-description">{{ post.content }}</p>
+          <p class="post-description">{{ post.description }}</p>
           <div class="post-meta">
-            <div class="post-date">{{ post.date }}</div>
+            <div class="post-date">{{ formatDate(post.createdAt) }}</div>
             <div class="post-stats">
               <span class="stat-item">
-                <span class="stat-icon">🔖</span>
-                {{ post.views }}
+                <span class="stat-icon">❤️</span>
+                {{ post.likeCount }}
               </span>
               <span class="stat-item">
-                <span class="stat-icon">❤️</span>
-                {{ post.likes }}
+                <span class="stat-icon">🔖</span>
+                {{ post.bookmarkCount }}
               </span>
             </div>
           </div>
@@ -37,15 +49,23 @@
 
     <!-- 페이지네이션 -->
     <Pagination 
+      v-if="posts.length > 0"
       :current-page="currentPage"
       :total-pages="totalPages"
       @page-change="changePage"
     />
 
-    <div v-if="posts.length === 0" class="empty-state">
+    <div v-if="!loading && posts.length === 0" class="empty-state">
       <div class="empty-icon">📝</div>
       <h3>아직 작성한 게시글이 없어요</h3>
       <p>첫 번째 게시글을 작성해보세요!</p>
+    </div>
+
+    <div v-if="error" class="error-state">
+      <div class="error-icon">❌</div>
+      <h3>게시글을 불러오는데 실패했습니다</h3>
+      <p>{{ error }}</p>
+      <button @click="fetchPosts" class="retry-btn">다시 시도</button>
       <button class="write-first-post-btn" @click="goToRecipePostWrite">
         <span class="plus-icon">+</span>
         게시글 작성하기
@@ -54,102 +74,75 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import Pagination from '../common/Pagination.vue'
+<script>
+import Pagination from '../common/Pagination.vue';
+import { apiGet } from '@/utils/api';
 
-const router = useRouter()
-
-// 상태 관리
-const currentPage = ref(1)
-const postsPerPage = ref(6)
-
-// 게시글 데이터
-const posts = ref([
-  {
-    id: 1,
-    title: '김치찌개 만들면서 깨달은 요리 철학',
-    content: '오늘 김치찌개를 끓이면서 느낀 점들을 공유해요. 요리는 정말 마음이 중요한 것 같아요...',
-    image: '/src/assets/images/smu_mascort1.jpg',
-    date: '2024.01.05',
-    views: 18,
-    likes: 42
+export default {
+  name: 'MyPosts',
+  components: {
+    Pagination
   },
-  {
-    id: 2,
-    title: '한국 요리 초보자를 위한 팁',
-    content: '요리를 시작한 지 6개월된 초보가 공유하는 실용적인 팁들. 실패담도 포함...',
-    image: '/src/assets/images/smu_mascort2.jpg',
-    date: '2024.01.03',
-    views: 9,
-    likes: 28
+  data() {
+    return {
+      currentPage: 1,
+      postsPerPage: 6,
+      posts: [],
+      loading: false,
+      error: null
+    };
   },
-  {
-    id: 3,
-    title: '요리 도구 추천 리뷰',
-    content: '1년간 사용해본 요리 도구들 솔직 후기. 꼭 필요한 것과 불필요한 것들...',
-    image: '/src/assets/images/smu_mascort3.jpg',
-    date: '2024.01.01',
-    views: 14,
-    likes: 35
+  computed: {
+    pagedPosts() {
+      const start = (this.currentPage - 1) * this.postsPerPage;
+      const end = start + this.postsPerPage;
+      return this.posts.slice(start, end);
+    },
+    totalPages() {
+      return Math.ceil(this.posts.length / this.postsPerPage);
+    }
   },
-  {
-    id: 4,
-    title: '집밥 vs 외식, 나의 선택은?',
-    content: '한 달간 집밥만 해먹기 도전 후기. 건강과 경제적 효과, 그리고 의외의 발견들...',
-    image: '/src/assets/images/smu_mascort4.jpg',
-    date: '2023.12.28',
-    views: 22,
-    likes: 51
+  async mounted() {
+    await this.fetchPosts();
   },
-  {
-    id: 5,
-    title: '계절별 제철 요리 가이드',
-    content: '봄, 여름, 가을, 겨울 제철 식재료와 요리법. 계절의 맛을 제대로 즐기는 방법...',
-    image: '/src/assets/images/smu_mascort1.jpg',
-    date: '2023.12.25',
-    views: 16,
-    likes: 38
-  },
-  {
-    id: 6,
-    title: '요리 실패담과 극복기',
-    content: '처음 요리할 때 겪은 실패담들과 그걸 극복한 방법들. 실패는 성공의 어머니...',
-    image: '/src/assets/images/smu_mascort2.jpg',
-    date: '2023.12.22',
-    views: 12,
-    likes: 29
+  methods: {
+    async fetchPosts() {
+      this.loading = true;
+      this.error = null;
+      
+      try {
+        const response = await apiGet('/api/my/posts');
+        
+        if (response.ok) {
+          const result = await response.json();
+          this.posts = result.data || [];
+        } else {
+          throw new Error('게시글을 불러오는데 실패했습니다.');
+        }
+      } catch (error) {
+        console.error('게시글 조회 오류:', error);
+        this.error = error.message || '게시글을 불러오는데 실패했습니다.';
+      } finally {
+        this.loading = false;
+      }
+    },
+    changePage(page) {
+      if (page >= 1 && page <= this.totalPages) {
+        this.currentPage = page;
+      }
+    },
+    formatDate(dateString) {
+      if (!dateString) return '';
+      
+      const date = new Date(dateString);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      
+      return `${year}.${month}.${day}`;
+    }
   }
-])
-
-// 계산된 속성
-const pagedPosts = computed(() => {
-  const start = (currentPage.value - 1) * postsPerPage.value
-  const end = start + postsPerPage.value
-  return posts.value.slice(start, end)
-})
-
-const totalPages = computed(() => {
-  return Math.ceil(posts.value.length / postsPerPage.value)
-})
-
-// 메서드
-const goToRecipePostWrite = () => {
-  router.push('/recipe/post-write')
-}
-
-const goToPostDetail = (post) => {
-  router.push({ path: `/recipes/${post.id}` })
-}
-
-const changePage = (page) => {
-  currentPage.value = page
-}
-
-onMounted(() => {
-  // 초기 데이터 로딩
-})
+};
 </script>
 
 <style scoped>
@@ -171,27 +164,64 @@ onMounted(() => {
   margin: 0;
 }
 
-.write-post-btn {
+.loading-state {
+  text-align: center;
+  padding: 80px 20px;
+  color: #666;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #ff7a00;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-state {
+  text-align: center;
+  padding: 80px 20px;
+  color: #666;
+}
+
+.error-icon {
+  font-size: 64px;
+  margin-bottom: 24px;
+}
+
+.error-state h3 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: #dc3545;
+}
+
+.error-state p {
+  font-size: 16px;
+  margin: 0 0 32px 0;
+  color: #666;
+}
+
+.retry-btn {
   background: #ff7a00;
   color: white;
   border: none;
-  padding: 12px 20px;
+  padding: 12px 24px;
   border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
   transition: background 0.2s;
 }
 
-.write-post-btn:hover {
+.retry-btn:hover {
   background: #e66a00;
-}
-
-.plus-icon {
-  font-size: 18px;
-  font-weight: bold;
 }
 
 .posts-grid {
@@ -228,6 +258,17 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.no-image {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+  color: #999;
+  font-size: 14px;
 }
 
 .post-content {
@@ -312,34 +353,11 @@ onMounted(() => {
   color: #666;
 }
 
-.write-first-post-btn {
-  background: #ff7a00;
-  color: white;
-  border: none;
-  padding: 16px 32px;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 16px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  transition: background 0.2s;
-}
-
-.write-first-post-btn:hover {
-  background: #e66a00;
-}
-
 @media (max-width: 768px) {
   .section-header {
     flex-direction: column;
     gap: 16px;
     align-items: stretch;
-  }
-  
-  .write-post-btn {
-    justify-content: center;
   }
   
   .posts-grid {
