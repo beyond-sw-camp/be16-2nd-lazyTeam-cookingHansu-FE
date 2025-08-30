@@ -9,7 +9,35 @@
         <p class="mt-4 text-body-1">레시피를 불러오는 중...</p>
       </div>
 
-      <div v-else-if="recipe" class="recipe-content">
+      <!-- 비밀글 접근 제한 UI -->
+      <div v-else-if="recipe && !canAccessRecipe" class="access-denied-container">
+        <div class="access-denied-content">
+          <div class="access-denied-icon">🔒</div>
+          <h2 class="access-denied-title">비밀글입니다</h2>
+          <p class="access-denied-message">
+            이 레시피는 작성자만 볼 수 있는 비밀글입니다.
+          </p>
+          <div class="access-denied-actions">
+            <v-btn 
+              color="primary" 
+              variant="outlined" 
+              @click="$router.push('/')"
+              class="mr-3"
+            >
+              홈으로 돌아가기
+            </v-btn>
+            <v-btn 
+              v-if="!isLoggedIn"
+              color="primary" 
+              @click="showLoginModal = true"
+            >
+              로그인하기
+            </v-btn>
+          </div>
+        </div>
+      </div>
+
+      <div v-else-if="recipe && canAccessRecipe" class="recipe-content">
         <div class="recipe-main-section">
           <div class="recipe-main-box">
             <div class="recipe-image-container">
@@ -143,7 +171,7 @@
                   </div>
                   <div class="stat-item">
                     <v-icon color="grey" size="20">mdi-comment</v-icon>
-                    <span class="stat-count">{{ getTotalCommentCount() }}</span>
+                    <span class="stat-count">{{ recipe.commentCount || getTotalCommentCount() }}</span>
                   </div>
                 </div>
                 
@@ -222,7 +250,7 @@
         </div>
         
         <div class="comments-section">
-          <h3 class="comments-title">댓글 ({{ getTotalCommentCount() }})</h3>
+          <h3 class="comments-title">댓글 ({{ recipe.commentCount || getTotalCommentCount() }})</h3>
           
           <!-- 댓글 작성 폼 (로그인한 사용자만 보임) -->
           <div v-if="isLoggedIn" class="comment-form">
@@ -349,8 +377,9 @@
                         <v-list-item-title class="text-error">삭제</v-list-item-title>
                       </v-list-item>
                       
-                      <!-- 신고 버튼 (모든 사용자에게 표시) -->
+                      <!-- 신고 버튼 (작성자가 아닌 경우만 표시) -->
                       <v-list-item
+                        v-if="!canEditComment(comment)"
                         @click="reportComment(comment)"
                         class="report-menu-item"
                       >
@@ -520,8 +549,9 @@
                         <v-list-item-title class="text-error">삭제</v-list-item-title>
                       </v-list-item>
                       
-                      <!-- 신고 버튼 (모든 사용자에게 표시) -->
+                      <!-- 신고 버튼 (작성자가 아닌 경우만 표시) -->
                       <v-list-item
+                        v-if="!canEditComment(reply)"
                         @click="reportComment(reply)"
                         class="report-menu-item"
                       >
@@ -665,7 +695,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import CommonModal from '@/components/common/CommonModal.vue'
@@ -742,6 +772,33 @@ const isAuthor = computed(() => {
   return isMatch
 })
 
+// 비밀글 접근 권한 확인
+const canAccessRecipe = computed(() => {
+  console.log('🔍 비밀글 접근 권한 체크:', {
+    isOpen: recipe.isOpen,
+    isOpenType: typeof recipe.isOpen,
+    isAuthor: isAuthor.value,
+    currentUserId: getCurrentUserIdFromToken(),
+    recipeAuthorId: recipe.authorId
+  })
+  
+  // 공개글인 경우 모든 사용자가 접근 가능
+  if (recipe.isOpen === true || recipe.isOpen === undefined) {
+    console.log('✅ 공개글 - 접근 허용')
+    return true
+  }
+  
+  // 비밀글인 경우 작성자만 접근 가능
+  if (recipe.isOpen === false) {
+    console.log('🔒 비밀글 - 작성자 체크:', isAuthor.value)
+    return isAuthor.value
+  }
+  
+  // 기본값은 접근 허용
+  console.log('⚠️ 기본값 - 접근 허용')
+  return true
+})
+
 // 좋아요, 북마크 상태 (초기값을 null로 설정하여 로딩 상태 구분)
 const isLiked = ref(null)
 const isBookmarked = ref(null)
@@ -762,6 +819,7 @@ const recipe = reactive({
   likeCount: 0,
   bookmarkCount: 0,
   viewCount: 0,
+  commentCount: 0, // 댓글 개수 추가
     nickname: '',
   role: '',
   authorId: null // 작성자 ID 추가
@@ -967,6 +1025,38 @@ const submitComment = async () => {
     return
   }
   
+  // 게시글 접근 권한 실시간 체크
+  try {
+    const checkResponse = await fetch(`http://localhost:8080/api/posts/${recipe.id}`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+      }
+    })
+    
+    if (!checkResponse.ok) {
+      alert('비공개된 게시글입니다.')
+      router.push('/recipes')
+      return
+    }
+    
+    // 응답에서 isOpen 상태 확인
+    const checkData = await checkResponse.json()
+    if (checkData.data && checkData.data.isOpen === false) {
+      // 비밀글인 경우 작성자 체크
+      const currentUserId = getCurrentUserIdFromToken()
+      if (!currentUserId || String(currentUserId) !== String(checkData.data.authorId)) {
+        alert('비공개된 게시글입니다.')
+        router.push('/recipes')
+        return
+      }
+    }
+  } catch (error) {
+    console.error('게시글 접근 권한 체크 실패:', error)
+    alert('비공개된 게시글입니다.')
+    router.push('/recipes')
+    return
+  }
+  
   console.log('댓글 제출 시작:', {
     postId: recipe.id,
     content: newComment.value,
@@ -999,6 +1089,14 @@ const submitComment = async () => {
     } else {
       const errorData = await response.text()
       console.error('댓글 생성 실패:', response.status, errorData)
+      
+      // 403 또는 404 에러인 경우 비공개 게시글일 가능성
+      if (response.status === 403 || response.status === 404) {
+        alert('비공개된 게시글입니다.')
+        router.push('/recipes')
+        return
+      }
+      
       alert('댓글 등록에 실패했습니다.')
     }
   } catch (error) {
@@ -1028,6 +1126,38 @@ const submitReply = async (comment) => {
     return
   }
   
+  // 게시글 접근 권한 실시간 체크
+  try {
+    const checkResponse = await fetch(`http://localhost:8080/api/posts/${recipe.id}`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+      }
+    })
+    
+    if (!checkResponse.ok) {
+      alert('비공개된 게시글입니다.')
+      router.push('/recipes')
+      return
+    }
+    
+    // 응답에서 isOpen 상태 확인
+    const checkData = await checkResponse.json()
+    if (checkData.data && checkData.data.isOpen === false) {
+      // 비밀글인 경우 작성자 체크
+      const currentUserId = getCurrentUserIdFromToken()
+      if (!currentUserId || String(currentUserId) !== String(checkData.data.authorId)) {
+        alert('비공개된 게시글입니다.')
+        router.push('/recipes')
+        return
+      }
+    }
+  } catch (error) {
+    console.error('게시글 접근 권한 체크 실패:', error)
+    alert('비공개된 게시글입니다.')
+    router.push('/recipes')
+    return
+  }
+  
   try {
     const response = await fetch('http://localhost:8080/post/comment/create', {
       method: 'POST',
@@ -1054,6 +1184,14 @@ const submitReply = async (comment) => {
     } else {
       const errorData = await response.text()
       console.error('대댓글 생성 실패:', response.status, errorData)
+      
+      // 403 또는 404 에러인 경우 비공개 게시글일 가능성
+      if (response.status === 403 || response.status === 404) {
+        alert('비공개된 게시글입니다.')
+        router.push('/recipes')
+        return
+      }
+      
       alert('답글 등록에 실패했습니다.')
     }
   } catch (error) {
@@ -1069,6 +1207,38 @@ const loadMoreComments = () => {
 // 댓글 삭제
 const deleteComment = async (commentId) => {
   if (!confirm('댓글을 삭제하시겠습니까?')) return
+  
+  // 게시글 접근 권한 실시간 체크
+  try {
+    const checkResponse = await fetch(`http://localhost:8080/api/posts/${recipe.id}`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+      }
+    })
+    
+    if (!checkResponse.ok) {
+      alert('비공개된 게시글입니다.')
+      router.push('/recipes')
+      return
+    }
+    
+    // 응답에서 isOpen 상태 확인
+    const checkData = await checkResponse.json()
+    if (checkData.data && checkData.data.isOpen === false) {
+      // 비밀글인 경우 작성자 체크
+      const currentUserId = getCurrentUserIdFromToken()
+      if (!currentUserId || String(currentUserId) !== String(checkData.data.authorId)) {
+        alert('비공개된 게시글입니다.')
+        router.push('/recipes')
+        return
+      }
+    }
+  } catch (error) {
+    console.error('게시글 접근 권한 체크 실패:', error)
+    alert('비공개된 게시글입니다.')
+    router.push('/recipes')
+    return
+  }
   
   // 답글이 있는 댓글인지 미리 확인
   const commentToDelete = comments.value.find(comment => comment.id === commentId)
@@ -1115,6 +1285,13 @@ const deleteComment = async (commentId) => {
       console.error('삭제하려는 댓글 ID:', commentId)
       console.error('댓글에 답글이 있는지:', hasReplies)
       
+      // 403 또는 404 에러인 경우 비공개 게시글일 가능성
+      if (response.status === 403 || response.status === 404) {
+        alert('비공개된 게시글입니다.')
+        router.push('/recipes')
+        return
+      }
+      
       // 백엔드 에러 메시지 표시
       let errorMessage = '댓글 삭제에 실패했습니다.'
       try {
@@ -1159,6 +1336,38 @@ const saveEditComment = async (comment) => {
     return
   }
   
+  // 게시글 접근 권한 실시간 체크
+  try {
+    const checkResponse = await fetch(`http://localhost:8080/api/posts/${recipe.id}`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+      }
+    })
+    
+    if (!checkResponse.ok) {
+      alert('비공개된 게시글입니다.')
+      router.push('/recipes')
+      return
+    }
+    
+    // 응답에서 isOpen 상태 확인
+    const checkData = await checkResponse.json()
+    if (checkData.data && checkData.data.isOpen === false) {
+      // 비밀글인 경우 작성자 체크
+      const currentUserId = getCurrentUserIdFromToken()
+      if (!currentUserId || String(currentUserId) !== String(checkData.data.authorId)) {
+        alert('비공개된 게시글입니다.')
+        router.push('/recipes')
+        return
+      }
+    }
+  } catch (error) {
+    console.error('게시글 접근 권한 체크 실패:', error)
+    alert('비공개된 게시글입니다.')
+    router.push('/recipes')
+    return
+  }
+  
   try {
     const response = await fetch(`http://localhost:8080/post/comment/update/${comment.id}`, {
       method: 'PATCH',
@@ -1183,6 +1392,14 @@ const saveEditComment = async (comment) => {
     } else {
       const errorData = await response.text()
       console.error('댓글 수정 실패:', response.status, errorData)
+      
+      // 403 또는 404 에러인 경우 비공개 게시글일 가능성
+      if (response.status === 403 || response.status === 404) {
+        alert('비공개된 게시글입니다.')
+        router.push('/recipes')
+        return
+      }
+      
       alert('댓글 수정에 실패했습니다.')
     }
   } catch (error) {
@@ -1470,14 +1687,14 @@ const loadRecipe = async () => {
     
     // 백엔드 API 경로를 여러 개 시도해보기
     let response
-    let apiUrl = `http://localhost:8080/api/posts/${recipeId}`
+    let apiUrl = `http://localhost:8080/api/recipes/${recipeId}`
     
     console.log('🔄 첫 번째 시도:', apiUrl)
     response = await fetch(apiUrl, { headers })
     
     if (!response.ok) {
-      console.log('🔄 두 번째 시도: /api/posts/detail/{id}')
-      apiUrl = `http://localhost:8080/api/posts/detail/${recipeId}`
+      console.log('🔄 두 번째 시도: /api/posts/{id}')
+      apiUrl = `http://localhost:8080/api/posts/${recipeId}`
       response = await fetch(apiUrl, { headers })
       
       if (!response.ok) {
@@ -1492,8 +1709,8 @@ const loadRecipe = async () => {
     }
     
     if (!response.ok) {
-      console.log('🔄 세 번째 시도: /api/recipes/{id}')
-      apiUrl = `http://localhost:8080/api/recipes/${recipeId}`
+      console.log('🔄 세 번째 시도: /api/posts/detail/{id}')
+      apiUrl = `http://localhost:8080/api/posts/detail/${recipeId}`
       response = await fetch(apiUrl, { headers })
       
       if (!response.ok) {
@@ -1529,6 +1746,7 @@ const loadRecipe = async () => {
           likeCount: data.data.likeCount,
           viewCount: data.data.viewCount,
           bookmarkCount: data.data.bookmarkCount,
+          commentCount: data.data.commentCount || 0, // 댓글 개수 추가
           isOpen: data.data.isOpen,
           createdAt: data.data.createdAt,
           updatedAt: data.data.updatedAt,
@@ -1574,7 +1792,29 @@ const loadRecipe = async () => {
         throw new Error('레시피 데이터가 없습니다.')
       }
     } else {
-      throw new Error('레시피를 불러올 수 없습니다.')
+      // API 호출 실패 시 에러 메시지 확인
+      let errorMessage = '레시피를 불러올 수 없습니다.'
+      try {
+        const errorData = await response.json()
+        if (errorData.message) {
+          errorMessage = errorData.message
+        }
+      } catch (e) {
+        // JSON 파싱 실패 시 기본 메시지 사용
+      }
+      
+      // "접근할 수 없는 게시글입니다" 메시지인 경우 비밀글 접근 제한으로 처리
+      if (errorMessage.includes('접근할 수 없는 게시글') || errorMessage.includes('비밀글')) {
+        // 비밀글 접근 제한 UI를 표시하기 위해 recipe 객체를 초기화
+        Object.assign(recipe, {
+          id: recipeId,
+          isOpen: false, // 비밀글으로 설정
+          authorId: null // 작성자 정보 없음
+        })
+        return // 에러를 throw하지 않고 비밀글 접근 제한 UI 표시
+      }
+      
+      throw new Error(errorMessage)
     }
   } catch (err) {
     console.error('레시피 로딩 실패:', err)
@@ -1675,9 +1915,23 @@ const reportComment = async (comment) => {
 
 
 
+// ESC 키 이벤트 리스너
+const handleKeydown = (event) => {
+  if (event.key === 'Escape' && showShareModal.value) {
+    showShareModal.value = false
+  }
+}
+
 onMounted(async () => {
   await loadCurrentUser()
   await loadRecipe()
+  // ESC 키 이벤트 리스너 추가
+  document.addEventListener('keydown', handleKeydown)
+})
+
+// 컴포넌트 언마운트 시 이벤트 리스너 제거
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeydown)
 })
 
 // 현재 사용자 정보 로드
@@ -3002,6 +3256,70 @@ const loadCurrentUser = async () => {
 
 .share-option.link-option span {
   color: #333;
+}
+
+/* 비밀글 접근 제한 UI 스타일 */
+.access-denied-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+  padding: 40px 20px;
+}
+
+.access-denied-content {
+  text-align: center;
+  max-width: 500px;
+  padding: 40px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.access-denied-icon {
+  font-size: 80px;
+  margin-bottom: 24px;
+}
+
+.access-denied-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #333;
+  margin: 0 0 16px 0;
+}
+
+.access-denied-message {
+  font-size: 16px;
+  color: #666;
+  line-height: 1.6;
+  margin: 0 0 32px 0;
+}
+
+.access-denied-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .access-denied-content {
+    padding: 30px 20px;
+  }
+  
+  .access-denied-title {
+    font-size: 24px;
+  }
+  
+  .access-denied-actions {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .access-denied-actions .v-btn {
+    width: 100%;
+    max-width: 200px;
+  }
 }
 
 .share-option span {

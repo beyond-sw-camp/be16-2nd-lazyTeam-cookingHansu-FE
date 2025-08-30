@@ -63,6 +63,7 @@
               <span class="meta-views"><span class="meta-icon">&#128065;</span> {{ recipe.views }}</span>
               <span class="meta-likes">❤️ {{ recipe.likes }}</span>
               <span class="meta-bookmarks">🔖 {{ recipe.bookmarks }}</span>
+              <span class="meta-comments">💬 {{ recipe.commentCount || 0 }}</span>
             </div>
             <div class="time">{{ recipe.time }}</div>
           </div>
@@ -269,6 +270,7 @@ export default {
             likes: post.likeCount || 0,
             bookmarks: post.bookmarkCount || 0, // 북마크수 추가
             views: post.viewCount || 0,
+            commentCount: post.commentCount || 0, // 댓글 개수 추가
             time: this.formatTime(post.createdAt)
           };
         });

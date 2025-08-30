@@ -628,7 +628,13 @@ const updatePost = async () => {
       const responseData = await response.json()
       console.log('게시글 수정 응답:', responseData)
       alert('게시글이 수정되었습니다!')
-      router.push(`/recipes/${postId}`)
+      
+      // 비밀글로 수정한 경우 마이페이지로, 공개글로 수정한 경우 상세페이지로 이동
+      if (!post.isPublic) {
+        router.push('/mypage')
+      } else {
+        router.push(`/recipes/${postId}`)
+      }
     } else {
       const errorData = await response.text()
       console.error('게시글 수정 실패:', response.status, errorData)
@@ -639,7 +645,7 @@ const updatePost = async () => {
           const errorJson = JSON.parse(errorData)
           if (errorJson.message && errorJson.message.includes('권한이 없습니다')) {
             alert('본인이 작성한 게시글만 수정할 수 있습니다.')
-            router.push(`/recipes/${postId}`)
+            router.push('/mypage')
             return
           }
         } catch (e) {
