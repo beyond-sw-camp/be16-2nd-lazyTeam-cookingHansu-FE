@@ -7,20 +7,26 @@
     <div v-if="loading" class="loading-state">
       <div class="loading-spinner"></div>
       <p>게시글을 불러오는 중...</p>
+      <button class="write-post-btn" @click="goToRecipePostWrite">
+        <span class="plus-icon">+</span>
+        게시글 작성
+      </button>
     </div>
 
     <div v-else-if="posts.length > 0" class="posts-grid">
-      <div v-for="post in pagedPosts" :key="post.id" class="post-card">
+      <div v-for="post in pagedPosts" :key="post.id" class="post-card" @click="goToPostDetail(post)">
         <div class="post-image">
           <img 
-            v-if="post.thumbnailUrl" 
-            :src="post.thumbnailUrl" 
-            :alt="post.title" 
+            :src="post.thumbnailUrl || defaultThumbnail" 
+            :alt="post.title"
+            @error="handleImageError"
           />
-          <div v-else class="no-image">이미지 없음</div>
         </div>
         <div class="post-content">
-          <h3 class="post-title">{{ post.title }}</h3>
+          <h3 class="post-title">
+            <span v-if="isPrivatePost(post)" class="lock-icon">🔒</span>
+            {{ post.title }}
+          </h3>
           <p class="post-description">{{ post.description }}</p>
           <div class="post-meta">
             <div class="post-date">{{ formatDate(post.createdAt) }}</div>
@@ -33,11 +39,17 @@
                 <span class="stat-icon">🔖</span>
                 {{ post.bookmarkCount }}
               </span>
+              <span class="stat-item">
+                <span class="stat-icon">💬</span>
+                {{ post.commentCount || 0 }}
+              </span>
             </div>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- 삭제 확인 모달 제거 -->
 
     <!-- 페이지네이션 -->
     <Pagination 
@@ -58,6 +70,10 @@
       <h3>게시글을 불러오는데 실패했습니다</h3>
       <p>{{ error }}</p>
       <button @click="fetchPosts" class="retry-btn">다시 시도</button>
+      <button class="write-first-post-btn" @click="goToRecipePostWrite">
+        <span class="plus-icon">+</span>
+        게시글 작성하기
+      </button>
     </div>
   </div>
 </template>
@@ -65,6 +81,8 @@
 <script>
 import Pagination from '../common/Pagination.vue';
 import { apiGet } from '@/utils/api';
+
+const defaultThumbnail = '/src/assets/images/smu_mascort1.jpg';
 
 export default {
   name: 'MyPosts',
@@ -103,7 +121,14 @@ export default {
         
         if (response.ok) {
           const result = await response.json();
-          this.posts = result.data || [];
+          // 삭제된 게시글 필터링
+          const allPosts = result.data || [];
+          this.posts = allPosts.filter(post => {
+            // 삭제되지 않은 게시글만 표시
+            return !post.deleted && !post.deletedAt && post.status !== 'DELETED';
+          });
+          
+          console.log(`🔍 전체 게시글: ${allPosts.length}개, 삭제되지 않은 게시글: ${this.posts.length}개`);
         } else {
           throw new Error('게시글을 불러오는데 실패했습니다.');
         }
@@ -128,6 +153,22 @@ export default {
       const day = String(date.getDate()).padStart(2, '0');
       
       return `${year}.${month}.${day}`;
+    },
+    goToPostDetail(post) {
+      // Navigate to post detail page
+      this.$router.push(`/recipes/${post.id}`);
+    },
+    goToRecipePostWrite() {
+      // Navigate to recipe post write page
+      this.$router.push('/recipe/write');
+    },
+    isPrivatePost(item) {
+      // isOpen 필드로 비밀글 체크
+      return item.isOpen === false;
+    },
+    handleImageError(event) {
+      // 이미지 로드 실패 시 기본 이미지로 대체
+      event.target.src = defaultThumbnail;
     }
   }
 };
@@ -226,6 +267,8 @@ export default {
   border: 1px solid #f0f0f0;
   transition: transform 0.2s, box-shadow 0.2s;
   cursor: pointer;
+  display: flex; /* Added for flex layout */
+  flex-direction: column; /* Added for flex layout */
 }
 
 .post-card:hover {
@@ -235,8 +278,9 @@ export default {
 
 .post-image {
   width: 100%;
-  height: 160px;
+  height: 200px;
   overflow: hidden;
+  border-radius: 8px 8px 0 0;
 }
 
 .post-image img {
@@ -258,6 +302,7 @@ export default {
 
 .post-content {
   padding: 16px;
+  flex-grow: 1;
 }
 
 .post-title {
@@ -266,6 +311,14 @@ export default {
   color: #222;
   margin: 0 0 12px 0;
   line-height: 1.3;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lock-icon {
+  font-size: 16px;
+  color: #ff7a00;
 }
 
 .post-description {
