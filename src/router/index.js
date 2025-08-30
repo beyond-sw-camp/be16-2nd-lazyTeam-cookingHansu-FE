@@ -21,6 +21,10 @@ import AuthDetailOwnerPage from '@/views/login/AuthDetailOwnerPage.vue'
 import AuthDetailUserPage from '@/views/login/AuthDetailUserPage.vue'
 import RegistrationCompletePage from '@/views/login/RegistrationCompletePage.vue'
 import RecipeMainPage from '@/views/home/RecipeMainPage.vue'
+import RecipeDetailPage from '@/views/recipe/RecipeDetailPage.vue'
+
+import RecipePostWritePage from '@/views/recipe/RecipePostWritePage.vue'
+import RecipePostEditPage from '@/views/recipe/RecipePostEditPage.vue'
 import LectureList from '@/views/home/LectureList.vue'
 import LectureDetail from '@/views/lecture/LectureDetail.vue'
 import LectureCreate from '@/views/lecture/LectureCreate.vue'
@@ -41,6 +45,8 @@ import NoticeCreate from '@/views/notice/NoticeCreate.vue'
 import NoticeEdit from '@/views/notice/NoticeEdit.vue'
 import NotificationPage from '@/views/notification/NotificationPage.vue'
 import AccessDenied from '@/views/common/AccessDenied.vue'
+
+
 
 const routes = [
   {
@@ -143,7 +149,10 @@ const routes = [
       { path: '', name: 'Home' },
       { path: 'landing', name: 'LandingPage', component: LandingPage },
       { path: 'recipes', name: 'RecipeMainPage', component: RecipeMainPage },
-      { path: 'recipes/:id', name: 'RecipeDetail', component: RecipeMainPage },
+      { path: 'recipes/:id', name: 'RecipeDetail', component: RecipeDetailPage },
+
+      { path: 'recipe/post-write', name: 'RecipePostWrite', component: RecipePostWritePage },
+      { path: 'recipe/post-edit', name: 'RecipePostEdit', component: RecipePostEditPage },
       { path: 'lectures', name: 'LectureList', component: LectureList },
       { path: 'lectures/create', name: 'LectureCreate', component: LectureCreate },
       { path: 'lectures/edit/:id', name: 'LectureEdit', component: LectureEdit },
@@ -168,6 +177,14 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+  scrollBehavior(to, from, savedPosition) {
+    // 뒤로가기/앞으로가기 시 저장된 위치로 스크롤
+    if (savedPosition) {
+      return savedPosition
+    }
+    // 새 페이지로 이동 시 상단으로 스크롤
+    return { top: 0 }
+  }
 });
 
 // 인증 가드

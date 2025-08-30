@@ -19,7 +19,7 @@
       <div class="filter-row">
         <div class="filter-col">
           <label>사용자 유형</label>
-          <select v-model="selectedUserType">
+          <select v-model="selectedUserType" @change="onFilterChange">
             <option value="">전체</option>
             <option value="GENERAL">일반 사용자</option>
             <option value="CHEF">요리 전문가</option>
@@ -28,7 +28,7 @@
         </div>
         <div class="filter-col">
           <label>요식 종류</label>
-          <select v-model="selectedCategory">
+          <select v-model="selectedCategory" @change="onFilterChange">
             <option value="">전체</option>
             <option value="KOREAN">한식</option>
             <option value="CHINESE">중식</option>
@@ -38,15 +38,17 @@
         </div>
         <div class="filter-col">
           <label>정렬</label>
-          <select v-model="selectedSort">
+          <select v-model="selectedSort" @change="onFilterChange">
             <option value="latest">최신순</option>
-            <option value="popular">인기순</option>
+            <option value="views">조회순</option>
+            <option value="likes">좋아요순</option>
+            <option value="bookmarks">북마크순</option>
           </select>
         </div>
       </div>
     </div>
     <!-- 레시피 카드 리스트 (2행 4열) -->
-    <div class="recipe-grid">
+    <div v-if="pagedRecipes.length > 0" class="recipe-grid">
       <div v-for="recipe in pagedRecipes" :key="recipe.id" class="recipe-card" @click="handleCardClick(recipe)">
         <img :src="recipe.image" alt="썸네일" class="recipe-img" @error="onImgError" />
         <div class="card-content">
@@ -60,11 +62,21 @@
             <div class="meta">
               <span class="meta-views"><span class="meta-icon">&#128065;</span> {{ recipe.views }}</span>
               <span class="meta-likes">❤️ {{ recipe.likes }}</span>
-              <span class="meta-comments">💬 {{ recipe.comments }}</span>
+              <span class="meta-bookmarks">🔖 {{ recipe.bookmarks }}</span>
+              <span class="meta-comments">💬 {{ recipe.commentCount || 0 }}</span>
             </div>
             <div class="time">{{ recipe.time }}</div>
           </div>
         </div>
+      </div>
+    </div>
+    
+    <!-- 게시글이 없을 때 표시 -->
+    <div v-else class="no-recipes-message">
+      <div class="no-recipes-content">
+        <div class="no-recipes-icon">📝</div>
+        <h3 class="no-recipes-title">게시글이 없습니다</h3>
+        <p class="no-recipes-description">검색 조건에 맞는 게시글이 없습니다.<br>다른 조건으로 검색해보세요.</p>
       </div>
     </div>
     <!-- 페이지네이션-->
@@ -93,6 +105,7 @@ import Header from '@/components/Header.vue';
 import Pagination from '@/components/common/Pagination.vue';
 import CommonModal from '@/components/common/CommonModal.vue';
 import { useAuthStore } from '@/store/auth/auth';
+import axios from 'axios';
 
 const defaultThumbnail = '/src/assets/images/smu_mascort1.jpg';
 
@@ -113,249 +126,10 @@ export default {
       selectedSort: "latest",
       selectedRecipe: null,
       showClickEffect: false,
-      showLoginModal: false,
-      recipes: [
-        {
-          id: 1,
-          image: '/src/assets/images/smu_mascort1.jpg',
-          category: 'KOREAN',
-          title: '집밥 백선생의 한식 레시피',
-          authorType: 'CHEF',
-          description: '쉽고 맛있는 한식 레시피 모음',
-          likes: 120,
-          comments: 15,
-          views: 500,
-          time: '1시간 전',
-        },
-        {
-          id: 2,
-          image: '/src/assets/images/smu_mascort2.jpg',
-          category: 'CHINESE',
-          title: '중식 고수의 꿀팁',
-          authorType: 'OWNER',
-          description: '중식당 사장님의 인기 레시피',
-          likes: 80,
-          comments: 8,
-          views: 300,
-          time: '2시간 전',
-        },
-        {
-          id: 3,
-          image: '/src/assets/images/smu_mascort3.jpg',
-          category: 'WESTERN',
-          title: '이탈리안 파스타 마스터',
-          authorType: 'GENERAL',
-          description: '집에서 즐기는 정통 파스타',
-          likes: 60,
-          comments: 5,
-          views: 200,
-          time: '3시간 전',
-        },
-        {
-          id: 4,
-          image: '/src/assets/images/smu_mascort4.jpg',
-          category: 'JAPANESE',
-          title: '스시의 모든 것',
-          authorType: 'CHEF',
-          description: '스시 장인의 노하우',
-          likes: 90,
-          comments: 10,
-          views: 250,
-          time: '4시간 전',
-        },
-        {
-          id: 5,
-          image: '/src/assets/images/smu_mascort5.jpg',
-          category: 'KOREAN',
-          title: '매콤한 김치찌개',
-          authorType: 'GENERAL',
-          description: '집밥의 정석, 김치찌개 레시피',
-          likes: 70,
-          comments: 6,
-          views: 180,
-          time: '5시간 전',
-        },
-        {
-          id: 6,
-          image: '/src/assets/images/smu_mascort1.jpg',
-          category: 'CHINESE',
-          title: '깐풍기 쉽게 만들기',
-          authorType: 'OWNER',
-          description: '바삭하고 매콤한 깐풍기',
-          likes: 55,
-          comments: 4,
-          views: 160,
-          time: '6시간 전',
-        },
-        {
-          id: 7,
-          image: '/src/assets/images/smu_mascort2.jpg',
-          category: 'WESTERN',
-          title: '홈메이드 피자',
-          authorType: 'CHEF',
-          description: '도우부터 토핑까지 직접!',
-          likes: 100,
-          comments: 12,
-          views: 400,
-          time: '7시간 전',
-        },
-        {
-          id: 8,
-          image: '/src/assets/images/smu_mascort3.jpg',
-          category: 'JAPANESE',
-          title: '라멘 마스터 클래스',
-          authorType: 'OWNER',
-          description: '진한 국물의 비법 공개',
-          likes: 65,
-          comments: 7,
-          views: 210,
-          time: '8시간 전',
-        },
-        {
-          id: 9,
-          image: '/src/assets/images/smu_mascort4.jpg',
-          category: 'KOREAN',
-          title: '된장찌개 완벽 가이드',
-          authorType: 'CHEF',
-          description: '집에서 만드는 맛있는 된장찌개',
-          likes: 85,
-          comments: 9,
-          views: 320,
-          time: '9시간 전',
-        },
-        {
-          id: 10,
-          image: '/src/assets/images/smu_mascort5.jpg',
-          category: 'CHINESE',
-          title: '짜장면 홈메이드',
-          authorType: 'GENERAL',
-          description: '집에서 만드는 정통 짜장면',
-          likes: 75,
-          comments: 6,
-          views: 280,
-          time: '10시간 전',
-        },
-        {
-          id: 11,
-          image: '/src/assets/images/smu_mascort1.jpg',
-          category: 'WESTERN',
-          title: '스테이크 마스터',
-          authorType: 'CHEF',
-          description: '완벽한 스테이크 굽기 비법',
-          likes: 110,
-          comments: 13,
-          views: 450,
-          time: '11시간 전',
-        },
-        {
-          id: 12,
-          image: '/src/assets/images/smu_mascort2.jpg',
-          category: 'JAPANESE',
-          title: '우동 레시피',
-          authorType: 'OWNER',
-          description: '진한 국물의 우동 만들기',
-          likes: 60,
-          comments: 5,
-          views: 190,
-          time: '12시간 전',
-        },
-        {
-          id: 13,
-          image: '/src/assets/images/smu_mascort3.jpg',
-          category: 'KOREAN',
-          title: '불고기 홈메이드',
-          authorType: 'GENERAL',
-          description: '집에서 만드는 맛있는 불고기',
-          likes: 95,
-          comments: 11,
-          views: 380,
-          time: '13시간 전',
-        },
-        {
-          id: 14,
-          image: '/src/assets/images/smu_mascort4.jpg',
-          category: 'CHINESE',
-          title: '탕수육 완벽 레시피',
-          authorType: 'CHEF',
-          description: '바삭한 탕수육 만들기',
-          likes: 88,
-          comments: 8,
-          views: 290,
-          time: '14시간 전',
-        },
-        {
-          id: 15,
-          image: '/src/assets/images/smu_mascort5.jpg',
-          category: 'WESTERN',
-          title: '샐러드 마스터',
-          authorType: 'OWNER',
-          description: '건강한 샐러드 만들기',
-          likes: 70,
-          comments: 7,
-          views: 220,
-          time: '15시간 전',
-        },
-        {
-          id: 16,
-          image: '/src/assets/images/smu_mascort1.jpg',
-          category: 'JAPANESE',
-          title: '초밥 홈메이드',
-          authorType: 'GENERAL',
-          description: '집에서 만드는 초밥',
-          likes: 82,
-          comments: 9,
-          views: 310,
-          time: '16시간 전',
-        },
-        {
-          id: 17,
-          image: '/src/assets/images/smu_mascort2.jpg',
-          category: 'KOREAN',
-          title: '비빔밥 레시피',
-          authorType: 'CHEF',
-          description: '건강한 비빔밥 만들기',
-          likes: 78,
-          comments: 6,
-          views: 260,
-          time: '17시간 전',
-        },
-        {
-          id: 18,
-          image: '/src/assets/images/smu_mascort3.jpg',
-          category: 'CHINESE',
-          title: '마파두부 홈메이드',
-          authorType: 'OWNER',
-          description: '매콤달콤한 마파두부',
-          likes: 66,
-          comments: 5,
-          views: 200,
-          time: '18시간 전',
-        },
-        {
-          id: 19,
-          image: '/src/assets/images/smu_mascort4.jpg',
-          category: 'WESTERN',
-          title: '파스타 카르보나라',
-          authorType: 'GENERAL',
-          description: '진한 카르보나라 레시피',
-          likes: 92,
-          comments: 10,
-          views: 340,
-          time: '19시간 전',
-        },
-        {
-          id: 20,
-          image: '/src/assets/images/smu_mascort5.jpg',
-          category: 'JAPANESE',
-          title: '덮밥 레시피',
-          authorType: 'CHEF',
-          description: '간단한 덮밥 만들기',
-          likes: 73,
-          comments: 7,
-          views: 240,
-          time: '20시간 전',
-        },
-      ],
+      recipes: [], // 하드코딩된 데이터 제거, 빈 배열로 초기화
+      allRecipes: [], // 서버에서 받은 모든 레시피 데이터
+      totalItems: 0, // 서버에서 받은 총 레시피 수
+      showLoginModal: false, // 로그인 모달 표시 여부
     };
   },
   computed: {
@@ -364,55 +138,190 @@ export default {
       return authStore.isAuthenticated;
     },
     filteredRecipes() {
-      let filtered = this.recipes;
-      
-      // 사용자 유형 필터
-      if (this.selectedUserType) {
-        filtered = filtered.filter(r => r.authorType === this.selectedUserType);
-      }
-      
-      // 카테고리 필터
-      if (this.selectedCategory) {
-        filtered = filtered.filter(r => r.category === this.selectedCategory);
-      }
-      
-      // 정렬
-      if (this.selectedSort === 'latest') {
-        filtered = filtered.slice().sort((a, b) => b.id - a.id);
-      } else if (this.selectedSort === 'popular') {
-        filtered = filtered.slice().sort((a, b) => b.likes - a.likes);
-      }
-      
-      return filtered;
+      // 클라이언트 측 필터링 제거, 서버에서 필터링 처리
+      return this.recipes;
     },
     pagedRecipes() {
-      const start = (this.currentPage - 1) * this.recipesPerPage;
-      const end = start + this.recipesPerPage;
-      return this.filteredRecipes.slice(start, end);
+      // 클라이언트 사이드 페이지네이션 적용
+      const startIndex = (this.currentPage - 1) * this.recipesPerPage;
+      const endIndex = startIndex + this.recipesPerPage;
+      return this.allRecipes.slice(startIndex, endIndex);
     },
     totalPages() {
-      return Math.max(1, Math.ceil(this.filteredRecipes.length / this.recipesPerPage));
+      return Math.max(1, Math.ceil(this.allRecipes.length / this.recipesPerPage));
     },
   },
   watch: {
     selectedUserType() {
       this.currentPage = 1;
+      this.fetchRecipes();
     },
     selectedCategory() {
       this.currentPage = 1;
+      this.fetchRecipes();
     },
     selectedSort() {
       this.currentPage = 1;
+      this.fetchRecipes();
     },
+    // currentPage 변경 시에는 API 재요청하지 않고 클라이언트 사이드 페이지네이션만 적용
+    // currentPage() {
+    //   this.fetchRecipes();
+    // },
+  },
+  created() {
+    this.fetchRecipes(); // 컴포넌트 생성 시 데이터 가져오기
   },
   methods: {
+    async fetchRecipes() {
+      try {
+        console.log('🔍 API 호출 시작:', {
+          authorType: this.selectedUserType,
+          category: this.selectedCategory,
+          sort: this.selectedSort,
+          page: this.currentPage,
+          size: this.recipesPerPage
+        });
+
+        // 정렬 옵션을 백엔드 API 형식에 맞게 변환
+        let sortParam = this.selectedSort;
+        if (this.selectedSort === 'latest') {
+          sortParam = 'createdAt,desc';
+        } else if (this.selectedSort === 'views') {
+          sortParam = 'viewCount,desc';
+        } else if (this.selectedSort === 'likes') {
+          sortParam = 'likeCount,desc';
+        } else if (this.selectedSort === 'bookmarks') {
+          sortParam = 'bookmarkCount,desc';
+        }
+
+        // 빈 값은 undefined로 설정하여 쿼리 파라미터에서 제외
+        // 클라이언트 사이드 페이지네이션을 위해 모든 데이터를 한 번에 가져옴
+        const params = {
+          sort: sortParam,
+          page: 0, // 첫 페이지만 요청
+          size: 100, // 충분히 큰 수로 설정하여 모든 데이터 가져오기
+        };
+
+        if (this.selectedUserType) {
+          params.role = this.selectedUserType; // 백엔드에서 role 파라미터 사용
+        }
+        if (this.selectedCategory) {
+          params.category = this.selectedCategory;
+        }
+
+        console.log('📡 API 요청 파라미터:', JSON.stringify(params, null, 2));
+        console.log('🔑 Authorization 토큰:', localStorage.getItem('accessToken') ? '있음' : '없음');
+        console.log('📊 페이지네이션 정보:', {
+          currentPage: this.currentPage,
+          recipesPerPage: this.recipesPerPage,
+          totalItems: this.totalItems,
+          totalPages: this.totalPages
+        });
+        console.log('🔍 API 요청 URL:', `http://localhost:8080/api/posts?page=${params.page}&size=${params.size}&sort=${params.sort}`);
+        console.log('🔍 실제 요청 파라미터 상세:', {
+          page: params.page,
+          size: params.size,
+          sort: params.sort,
+          role: params.role,
+          category: params.category
+        });
+
+        // 여러 API 엔드포인트 시도
+        let response;
+        try {
+          response = await axios.get('http://localhost:8080/api/posts', {
+            params,
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+            },
+          });
+        } catch (error) {
+          console.log('🔄 첫 번째 API 실패, 두 번째 시도...');
+          // 다른 엔드포인트 시도
+          response = await axios.get('http://localhost:8080/api/recipes', {
+            params,
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+            },
+          });
+        }
+        
+        console.log('✅ API 응답:', JSON.stringify(response.data, null, 2));
+        
+        // API 응답 데이터를 프론트엔드 형식에 맞게 변환
+        const allRecipes = (response.data.data.content || []).map(post => {
+          console.log('📝 개별 포스트 데이터:', {
+            id: post.id,
+            title: post.title,
+            commentCount: post.commentCount,
+            likeCount: post.likeCount,
+            bookmarkCount: post.bookmarkCount,
+            viewCount: post.viewCount
+          });
+          
+          return {
+            id: post.id,
+            image: post.thumbnailUrl || defaultThumbnail,
+            category: post.category,
+            title: post.title,
+            authorType: post.user?.role || 'GENERAL', // user.role 필드 사용
+            description: post.description,
+            likes: post.likeCount || 0,
+            bookmarks: post.bookmarkCount || 0, // 북마크수 추가
+            views: post.viewCount || 0,
+            commentCount: post.commentCount || 0, // 댓글 개수 추가
+            time: this.formatTime(post.createdAt)
+          };
+        });
+        
+        // 모든 레시피 데이터를 저장 (클라이언트 사이드 페이지네이션용)
+        this.allRecipes = allRecipes;
+        
+        // 현재 페이지에 표시할 레시피만 선택
+        this.recipes = this.pagedRecipes;
+        
+        this.totalItems = response.data.data.totalElements || allRecipes.length;
+        
+        console.log('🎯 변환된 레시피 데이터:', JSON.stringify(this.recipes, null, 2));
+        console.log('📊 총 아이템 수:', this.totalItems);
+        console.log('📋 현재 페이지 레시피 개수:', this.recipes.length);
+        console.log('📄 총 페이지 수:', this.totalPages);
+        console.log('✅ 페이지네이션 확인 - 한 페이지당 8개 제한:', this.recipes.length <= 8 ? '정상' : '문제있음');
+        
+      } catch (error) {
+        console.error('❌ API 호출 실패:', error);
+        console.error('❌ 에러 상세:', {
+          message: error.message,
+          status: error.response?.status,
+          data: error.response?.data,
+          config: error.config
+        });
+        
+        // 에러 처리 (예: 사용자에게 알림 표시)
+        this.recipes = [];
+        this.totalItems = 0;
+      }
+    },
     changePage(page) {
-      if (page >= 1 && page <= this.totalPages) {
+      console.log('페이지 변경 요청:', page, '현재 페이지:', this.currentPage, '총 페이지:', this.totalPages);
+      
+      // 페이지 범위 체크
+      if (page >= 1 && page <= this.totalPages && page !== this.currentPage) {
         this.currentPage = page;
+        // 클라이언트 사이드 페이지네이션 적용
+        this.recipes = this.pagedRecipes;
+        console.log('페이지 변경됨:', this.currentPage, '표시할 레시피 개수:', this.recipes.length);
       } else if (page > this.totalPages) {
+        console.log('최대 페이지 초과, 마지막 페이지로 이동');
         this.currentPage = this.totalPages;
+        this.recipes = this.pagedRecipes;
       } else if (page < 1) {
+        console.log('최소 페이지 미만, 첫 페이지로 이동');
         this.currentPage = 1;
+        this.recipes = this.pagedRecipes;
+      } else {
+        console.log('같은 페이지이므로 변경하지 않음');
       }
     },
     goToLecture() {
@@ -420,9 +329,8 @@ export default {
     },
     goToWrite() {
       if (this.isLoggedIn) {
-        // 게시글 등록 페이지로 이동 (추후 구현 예정)
-        console.log('게시글 등록 페이지로 이동');
-        // this.$router.push({ name: "RecipeCreate" });
+        // 게시글 등록 페이지로 이동
+        this.$router.push('/recipe/post-write');
       } else {
         // 비회원인 경우 로그인 필요 모달 표시
         this.showLoginModal = true;
@@ -464,17 +372,41 @@ export default {
         e.target.src = defaultThumbnail;
       }
     },
-    handleCardClick(recipe) {
-      // 카드 클릭 이벤트 처리 -> 추후 상태관리..
-      console.log('레시피 클릭:', recipe.id, recipe.title);
+    
+    // 시간 포맷팅
+    formatTime(createdAt) {
+      if (!createdAt) return '';
       
-      // 클릭된 레시피 정보
-      this.selectedRecipe = recipe;
-        // 클릭 효과
-      this.showClickEffect = true;
-      setTimeout(() => {
-        this.showClickEffect = false;
-      }, 200);
+      const now = new Date();
+      const created = new Date(createdAt);
+      const diffTime = Math.abs(now - created);
+      const diffHours = Math.ceil(diffTime / (1000 * 60 * 60));
+      
+      if (diffHours < 1) return '방금 전';
+      if (diffHours < 24) return `${diffHours}시간 전`;
+      
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays < 7) return `${diffDays}일 전`;
+      
+      return created.toLocaleDateString('ko-KR', {
+        month: 'short',
+        day: 'numeric'
+      });
+    },
+    handleCardClick(recipe) {
+      // 레시피 상세 페이지로 이동
+      this.$router.push(`/recipes/${recipe.id}`);
+    },
+
+    
+
+    
+
+    
+    // 필터 변경 시 목록 재조회
+    onFilterChange() {
+      this.currentPage = 1;
+      this.fetchRecipes();
     },
   },
 };
@@ -490,8 +422,14 @@ export default {
 .nav-tabs {
   display: flex;
   justify-content: center;
+  align-items: center;
   margin: 16px 0 24px 0;
   gap: 12px;
+  max-width: 1040px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 20px 20px 0 20px;
+  min-height: 60px; /* 최소 높이 설정으로 높이 변화 방지 */
 }
 .nav-tabs button {
   padding: 10px 24px;
@@ -536,6 +474,16 @@ export default {
   font-weight: 600;
   cursor: pointer;
   font-size: 14px;
+}
+
+.write-btn.disabled {
+  background: #ccc;
+  color: #666;
+  cursor: not-allowed;
+}
+
+.write-btn.disabled:hover {
+  background: #ccc;
 }
 .filter-row {
   display: flex;
@@ -583,7 +531,6 @@ export default {
   transition: all 0.3s ease;
   cursor: pointer;
 }
-
 .recipe-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
@@ -681,6 +628,40 @@ export default {
   white-space: nowrap;
 }
 
+/* 게시글이 없을 때 메시지 스타일 */
+.no-recipes-message {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+  max-width: 1040px;
+  margin: 0 auto 24px auto;
+}
+
+.no-recipes-content {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.no-recipes-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.6;
+}
+
+.no-recipes-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.no-recipes-description {
+  font-size: 14px;
+  color: #666;
+  line-height: 1.5;
+  margin: 0;
+}
 </style>
 
 <style>

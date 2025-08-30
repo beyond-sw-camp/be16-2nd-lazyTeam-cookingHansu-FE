@@ -10,36 +10,39 @@
     </div>
 
     <div v-else-if="bookmarks.length > 0" class="bookmarks-grid">
-      <div v-for="item in pagedBookmarks" :key="item.id" class="bookmark-card">
+      <div v-for="item in pagedBookmarks" :key="item.id" class="bookmark-card" @click="goToPostDetail(item)">
         <div class="bookmark-image">
           <img 
-            v-if="item.thumbnailUrl" 
-            :src="item.thumbnailUrl" 
-            :alt="item.title" 
+            :src="item.thumbnailUrl || defaultThumbnail" 
+            :alt="item.title"
+            @error="handleImageError"
           />
-          <div v-else class="no-image">이미지 없음</div>
-          <button class="remove-bookmark-btn" @click="removeBookmark(item.id)">
-            <span class="remove-icon">×</span>
-          </button>
         </div>
         <div class="bookmark-content">
           <div class="bookmark-type">
             <span class="type-badge type-recipe">레시피</span>
             <span class="bookmark-date">{{ formatDate(item.createdAt) }}</span>
           </div>
-          <h3 class="bookmark-title">{{ item.title }}</h3>
+          <h3 class="bookmark-title">
+            <span v-if="isPrivatePost(item)" class="lock-icon">🔒</span>
+            {{ item.title }}
+          </h3>
           <p class="bookmark-description">{{ item.description }}</p>
           <div class="bookmark-meta">
             <div class="author-stats">
               <span v-if="item.writerNickname" class="author">{{ item.writerNickname }}</span>
               <div class="bookmark-stats">
                 <span class="stat-item">
+                  <span class="stat-icon">❤️</span>
+                  {{ item.likeCount }}
+                </span>
+                <span class="stat-item">
                   <span class="stat-icon">🔖</span>
                   {{ item.bookmarkCount }}
                 </span>
                 <span class="stat-item">
-                  <span class="stat-icon">❤️</span>
-                  {{ item.likeCount }}
+                  <span class="stat-icon">💬</span>
+                  {{ item.commentCount || 0 }}
                 </span>
               </div>
             </div>
@@ -75,6 +78,8 @@
 import Pagination from '../common/Pagination.vue';
 import { apiGet } from '@/utils/api';
 
+const defaultThumbnail = '/src/assets/images/smu_mascort1.jpg';
+
 export default {
   name: 'Bookmarks',
   components: {
@@ -95,6 +100,10 @@ export default {
       const end = start + this.bookmarksPerPage;
       return this.bookmarks.slice(start, end);
     },
+    goToPostDetail(item) {
+      // Navigate to post detail page
+      this.$router.push(`/recipes/${item.id}`);
+    },
     totalPages() {
       return Math.ceil(this.bookmarks.length / this.bookmarksPerPage);
     }
@@ -112,7 +121,14 @@ export default {
         
         if (response.ok) {
           const result = await response.json();
-          this.bookmarks = result.data || [];
+          // 삭제된 게시글 필터링
+          const allBookmarks = result.data || [];
+          this.bookmarks = allBookmarks.filter(bookmark => {
+            // 삭제되지 않은 게시글만 표시
+            return !bookmark.deleted && !bookmark.deletedAt && bookmark.status !== 'DELETED';
+          });
+          
+          console.log(`🔍 전체 북마크: ${allBookmarks.length}개, 삭제되지 않은 북마크: ${this.bookmarks.length}개`);
         } else {
           throw new Error('북마크를 불러오는데 실패했습니다.');
         }
@@ -128,9 +144,11 @@ export default {
         this.currentPage = page;
       }
     },
-    removeBookmark(id) {
-      this.bookmarks = this.bookmarks.filter(item => item.id !== id);
+    goToPostDetail(item) {
+      // Navigate to post detail page
+      this.$router.push(`/recipes/${item.id}`);
     },
+
     formatDate(dateString) {
       if (!dateString) return '';
       
@@ -140,6 +158,14 @@ export default {
       const day = String(date.getDate()).padStart(2, '0');
       
       return `${year}.${month}.${day}`;
+    },
+    isPrivatePost(item) {
+      // isOpen 필드로 비밀글 체크
+      return item.isOpen === false;
+    },
+    handleImageError(event) {
+      // 이미지 로드 실패 시 기본 이미지로 대체
+      event.target.src = defaultThumbnail;
     }
   }
 };
@@ -269,31 +295,7 @@ export default {
   font-size: 14px;
 }
 
-.remove-bookmark-btn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  background: rgba(0, 0, 0, 0.7);
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.2s;
-}
 
-.remove-bookmark-btn:hover {
-  background: rgba(255, 0, 0, 0.8);
-}
-
-.remove-icon {
-  font-size: 18px;
-  font-weight: bold;
-}
 
 .bookmark-content {
   padding: 16px;
@@ -330,6 +332,14 @@ export default {
   color: #222;
   margin: 0 0 8px 0;
   line-height: 1.3;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lock-icon {
+  font-size: 14px;
+  color: #ff7a00;
 }
 
 .bookmark-description {
