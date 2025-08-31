@@ -547,7 +547,12 @@
         </div>
         <div class="modal-footer">
           <button class="cancel-btn" @click="showQAModal = false">취소</button>
-          <button class="submit-btn" @click="submitQuestion">{{ isEditingQA ? '질문 수정' : '질문 등록' }}</button>
+          <button class="submit-btn" @click="submitQuestion">
+            {{ 
+              isEditingQA ? '질문 수정' : 
+              (newQuestion.parentId ? '답변 등록' : '질문 등록') 
+            }}
+          </button>
         </div>
       </div>
     </div>
