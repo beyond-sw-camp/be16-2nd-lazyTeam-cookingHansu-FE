@@ -353,8 +353,8 @@
               <span class="share-icon">📤</span>
               <span>공유하기</span>
             </div>
-            <!-- 신고하기 버튼 (강사가 자기 강의를 볼 때는 숨김) -->
-            <div v-if="!isAuthor" class="report-section">
+            <!-- 신고하기 버튼 (강사가 자기 강의를 볼 때는 숨김, 구매자만 가능) -->
+            <div v-if="!isAuthor && !isGuest" class="report-section" @click="handleReportClick">
               <span class="report-icon">🚨</span>
               <span>신고하기</span>
             </div>
@@ -707,6 +707,16 @@
       @cancel="cancelLectureDelete"
     />
 
+    <!-- 강의 신고 모달 -->
+    <ReportModal
+      v-model="showReportModal"
+      :report-type="'LECTURE'"
+      :target-id="lecture?.id"
+      :target-name="lecture?.title"
+      @success="handleReportSuccess"
+      @error="handleReportError"
+    />
+
 
   </div>
 </template>
@@ -714,15 +724,17 @@
 <script>
 import Header from '@/components/Header.vue';
 import DeleteConfirmModal from '@/components/common/DeleteConfirmModal.vue';
+import ReportModal from '@/components/common/ReportModal.vue';
 
 import { lectureService } from '@/store/lecture/lectureService';
 import { useCartStore } from '@/store/cart/cart';
 import { getUserIdFromToken } from '@/utils/api';
+import { reportService } from '@/services/report/reportService';
 
 
 export default {
   name: 'LectureDetail',
-  components: { Header, DeleteConfirmModal },
+  components: { Header, DeleteConfirmModal, ReportModal },
   data() {
     return {
       ready: false, // 초기화 완료 상태
@@ -741,6 +753,7 @@ export default {
       showLoginRequiredModal: false,
       showDeleteConfirmModal: false,
       showLectureDeleteModal: false,
+      showReportModal: false,
       deleteConfirmData: {},
       notificationData: {},
       errorMessage: '',
@@ -1837,11 +1850,40 @@ export default {
          }
        },
 
-       // 강의 삭제 취소
-       cancelLectureDelete() {
-         this.showLectureDeleteModal = false;
-       },
-      
+             // 강의 삭제 취소
+      cancelLectureDelete() {
+        this.showLectureDeleteModal = false;
+      },
+
+      // 신고 성공 처리
+      handleReportSuccess(response) {
+        this.showSuccess('신고가 성공적으로 접수되었습니다.');
+      },
+
+      // 신고 실패 처리
+      handleReportError(error) {
+                  this.showError(error || '신고 처리 중 오류가 발생했습니다.');
+        },      
+
+      // 신고하기 버튼 클릭 처리 (중복 신고 확인)
+      async handleReportClick() {
+        try {
+          // 중복 신고 확인
+          const response = await reportService.checkReport(this.lecture.id);
+
+          if (response.success && response.data) {
+            // 중복 신고인 경우 경고 메시지 표시
+            this.showError('이미 신고한 강의입니다. 신고가 처리된 이후에 다시 시도해주세요.');
+          } else {
+            // 중복 신고가 아닌 경우 신고 모달 표시
+            this.showReportModal = true;
+          }
+        } catch (error) {
+          console.error('중복 신고 확인 중 오류:', error);
+          // 오류 발생 시에도 신고 모달을 열어서 사용자가 시도할 수 있도록 함
+          this.showReportModal = true;
+        }
+      },
 
       
       // 서버에서 강의 삭제
