@@ -202,7 +202,7 @@ const handleNotificationClick = async (notification) => {
     case 'QNACOMMENT':
       // 강의 상세 페이지로 이동 (targetId가 강의 ID)
       if (notification.targetId) {
-        router.push(`/lectures/${notification.targetId}`)
+        router.push(`/lectures/${notification.targetId}?tab=qa`)
       } else {
         router.push('/lectures')
       }

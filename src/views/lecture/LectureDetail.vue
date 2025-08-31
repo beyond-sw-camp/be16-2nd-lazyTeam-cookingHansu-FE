@@ -2422,6 +2422,14 @@ export default {
      
   },
       async mounted() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const tab = urlParams.get('tab');
+  
+      if (tab === 'qa') {
+        this.activeTab = 'qa';
+      } else if (tab === 'reviews') {
+        this.activeTab = 'reviews';
+    }  
       // 장바구니 스토어 초기화
       this.cartStore = useCartStore();
       
