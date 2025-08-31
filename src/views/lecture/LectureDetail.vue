@@ -137,21 +137,21 @@
         <!-- 강사 소개 -->
         <div class="instructor-section">
           <h2>강사 소개</h2>
-          <div class="instructor-info">
-            <div class="instructor-avatar">
-              <img 
-                v-if="lecture.submittedByProfile" 
-                :src="lecture.submittedByProfile" 
-                :alt="lecture.instructor.name + ' 프로필 이미지'"
-                class="instructor-profile-img"
-              />
-              <span v-else>{{ lecture.instructor.name.charAt(0) }}</span>
-            </div>
-            <div class="instructor-details">
-              <h3>{{ lecture.instructor.name }}</h3>
-              <p>{{ lecture.instructor.title }}</p>
-            </div>
+                  <div class="instructor-info">
+          <div class="instructor-avatar" @click="handleProfileClick($event, lecture.instructor.id, lecture.instructor.name)">
+            <img 
+              v-if="lecture.submittedByProfile" 
+              :src="lecture.submittedByProfile" 
+              :alt="lecture.instructor.name + ' 프로필 이미지'"
+              class="instructor-profile-img"
+            />
+            <span v-else>{{ lecture.instructor.name.charAt(0) }}</span>
           </div>
+          <div class="instructor-details">
+            <h3>{{ lecture.instructor.name }}</h3>
+            <p>{{ lecture.instructor.title }}</p>
+          </div>
+        </div>
         </div>
 
         <!-- 리뷰 및 Q&A -->
@@ -182,7 +182,7 @@
                              <div v-for="review in paginatedReviews" :key="review.id" class="review-item">
                                   <div class="review-header">
                     <div class="reviewer-info">
-                      <div class="reviewer-profile">
+                      <div class="reviewer-profile" @click="handleProfileClick($event, review.reviewerId, review.writer)">
                         <img 
                           v-if="review.profileUrl" 
                           :src="review.profileUrl" 
@@ -241,7 +241,7 @@
                   <div class="question">
                     <div class="question-header">
                       <div class="questioner-info">
-                        <div class="questioner-profile">
+                        <div class="questioner-profile" @click="handleProfileClick($event, qa.questionerUUID, qa.questionerId)">
                           <img 
                             v-if="qa.parentProfileUrl" 
                             :src="qa.parentProfileUrl" 
@@ -279,7 +279,7 @@
                    <div class="answer-content">
                      <div class="answer-header">
                        <div class="answerer-info">
-                         <div class="answerer-profile">
+                         <div class="answerer-profile" @click="handleProfileClick($event, qa.answererUUID, qa.answererId)">
                            <img 
                              v-if="qa.answerProfileUrl" 
                              :src="qa.answerProfileUrl" 
@@ -707,14 +707,25 @@
       @cancel="cancelLectureDelete"
     />
 
-    <!-- 강의 신고 모달 -->
+    <!-- 신고 모달 -->
     <ReportModal
       v-model="showReportModal"
-      :report-type="'LECTURE'"
-      :target-id="lecture?.id"
-      :target-name="lecture?.title"
+      :report-type="reportModalData.reportType"
+      :target-id="reportModalData.targetId"
+      :target-name="reportModalData.targetName"
       @success="handleReportSuccess"
       @error="handleReportError"
+    />
+
+    <!-- 프로필 액션 모달 -->
+    <ProfileActionModal
+      :show="profileActionData.show"
+      :user-id="profileActionData.userId"
+      :user-name="profileActionData.userName"
+      :position="profileActionData.position"
+      @close="closeProfileActionModal"
+      @chat="handleProfileChat"
+      @report="handleProfileReport"
     />
 
 
@@ -725,6 +736,7 @@
 import Header from '@/components/Header.vue';
 import DeleteConfirmModal from '@/components/common/DeleteConfirmModal.vue';
 import ReportModal from '@/components/common/ReportModal.vue';
+import ProfileActionModal from '@/components/common/ProfileActionModal.vue';
 
 import { lectureService } from '@/store/lecture/lectureService';
 import { useCartStore } from '@/store/cart/cart';
@@ -734,7 +746,7 @@ import { reportService } from '@/services/report/reportService';
 
 export default {
   name: 'LectureDetail',
-  components: { Header, DeleteConfirmModal, ReportModal },
+  components: { Header, DeleteConfirmModal, ReportModal, ProfileActionModal },
   data() {
     return {
       ready: false, // 초기화 완료 상태
@@ -754,6 +766,18 @@ export default {
       showDeleteConfirmModal: false,
       showLectureDeleteModal: false,
       showReportModal: false,
+      reportModalData: {
+        reportType: 'LECTURE',
+        targetId: '',
+        targetName: ''
+      },
+      showProfileActionModal: false,
+      profileActionData: {
+        show: false,
+        userId: '',
+        userName: '',
+        position: { x: 0, y: 0 }
+      },
       deleteConfirmData: {},
       notificationData: {},
       errorMessage: '',
@@ -1876,11 +1900,98 @@ export default {
             this.showError('이미 신고한 강의입니다. 신고가 처리된 이후에 다시 시도해주세요.');
           } else {
             // 중복 신고가 아닌 경우 신고 모달 표시
+            this.reportModalData = {
+              reportType: 'LECTURE',
+              targetId: this.lecture.id,
+              targetName: this.lecture.title
+            };
             this.showReportModal = true;
           }
         } catch (error) {
           console.error('중복 신고 확인 중 오류:', error);
           // 오류 발생 시에도 신고 모달을 열어서 사용자가 시도할 수 있도록 함
+          this.reportModalData = {
+            reportType: 'LECTURE',
+            targetId: this.lecture.id,
+            targetName: this.lecture.title
+          };
+          this.showReportModal = true;
+        }
+      },
+
+      // 프로필 클릭 처리
+      handleProfileClick(event, userId, userName) {
+        // 로그인하지 않은 사용자는 프로필 클릭 불가
+        if (this.isGuest) {
+          this.showLoginRequiredModal = true;
+          return;
+        }
+
+        // 자신의 프로필은 클릭 불가
+        if (userId === this.currentUserId) {
+          return;
+        }
+
+        // 클릭 위치 계산
+        const rect = event.target.getBoundingClientRect();
+        const position = {
+          x: rect.left + rect.width / 2,
+          y: rect.bottom + 10
+        };
+
+        // 모달 데이터 설정
+        this.profileActionData = {
+          show: true,
+          userId: userId,
+          userName: userName,
+          position: position
+        };
+      },
+
+      // 프로필 액션 모달 닫기
+      closeProfileActionModal() {
+        this.profileActionData.show = false;
+      },
+
+      // 프로필 채팅 처리
+      handleProfileChat(data) {
+        // TODO: 채팅 API 연동
+        console.log('채팅 시작:', data);
+        this.showNotification({
+          title: '채팅 시작',
+          icon: '💬',
+          message: `${data.userName}님과의 채팅을 시작합니다.`,
+          submessage: '채팅 기능은 준비 중입니다.'
+        });
+      },
+
+      // 프로필 신고 처리
+      async handleProfileReport(data) {
+        try {
+          // 중복 신고 확인
+          const response = await reportService.checkReport(data.userId);
+
+          if (response.success && response.data) {
+            // 중복 신고인 경우 경고 메시지 표시
+            this.showError('이미 신고한 사용자입니다. 신고가 처리된 이후에 다시 시도해주세요.');
+          } else {
+            // 중복 신고가 아닌 경우 신고 모달 표시
+            // ReportModal의 props를 동적으로 설정
+            this.reportModalData = {
+              reportType: 'USER',
+              targetId: data.userId,
+              targetName: data.userName
+            };
+            this.showReportModal = true;
+          }
+        } catch (error) {
+          console.error('중복 신고 확인 중 오류:', error);
+          // 오류 발생 시에도 신고 모달을 열어서 사용자가 시도할 수 있도록 함
+          this.reportModalData = {
+            reportType: 'USER',
+            targetId: data.userId,
+            targetName: data.userName
+          };
           this.showReportModal = true;
         }
       },
@@ -2890,6 +3001,13 @@ export default {
   font-weight: 600;
   color: #666;
   overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.instructor-avatar:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .instructor-profile-img {
@@ -2981,6 +3099,13 @@ export default {
   border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.reviewer-profile:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .reviewer-profile-img {
@@ -3053,6 +3178,13 @@ export default {
   border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.questioner-profile:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .questioner-profile-img {
@@ -3098,6 +3230,13 @@ export default {
   border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.answerer-profile:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .answerer-profile-img {
