@@ -2142,17 +2142,8 @@ export default {
           const roomId = await this.chatStore.createRoom(myId, userId);
           console.log('채팅방 생성 성공, roomId:', roomId);
 
-          // 확인 모달 표시 (확인/취소 버튼)
-          this.showConfirm({
-            title: '채팅 시작',
-            icon: '💬',
-            message: `${this.userProfileData.nickname}님과의 채팅방이 생성되었습니다.`,
-            submessage: '채팅방으로 이동하겠습니까?',
-            confirmText: '확인',
-            callback: () => {
-              this.$router.push(`/chat?autoSelect=true&roomId=${roomId}`);
-            }
-          });
+          // 바로 채팅방으로 이동
+          this.$router.push(`/chat?autoSelect=true&roomId=${roomId}`);
 
           // 프로필 모달 닫기
           this.showUserProfileModal = false;

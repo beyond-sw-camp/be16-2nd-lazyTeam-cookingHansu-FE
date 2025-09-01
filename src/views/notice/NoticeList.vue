@@ -176,7 +176,7 @@ watch(() => route.path, async (newPath) => {
 
 .notice-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   margin-bottom: 25px;
   padding: 20px 25px;
@@ -184,6 +184,7 @@ watch(() => route.path, async (newPath) => {
   border-radius: 12px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
   backdrop-filter: blur(10px);
+  position: relative;
 }
 
 .notice-header-left {
@@ -204,6 +205,8 @@ watch(() => route.path, async (newPath) => {
 .notice-actions {
   display: flex;
   gap: 10px;
+  position: absolute;
+  right: 25px;
 }
 
 .error-container {
