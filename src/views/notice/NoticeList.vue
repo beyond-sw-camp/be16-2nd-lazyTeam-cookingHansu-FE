@@ -5,54 +5,6 @@
     
     <div class="notice-header">
       <div class="notice-header-left">
-        
-        <!-- 테스트용 신고 버튼들 -->
-        <div class="test-report-buttons">
-          <v-btn
-            color="error"
-            variant="outlined"
-            size="x-small"
-            prepend-icon="mdi-flag"
-            @click="openUserProfileModal"
-            class="test-report-btn"
-          >
-            프로필 테스트
-          </v-btn>
-          
-          <v-btn
-            color="error"
-            variant="outlined"
-            size="x-small"
-            prepend-icon="mdi-flag"
-            @click="openUserReportModal"
-            class="test-report-btn"
-          >
-            사용자 신고
-          </v-btn>
-          
-          <v-btn
-            color="error"
-            variant="outlined"
-            size="x-small"
-            prepend-icon="mdi-flag"
-            @click="openCommentReportModal"
-            class="test-report-btn"
-          >
-            댓글 신고
-          </v-btn>
-          
-          <v-btn
-            color="error"
-            variant="outlined"
-            size="x-small"
-            prepend-icon="mdi-flag"
-            @click="openRecipeReportModal"
-            class="test-report-btn"
-          >
-            게시글 신고
-          </v-btn>
-        </div>
-        
         <h1 class="notice-title">공지사항</h1>
       </div>
       
@@ -122,42 +74,6 @@
         @page-change="handlePageChange"
       />
     </div>
-    
-    <!-- 사용자 프로필 모달 -->
-    <UserProfileModal
-      v-model="showUserProfileModal"
-      :user="testUser"
-      @chat="handleStartChat"
-      @report="handleProfileReport"
-    />
-    
-    <!-- 신고 모달들 -->
-    <ReportModal
-      v-model="showUserReportModal"
-      :report-type="'USER'"
-      :target-id="'test-user-123'"
-      :target-name="'테스트 사용자 (홍길동)'"
-      @success="handleReportSuccess"
-      @error="handleReportError"
-    />
-    
-    <ReportModal
-      v-model="showCommentReportModal"
-      :report-type="'COMMENT'"
-      :target-id="'test-comment-456'"
-      :target-name="'테스트 댓글 (김철수: 안녕하세요! 좋은 글이네요.)'"
-      @success="handleReportSuccess"
-      @error="handleReportError"
-    />
-    
-    <ReportModal
-      v-model="showRecipeReportModal"
-      :report-type="'RECIPE'"
-      :target-id="'test-recipe-789'"
-      :target-name="'테스트 레시피 (김치찌개 만들기)'"
-      @success="handleReportSuccess"
-      @error="handleReportError"
-    />
   </div>
 </template>
 
@@ -167,9 +83,6 @@ import { useRouter, useRoute } from 'vue-router';
 import { useNoticeStore } from '../../store/notice/notice';
 import { useAuthStore } from '../../store/auth/auth';
 import Header from '../../components/Header.vue';
-import CommonModal from '../../components/common/CommonModal.vue';
-import UserProfileModal from '../../components/common/UserProfileModal.vue';
-import ReportModal from '../../components/common/ReportModal.vue';
 import LoadingScreen from '../../components/common/LoadingScreen.vue';
 import Pagination from '../../components/common/Pagination.vue';
 import ErrorAlert from '../../components/common/ErrorAlert.vue';
@@ -189,16 +102,6 @@ const isAdmin = computed(() => {
   const userRole = authStore.getUserRole;
   return userRole === 'ADMIN' || adminLoginStore.isLoggedIn;
 });
-
-
-
-// 사용자 프로필 모달 상태
-const showUserProfileModal = ref(false);
-
-// 신고 모달 상태들
-const showUserReportModal = ref(false);
-const showCommentReportModal = ref(false);
-const showRecipeReportModal = ref(false);
 
 // 페이지네이션 정보
 const paginationInfo = computed(() => noticeStore.getPaginationInfo);
@@ -228,65 +131,6 @@ const goToNoticeDetail = (id) => {
 const goToCreateNotice = () => {
   router.push('/notice/create');
 };
-
-
-
-// 테스트용 사용자 데이터
-const testUser = ref({
-  id: 'test-user-123',
-  nickname: '홍길동',
-  email: 'hong@example.com',
-  profileImage: 'https://via.placeholder.com/100x100/4CAF50/FFFFFF?text=홍',
-  joinDate: '2024-01-15'
-});
-
-// 사용자 프로필 모달 열기
-const openUserProfileModal = () => {
-  showUserProfileModal.value = true;
-};
-
-// 신고 모달 열기 함수들
-const openUserReportModal = () => {
-  showUserReportModal.value = true;
-};
-
-const openCommentReportModal = () => {
-  showCommentReportModal.value = true;
-};
-
-const openRecipeReportModal = () => {
-  showRecipeReportModal.value = true;
-};
-
-// 신고 성공 처리
-const handleReportSuccess = (response) => {
-  console.log('신고 성공:', response);
-  alert('신고가 성공적으로 접수되었습니다.');
-};
-
-// 신고 오류 처리
-const handleReportError = (error) => {
-  console.error('신고 오류:', error);
-  alert('신고 처리 중 오류가 발생했습니다: ' + error);
-};
-
-// 프로필에서 채팅 시작
-const handleStartChat = async (userId) => {
-  // 여기서는 테스트용이므로 실제 채팅 로직은 강의 상세 페이지에서 구현
-  console.log('테스트용 채팅 시작:', userId);
-  showUserProfileModal.value = false;
-};
-
-// 프로필에서 신고하기
-const handleProfileReport = (userId) => {
-  // 프로필 모달 닫기
-  showUserProfileModal.value = false;
-  
-  // 사용자 신고 모달 열기
-  showUserReportModal.value = true;
-};
-
-// 날짜 포맷팅은 timeUtils의 formatDateTime 사용
 
 // 스크롤 위치 저장
 const saveScrollPosition = () => {
@@ -319,7 +163,6 @@ watch(() => route.path, async (newPath) => {
   }
 });
 
-
 </script>
 
 <style scoped>
@@ -346,22 +189,6 @@ watch(() => route.path, async (newPath) => {
 .notice-header-left {
   display: flex;
   align-items: center;
-  gap: 20px;
-}
-
-
-
-.test-report-buttons {
-  display: flex;
-  gap: 10px;
-  margin-right: 20px;
-  flex-wrap: wrap;
-}
-
-.test-report-btn {
-  font-size: 0.75rem;
-  padding: 2px 8px;
-  min-width: auto;
 }
 
 .notice-title {
@@ -511,8 +338,6 @@ watch(() => route.path, async (newPath) => {
   transform: translateX(5px);
 }
 
-
-
 @media (max-width: 768px) {
   .notice-list-container {
     padding: 15px;
@@ -529,8 +354,6 @@ watch(() => route.path, async (newPath) => {
     align-items: flex-start;
     gap: 10px;
   }
-
-
 
   .notice-title {
     font-size: 1.5rem;
