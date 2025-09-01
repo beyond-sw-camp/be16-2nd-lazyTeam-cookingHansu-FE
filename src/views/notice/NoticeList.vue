@@ -5,17 +5,6 @@
     
     <div class="notice-header">
       <div class="notice-header-left">
-        <!-- 테스트용 채팅방 생성 버튼 -->
-        <v-btn
-          color="success"
-          variant="outlined"
-          prepend-icon="mdi-chat-plus"
-          @click="createTestChatRoom"
-          :loading="creatingChatRoom"
-          class="test-chat-btn"
-        >
-          테스트용 채팅방 생성
-        </v-btn>
         
         <!-- 테스트용 신고 버튼들 -->
         <div class="test-report-buttons">
@@ -185,14 +174,14 @@ import LoadingScreen from '../../components/common/LoadingScreen.vue';
 import Pagination from '../../components/common/Pagination.vue';
 import ErrorAlert from '../../components/common/ErrorAlert.vue';
 import { formatDateTime } from '../../utils/timeUtils';
-import { useChatStore } from '../../store/chat/chat';
+
 import { useAdminLoginStore } from '../../store/admin/adminLogin';
 
 const router = useRouter();
 const route = useRoute();
 const noticeStore = useNoticeStore();
 const authStore = useAuthStore();
-const chatStore = useChatStore();
+
 const adminLoginStore = useAdminLoginStore();
 
 // 관리자 여부 확인 (두 스토어 모두 확인)
@@ -201,8 +190,7 @@ const isAdmin = computed(() => {
   return userRole === 'ADMIN' || adminLoginStore.isLoggedIn;
 });
 
-// 테스트용 채팅방 생성 상태
-const creatingChatRoom = ref(false);
+
 
 // 사용자 프로필 모달 상태
 const showUserProfileModal = ref(false);
@@ -241,37 +229,7 @@ const goToCreateNotice = () => {
   router.push('/notice/create');
 };
 
-// 테스트용 채팅방 생성
-const createTestChatRoom = async () => {
-  try {
-    creatingChatRoom.value = true;
-    
-    // 실제 사용자 ID 사용
-    const myId = authStore.user?.id;
-    if (!myId) {
-      alert('로그인이 필요합니다.');
-      router.push('/login');
-      return;
-    }
-    
-    // 테스트용 상대방 ID (고정) - 실제 서비스에서는 다른 사용자 ID를 사용해야 함
-    const inviteeId = '5a1af30b-aec4-425d-90ec-7218532a7720';
-    
-    console.log('테스트용 채팅방 생성 시작:', { myId, inviteeId });
-    
-    const roomId = await chatStore.createRoom(myId, inviteeId);
-    console.log('채팅방 생성 성공, roomId:', roomId);
-    
-    // 생성된 roomId를 URL에 포함시켜서 정확한 채팅방을 자동 선택하도록 함
-    router.push(`/chat?autoSelect=true&roomId=${roomId}`);
-    
-  } catch (error) {
-    console.error('테스트용 채팅방 생성 실패:', error);
-    alert('채팅방 생성에 실패했습니다: ' + (error.message || '알 수 없는 오류'));
-  } finally {
-    creatingChatRoom.value = false;
-  }
-};
+
 
 // 테스트용 사용자 데이터
 const testUser = ref({
@@ -314,29 +272,9 @@ const handleReportError = (error) => {
 
 // 프로필에서 채팅 시작
 const handleStartChat = async (userId) => {
-  try {
-    const myId = authStore.user?.id;
-    if (!myId) {
-      alert('로그인이 필요합니다.');
-      router.push('/login');
-      return;
-    }
-    
-    console.log('프로필에서 채팅 시작:', { myId, userId });
-    
-    const roomId = await chatStore.createRoom(myId, userId);
-    console.log('채팅방 생성 성공, roomId:', roomId);
-    
-    // 프로필 모달 닫기
-    showUserProfileModal.value = false;
-    
-    // 채팅 페이지로 이동
-    router.push(`/chat?autoSelect=true&roomId=${roomId}`);
-    
-  } catch (error) {
-    console.error('채팅방 생성 실패:', error);
-    alert('채팅방 생성에 실패했습니다: ' + (error.message || '알 수 없는 오류'));
-  }
+  // 여기서는 테스트용이므로 실제 채팅 로직은 강의 상세 페이지에서 구현
+  console.log('테스트용 채팅 시작:', userId);
+  showUserProfileModal.value = false;
 };
 
 // 프로필에서 신고하기
@@ -411,17 +349,7 @@ watch(() => route.path, async (newPath) => {
   gap: 20px;
 }
 
-.test-chat-btn {
-  font-size: 0.9rem;
-  padding: 8px 12px;
-  border-radius: 8px;
-  border-color: var(--color-success);
-  color: var(--color-success);
-}
 
-.test-chat-btn:hover {
-  background-color: rgba(40, 167, 69, 0.1);
-}
 
 .test-report-buttons {
   display: flex;
@@ -602,9 +530,7 @@ watch(() => route.path, async (newPath) => {
     gap: 10px;
   }
 
-  .test-chat-btn {
-    width: 100%;
-  }
+
 
   .notice-title {
     font-size: 1.5rem;

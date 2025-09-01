@@ -717,15 +717,12 @@
       @error="handleReportError"
     />
 
-    <!-- 프로필 액션 모달 -->
-    <ProfileActionModal
-      :show="profileActionData.show"
-      :user-id="profileActionData.userId"
-      :user-name="profileActionData.userName"
-      :position="profileActionData.position"
-      @close="closeProfileActionModal"
-      @chat="handleProfileChat"
-      @report="handleProfileReport"
+    <!-- 사용자 프로필 모달 -->
+    <UserProfileModal
+      v-model="showUserProfileModal"
+      :user="userProfileData"
+      @chat="handleUserProfileChat"
+      @report="handleUserProfileReport"
     />
 
 
@@ -736,21 +733,25 @@
 import Header from '@/components/Header.vue';
 import DeleteConfirmModal from '@/components/common/DeleteConfirmModal.vue';
 import ReportModal from '@/components/common/ReportModal.vue';
-import ProfileActionModal from '@/components/common/ProfileActionModal.vue';
+import UserProfileModal from '@/components/common/UserProfileModal.vue';
 
 import { lectureService } from '@/store/lecture/lectureService';
 import { useCartStore } from '@/store/cart/cart';
+import { useChatStore } from '@/store/chat/chat';
+import { useAuthStore } from '@/store/auth/auth';
 import { getUserIdFromToken } from '@/utils/api';
 import { reportService } from '@/services/report/reportService';
 
 
 export default {
   name: 'LectureDetail',
-  components: { Header, DeleteConfirmModal, ReportModal, ProfileActionModal },
+  components: { Header, DeleteConfirmModal, ReportModal, UserProfileModal },
   data() {
     return {
       ready: false, // 초기화 완료 상태
       cartStore: null, // 장바구니 스토어 인스턴스
+      chatStore: null, // 채팅 스토어 인스턴스
+      authStore: null, // 인증 스토어 인스턴스
       activeTab: 'reviews',
       lecture: null,
       showShareModal: false,
@@ -771,12 +772,13 @@ export default {
         targetId: '',
         targetName: ''
       },
-      showProfileActionModal: false,
-      profileActionData: {
-        show: false,
-        userId: '',
-        userName: '',
-        position: { x: 0, y: 0 }
+      showUserProfileModal: false,
+      userProfileData: {
+        id: '',
+        nickname: '',
+        email: '',
+        profileImage: '',
+        joinDate: ''
       },
       deleteConfirmData: {},
       notificationData: {},
@@ -1173,7 +1175,11 @@ export default {
               image: lectureData.thumbUrl || '/src/assets/images/smu_mascort1.jpg', // 썸네일 URL
               teacher: lectureData.name, // 강사명
               // 강사 프로필 이미지 URL 추가
-              submittedByProfile: lectureData.submittedByProfile
+              submittedByProfile: lectureData.submittedByProfile,
+              // 강사 가입일 추가
+              submittedJoinedAt: lectureData.submittedJoinedAt,
+              // 강사 이메일 추가
+              submittedByEmail: lectureData.submittedByEmail
             };
             
 
@@ -1932,55 +1938,155 @@ export default {
           return;
         }
 
-        // 클릭 위치 계산
-        const rect = event.target.getBoundingClientRect();
-        const position = {
-          x: rect.left + rect.width / 2,
-          y: rect.bottom + 10
+        // API 응답에서 해당 사용자 정보 찾기
+        let userInfo = null;
+        let profileImageUrl = '';
+        let joinDate = '';
+
+        // 강사 정보인 경우
+        if (userId === this.lecture.instructor.id) {
+          // API 응답에서 강사 정보를 직접 가져옴
+          const lectureData = this.lecture;
+          userInfo = {
+            id: userId,
+            nickname: userName,
+            email: lectureData.submittedByEmail || `${userName}@example.com`,
+            profileImage: lectureData.submittedByProfile || '',
+            joinDate: this.formatDate(lectureData.submittedJoinedAt) || '정보 없음'
+          };
+        }
+        // 리뷰 작성자인 경우
+        else {
+          const reviewer = this.lecture.reviews.find(review => review.reviewerId === userId);
+          if (reviewer) {
+            userInfo = {
+              id: userId,
+              nickname: userName,
+              email: reviewer.reviewerEmail || `${userName}@example.com`,
+              profileImage: reviewer.profileUrl || '',
+              joinDate: this.formatDate(reviewer.reviewerJoinedAt) || '정보 없음'
+            };
+          }
+          // Q&A 작성자인 경우
+          else {
+            const qaAuthor = this.lecture.qa.find(qa => 
+              qa.questionerUUID === userId || qa.answererUUID === userId
+            );
+            if (qaAuthor) {
+              const isQuestioner = qaAuthor.questionerUUID === userId;
+              userInfo = {
+                id: userId,
+                nickname: userName,
+                email: isQuestioner ? qaAuthor.parentEmail || `${userName}@example.com` : qaAuthor.answerEmail || `${userName}@example.com`,
+                profileImage: isQuestioner ? qaAuthor.parentProfileUrl || '' : qaAuthor.answerProfileUrl || '',
+                joinDate: this.formatDate(isQuestioner ? qaAuthor.parentJoinedAt : qaAuthor.answerJoinedAt) || '정보 없음'
+              };
+            }
+          }
+        }
+
+        // 기본값 설정 (사용자 정보를 찾지 못한 경우)
+        if (!userInfo) {
+          userInfo = {
+            id: userId,
+            nickname: userName,
+            email: `${userName}@example.com`,
+            profileImage: '',
+            joinDate: '정보 없음'
+          };
+        }
+
+        // 사용자 프로필 데이터 설정
+        this.userProfileData = {
+          id: userInfo.id,
+          nickname: userInfo.nickname,
+          email: userInfo.email,
+          profileImage: userInfo.profileImage,
+          joinDate: userInfo.joinDate
         };
 
-        // 모달 데이터 설정
-        this.profileActionData = {
-          show: true,
-          userId: userId,
-          userName: userName,
-          position: position
-        };
+        // 사용자 프로필 모달 표시
+        this.showUserProfileModal = true;
       },
 
-      // 프로필 액션 모달 닫기
-      closeProfileActionModal() {
-        this.profileActionData.show = false;
+      // 사용자 프로필 채팅 처리
+      async handleUserProfileChat(userId) {
+        try {
+          // 로그인 확인
+          if (!this.authStore.user?.id) {
+            this.showNotification({
+              title: '로그인 필요',
+              icon: '🔒',
+              message: '채팅 기능을 사용하려면 로그인이 필요합니다.',
+              submessage: '로그인 페이지로 이동합니다.'
+            });
+            setTimeout(() => {
+              this.$router.push('/login');
+            }, 1500);
+            return;
+          }
+
+          // 자기 자신과는 채팅할 수 없음
+          if (this.authStore.user.id === userId) {
+            this.showNotification({
+              title: '채팅 불가',
+              icon: '❌',
+              message: '자기 자신과는 채팅할 수 없습니다.',
+              submessage: ''
+            });
+            this.showUserProfileModal = false;
+            return;
+          }
+
+          const myId = this.authStore.user.id;
+          console.log('채팅방 생성 시작:', { myId, userId });
+
+          // 채팅방 생성
+          const roomId = await this.chatStore.createRoom(myId, userId);
+          console.log('채팅방 생성 성공, roomId:', roomId);
+
+          // 확인 모달 표시 (확인/취소 버튼)
+          this.showConfirm({
+            title: '채팅 시작',
+            icon: '💬',
+            message: `${this.userProfileData.nickname}님과의 채팅방이 생성되었습니다.`,
+            submessage: '채팅방으로 이동하겠습니까?',
+            confirmText: '확인',
+            callback: () => {
+              this.$router.push(`/chat?autoSelect=true&roomId=${roomId}`);
+            }
+          });
+
+          // 프로필 모달 닫기
+          this.showUserProfileModal = false;
+
+        } catch (error) {
+          console.error('채팅방 생성 실패:', error);
+          this.showNotification({
+            title: '채팅 실패',
+            icon: '❌',
+            message: '채팅방 생성에 실패했습니다.',
+            submessage: error.message || '알 수 없는 오류가 발생했습니다.'
+          });
+          this.showUserProfileModal = false;
+        }
       },
 
-      // 프로필 채팅 처리
-      handleProfileChat(data) {
-        // TODO: 채팅 API 연동
-        console.log('채팅 시작:', data);
-        this.showNotification({
-          title: '채팅 시작',
-          icon: '💬',
-          message: `${data.userName}님과의 채팅을 시작합니다.`,
-          submessage: '채팅 기능은 준비 중입니다.'
-        });
-      },
-
-      // 프로필 신고 처리
-      async handleProfileReport(data) {
+      // 사용자 프로필 신고 처리
+      async handleUserProfileReport(userId) {
         try {
           // 중복 신고 확인
-          const response = await reportService.checkReport(data.userId);
+          const response = await reportService.checkReport(userId);
 
           if (response.success && response.data) {
             // 중복 신고인 경우 경고 메시지 표시
             this.showError('이미 신고한 사용자입니다. 신고가 처리된 이후에 다시 시도해주세요.');
           } else {
             // 중복 신고가 아닌 경우 신고 모달 표시
-            // ReportModal의 props를 동적으로 설정
             this.reportModalData = {
               reportType: 'USER',
-              targetId: data.userId,
-              targetName: data.userName
+              targetId: userId,
+              targetName: this.userProfileData.nickname
             };
             this.showReportModal = true;
           }
@@ -1989,11 +2095,12 @@ export default {
           // 오류 발생 시에도 신고 모달을 열어서 사용자가 시도할 수 있도록 함
           this.reportModalData = {
             reportType: 'USER',
-            targetId: data.userId,
-            targetName: data.userName
+            targetId: userId,
+            targetName: this.userProfileData.nickname
           };
           this.showReportModal = true;
         }
+        this.showUserProfileModal = false;
       },
 
       
@@ -2575,8 +2682,10 @@ export default {
      
   },
       async mounted() {
-      // 장바구니 스토어 초기화
+      // 스토어 초기화
       this.cartStore = useCartStore();
+      this.chatStore = useChatStore();
+      this.authStore = useAuthStore();
       
       // 현재 사용자 ID 가져오기
       this.currentUserId = getUserIdFromToken();
