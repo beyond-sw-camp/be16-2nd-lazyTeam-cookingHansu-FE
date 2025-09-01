@@ -560,12 +560,7 @@
         </div>
         <div class="modal-footer">
           <button class="cancel-btn" @click="showQAModal = false">취소</button>
-          <button class="submit-btn" @click="submitQuestion">
-            {{ 
-              isEditingQA ? '질문 수정' : 
-              (newQuestion.parentId ? '답변 등록' : '질문 등록') 
-            }}
-          </button>
+          <button class="submit-btn" @click="submitQuestion">{{ isEditingQA ? '질문 수정' : '질문 등록' }}</button>
         </div>
       </div>
     </div>
@@ -758,11 +753,8 @@ import { useCartStore } from '@/store/cart/cart';
 import { useChatStore } from '@/store/chat/chat';
 import { useAuthStore } from '@/store/auth/auth';
 import { getUserIdFromToken } from '@/utils/api';
-<<<<<<< HEAD
 import { reportService } from '@/services/report/reportService';
-=======
 import { lectureProgressService } from '@/services/lecture/lectureProgressService';
->>>>>>> cb7ae95f1a1197c3fc6b37237164afb57b122f30
 
 
 export default {
@@ -1203,15 +1195,12 @@ export default {
               teacher: lectureData.name, // 강사명
               // 강사 프로필 이미지 URL 추가
               submittedByProfile: lectureData.submittedByProfile,
-<<<<<<< HEAD
               // 강사 가입일 추가
               submittedJoinedAt: lectureData.submittedJoinedAt,
               // 강사 이메일 추가
-              submittedByEmail: lectureData.submittedByEmail
-=======
+              submittedByEmail: lectureData.submittedByEmail,
               // 강의 수강률 추가
               progressPercent: lectureData.progressPercent
->>>>>>> cb7ae95f1a1197c3fc6b37237164afb57b122f30
             };
             
 
@@ -2790,9 +2779,7 @@ export default {
      
   },
       async mounted() {
-<<<<<<< HEAD
       // 스토어 초기화
-=======
       const urlParams = new URLSearchParams(window.location.search);
       const tab = urlParams.get('tab');
   
@@ -2802,7 +2789,6 @@ export default {
         this.activeTab = 'reviews';
     }  
       // 장바구니 스토어 초기화
->>>>>>> cb7ae95f1a1197c3fc6b37237164afb57b122f30
       this.cartStore = useCartStore();
       this.chatStore = useChatStore();
       this.authStore = useAuthStore();
