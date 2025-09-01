@@ -83,6 +83,7 @@
                    class="preview-video" 
                    controls
                    @ended="onVideoEnded"
+                   @timeupdate="onVideoTimeUpdate"
                  >
                    <source :src="previewVideoUrl" type="video/mp4">
                    브라우저가 비디오를 지원하지 않습니다.
@@ -348,6 +349,18 @@
            >
              장바구니에서 제거
            </button>
+
+           <!-- 강의 수강률 표시 (구매자에게만 표시) -->
+           <div v-if="isPurchaser && lecture.progressPercent !== null" class="progress-section">
+             <div class="progress-info">
+               <span class="progress-label">학습률</span>
+               <span class="progress-percent">{{ lecture.progressPercent }}%</span>
+             </div>
+             <div class="progress-bar">
+               <div class="progress-fill" :style="{ width: lecture.progressPercent + '%' }"></div>
+             </div>
+           </div>
+
           <div class="action-buttons">
             <div class="share-section" @click="showShareModal = true">
               <span class="share-icon">📤</span>
@@ -723,6 +736,7 @@ import DeleteConfirmModal from '@/components/common/DeleteConfirmModal.vue';
 import { lectureService } from '@/store/lecture/lectureService';
 import { useCartStore } from '@/store/cart/cart';
 import { getUserIdFromToken } from '@/utils/api';
+import { lectureProgressService } from '@/services/lecture/lectureProgressService';
 
 
 export default {
@@ -786,7 +800,12 @@ export default {
                // 비디오 썸네일 관련
         videoThumb: null,   // 생성된 영상 썸네일
         // 좋아요 상태 (실제로는 API에서 확인)
-        isLiked: false
+        isLiked: false,
+        // 비디오 진행도 추적 관련
+        progressSaveTimer: null,
+        lastSavedProgress: 0,
+        progressSaveInterval: 5000, // 5초마다 자동 저장
+        isProgressSaving: false
     };
   },
   computed: {
@@ -1141,7 +1160,9 @@ export default {
               image: lectureData.thumbUrl || '/src/assets/images/smu_mascort1.jpg', // 썸네일 URL
               teacher: lectureData.name, // 강사명
               // 강사 프로필 이미지 URL 추가
-              submittedByProfile: lectureData.submittedByProfile
+              submittedByProfile: lectureData.submittedByProfile,
+              // 강의 수강률 추가
+              progressPercent: lectureData.progressPercent
             };
             
 
@@ -1270,7 +1291,9 @@ export default {
            duration: durationText,
            isPreview: video.preview || false,
            videoUrl: video.videoUrl,
-           sequence: video.sequence || index + 1
+           sequence: video.sequence || index + 1,
+           videoId: video.videoId || null,
+           durationSeconds: video.duration || 0
          };
       });
     },
@@ -1466,6 +1489,9 @@ export default {
 
      // 비디오 종료 시 처리
      onVideoEnded() {
+       // 현재 재생 중인 강의의 진행도 저장
+       this.saveVideoProgress();
+       
        // 다음 강의가 있는지 확인
        if (this.activeLessonIndex >= 0 && this.activeLessonIndex < this.lecture.lessons.length - 1) {
          const nextIndex = this.activeLessonIndex + 1;
@@ -1492,6 +1518,72 @@ export default {
        this.previewVideoUrl = '';
        this.activeLessonIndex = -1;
      },
+
+     // 비디오 시간 업데이트 시 처리
+     onVideoTimeUpdate() {
+       if (this.$refs.previewVideo) {
+         const currentTime = this.$refs.previewVideo.currentTime;
+         this.setupProgressSaveTimer(currentTime);
+       }
+     },
+
+     // 진행도 저장 타이머 설정
+     setupProgressSaveTimer(currentTime) {
+       // 이전 타이머가 있으면 제거
+       if (this.progressSaveTimer) {
+         clearTimeout(this.progressSaveTimer);
+       }
+
+       // 새로운 타이머 설정
+       this.progressSaveTimer = setTimeout(() => {
+         this.saveVideoProgress(currentTime);
+       }, this.progressSaveInterval);
+     },
+
+     // 비디오 진행도 저장
+     async saveVideoProgress(currentTime = null) {
+       // 조건 확인: 로그인된 사용자, 구매자, 강의 작성자가 아닌 경우
+       if (!this.currentUserId || !this.isPurchaser || this.isAuthor) {
+         return;
+       }
+
+       const currentLesson = this.lecture.lessons[this.activeLessonIndex];
+       if (!currentLesson) {
+         return;
+       }
+
+       // 현재 시간이 없으면 비디오에서 가져오기
+       if (currentTime === null && this.$refs.previewVideo) {
+         currentTime = this.$refs.previewVideo.currentTime;
+       }
+
+       // 비디오가 끝까지 재생되었는지 확인
+       if (currentTime >= currentLesson.durationSeconds) {
+         try {
+           // API 호출
+           await lectureProgressService.saveVideoProgress(currentLesson.videoId, currentLesson.durationSeconds);
+           
+           // 진행도 저장 후 강의 정보 새로고침
+           await this.refreshLectureProgress();
+           
+           console.log('비디오 진행도 저장 완료:', currentLesson.videoId);
+         } catch (error) {
+           console.error('비디오 진행도 저장 실패:', error);
+         }
+       }
+     },
+
+     // 강의 진행도 새로고침
+     async refreshLectureProgress() {
+       try {
+         const response = await lectureService.getLectureDetail(this.lecture.id);
+         if (response.success) {
+           this.lecture.progressPercent = response.data.progressPercent;
+         }
+       } catch (error) {
+         console.error('강의 진행도 새로고침 실패:', error);
+       }
+     },
      
 
      
@@ -1501,6 +1593,11 @@ export default {
          // URL이 유효한지 확인
          try {
            const url = new URL(lesson.videoUrl);
+           
+           // 이전 진행도 저장 타이머 정리
+           if (this.progressSaveTimer) {
+             clearTimeout(this.progressSaveTimer);
+           }
            
            // 메인 비디오 영역에서 재생
            this.previewVideoUrl = lesson.videoUrl;
@@ -2468,6 +2565,13 @@ export default {
       if (typeof Kakao !== 'undefined' && !Kakao.isInitialized()) {
         Kakao.init("3a1a982f8ee6ddbc64171c2f80850243");
       }
+    },
+
+    // 컴포넌트 제거 시 타이머 정리
+    beforeDestroy() {
+      if (this.progressSaveTimer) {
+        clearTimeout(this.progressSaveTimer);
+      }
     }
 };
 </script>
@@ -3281,6 +3385,49 @@ export default {
   align-items: center;
   gap: 8px;
   margin-top: 16px;
+}
+
+/* 강의 수강률 스타일 */
+.progress-section {
+  margin: 16px 0;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.progress-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #495057;
+}
+
+.progress-percent {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ff7a00;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ff7a00, #ff6b35);
+  border-radius: 4px;
+  transition: width 0.3s ease;
 }
 
 .share-section {
