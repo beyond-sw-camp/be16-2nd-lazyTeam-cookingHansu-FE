@@ -1,16 +1,15 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useNotificationStore } from '@/store/notification/notification.js'
+import { useAuthStore } from '@/store/auth/auth.js'
 
 export function useNotifications() {
   const notificationStore = useNotificationStore()
+  const authStore = useAuthStore()
   const isConnected = ref(false)
   
-    // 임시 사용자 ID
+  // 실제 사용자 ID 반환
   const getCurrentUserId = () => {
-    // return useAuthStore().user?.id
-    
-    // 결제 알림 테스트를 위한 사용자 ID
-    return '00000000-0000-0000-0000-000000000000'
+    return authStore.user?.id
   }
 
 
