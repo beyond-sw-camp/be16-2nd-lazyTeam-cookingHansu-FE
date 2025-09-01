@@ -79,6 +79,12 @@
         </div>
       </div>
     </div>
+
+    <!-- 승인 알림 모달 -->
+    <ApprovalNotificationModal 
+      :is-visible="showApprovalModal"
+      @close="closeApprovalModal"
+    />
   </div>
 </template>
 
@@ -86,18 +92,17 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useNotificationStore } from '@/store/notification/notification.js'
+import ApprovalNotificationModal from '@/components/notification/ApprovalNotificationModal.vue'
 import { formatDistanceToNow } from 'date-fns'
 import { ko } from 'date-fns/locale'
 
 const router = useRouter()
 const notificationStore = useNotificationStore()
 
-// 사용자 ID (전역 변수로 정의)
-const userId = '00000000-0000-0000-0000-000000000000' // 결제 테스트 사용자 ID
-
 // 반응형 데이터
 const activeFilter = ref('ALL')
 const loading = ref(false)
+const showApprovalModal = ref(false)
 
 // computed로 hasMore 상태를 store에서 가져오기
 const hasMore = computed(() => notificationStore.hasMore)
@@ -176,7 +181,7 @@ const formatTime = (timestamp) => {
 }
 
 const handleNotificationClick = async (notification) => {
-  // 알림을 읽음으로 표시
+  // 읽음 처리
   try {
     await notificationStore.markAsRead(notification.id)
   } catch (error) {
@@ -186,21 +191,31 @@ const handleNotificationClick = async (notification) => {
   // 알림 타입에 따라 해당 페이지로 이동
   switch (notification.targetType) {
     case 'POSTCOMMENT':
-    case 'QNACOMMENT':
     case 'REPLY':
-      // 레시피 상세 페이지로 이동 (relatedId가 있으면 해당 레시피로)
-      if (notification.relatedId) {
-        router.push(`/recipes/${notification.relatedId}`)
+      // 댓글/답글 알림의 경우 게시글 상세 페이지로 이동
+      if (notification.targetId) {
+        router.push(`/recipes/${notification.targetId}`)
       } else {
         router.push('/recipes')
+      }
+      break
+    case 'QNACOMMENT':
+      // 강의 상세 페이지로 이동 (targetId가 강의 ID)
+      if (notification.targetId) {
+        router.push(`/lectures/${notification.targetId}?tab=qa`)
+      } else {
+        router.push('/lectures')
       }
       break
     case 'CHAT':
       router.push('/chat')
       break
     case 'PAYMENT':
+      router.push('/mypage?tab=lectures')
+      break
     case 'APPROVAL':
-      router.push('/mypage')
+      // 승인 알림 모달 표시
+      showApprovalModal.value = true
       break
     case 'NOTICE':
       if (notification.relatedId) {
@@ -210,17 +225,19 @@ const handleNotificationClick = async (notification) => {
       }
       break
     default:
-      console.log('알림 클릭 완료 - 페이지 이동 없음')
       break
   }
 }
 
+// 승인 모달 닫기
+const closeApprovalModal = () => {
+  showApprovalModal.value = false
+}
+
 // 알림 삭제 처리
 const handleDeleteNotification = async (notificationId) => {
-  console.log('🗑️ 삭제 버튼 클릭됨, ID:', notificationId)
   try {
     await notificationStore.deleteNotification(notificationId)
-    console.log('✅ 알림 삭제 완료:', notificationId)
   } catch (error) {
     console.error('❌ 알림 삭제 실패:', error)
   }

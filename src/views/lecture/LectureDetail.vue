@@ -547,7 +547,12 @@
         </div>
         <div class="modal-footer">
           <button class="cancel-btn" @click="showQAModal = false">취소</button>
-          <button class="submit-btn" @click="submitQuestion">{{ isEditingQA ? '질문 수정' : '질문 등록' }}</button>
+          <button class="submit-btn" @click="submitQuestion">
+            {{ 
+              isEditingQA ? '질문 수정' : 
+              (newQuestion.parentId ? '답변 등록' : '질문 등록') 
+            }}
+          </button>
         </div>
       </div>
     </div>
@@ -2422,6 +2427,14 @@ export default {
      
   },
       async mounted() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const tab = urlParams.get('tab');
+  
+      if (tab === 'qa') {
+        this.activeTab = 'qa';
+      } else if (tab === 'reviews') {
+        this.activeTab = 'reviews';
+    }  
       // 장바구니 스토어 초기화
       this.cartStore = useCartStore();
       

@@ -33,26 +33,29 @@
         </div>
       </div>
     </div>
+    
+
   </div>
 </template>
 
 <script>
 import Header from '@/components/Header.vue'
+
 import { useCartStore } from '@/store/cart/cart'
 
 
 export default {
   name: 'PaymentSuccess',
-  components: {
-    Header
-  },
+      components: {
+      Header
+    },
   data() {
     return {
       cartStore: null, // 장바구니 스토어 인스턴스
       orderId: '',
       amount: 0,
       paymentDate: '',
-
+      
     }
   },
   mounted() {
@@ -111,21 +114,12 @@ export default {
           const result = await response.json();
           console.log('결제 승인 처리 완료:', result);
           
+
+          
           // 결제 성공 시 선택된 아이템만 장바구니에서 제거
           await this.removeSelectedItemsFromCart()
           
-          // 결제 완료 후 강의 상태 업데이트를 위해 페이지 새로고침
-          setTimeout(() => {
-            // 결제 완료 후 강의 상세 페이지로 돌아가기 (paymentCompleted 파라미터 추가)
-            const selectedItems = JSON.parse(localStorage.getItem('selectedItemsForPayment') || '[]');
-            if (selectedItems.length > 0) {
-              // 첫 번째 강의의 상세 페이지로 이동
-              window.location.href = `/lecture/${selectedItems[0]}?paymentCompleted=true`;
-            } else {
-              // 강의 목록으로 이동
-              window.location.href = '/lectures';
-            }
-          }, 2000);
+          
         }
       } catch (error) {
         console.error('결제 승인 요청 중 오류:', error)
@@ -190,7 +184,9 @@ export default {
 
     goToLectures() {
       this.$router.push('/lectures')
-    }
+    },
+
+
   }
 }
 </script>

@@ -86,7 +86,6 @@ import ProfileEditModal from '@/components/mypage/modal/ProfileEditModal.vue';
 import WithdrawConfirmModal from '@/components/mypage/modal/WithdrawConfirmModal.vue';
 import { apiGet } from '@/utils/api';
 
-
 export default {
   name: 'MyPage',
   components: {
@@ -101,7 +100,7 @@ export default {
   },
   data() {
     return {
-      currentTab: this.getInitialTab(),
+      currentTab: 'posts',
       showProfileModal: false,
       showWithdrawModal: false,
       isSeller: false,
@@ -109,7 +108,7 @@ export default {
         nickname: '',
         email: '',
         info: '',
-        profileImageUrl: null, // ✅ 키 맞춤
+        profileImageUrl: null,
         userType: ''
       },
       tabs: [
@@ -125,7 +124,11 @@ export default {
   },
   async mounted() {
     await this.fetchUserProfile();
+    this.updateUserRoleFromProfile();
     this.checkSellerRole();
+    
+         // URL 파라미터에서 탭 설정
+     this.currentTab = this.getInitialTab();
   },
   watch: {
     currentTab(newTab) {
@@ -149,18 +152,17 @@ export default {
     document.body.style.width = 'auto';
   },
   methods: {
-    getInitialTab() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const tab = urlParams.get('tab');
-      const validTabs = ['posts', 'lectures', 'sold-lectures', 'bookmarks', 'likes'];
-
-      // 판매자가 아닌데 sold-lectures 탭을 요청한 경우 posts로 리다이렉트
-      if (tab === 'sold-lectures' && !this.isSeller) {
-        return 'posts';
-      }
-
-      return tab && validTabs.includes(tab) ? tab : 'posts';
-    },
+      getInitialTab() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tab = urlParams.get('tab');
+    const validTabs = ['posts', 'lectures', 'sold-lectures', 'bookmarks', 'likes'];
+    
+    if (tab === 'sold-lectures' && !this.isSeller) {
+      return 'posts';
+    }
+    
+    return tab && validTabs.includes(tab) ? tab : 'posts';
+  },
     updateUrlWithTab(tab) {
       const url = new URL(window.location);
       url.searchParams.set('tab', tab);
@@ -202,46 +204,41 @@ export default {
         message: '회원탈퇴에 실패했습니다: ' + errorMessage
       });
     },
-    
-    // 판매자 역할 확인
-    checkSellerRole() {
-      try {
-        const token = localStorage.getItem('accessToken');
-        console.log('=== 판매자 역할 확인 시작 ===');
-        console.log('토큰:', token);
-        
-        if (token) {
-          const parts = token.split('.');
-          console.log('토큰 파트 개수:', parts.length);
-          
-          if (parts.length >= 2) {
-            const payload = JSON.parse(atob(parts[1]));
-            console.log('토큰 페이로드:', payload);
-            console.log('페이로드 키들:', Object.keys(payload));
-            
-            // role 필드 확인
-            const userRole = payload.role;
-            console.log('사용자 역할:', userRole);
-            console.log('역할 타입:', typeof userRole);
-            
-            this.isSeller = ['CHEF', 'OWNER'].includes(userRole);
-            console.log('판매자 여부:', this.isSeller);
-            console.log('=== 판매자 역할 확인 완료 ===');
-          } else {
-            console.error('토큰 형식이 올바르지 않습니다.');
-            this.isSeller = false;
-          }
-        } else {
-          console.log('토큰이 없습니다.');
-          this.isSeller = false;
-        }
-      } catch (error) {
-        console.error('토큰 파싱 오류:', error);
-        console.error('오류 상세:', error.message);
-        this.isSeller = false;
-      }
-
-    }
+         checkSellerRole() {
+       try {
+         const token = localStorage.getItem('accessToken');
+         const userRole = localStorage.getItem('userRole');
+         
+         if (token) {
+           const parts = token.split('.');
+           
+           if (parts.length >= 2) {
+             const payload = JSON.parse(atob(parts[1]));
+             const tokenRole = payload.role;
+             
+             this.isSeller = ['CHEF', 'OWNER'].includes(tokenRole) || ['CHEF', 'OWNER'].includes(userRole);
+           } else {
+             console.error('토큰 형식이 올바르지 않습니다.');
+             this.isSeller = false;
+           }
+         } else {
+           this.isSeller = false;
+         }
+       } catch (error) {
+         console.error('토큰 파싱 오류:', error);
+         this.isSeller = false;
+       }
+     },
+         updateUserRoleFromProfile() {
+       try {
+         if (this.userProfile.chef && this.userProfile.chef.approvalStatus === 'APPROVED') {
+           localStorage.setItem('userRole', 'CHEF');
+         } else if (this.userProfile.owner && this.userProfile.owner.approvalStatus === 'APPROVED') {
+           localStorage.setItem('userRole', 'OWNER');
+         }
+       } catch (error) {
+       }
+     }
   }
 };
 </script>
@@ -396,193 +393,6 @@ export default {
   padding: 40px 20px;
 }
 
-/* 모달 스타일 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-}
-
-.modal-content {
-  background: white;
-  border-radius: 16px;
-  width: 100%;
-  max-width: 500px;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 24px 24px 0 24px;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 16px;
-}
-
-.modal-header h3 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  color: #333;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 24px;
-  color: #999;
-  cursor: pointer;
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  transition: all 0.2s;
-}
-
-.close-btn:hover {
-  background: #f5f5f5;
-  color: #666;
-}
-
-.modal-body {
-  padding: 24px;
-}
-
-.form-group {
-  margin-bottom: 24px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 600;
-  color: #333;
-  font-size: 14px;
-}
-
-.form-group input,
-.form-group textarea {
-  width: 100%;
-  padding: 12px 16px;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  font-size: 14px;
-  transition: all 0.2s;
-  box-sizing: border-box;
-}
-
-.form-group input:focus,
-.form-group textarea:focus {
-  outline: none;
-  border-color: #ff7a00;
-  box-shadow: 0 0 0 3px rgba(255, 122, 0, 0.1);
-}
-
-.form-group input:disabled {
-  background: #f5f5f5;
-  color: #999;
-  cursor: not-allowed;
-}
-
-.disabled-hint {
-  display: block;
-  margin-top: 4px;
-  font-size: 12px;
-  color: #999;
-}
-
-.char-count {
-  display: block;
-  text-align: right;
-  margin-top: 4px;
-  font-size: 12px;
-  color: #999;
-}
-
-.modal-footer {
-  display: flex;
-  gap: 12px;
-  padding: 24px;
-  border-top: 1px solid #eee;
-}
-
-.cancel-btn,
-.save-btn {
-  flex: 1;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-  font-size: 14px;
-}
-
-.cancel-btn {
-  background: #f5f5f5;
-  color: #666;
-}
-
-.cancel-btn:hover {
-  background: #e0e0e0;
-}
-
-.save-btn {
-  background: #ff7a00;
-  color: white;
-}
-
-.save-btn:hover:not(:disabled) {
-  background: #e66a00;
-}
-
-.save-btn:disabled {
-  background: #ccc;
-  cursor: not-allowed;
-}
-
-@media (max-width: 768px) {
-  .profile-content {
-    flex-direction: column;
-    gap: 20px;
-    text-align: center;
-  }
-  
-  .profile-actions {
-    justify-content: center;
-  }
-  
-  .tab-button {
-    padding: 16px 20px;
-    font-size: 14px;
-  }
-  
-  .modal-content {
-    margin: 20px;
-    max-height: calc(100vh - 40px);
-  }
-  
-  .modal-header,
-  .modal-body,
-  .modal-footer {
-    padding: 16px;
-  }
-}
-
 .message-snackbar {
   position: fixed;
   bottom: 20px;
@@ -612,6 +422,23 @@ export default {
   to {
     transform: translateX(-50%) translateY(0);
     opacity: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .profile-content {
+    flex-direction: column;
+    gap: 20px;
+    text-align: center;
+  }
+  
+  .profile-actions {
+    justify-content: center;
+  }
+  
+  .tab-button {
+    padding: 16px 20px;
+    font-size: 14px;
   }
 }
 </style>

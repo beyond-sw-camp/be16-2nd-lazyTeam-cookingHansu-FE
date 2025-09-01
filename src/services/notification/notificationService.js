@@ -3,7 +3,7 @@ import { ssePolyfillService } from './ssePolyfillService'
 
 export const notificationService = {
   /**
-   * 읽지 않은 알림 개수 조회 (헤더용 - 가벼운 API)
+* 읽지 않은 알림 개수 조회 (헤더용 - 가벼운 API)
    * @returns {Promise<number>} 읽지 않은 알림 개수
    */
   async getUnreadCount() {
@@ -28,7 +28,45 @@ export const notificationService = {
    * 알림 목록 조회 (커서 기반 페이지네이션)
    * @param {Object} params - 조회 파라미터
    * @param {string} params.cursor - 커서 (첫 페이지는 null)
+   * @param {number} params.size - 페이지 크기 (선택)
+   * @returns {Promise<Object>} 알림 목록 및 페이지네이션 정보
+
+   * 읽지 않은 알림 개수 조회 (헤더용 - 가벼운 API)
+   * @returns {Promise<number>} 읽지 않은 알림 개수
+
+   */
+  async getUnreadCount() {
+    try {
+      const response = await apiGet('/api/notifications/unread/count')
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const result = await response.json()
+      
+      // 응답 로깅 추가
+      console.log('🔍 알림 API 응답:', {
+        status: response.status,
+        result: result,
+        data: result.data,
+        dataLength: result.data ? result.data.length : 0
+      });
+      
+      // 백엔드 응답 구조에 맞게 수정
+      return result.data || 0
+    } catch (error) {
+      console.error('읽지 않은 알림 개수 조회 실패:', error)
+      return 0
+    }
+  },
+
+  /**
+   * 알림 목록 조회 (커서 기반 페이지네이션)
+   * @param {Object} params - 조회 파라미터
+   * @param {string} params.cursor - 커서 (첫 페이지는 null)
    * @param {number} params.size - 페이지 크기 (기본값: 10)
+   * 
    * @returns {Promise<Object>} 알림 목록 및 커서 정보
    */
   async getNotifications(params = {}) {
@@ -154,6 +192,22 @@ export const notificationService = {
         onError(error)
       }
       return null
+    }
+  },
+
+  /**
+   * SSE Polyfill 구독 시작 (JWT 토큰 포함)
+   * @returns {EventSourcePolyfill} SSE Polyfill 연결 객체
+   */
+  subscribeToNotifications() {
+    try {
+      // SSE Polyfill을 사용하여 JWT 토큰을 헤더에 포함
+      return ssePolyfillService.createAuthenticatedEventSource(
+        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/notifications/subscribe`
+      )
+    } catch (error) {
+      console.error('SSE 구독 시작 실패:', error)
+      throw error
     }
   }
 }

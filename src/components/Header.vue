@@ -436,8 +436,16 @@ watch(isLoggedIn, async (newValue) => {
         console.error('🔍 Header: 로그인 후 읽지 않은 알림 개수, 장바구니 정보 조회 실패:', error);
       }
     }
+    // 일반 사용자인 경우 알림 목록 가져오고 SSE 연결 시작
+    if (!isAdmin.value) {
+      try {
+        await notificationStore.fetchNotifications();
+      } catch (error) {
+        console.error('🔍 Header: 로그인 후 알림 목록 조회 실패:', error);
+      }
+    }
   } else {
-    // 로그아웃 시 프로필 정보와 장바구니 초기화
+    // 로그아웃 시 프로필 정보와 장바구니 초기화 및 SSE 연결 중지
     profileData.value = {
       nickname: '',
       profileImageUrl: ''
@@ -449,6 +457,26 @@ watch(isLoggedIn, async (newValue) => {
     cartStore.serverCartItems = [];
   }
 })
+
+
+// 관리자 로그인 상태도 감시
+watch(() => adminLoginStore.isLoggedIn, async (newValue, oldValue) => {
+  
+  if (newValue) {
+    await fetchProfileInfo();
+  } else {
+    // 관리자 로그아웃 시 프로필 정보 초기화
+    profileData.value = {
+      nickname: '',
+      profileImageUrl: ''
+    };
+  }
+}, { immediate: true })
+
+// isAdmin 상태 변화 감시 (디버깅용)
+watch(isAdmin, (newValue, oldValue) => {
+  // console.log('isAdmin 상태 변화:', { old: oldValue, new: newValue });
+});
 
 
 // 관리자 로그인 상태도 감시
