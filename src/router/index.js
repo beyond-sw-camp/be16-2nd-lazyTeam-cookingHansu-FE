@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/store/auth/auth';
 import { useAdminLoginStore } from '@/store/admin/adminLogin';
+import { interceptor } from '@/utils/interceptor';
 import AdminLayout from '@/layouts/admin/AdminLayout.vue' 
 import Dashboard from '@/views/admin/Dashboard.vue'
 import LectureApproval from '@/views/admin/LectureApproval.vue'
@@ -187,7 +188,21 @@ const router = createRouter({
   }
 });
 
-// 인증 가드
+// 인증 상태 캐싱
+let authCheckCache = {
+  timestamp: null,
+  isAuthenticated: null,
+  user: null,
+  cacheExpiry: 30 * 1000 // 30초
+};
+
+// 인증 상태 캐시 유효성 검사
+const isAuthCacheValid = () => {
+  if (!authCheckCache.timestamp) return false;
+  return Date.now() - authCheckCache.timestamp < authCheckCache.cacheExpiry;
+};
+
+// 인증 가드 (캐싱 및 디바운싱 적용)
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
   const adminLoginStore = useAdminLoginStore();
@@ -213,15 +228,32 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
-  // 인증 상태 확인 (access token이 있지만 사용자 정보가 없는 경우)
+  // 인증 상태 확인 (캐싱 적용)
   if (authStore.isAuthenticated && !authStore.user) {
-    try {
-      // 사용자 정보가 없는 경우 /user/me 엔드포인트로 최신 정보 조회
-      await authStore.getCurrentUser();
-    } catch (error) {
-      console.error("Auth check failed:", error);
-      // 사용자 정보 조회 실패 시 로그아웃 처리
-      authStore.clearAuth();
+    // 캐시가 유효한 경우 캐시된 데이터 사용
+    if (isAuthCacheValid() && authCheckCache.user) {
+      authStore.setUser(authCheckCache.user);
+    } else {
+      try {
+        // 사용자 정보가 없는 경우 /user/me 엔드포인트로 최신 정보 조회
+        const user = await authStore.getCurrentUser();
+        
+        // 캐시 업데이트
+        authCheckCache = {
+          timestamp: Date.now(),
+          isAuthenticated: true,
+          user: user
+        };
+      } catch (error) {
+        console.error("Auth check failed:", error);
+        // 사용자 정보 조회 실패 시 로그아웃 처리
+        authStore.clearAuth();
+        authCheckCache = {
+          timestamp: null,
+          isAuthenticated: null,
+          user: null
+        };
+      }
     }
   }
 

@@ -277,7 +277,7 @@ export const useNotificationStore = defineStore('notification', {
       }).length;
       
       // 로컬 상태의 읽지 않은 개수 업데이트 (목록 페이지용)
-      // 헤더의 개수는 별도 API로 관리
+      this.unreadCount = unreadCount;
     },
 
     // SSE Polyfill 연결 시작 (중복 구독 방지)
@@ -479,6 +479,32 @@ export const useNotificationStore = defineStore('notification', {
       
       // 메모리 정리: Set 객체 해제
       seenIds.clear();
+    },
+
+    // 공지사항 관련 알림 처리 (관리자가 공지사항 작성/수정/삭제 시)
+    async handleNoticeNotification(noticeData, action = 'create') {
+      try {
+        // 공지사항 알림을 notifications 배열에 추가
+        const notification = {
+          id: `notice_${Date.now()}`,
+          type: 'notice',
+          content: `새로운 공지사항이 ${action === 'create' ? '작성' : action === 'update' ? '수정' : '삭제'}되었습니다: ${noticeData.title || '제목 없음'}`,
+          recipientId: 'all', // 모든 사용자에게
+          createdAt: new Date().toISOString(),
+          isRead: false,
+          noticeId: noticeData.id
+        };
+        
+        // 새 알림 처리
+        this._processNewNotification(notification);
+        
+        // 헤더의 읽지 않은 개수 즉시 업데이트
+        await this.fetchUnreadCount(true);
+        
+        console.log('🔔 공지사항 알림 처리 완료:', notification);
+      } catch (error) {
+        console.warn('공지사항 알림 처리 실패:', error);
+      }
     },
 
     // 로그아웃 시 완전한 정리

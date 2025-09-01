@@ -6,6 +6,7 @@
         :key="item.text"
         link
         @click="navigate(item.route)"
+        :class="{ 'active-menu': isActiveRoute(item.route) }"
       >
         <!-- 아이콘과 컨텐트 같이 -->
         <template v-slot:prepend>
@@ -25,6 +26,10 @@ export default {
   setup() {
     const router = useRouter();
     const navigate = (path) => router.push(path);
+    
+    const isActiveRoute = (route) => {
+      return router.currentRoute.value.path === route;
+    };
 
     const items = [
       {
@@ -60,16 +65,48 @@ export default {
       },
     ];
 
-    return { items, navigate, colors };
+    return { items, navigate, colors, isActiveRoute };
   },
 };
 </script>
 
 
-<style>
+<style scoped>
 .container {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.v-list-item {
+  margin: 4px 8px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.v-list-item:hover {
+  background-color: rgba(25, 118, 210, 0.1);
+  transform: translateX(4px);
+}
+
+.active-menu {
+  background-color: rgba(25, 118, 210, 0.15);
+  color: #1976d2;
+  font-weight: 600;
+}
+
+.active-menu::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background-color: #1976d2;
+  border-radius: 0 2px 2px 0;
+}
+
+.v-navigation-drawer {
+  border-right: 1px solid rgba(0, 0, 0, 0.1);
 }
 </style>

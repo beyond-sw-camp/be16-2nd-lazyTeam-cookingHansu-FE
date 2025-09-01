@@ -180,6 +180,7 @@
   
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
+import { useRouter } from "vue-router";
 import { useLectureApprovalStore } from '@/store/admin/lectureApproval'
 import { useAuthStore } from '@/store/auth/auth'
 import { useAdminLoginStore } from '@/store/admin/adminLogin'
@@ -190,6 +191,7 @@ import ApprovalConfirmModal from "../../components/common/ApprovalConfirmModal.v
 import RejectConfirmModal from "../../components/common/RejectConfirmModal.vue";
 import LoadingScreen from "@/components/common/LoadingScreen.vue";
 
+const router = useRouter();
 const lectureApprovalStore = useLectureApprovalStore()
 const authStore = useAuthStore()
 const adminLoginStore = useAdminLoginStore()
@@ -225,14 +227,40 @@ const paginatedLectures = computed(() => {
 const totalPages = computed(() => Math.ceil(lectureApprovalStore.getWaitingLectures.length / perPage));
 
 // 시간 포맷팅 함수
-const formatDuration = (minutes) => {
-  if (!minutes) return '0분';
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  if (hours > 0) {
-    return mins > 0 ? `${hours}시간 ${mins}분` : `${hours}시간`;
+const formatDuration = (duration) => {
+  if (!duration) return '0초';
+  
+  let totalSeconds;
+  
+  // duration이 1000 이상이면 밀리초, 100 이상이면 초 단위로 판단
+  if (duration >= 1000) {
+    // 밀리초 단위
+    totalSeconds = Math.floor(duration / 1000);
+  } else if (duration >= 100) {
+    // 초 단위 (일반적으로 강의 시간은 초 단위)
+    totalSeconds = duration;
+  } else {
+    // 분 단위
+    totalSeconds = duration * 60;
   }
-  return `${mins}분`;
+  
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  
+  let result = '';
+  
+  if (hours > 0) {
+    result += `${hours}시간 `;
+  }
+  
+  if (minutes > 0 || hours > 0) {
+    result += `${minutes}분 `;
+  }
+  
+  result += `${seconds}초`;
+  
+  return result;
 };
 
 // 승인 다이얼로그 표시
@@ -285,13 +313,8 @@ const rejectLecture = async (reason) => {
 
 // 강의 상세보기
 const viewLectureDetail = (lecture) => {
-  // TODO: 강의 상세 페이지 라우팅 구현
-  // 강의 상세 페이지가 완성되면 아래 주석을 해제하고 라우팅 구현
-  // router.push(`/admin/lecture/${lecture.id}`);
-  
-  console.log('강의 상세보기:', lecture);
-  // 임시로 콘솔에 강의 정보 출력
-  alert(`강의 상세보기 기능은 준비 중입니다.\n강의 ID: ${lecture.id}\n강의명: ${lecture.title}`);
+  // 강의 상세 페이지로 이동
+  router.push(`/lectures/${lecture.id}`);
 };
 
 // 성공 메시지 감시

@@ -509,21 +509,25 @@ watch(userRole, async (newRole) => {
 onMounted(async () => {
   window.addEventListener('resize', handleResize);
   
-  // 로그인된 상태라면 프로필 정보 가져오기
+  // 로그인된 상태라면 프로필 정보 가져오기 (중복 호출 제거)
   if (isLoggedIn.value || adminLoginStore.isLoggedIn) {
-    await fetchProfileInfo();
-    await fetchProfileInfo();
-    // 일반 사용자인 경우 읽지 않은 알림 개수만 가져오기 (가벼운 API)
-    if (!isAdmin.value) {
-      try {
-        await notificationStore.fetchUnreadCount();
-        // SSE 연결 시작 (실시간 알림 수신용)
-        notificationStore.startNotificationSubscription();
-        await cartStore.fetchServerCartList();
-      } catch (error) {
-        console.error('🔍 Header: 읽지 않은 알림 개수, 장바구니 정보 조회 실패:', error);
-      }
-    }
+    await fetchProfileInfo(); // 한 번만 호출
+    
+            // 일반 사용자인 경우 읽지 않은 알림 개수만 가져오기 (캐싱 적용)
+        if (!isAdmin.value) {
+          try {
+            // 알림 개수는 캐시된 데이터 우선 사용
+            await notificationStore.fetchUnreadCount(false);
+            
+            // SSE 연결 시작 (실시간 알림 수신용)
+            notificationStore.startNotificationSubscription();
+            
+            // 장바구니 정보는 캐시된 데이터 우선 사용
+            await cartStore.fetchServerCartList(false);
+          } catch (error) {
+            console.error('🔍 Header: 읽지 않은 알림 개수, 장바구니 정보 조회 실패:', error);
+          }
+        }
   }
 })
 

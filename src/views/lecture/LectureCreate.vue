@@ -103,6 +103,7 @@
                 <div v-if="!thumbnailPreview" class="upload-placeholder">
                   <div class="upload-icon">📷</div>
                   <p>이미지를 클릭하여 등록</p>
+                  <p class="file-size-limit">📏 파일 크기: 최대 10MB</p>
                 </div>
                 <img
                   v-else
@@ -147,13 +148,14 @@
                     </div>
                     <div class="form-group video-file-group">
                       <label class="form-label">비디오 파일 *</label>
-                                                                     <input
-                          type="file"
-                          accept=".mp4,.mov,.avi"
-                          @change="handleVideoFileChange($event, index)"
-                          class="form-input"
-                          required
-                        />
+                      <input
+                        type="file"
+                        accept=".mp4,.mov,.avi"
+                        @change="handleVideoFileChange($event, index)"
+                        class="form-input"
+                        required
+                      />
+                      <p class="file-size-limit">📏 파일 크기: 최대 50MB</p>
                     </div>
                   </div>
                 </div>
@@ -359,9 +361,9 @@ export default {
             return;
           }
           
-          // 파일 크기 검증
-          if (file.size > 5 * 1024 * 1024) {
-            this.showModalDialog('error', '파일 크기 오류', '파일 크기는 5MB 이하여야 합니다.', '확인', '', false);
+          // 파일 크기 검증 (서버 제한: 10MB)
+          if (file.size > 10 * 1024 * 1024) {
+            this.showModalDialog('error', '파일 크기 오류', '썸네일 파일 크기는 10MB 이하여야 합니다. 더 작은 이미지 파일을 사용해주세요.', '확인', '', false);
             event.target.value = '';
             return;
           }
@@ -386,9 +388,9 @@ export default {
             return;
           }
           
-          // 파일 크기 검증
-          if (file.size > 5 * 1024 * 1024) {
-            this.showModalDialog('error', '파일 크기 오류', '파일 크기는 5MB 이하여야 합니다.', '확인', '', false);
+          // 파일 크기 검증 (서버 제한: 10MB)
+          if (file.size > 10 * 1024 * 1024) {
+            this.showModalDialog('error', '파일 크기 오류', '썸네일 파일 크기는 10MB 이하여야 합니다. 더 작은 이미지 파일을 사용해주세요.', '확인', '', false);
             return;
           }
           
@@ -434,9 +436,9 @@ export default {
             return;
           }
           
-          // 파일 크기 검증
-          if (file.size > 100 * 1024 * 1024) {
-            this.showModalDialog('error', '파일 크기 오류', '파일 크기는 100MB 이하여야 합니다.', '확인', '', false);
+          // 파일 크기 검증 (서버 제한: 50MB)
+          if (file.size > 50 * 1024 * 1024) {
+            this.showModalDialog('error', '파일 크기 오류', '비디오 파일 크기는 50MB 이하여야 합니다. 더 작은 파일로 압축하거나 분할하여 업로드해주세요.', '확인', '', false);
             event.target.value = '';
             return;
           }
@@ -471,9 +473,42 @@ export default {
       });
     },
 
-         // 폼 제출
+         // 전체 파일 크기 체크
+    checkTotalFileSize() {
+      let totalSize = 0;
+      
+      // 썸네일 파일 크기
+      if (this.thumbnailFile) {
+        totalSize += this.thumbnailFile.size;
+      }
+      
+      // 비디오 파일 크기
+      this.videoFiles.forEach(file => {
+        if (file) {
+          totalSize += file.size;
+        }
+      });
+      
+      // 서버 제한: 100MB
+      const maxSize = 100 * 1024 * 1024;
+      
+      if (totalSize > maxSize) {
+        const totalSizeMB = (totalSize / (1024 * 1024)).toFixed(1);
+        this.showModalDialog('error', '파일 크기 초과', `전체 파일 크기가 ${totalSizeMB}MB로 서버 제한(100MB)을 초과했습니다. 파일 크기를 줄여주세요.`, '확인', '', false);
+        return false;
+      }
+      
+      return true;
+    },
+
+    // 폼 제출
      async submitForm() {
        if (!this.validateForm()) {
+         return;
+       }
+       
+       // 전체 파일 크기 체크
+       if (!this.checkTotalFileSize()) {
          return;
        }
 
@@ -545,17 +580,26 @@ export default {
             this.$router.push({ name: 'LectureList' });
           });
         } else {
-          throw new Error('강의 등록에 실패했습니다.');
+          // 응답 상태에 따른 에러 처리
+          if (response.status === 413) {
+            throw new Error('파일 크기가 너무 큽니다. 파일 크기를 줄여주세요.');
+          } else {
+            throw new Error(`강의 등록에 실패했습니다. (상태 코드: ${response.status})`);
+          }
         }
-             } catch (error) {
-         console.error('강의 등록 오류:', error);
-         
-         // 415 에러 처리 (파일 타입 불일치)
-         if (error.status === 415 || error.message?.includes('415')) {
-           this.showModalDialog('error', '파일 타입 오류', '업로드한 파일의 타입이 서버에서 지원하지 않는 형식입니다. 썸네일은 PNG, JPG, JPEG, BMP, 동영상은 MP4, MOV, AVI 파일만 업로드 가능합니다.', '확인', '', false);
-         } else {
-           this.showModalDialog('error', '등록 실패', '강의 등록 중 오류가 발생했습니다.', '확인', '', false);
-         }
+      } catch (error) {
+        console.error('강의 등록 오류:', error);
+        
+        // 413 에러 처리 (파일 크기 초과)
+        if (error.message?.includes('파일 크기가 너무 큽니다') || error.message?.includes('413')) {
+          this.showModalDialog('error', '파일 크기 오류', '업로드한 파일의 크기가 서버에서 허용하는 최대 크기를 초과했습니다. 파일 크기를 줄이거나 압축 후 다시 시도해주세요.', '확인', '', false);
+        }
+        // 415 에러 처리 (파일 타입 불일치)
+        else if (error.message?.includes('415')) {
+          this.showModalDialog('error', '파일 타입 오류', '업로드한 파일의 타입이 서버에서 지원하지 않는 형식입니다. 썸네일은 PNG, JPG, JPEG, BMP, 동영상은 MP4, MOV, AVI 파일만 업로드 가능합니다.', '확인', '', false);
+        } else {
+          this.showModalDialog('error', '등록 실패', `강의 등록 중 오류가 발생했습니다: ${error.message}`, '확인', '', false);
+        }
        } finally {
          this.isSubmitting = false;
        }
@@ -1126,5 +1170,14 @@ export default {
     min-width: auto;
     width: 100%;
   }
+}
+
+/* 파일 크기 제한 안내 스타일 */
+.file-size-limit {
+  font-size: 12px;
+  color: #7f8c8d;
+  margin-top: 5px;
+  text-align: center;
+  font-style: italic;
 }
 </style>

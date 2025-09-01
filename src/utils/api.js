@@ -1,4 +1,5 @@
 // 공통 API 유틸리티
+import { interceptor } from './interceptor';
 
 // API 기본 URL
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
@@ -60,11 +61,9 @@ export const getUserRoleFromToken = () => {
   }
 };
 
-// API 헤더 설정
+// API 헤더 설정 (기본 인증 헤더만)
 export const getHeaders = () => {
-  const headers = {
-    'Content-Type': 'application/json',
-  };
+  const headers = {};
   
   // JWT 토큰이 있으면 헤더에 추가
   try {
@@ -87,15 +86,50 @@ export const getHeaders = () => {
   return headers;
 };
 
+// 인터셉터 기반 헤더 설정
+export const getHeadersWithInterceptor = async (endpoint) => {
+  const headers = {
+    'Content-Type': 'application/json; charset=utf-8'
+  };
+  
+  // 관리자 API인지 확인
+  const isAdminEndpoint = endpoint.startsWith('/admin');
+  
+  if (isAdminEndpoint) {
+    // 관리자 API인 경우 관리자 토큰 추가
+    const adminAccessToken = localStorage.getItem('adminAccessToken');
+    if (adminAccessToken) {
+      headers.Authorization = `Bearer ${adminAccessToken}`;
+      console.log('🔐 관리자 토큰 추가됨:', endpoint);
+    } else {
+      console.warn('⚠️ 관리자 토큰이 없습니다:', endpoint);
+    }
+  } else {
+    // 일반 API인 경우 일반 토큰 체크 및 추가
+    if (interceptor.shouldAddToken(endpoint)) {
+      // 토큰 자동 갱신 및 추가
+      if (interceptor.isTokenExpired()) {
+        await interceptor.refreshToken();
+      }
+      
+      interceptor.addToken(headers, endpoint);
+    }
+  }
+  
+  return headers;
+};
+
 // GET 요청
 export const apiGet = async (endpoint) => {
   console.log('API GET 요청 URL:', `${API_BASE_URL}${endpoint}`);
-  console.log('API 요청 헤더:', getHeaders());
   
   try {
+    const headers = await getHeadersWithInterceptor(endpoint);
+    console.log('API 요청 헤더:', headers);
+    
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'GET',
-      headers: getHeaders(),
+      headers: headers,
     });
     
     return response;
@@ -115,7 +149,6 @@ export const apiGet = async (endpoint) => {
 export const apiPost = async (endpoint, data = null) => {
   console.log('API POST 요청 URL:', `${API_BASE_URL}${endpoint}`);
   console.log('API 요청 데이터:', data);
-  console.log('API 요청 헤더:', getHeaders());
   
   if (data) {
     console.log('JSON.stringify(data):', JSON.stringify(data));
@@ -124,9 +157,12 @@ export const apiPost = async (endpoint, data = null) => {
   }
   
   try {
+    const headers = await getHeadersWithInterceptor(endpoint);
+    console.log('API 요청 헤더:', headers);
+    
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'POST',
-      headers: getHeaders(),
+      headers: headers,
       body: data ? JSON.stringify(data) : null,
     });
     
@@ -148,13 +184,12 @@ export const apiPost = async (endpoint, data = null) => {
 
 // PATCH 요청
 export const apiPatch = async (endpoint, data = null) => {
-  console.log('API PATCH 요청 URL:', `${API_BASE_URL}${endpoint}`);
-  console.log('API 요청 데이터:', data);
-  
   try {
+    const headers = await getHeadersWithInterceptor(endpoint);
+    
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'PATCH',
-      headers: getHeaders(),
+      headers: headers,
       body: data ? JSON.stringify(data) : null,
     });
     
@@ -177,9 +212,11 @@ export const apiDelete = async (endpoint, data = null) => {
   console.log('API 요청 데이터:', data);
   
   try {
+    const headers = await getHeadersWithInterceptor(endpoint);
+    
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'DELETE',
-      headers: getHeaders(),
+      headers: headers,
       body: data ? JSON.stringify(data) : null,
     });
     
@@ -202,9 +239,11 @@ export const apiPut = async (endpoint, data = null) => {
   console.log('API 요청 데이터:', data);
   
   try {
+    const headers = await getHeadersWithInterceptor(endpoint);
+    
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'PUT',
-      headers: getHeaders(),
+      headers: headers,
       body: data ? JSON.stringify(data) : null,
     });
     

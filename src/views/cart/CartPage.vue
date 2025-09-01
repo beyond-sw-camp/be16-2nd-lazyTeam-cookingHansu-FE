@@ -75,7 +75,7 @@
              <div class="item-info" @click="goToLectureDetail(item.lectureId)" style="cursor: pointer;">
                <h3 class="item-title">{{ item.lectureTitle }}</h3>
                <p class="item-instructor">{{ item.writerNickName }}</p>
-               <p class="item-price">{{ formatPrice(item.price) }}원</p>
+               <p class="item-price">{{ formatPrice(item.price || 0) }}원</p>
              </div>
                            <button 
                 class="remove-btn" 
@@ -171,7 +171,7 @@ export default {
     selectedTotalAmount() {
       return this.cartItems
         .filter(item => this.selectedItems.includes(item.lectureId))
-        .reduce((total, item) => total + item.price, 0)
+        .reduce((total, item) => total + (item.price || 0), 0)
     },
     // 전체 선택 여부
     isAllSelected() {
@@ -203,7 +203,8 @@ export default {
 
   // 가격 포맷 (예: 20000 → 20,000)
   formatPrice(price) {
-    return price.toLocaleString()
+    if (!price && price !== 0) return '0';
+    return Number(price).toLocaleString();
   },
 
   // 전체 선택/해제 토글
@@ -235,9 +236,9 @@ export default {
       console.log('강의가 장바구니에서 제거되었습니다.');
       // 모달 닫기
       this.showRemoveItemModal = false;
-      // 장바구니 목록 새로고침 (스토어 업데이트)
+      // 장바구니 스토어 상태만 업데이트 (API 호출 없음)
       if (this.cartStore) {
-        await this.cartStore.fetchServerCartList();
+        this.cartStore.removeCartItem(lectureId);
       }
     } catch (error) {
       console.error('장바구니 삭제 오류:', error);
@@ -261,9 +262,9 @@ export default {
       console.log('장바구니가 모두 비워졌습니다.');
       // 모달 닫기
       this.showClearCartModal = false;
-      // 장바구니 목록 새로고침 (스토어 업데이트)
+      // 장바구니 스토어 상태만 업데이트 (API 호출 없음)
       if (this.cartStore) {
-        await this.cartStore.fetchServerCartList();
+        this.cartStore.clearAllItems();
       }
     } catch (error) {
       console.error('장바구니 전체 삭제 오류:', error);
@@ -272,7 +273,7 @@ export default {
   },
 
   // 장바구니 데이터 가져오기
-  async fetchCartItems() {
+  async fetchCartItems(forceRefresh = false) {
     if (!this.cartStore) {
       console.error('장바구니 스토어가 초기화되지 않았습니다.')
       return
@@ -280,7 +281,7 @@ export default {
     
     this.loading = true;
     try {
-      await this.cartStore.fetchServerCartList();
+      await this.cartStore.fetchServerCartList(forceRefresh);
       console.log('장바구니 데이터 로드 완료:', this.cartItems);
     } catch (error) {
       console.error('장바구니 조회 오류:', error);
@@ -401,8 +402,8 @@ export default {
      console.log('CartPage mounted 시작')
      // 장바구니 스토어 초기화
      this.initCartStore();
-     // 페이지 로드 시 장바구니 데이터 가져오기
-     this.fetchCartItems();
+     // 페이지 로드 시 장바구니 데이터 가져오기 (강제 새로고침)
+     this.fetchCartItems(true);
      console.log('CartPage mounted 완료')
    }
  

@@ -1,12 +1,16 @@
-import { apiPost } from '@/utils/api'
-
 export const adminLoginService = {
-  // 관리자 로그인
+  // 관리자 로그인 (토큰 불필요)
   async login(email, password) {
     try {
-      const response = await apiPost('/admin/login', {
-        email,
-        password
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/admin/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8'
+        },
+        body: JSON.stringify({
+          email,
+          password
+        })
       })
       
       if (!response.ok) {
@@ -20,11 +24,19 @@ export const adminLoginService = {
     }
   },
 
-  // 토큰 재발급
+  // 토큰 재발급 (관리자 토큰 사용)
   async refreshToken(refreshToken) {
     try {
-      const response = await apiPost('/admin/refresh', {
-        refreshToken
+      const adminAccessToken = localStorage.getItem('adminAccessToken')
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/admin/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Authorization': `Bearer ${adminAccessToken}`
+        },
+        body: JSON.stringify({
+          refreshToken
+        })
       })
       
       if (!response.ok) {
@@ -38,11 +50,19 @@ export const adminLoginService = {
     }
   },
 
-  // 로그아웃
+  // 로그아웃 (관리자 토큰 사용)
   async logout(refreshToken) {
     try {
-      const response = await apiPost('/admin/logout', {
-        refreshToken
+      const adminAccessToken = localStorage.getItem('adminAccessToken')
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/admin/logout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Authorization': `Bearer ${adminAccessToken}`
+        },
+        body: JSON.stringify({
+          refreshToken
+        })
       })
       
       if (!response.ok) {

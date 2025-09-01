@@ -255,7 +255,7 @@ const createTestChatRoom = async () => {
     }
     
     // 테스트용 상대방 ID (고정) - 실제 서비스에서는 다른 사용자 ID를 사용해야 함
-    const inviteeId = '5a1af30b-aec4-425d-90ec-7218532a7720';
+    const inviteeId = '275248fa-4ca1-46ed-86e6-9004b581fb3c';
     
     console.log('테스트용 채팅방 생성 시작:', { myId, inviteeId });
     
@@ -374,9 +374,10 @@ onMounted(async () => {
   restoreScrollPosition();
 });
 
-// 라우트 변경 감지하여 공지사항 페이지 진입 시 최신 데이터 가져오기
-watch(() => route.path, async (newPath) => {
-  if (newPath === '/notice') {
+// 라우트 변경 감지하여 공지사항 페이지 진입 시 최신 데이터 가져오기 (중복 호출 방지)
+watch(() => route.path, async (newPath, oldPath) => {
+  // /notice로 진입할 때만 호출하고, 같은 페이지 내에서는 중복 호출 방지
+  if (newPath === '/notice' && oldPath !== '/notice') {
     await noticeStore.fetchNotices(0, 10);
   }
 });

@@ -1,16 +1,52 @@
 <template>
   <v-container>
     <!-- 이미지 모달 -->
-    <v-dialog v-model="dialog" max-width="600px" persistent>
-      <v-card class="pa-2">
-        <v-img
-          :src="dialogImageUrl"
-          max-height="80vh"
-          class="rounded-lg"
-          cover
-        />
-        <v-card-actions class="justify-end">
-          <v-btn text color="black" @click="dialog = false">닫기</v-btn>
+    <v-dialog v-model="dialog" max-width="800px" persistent>
+      <v-card class="pa-4">
+        <v-card-text class="pa-4">
+          <div v-if="dialogImageUrl" class="text-center">
+            <div v-if="isImageFile(dialogImageUrl)">
+              <v-img
+                :src="dialogImageUrl"
+                max-height="70vh"
+                class="rounded-lg mx-auto"
+                contain
+                :aspect-ratio="16/9"
+                @error="handleModalImageError"
+              />
+            </div>
+            <div v-else class="text-center py-8">
+              <v-icon size="64" color="primary">mdi-file-document</v-icon>
+              <p class="mt-4 text-h6">문서 파일</p>
+              <p class="mt-2 text-grey-darken-1">
+                이 파일은 이미지가 아닌 문서 파일입니다.
+              </p>
+              <v-btn
+                class="mt-4"
+                color="primary"
+                variant="elevated"
+                @click="downloadFile(dialogImageUrl, 'document.pdf')"
+                prepend-icon="mdi-download"
+              >
+                파일 다운로드
+              </v-btn>
+            </div>
+          </div>
+          <div v-else class="text-center py-8">
+            <v-icon size="64" color="grey lighten-2">mdi-file-question</v-icon>
+            <p class="mt-2 text-grey-darken-1">파일을 불러올 수 없습니다.</p>
+          </div>
+        </v-card-text>
+        <v-card-actions class="justify-center pa-4">
+          <v-btn 
+            color="primary" 
+            variant="elevated"
+            @click="dialog = false"
+            prepend-icon="mdi-check"
+            size="large"
+          >
+            확인
+          </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -83,7 +119,18 @@
             <v-row align="center" justify="space-between">
               <v-col cols="auto" class="d-flex align-center">
                 <v-avatar size="56" class="mr-4 user-avatar">
-                  <v-img :src="getUserAvatar(user)" />
+                  <v-img 
+                    v-if="getUserAvatar(user)" 
+                    :src="getUserAvatar(user)" 
+                    @error="handleImageError"
+                  />
+                  <v-icon 
+                    v-else
+                    size="56" 
+                    color="grey lighten-2"
+                  >
+                    mdi-account-circle
+                  </v-icon>
                 </v-avatar>
                 <div>
                   <v-chip
@@ -149,7 +196,7 @@
                   <div class="detail-content">
                     <div class="detail-item">
                       <span class="detail-label">자격번호:</span>
-                      <span class="detail-value">{{ user.LicenseNumber }}</span>
+                      <span class="detail-value">{{ user.licenseNumber }}</span>
                     </div>
                     <div class="detail-item">
                       <span class="detail-label">전문 분야:</span>
@@ -160,10 +207,12 @@
                       size="small"
                       variant="outlined"
                       color="success"
-                      @click="openFile(user.LicenseImageUrl)"
+                      @click="openFile(user.licenseImageUrl)"
                     >
-                      <v-icon start size="16">mdi-certificate</v-icon>
-                      자격증 보기
+                      <v-icon start size="16">
+                        {{ getFileIcon(user.licenseImageUrl) }}
+                      </v-icon>
+                      {{ getFileButtonText(user.licenseImageUrl) }}
                     </v-btn>
                   </div>
                 </div>
@@ -202,8 +251,10 @@
                       color="orange"
                       @click="openFile(user.businessImageUrl)"
                     >
-                      <v-icon start size="16">mdi-file-document</v-icon>
-                      사업자등록증 보기
+                      <v-icon start size="16">
+                        {{ getFileIcon(user.businessImageUrl) }}
+                      </v-icon>
+                      {{ getFileButtonText(user.businessImageUrl) }}
                     </v-btn>
                   </div>
                 </div>
@@ -304,12 +355,18 @@ const allUsers = computed(() => {
   const chefs = userApprovalStore.getWaitingChefs.map(chef => ({
     ...chef,
     roleType: 'chef',
-    id: chef.userId
+    id: chef.userId,
+    // 이미지 URL 필드명 통일
+    imageUrl: chef.imageUrl || chef.profileImageUrl || chef.userImageUrl,
+    licenseImageUrl: chef.licenseImageUrl || chef.licenseImage || chef.certificateImageUrl
   }));
   
   const businesses = userApprovalStore.getWaitingBusinesses.map(business => ({
     ...business,
-    roleType: 'business'
+    roleType: 'business',
+    // 이미지 URL 필드명 통일
+    imageUrl: business.imageUrl || business.profileImageUrl || business.userImageUrl,
+    businessImageUrl: business.businessImageUrl || business.businessImage || business.registrationImageUrl
   }));
   
   // 생성일시 기준으로 정렬 (최신순)
@@ -376,10 +433,25 @@ const closeSnackbar = () => {
 // 사용자 정보 헬퍼 함수들
 const getUserAvatar = (user) => {
   if (user.roleType === 'chef') {
-    return user.imageUrl || '/default-avatar.png';
+    return user.imageUrl || null;
   } else {
-    return user.imageUrl || '/default-business.png';
+    return user.imageUrl || null;
   }
+};
+
+// 이미지 로딩 실패 시 기본 아이콘으로 변경
+const handleImageError = (event) => {
+  event.target.src = '/default-avatar.png'; // 또는 기본 아이콘 경로
+};
+
+// 모달 이미지 에러 핸들러
+const handleModalImageError = () => {
+  dialogImageUrl.value = '';
+  snackbarType.value = 'error';
+  snackbarTitle.value = '오류';
+  snackbarMessage.value = '이미지를 불러올 수 없습니다.';
+  showSnackbar.value = true;
+  setTimeout(() => closeSnackbar(), 2000);
 };
 
 // 승인 다이얼로그 표시
@@ -442,9 +514,104 @@ const rejectUser = async (reason) => {
 
 // 파일 열기
 const openFile = (url) => {
-  if (!url) return;
-  dialogImageUrl.value = url;
-  dialog.value = true;
+  console.log('Opening file with URL:', url); // 디버깅용
+  
+  if (!url || url === 'null' || url === 'undefined') {
+    snackbarType.value = 'warning';
+    snackbarTitle.value = '알림';
+    snackbarMessage.value = '업로드된 파일이 없습니다.';
+    showSnackbar.value = true;
+    setTimeout(() => closeSnackbar(), 2000);
+    return;
+  }
+  
+  // URL이 상대 경로인 경우 절대 경로로 변환
+  let fullUrl = url;
+  if (!url.startsWith('http') && !url.startsWith('data:')) {
+    fullUrl = url.startsWith('/') ? url : `/${url}`;
+  }
+  
+  // 파일 확장자로 타입 판단
+  const fileExtension = getFileExtension(fullUrl);
+  const isPdf = fileExtension === 'pdf';
+  const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExtension);
+  
+  if (isPdf) {
+    // PDF 파일인 경우 새 탭에서 열기
+    window.open(fullUrl, '_blank');
+  } else if (isImage) {
+    // 이미지 파일인 경우 모달로 표시
+    dialogImageUrl.value = fullUrl;
+    dialog.value = true;
+  } else {
+    // 기타 파일인 경우 다운로드
+    downloadFile(fullUrl, `document.${fileExtension || 'pdf'}`);
+  }
+};
+
+// 파일 확장자 추출
+const getFileExtension = (url) => {
+  try {
+    const urlObj = new URL(url);
+    const pathname = urlObj.pathname;
+    const extension = pathname.split('.').pop()?.toLowerCase();
+    return extension;
+  } catch (e) {
+    // URL 파싱 실패 시 경로에서 확장자 추출
+    const pathParts = url.split('/');
+    const filename = pathParts[pathParts.length - 1];
+    const extension = filename.split('.').pop()?.toLowerCase();
+    return extension;
+  }
+};
+
+// 파일 다운로드
+const downloadFile = (url, filename) => {
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.target = '_blank';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+// 파일 타입에 따른 아이콘 반환
+const getFileIcon = (url) => {
+  if (!url) return 'mdi-file-question';
+  
+  const extension = getFileExtension(url);
+  if (extension === 'pdf') return 'mdi-file-pdf-box';
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension)) return 'mdi-image';
+  return 'mdi-file-document';
+};
+
+// 파일 타입에 따른 버튼 텍스트 반환
+const getFileButtonText = (url) => {
+  if (!url) return '파일 없음';
+  
+  const extension = getFileExtension(url);
+  if (extension === 'pdf') return 'PDF 보기';
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension)) return '이미지 보기';
+  return '파일 보기';
+};
+
+// 모달 제목 반환
+const getModalTitle = (url) => {
+  if (!url) return '파일 확인';
+  
+  const extension = getFileExtension(url);
+  if (extension === 'pdf') return 'PDF 문서 확인';
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension)) return '이미지 확인';
+  return '문서 확인';
+};
+
+// 이미지 파일 여부 확인
+const isImageFile = (url) => {
+  if (!url) return false;
+  
+  const extension = getFileExtension(url);
+  return ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension);
 };
 
 // 빈 상태 메시지
@@ -581,6 +748,8 @@ onMounted(async () => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+
+
 .role-chip {
   font-weight: 600;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -646,6 +815,22 @@ onMounted(async () => {
 .v-overlay__scrim {
   backdrop-filter: blur(30px);
   background-color: rgba(0, 0, 0, 0.8) !important;
+}
+
+/* 이미지 모달 스타일 */
+.v-dialog .v-card {
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.v-dialog .v-card-title {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.v-dialog .v-img {
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 /* 반응형 스타일 */
