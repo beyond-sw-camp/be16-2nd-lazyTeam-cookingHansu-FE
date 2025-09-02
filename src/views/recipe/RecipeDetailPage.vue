@@ -729,7 +729,6 @@ import ReportModal from '@/components/common/ReportModal.vue'
 import { useChatStore } from '@/store/chat/chat'
 import { useAuthStore } from '@/store/auth/auth'
 import { useNotifications } from '@/composables/useNotifications'
-import { useAuthStore } from '@/store/auth/auth'
 
 const route = useRoute()
 const router = useRouter()
