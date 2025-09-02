@@ -119,8 +119,6 @@ export const apiPost = async (endpoint, data = null) => {
   
   if (data) {
     console.log('JSON.stringify(data):', JSON.stringify(data));
-    console.log('data.lectureId:', data.lectureId);
-    console.log('data.lectureId 타입:', typeof data.lectureId);
   }
   
   try {
