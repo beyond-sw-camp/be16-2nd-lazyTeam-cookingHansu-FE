@@ -23,13 +23,16 @@
           />
         </div>
         <div class="post-content">
+          <div class="post-header">
+            <span class="category-badge" :class="categoryClass(post.category)">{{ getCategoryName(post.category) }}</span>
+            <span class="post-date">{{ formatDate(post.createdAt) }}</span>
+          </div>
           <h3 class="post-title">
             <span v-if="isPrivatePost(post)" class="lock-icon">🔒</span>
             {{ post.title }}
           </h3>
           <p class="post-description">{{ post.description }}</p>
           <div class="post-meta">
-            <div class="post-date">{{ formatDate(post.createdAt) }}</div>
             <div class="post-stats">
               <span class="stat-item">
                 <span class="stat-icon">❤️</span>
@@ -169,6 +172,28 @@ export default {
     handleImageError(event) {
       // 이미지 로드 실패 시 기본 이미지로 대체
       event.target.src = defaultThumbnail;
+    },
+    
+    categoryClass(category) {
+      switch (category) {
+        case 'KOREAN': return 'cat-korean';
+        case 'WESTERN': return 'cat-western';
+        case 'JAPANESE': return 'cat-japanese';
+        case 'CHINESE': return 'cat-chinese';
+        case 'DESSERT': return 'cat-dessert';
+        default: return '';
+      }
+    },
+    
+    getCategoryName(category) {
+      switch (category) {
+        case 'KOREAN': return '한식';
+        case 'WESTERN': return '양식';
+        case 'JAPANESE': return '일식';
+        case 'CHINESE': return '중식';
+        case 'DESSERT': return '디저트';
+        default: return category;
+      }
     }
   }
 };
@@ -305,6 +330,45 @@ export default {
   flex-grow: 1;
 }
 
+.post-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.category-badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+
+.cat-korean {
+  background: #ffe5c2;
+  color: #ff7a00;
+}
+
+.cat-western {
+  background: #e2f0ff;
+  color: #007aff;
+}
+
+.cat-japanese {
+  background: #e2ffe7;
+  color: #00b86b;
+}
+
+.cat-chinese {
+  background: #ffe2e2;
+  color: #ff3b3b;
+}
+
+.cat-dessert {
+  background: #fff3e2;
+  color: #ff7a00;
+}
+
 .post-title {
   font-size: 18px;
   font-weight: 700;
@@ -325,9 +389,10 @@ export default {
   font-size: 14px;
   color: #666;
   line-height: 1.5;
-  margin: 0 0 16px 0;
+  margin: 0 0 12px 0;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

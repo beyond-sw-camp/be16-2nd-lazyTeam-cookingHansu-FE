@@ -613,7 +613,7 @@ const updatePost = async () => {
     
     const postId = route.query.id
     const response = await fetch(
-      `http://localhost:8080/api/posts/${postId}`,
+      `http://localhost:8080/api/posts/update/${postId}`,
       {
         method: 'PUT',
         headers: {
