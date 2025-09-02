@@ -1997,7 +1997,7 @@ export default {
         try {
           // 중복 신고 확인
           const response = await reportService.checkReport(this.lecture.id);
-
+          
           if (response.success && response.data) {
             // 중복 신고인 경우 경고 메시지 표시
             this.showError('이미 신고한 강의입니다. 신고가 처리된 이후에 다시 시도해주세요.');
@@ -2012,13 +2012,8 @@ export default {
           }
         } catch (error) {
           console.error('중복 신고 확인 중 오류:', error);
-          // 오류 발생 시에도 신고 모달을 열어서 사용자가 시도할 수 있도록 함
-          this.reportModalData = {
-            reportType: 'LECTURE',
-            targetId: this.lecture.id,
-            targetName: this.lecture.title
-          };
-          this.showReportModal = true;
+          // 오류 발생 시 신고 모달을 열지 않고 오류 메시지만 표시
+          this.showError('신고 확인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
         }
       },
 

@@ -182,10 +182,13 @@ const submitReport = async () => {
     return;
   }
 
-
+  if (!reportContent.value || reportContent.value.trim() === '') {
+    emit('error', '신고 내용을 입력해주세요.');
+    return;
+  }
 
   loading.value = true;
-  
+
   try {
     const reportData = {
       reportType: props.reportType,
