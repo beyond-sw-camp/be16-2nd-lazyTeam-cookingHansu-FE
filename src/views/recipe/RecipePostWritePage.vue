@@ -483,11 +483,11 @@ const submitPost = async () => {
       console.log('❌ JWT 토큰 파싱 실패:', e)
     }
     
-    // 백엔드 API 경로를 여러 개 시도해보기
+    // 백엔드 API 경로를 새로운 형식으로 시도
     let response
-    let apiUrl = 'http://localhost:8080/api/posts'
+    let apiUrl = 'http://localhost:8080/api/posts/create'
     
-    console.log('🔄 게시글 등록 첫 번째 시도:', apiUrl)
+    console.log('🔄 게시글 등록 시도:', apiUrl)
     response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -495,30 +495,6 @@ const submitPost = async () => {
       },
       body: formData
     })
-    
-    if (!response.ok) {
-      console.log('🔄 게시글 등록 두 번째 시도: /api/recipes')
-      apiUrl = 'http://localhost:8080/api/recipes'
-      response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      })
-    }
-    
-    if (!response.ok) {
-      console.log('🔄 게시글 등록 세 번째 시도: /api/posts/create')
-      apiUrl = 'http://localhost:8080/api/posts/create'
-      response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      })
-    }
     
     console.log('📡 게시글 등록 최종 응답 상태:', response.status, response.statusText, 'URL:', apiUrl)
     if (response.ok) {

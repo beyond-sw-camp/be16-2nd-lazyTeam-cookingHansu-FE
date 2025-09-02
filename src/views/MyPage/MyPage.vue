@@ -50,6 +50,7 @@
       <SoldLectures v-if="currentTab === 'sold-lectures'" />
       <Bookmarks v-if="currentTab === 'bookmarks'" />
       <Likes v-if="currentTab === 'likes'" />
+      <LikedLectures v-if="currentTab === 'liked-lectures'" />
     </div>
 
     <!-- 프로필 수정 모달 -->
@@ -82,6 +83,7 @@ import PurchasedLectures from '@/components/mypage/PurchasedLectures.vue';
 import SoldLectures from '@/components/mypage/SoldLectures.vue';
 import Bookmarks from '@/components/mypage/Bookmarks.vue';
 import Likes from '@/components/mypage/Likes.vue';
+import LikedLectures from '@/components/mypage/LikedLectures.vue';
 import ProfileEditModal from '@/components/mypage/modal/ProfileEditModal.vue';
 import WithdrawConfirmModal from '@/components/mypage/modal/WithdrawConfirmModal.vue';
 import { apiGet } from '@/utils/api';
@@ -95,6 +97,7 @@ export default {
     SoldLectures,
     Bookmarks,
     Likes,
+    LikedLectures,
     ProfileEditModal,
     WithdrawConfirmModal
   },
@@ -115,8 +118,9 @@ export default {
         { id: 'posts', name: '내 게시글' },
         { id: 'lectures', name: '구매한 강의' },
         { id: 'sold-lectures', name: '판매한 강의' },
-        { id: 'bookmarks', name: '북마크' },
-        { id: 'likes', name: '좋아요' }
+        { id: 'bookmarks', name: '게시글 북마크' },
+        { id: 'likes', name: '게시글 좋아요' },
+        { id: 'liked-lectures', name: '강의 좋아요' }
       ],
       message: null,
       messageType: null
@@ -155,7 +159,7 @@ export default {
       getInitialTab() {
     const urlParams = new URLSearchParams(window.location.search);
     const tab = urlParams.get('tab');
-    const validTabs = ['posts', 'lectures', 'sold-lectures', 'bookmarks', 'likes'];
+    const validTabs = ['posts', 'lectures', 'sold-lectures', 'bookmarks', 'likes', 'liked-lectures'];
     
     if (tab === 'sold-lectures' && !this.isSeller) {
       return 'posts';

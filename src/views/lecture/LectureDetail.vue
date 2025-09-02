@@ -1107,10 +1107,16 @@ export default {
      // 좋아요 상태 확인 (백엔드 API 사용)
      async checkLikeStatus(lectureId) {
        try {
+         // 먼저 강의 데이터에서 좋아요 상태 확인 (백엔드에서 이미 제공된 경우)
+         if (this.lecture && this.lecture.isLiked !== undefined) {
+           this.isLiked = this.lecture.isLiked;
+           return;
+         }
+         
+         // 강의 데이터에 좋아요 상태가 없는 경우 별도 API 호출
          const response = await lectureService.checkLectureLikeStatus(lectureId);
          if (response.success) {
            this.isLiked = response.data.liked || false;
-
          }
        } catch (error) {
          console.error('좋아요 상태 확인 실패:', error);
@@ -1200,7 +1206,10 @@ export default {
               // 강사 이메일 추가
               submittedByEmail: lectureData.submittedByEmail,
               // 강의 수강률 추가
-              progressPercent: lectureData.progressPercent
+              progressPercent: lectureData.progressPercent,
+              // 백엔드에서 제공하는 좋아요 정보 추가
+              likeCount: lectureData.likeCount || 0,
+              isLiked: lectureData.isLiked || false
             };
             
 
@@ -2570,6 +2579,9 @@ export default {
            // 좋아요 상태 토글
            this.isLiked = !this.isLiked;
            
+           // 강의 데이터의 좋아요 상태도 업데이트
+           this.lecture.isLiked = this.isLiked;
+           
            // 좋아요 수 업데이트
            if (this.isLiked) {
              this.lecture.likeCount = (this.lecture.likeCount || 0) + 1;
@@ -2608,6 +2620,16 @@ export default {
     showSuccess(message) {
       this.successMessage = message;
       this.showSuccessModal = true;
+    },
+    
+    // 키보드 이벤트 핸들러
+    handleKeydown(event) {
+      if (event.key === 'Escape') {
+        // ESC 키로 공유하기 모달만 닫기
+        if (this.showShareModal) {
+          this.showShareModal = false;
+        }
+      }
     },
 
     showNotification(data) {
@@ -2809,6 +2831,9 @@ export default {
       if (typeof Kakao !== 'undefined' && !Kakao.isInitialized()) {
         Kakao.init("3a1a982f8ee6ddbc64171c2f80850243");
       }
+      
+      // 키보드 이벤트 리스너 추가
+      document.addEventListener('keydown', this.handleKeydown);
     },
 
     // 컴포넌트 제거 시 타이머 정리
@@ -2816,6 +2841,9 @@ export default {
       if (this.progressSaveTimer) {
         clearTimeout(this.progressSaveTimer);
       }
+      
+      // 키보드 이벤트 리스너 제거
+      document.removeEventListener('keydown', this.handleKeydown);
     }
 };
 </script>
