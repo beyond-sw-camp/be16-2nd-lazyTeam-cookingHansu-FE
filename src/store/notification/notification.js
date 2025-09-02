@@ -315,7 +315,7 @@ export const useNotificationStore = defineStore('notification', {
 
         // SSE Polyfill을 사용하여 JWT 토큰을 헤더에 포함
         this.eventSource = ssePolyfillService.createAuthenticatedEventSource(
-          `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/notifications/subscribe`
+          `${import.meta.env.VITE_API_BASE_URL}/api/notifications/subscribe`
         );
         this.isConnected = true;
 

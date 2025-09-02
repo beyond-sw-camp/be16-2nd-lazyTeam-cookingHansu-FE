@@ -17,9 +17,6 @@ export const useDashboardStore = defineStore('dashboard', {
   }),
 
   getters: {
-    // 대시보드 데이터
-    getDashboardData: (state) => state.dashboardData,
-    
     // 개별 데이터 getters
     getWaitingLectures: (state) => state.dashboardData.waitingLectures,
     getWaitingApprovalUsers: (state) => state.dashboardData.waitingApprovalUsers,
@@ -39,30 +36,25 @@ export const useDashboardStore = defineStore('dashboard', {
   },
 
   actions: {
-    // 에러 처리 헬퍼
-    _handleError(error, defaultMessage) {
-      console.error(defaultMessage, error);
-      this.error = error.message || defaultMessage;
-      throw error;
-    },
-
-    // 로딩 상태 관리
-    _setLoading(loading) {
-      this.loading = loading;
-    },
-
     // 대시보드 데이터 조회
     async fetchDashboardData() {
-      this._setLoading(true);
+      this.loading = true;
       this.error = null;
       
       try {
-        const apiResponse = await dashboardService.getDashboardData();
-        this.dashboardData = apiResponse.getData();
+        const response = await dashboardService.getDashboardData();
+        
+        if (response.success && response.data) {
+          this.dashboardData = response.data;
+        } else {
+          throw new Error(response.message || '대시보드 데이터를 불러오는데 실패했습니다.');
+        }
       } catch (error) {
-        this._handleError(error, '대시보드 데이터를 불러오는데 실패했습니다.');
+        console.error('대시보드 데이터 조회 실패:', error);
+        this.error = error.message || '대시보드 데이터를 불러오는데 실패했습니다.';
+        throw error;
       } finally {
-        this._setLoading(false);
+        this.loading = false;
       }
     },
 

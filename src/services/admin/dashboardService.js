@@ -1,5 +1,4 @@
-import { apiGet } from '../../utils/api';
-import { handleApiResponse } from '../../models/common/ApiResponse';
+import { apiClient } from '../../utils/interceptor';
 
 // API 엔드포인트 상수
 const API_ENDPOINTS = {
@@ -9,7 +8,7 @@ const API_ENDPOINTS = {
 export const dashboardService = {
   // 대시보드 데이터 조회
   async getDashboardData() {
-    const response = await apiGet(API_ENDPOINTS.DASHBOARD);
-    return handleApiResponse(response);
+    const response = await apiClient.get(API_ENDPOINTS.DASHBOARD);
+    return response.data;
   },
 };

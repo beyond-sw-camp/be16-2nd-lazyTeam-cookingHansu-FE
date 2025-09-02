@@ -1,7 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/store/auth/auth';
 import { useAdminLoginStore } from '@/store/admin/adminLogin';
-import { interceptor } from '@/utils/interceptor';
 import AdminLayout from '@/layouts/admin/AdminLayout.vue' 
 import Dashboard from '@/views/admin/Dashboard.vue'
 import LectureApproval from '@/views/admin/LectureApproval.vue'

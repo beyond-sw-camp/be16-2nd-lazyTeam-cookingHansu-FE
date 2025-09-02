@@ -14,7 +14,7 @@ import { ChatMessageResponse } from '../../models/chat/ChatResponse';
 import { getFileTypeFromFile } from '../../utils/fileValidation';
 import { useAuthStore } from '../auth/auth';
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+// API_BASE_URL은 interceptor에서 관리됨
 
 // 현재 사용자 ID는 Auth 스토어에서 가져옴
 const getMyId = () => {
@@ -577,7 +577,7 @@ export const useChatStore = defineStore('chat', {
           throw new Error('Access Token이 없습니다. 로그인이 필요합니다.');
         }
 
-        const sockJs = new SockJs(`${API_BASE_URL}/connect`);
+        const sockJs = new SockJs(`${import.meta.env.VITE_API_BASE_URL}/connect`);
         const client = Stomp.over(sockJs);
         this.stompClient = client;
         this._stompRoomId = null;

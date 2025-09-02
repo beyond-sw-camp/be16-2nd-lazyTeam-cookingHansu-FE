@@ -81,16 +81,21 @@ export const useNoticeStore = defineStore('notice', {
       this.error = null;
       
       try {
-        const apiResponse = await noticeService.getNoticeList(page, size);
-        const responseData = apiResponse.getData();
+        const response = await noticeService.getNoticeList(page, size);
         
-        this.notices = responseData.content;
-        this.pagination = {
-          totalPages: responseData.totalPages,
-          currentPage: responseData.number,
-          totalElements: responseData.totalElements,
-          pageSize: size,
-        };
+        if (response.success && response.data) {
+          const responseData = response.data;
+          
+          this.notices = responseData.content || [];
+          this.pagination = {
+            totalPages: responseData.totalPages || 0,
+            currentPage: responseData.number || 0,
+            totalElements: responseData.totalElements || 0,
+            pageSize: size,
+          };
+        } else {
+          throw new Error(response.message || '공지사항 목록을 불러오는데 실패했습니다.');
+        }
         
         // 캐시 시간 업데이트
         this.lastUpdate = Date.now();
@@ -114,9 +119,13 @@ export const useNoticeStore = defineStore('notice', {
       this.error = null;
       
       try {
-        const apiResponse = await noticeService.getNoticeDetail(id);
-        const noticeData = apiResponse.getData();
-        this.currentNotice = noticeData;
+        const response = await noticeService.getNoticeDetail(id);
+        
+        if (response.success && response.data) {
+          this.currentNotice = response.data;
+        } else {
+          throw new Error(response.message || '공지사항 상세 정보를 불러오는데 실패했습니다.');
+        }
         
         // 개별 공지사항 캐시 업데이트
         this.noticeCache.set(id, {
@@ -137,18 +146,23 @@ export const useNoticeStore = defineStore('notice', {
       
       try {
         const response = await noticeService.createNotice(noticeData);
-        const newNotice = response.getData();
         
-        // 서버에서 반환된 완전한 데이터로 목록 새로고침
-        await this.fetchNotices(0, this.pagination.pageSize);
-        
-        // 공지사항 생성 후 알림 생성 및 개수 업데이트 (실시간 반영)
-        try {
-          const { useNotificationStore } = await import('@/store/notification/notification');
-          const notificationStore = useNotificationStore();
-          await notificationStore.handleNoticeNotification(newNotice, 'create');
-        } catch (error) {
-          console.warn('공지사항 알림 생성 실패:', error);
+        if (response.success && response.data) {
+          const newNotice = response.data;
+          
+          // 서버에서 반환된 완전한 데이터로 목록 새로고침
+          await this.fetchNotices(0, this.pagination.pageSize);
+          
+          // 공지사항 생성 후 알림 생성 및 개수 업데이트 (실시간 반영)
+          try {
+            const { useNotificationStore } = await import('@/store/notification/notification');
+            const notificationStore = useNotificationStore();
+            await notificationStore.handleNoticeNotification(newNotice, 'create');
+          } catch (error) {
+            console.warn('공지사항 알림 생성 실패:', error);
+          }
+        } else {
+          throw new Error(response.message || '공지사항 생성에 실패했습니다.');
         }
       } catch (error) {
         this._handleError(error, '공지사항 생성에 실패했습니다.');
