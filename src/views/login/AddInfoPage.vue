@@ -18,6 +18,17 @@
         @input="onNicknameInput"
       />
 
+      <FormInput
+        v-model="form.info"
+        label="간단 소개"
+        placeholder="자신을 간단히 소개해주세요 (200자 이하)"
+        :required="false"
+        :has-error="errors.info"
+        :error-message="getInfoErrorMessage()"
+        :maxlength="200"
+        @input="onInfoInput"
+      />
+
       <RoleSelector v-model="form.role" :roles="roles" :required="true" />
     </form>
 
@@ -60,9 +71,10 @@ const authStore = useAuthStore();
 
 const form = ref({
   nickname: "",
+  info: "",
   role: "GENERAL",
 });
-const errors = ref({ nickname: false });
+const errors = ref({ nickname: false, info: false });
 const userInfo = ref(null);
 const showBox = ref(true);
 const progressAnimate = ref(false);
@@ -112,6 +124,7 @@ onMounted(() => {
     const savedData = getStepData("addInfo");
     if (savedData) {
       form.value.nickname = savedData.nickname || currentUser.name || "";
+      form.value.info = savedData.info || "";
       form.value.role = savedData.role || "GENERAL";
     } else {
       // 기본 닉네임으로 이름 설정
@@ -120,6 +133,7 @@ onMounted(() => {
 
     // 초기 에러 상태 초기화
     errors.value.nickname = false;
+    errors.value.info = false;
   }
 });
 
@@ -166,8 +180,15 @@ function validate() {
     errors.value.nickname = true;
     return false;
   }
+
+  const info = form.value.info.trim();
+  if (info.length > 200) {
+    errors.value.info = true;
+    return false;
+  }
   
   errors.value.nickname = false;
+  errors.value.info = false;
   return true;
 }
 
@@ -175,6 +196,13 @@ function validate() {
 function onNicknameInput() {
   if (form.value.nickname && errors.value.nickname) {
     errors.value.nickname = false;
+  }
+}
+
+// 간단 소개 입력 시 에러 제거
+function onInfoInput() {
+  if (form.value.info && errors.value.info) {
+    errors.value.info = false;
   }
 }
 
@@ -197,18 +225,29 @@ function getNicknameErrorMessage() {
   return "닉네임을 입력해 주세요!";
 }
 
+// 간단 소개 에러 메시지 생성
+function getInfoErrorMessage() {
+  const info = form.value.info.trim();
+  if (info.length > 200) {
+    return "간단 소개는 200자 이하여야 합니다!";
+  }
+  return "";
+}
+
 function onNext() {
   if (!validate()) return;
 
   // localStorage에 현재 단계 데이터 저장
   saveStepData("addInfo", {
     nickname: form.value.nickname,
+    info: form.value.info,
     role: form.value.role,
   });
 
   // 인증 스토어의 사용자 정보 업데이트
   authStore.updateUserInfo({
     nickname: form.value.nickname,
+    info: form.value.info,
     role: form.value.role,
   });
 

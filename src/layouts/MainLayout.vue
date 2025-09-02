@@ -8,12 +8,10 @@
       </v-container>
     </v-main>
     <Footer />
-    
-    
   </v-app>
 </template>
+
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
 </script> 

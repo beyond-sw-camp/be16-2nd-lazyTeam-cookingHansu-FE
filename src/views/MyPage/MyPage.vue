@@ -65,7 +65,6 @@
     <WithdrawConfirmModal
       :visible="showWithdrawModal"
       @close="showWithdrawModal = false"
-      @withdraw-success="handleWithdrawSuccess"
       @withdraw-error="handleWithdrawError"
     />
 
@@ -192,12 +191,8 @@ export default {
         this.messageType = null;
       }, 3000);
     },
-    handleWithdrawSuccess() {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      this.showMessage({ type: 'success', message: '회원탈퇴가 완료되었습니다.' });
-      setTimeout(() => this.$router.push('/login'), 2000);
-    },
+    
+    // 회원탈퇴 실패 처리
     handleWithdrawError(errorMessage) {
       this.showMessage({
         type: 'error',
@@ -326,7 +321,6 @@ export default {
 
 .edit-profile-btn {
   background: white;
-  border: 1px solid #222;
   color: #222;
   padding: 10px 20px;
   border-radius: 12px;
@@ -341,7 +335,6 @@ export default {
 
 .withdraw-btn {
   background: white;
-  border: 1px solid #222;
   color: #dc3545;
   padding: 10px 16px;
   border-radius: 12px;

@@ -40,6 +40,7 @@ export const getCompleteRegistrationData = () => {
   // 기본 사용자 정보
   const userData = {
     nickname: data.addInfo?.nickname,
+    info: data.addInfo?.info,
     role: data.addInfo?.role,
     ...data.userInfo
   };

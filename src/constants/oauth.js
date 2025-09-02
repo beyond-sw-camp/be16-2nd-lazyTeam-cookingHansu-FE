@@ -6,18 +6,22 @@ export const OAUTH_CONFIG = {
     GOOGLE_REDIRECT_URL: import.meta.env.VITE_GOOGLE_REDIRECT_URL,
     GOOGLE_SCOPE: import.meta.env.VITE_GOOGLE_SCOPE,
     GOOGLE_RESPONSE_TYPE: import.meta.env.VITE_GOOGLE_RESPONSE_TYPE || "code",
+    GOOGLE_TOKEN_REVOKE_URL: "https://oauth2.googleapis.com/revoke",
   },
   KAKAO: {
     KAKAO_URL: import.meta.env.VITE_KAKAO_OAUTH_URL,
     KAKAO_CLIENT_ID: import.meta.env.VITE_KAKAO_CLIENT_ID,
     KAKAO_REDIRECT_URL: import.meta.env.VITE_KAKAO_REDIRECT_URL,
     KAKAO_RESPONSE_TYPE: import.meta.env.VITE_KAKAO_RESPONSE_TYPE || "code",
+    KAKAO_TOKEN_REVOKE_URL: "https://kapi.kakao.com/v1/user/unlink",
   },
   NAVER: {
     NAVER_URL: import.meta.env.VITE_NAVER_OAUTH_URL,
     NAVER_CLIENT_ID: import.meta.env.VITE_NAVER_CLIENT_ID,
     NAVER_REDIRECT_URL: import.meta.env.VITE_NAVER_REDIRECT_URL,
     NAVER_RESPONSE_TYPE: import.meta.env.VITE_NAVER_RESPONSE_TYPE || "code",
+    NAVER_TOKEN_REVOKE_URL: "https://nid.naver.com/oauth2.0/token",
+    NAVER_CLIENT_SECRET: import.meta.env.VITE_NAVER_CLIENT_SECRET,
   }
 };
 
@@ -31,6 +35,12 @@ export const API_CONFIG = {
     NAVER_LOGIN: "/user/login/naver",
     LOGOUT: "/user/logout",
     REFRESH: "/user/refresh",
+    // 새로운 회원 탈퇴 엔드포인트
+    DELETE_USER_GOOGLE: "/user/delete/google",
+    DELETE_USER_KAKAO: "/user/delete/kakao",
+    DELETE_USER_NAVER: "/user/delete/naver",
+    // 회원 복구 엔드포인트
+    RESTORE_USER: "/user/restore",
   },
 };
 

@@ -26,7 +26,6 @@
             <input 
               type="checkbox" 
               v-model="confirmChecked"
-              @change="validateForm"
             />
             위 내용을 모두 확인했으며, 회원 탈퇴에 동의합니다
           </label>
@@ -48,11 +47,11 @@
 </template>
 
 <script>
-import { apiDelete } from '@/utils/api';
 import { useAuthStore } from '@/store/auth/auth';
 
 export default {
   name: 'WithdrawConfirmModal',
+  emits: ['close', 'withdraw-error'],
   props: {
     visible: {
       type: Boolean,
@@ -65,6 +64,37 @@ export default {
       loading: false
     };
   },
+
+  watch: {
+    visible(newVal) {
+      if (newVal) {
+        // 모달이 열릴 때 body 스크롤 방지
+        document.body.style.overflow = 'hidden';
+        document.body.style.position = 'fixed';
+        document.body.style.width = '100%';
+        document.body.style.top = `-${window.scrollY}px`;
+      } else {
+        // 모달이 닫힐 때 body 스크롤 복원
+        const scrollY = document.body.style.top;
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.width = '';
+        document.body.style.top = '';
+        window.scrollTo(0, parseInt(scrollY || '0') * -1);
+      }
+    }
+  },
+
+  beforeUnmount() {
+    // 컴포넌트가 제거될 때 body 스크롤 복원
+    const scrollY = document.body.style.top;
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.width = '';
+    document.body.style.top = '';
+    window.scrollTo(0, parseInt(scrollY || '0') * -1);
+  },
+
   methods: {
     closeModal() {
       this.$emit('close');
@@ -85,23 +115,14 @@ export default {
       this.loading = true;
       
       try {
-        const response = await apiDelete('/user/delete');
+        const authStore = useAuthStore();
+        const result = await authStore.deleteUser();
         
-        if (response.ok) {
-          // authStore 초기화
-          const authStore = useAuthStore();
-          authStore.logout();
-          
-          // 로컬 스토리지에서 토큰 삭제
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-          
-          // 회원탈퇴 성공
-          this.$emit('withdraw-success');
-          this.closeModal();
+        if (result.success) {
+          // 회원탈퇴 성공 시 탈퇴 완료 페이지로 리다이렉트
+          this.$router.push('/withdraw-complete');
         } else {
-          const errorData = await response.json();
-          throw new Error(errorData.message || '회원탈퇴에 실패했습니다.');
+          throw new Error(result.message || '회원탈퇴에 실패했습니다.');
         }
       } catch (error) {
         console.error('회원탈퇴 오류:', error);
