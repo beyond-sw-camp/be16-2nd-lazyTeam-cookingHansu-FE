@@ -138,21 +138,21 @@
         <!-- 강사 소개 -->
         <div class="instructor-section">
           <h2>강사 소개</h2>
-          <div class="instructor-info">
-            <div class="instructor-avatar">
-              <img 
-                v-if="lecture.submittedByProfile" 
-                :src="lecture.submittedByProfile" 
-                :alt="lecture.instructor.name + ' 프로필 이미지'"
-                class="instructor-profile-img"
-              />
-              <span v-else>{{ lecture.instructor.name.charAt(0) }}</span>
-            </div>
-            <div class="instructor-details">
-              <h3>{{ lecture.instructor.name }}</h3>
-              <p>{{ lecture.instructor.title }}</p>
-            </div>
+                  <div class="instructor-info">
+          <div class="instructor-avatar" @click="handleProfileClick($event, lecture.instructor.id, lecture.instructor.name)">
+            <img 
+              v-if="lecture.submittedByProfile" 
+              :src="lecture.submittedByProfile" 
+              :alt="lecture.instructor.name + ' 프로필 이미지'"
+              class="instructor-profile-img"
+            />
+            <span v-else>{{ lecture.instructor.name.charAt(0) }}</span>
           </div>
+          <div class="instructor-details">
+            <h3>{{ lecture.instructor.name }}</h3>
+            <p>{{ lecture.instructor.title }}</p>
+          </div>
+        </div>
         </div>
 
         <!-- 리뷰 및 Q&A -->
@@ -183,7 +183,7 @@
                              <div v-for="review in paginatedReviews" :key="review.id" class="review-item">
                                   <div class="review-header">
                     <div class="reviewer-info">
-                      <div class="reviewer-profile">
+                      <div class="reviewer-profile" @click="handleProfileClick($event, review.reviewerId, review.writer)">
                         <img 
                           v-if="review.profileUrl" 
                           :src="review.profileUrl" 
@@ -242,7 +242,7 @@
                   <div class="question">
                     <div class="question-header">
                       <div class="questioner-info">
-                        <div class="questioner-profile">
+                        <div class="questioner-profile" @click="handleProfileClick($event, qa.questionerUUID, qa.questionerId)">
                           <img 
                             v-if="qa.parentProfileUrl" 
                             :src="qa.parentProfileUrl" 
@@ -280,7 +280,7 @@
                    <div class="answer-content">
                      <div class="answer-header">
                        <div class="answerer-info">
-                         <div class="answerer-profile">
+                         <div class="answerer-profile" @click="handleProfileClick($event, qa.answererUUID, qa.answererId)">
                            <img 
                              v-if="qa.answerProfileUrl" 
                              :src="qa.answerProfileUrl" 
@@ -366,8 +366,8 @@
               <span class="share-icon">📤</span>
               <span>공유하기</span>
             </div>
-            <!-- 신고하기 버튼 (강사가 자기 강의를 볼 때는 숨김) -->
-            <div v-if="!isAuthor" class="report-section">
+            <!-- 신고하기 버튼 (강사가 자기 강의를 볼 때는 숨김, 구매자만 가능) -->
+            <div v-if="!isAuthor && !isGuest" class="report-section" @click="handleReportClick">
               <span class="report-icon">🚨</span>
               <span>신고하기</span>
             </div>
@@ -720,6 +720,24 @@
       @cancel="cancelLectureDelete"
     />
 
+    <!-- 신고 모달 -->
+    <ReportModal
+      v-model="showReportModal"
+      :report-type="reportModalData.reportType"
+      :target-id="reportModalData.targetId"
+      :target-name="reportModalData.targetName"
+      @success="handleReportSuccess"
+      @error="handleReportError"
+    />
+
+    <!-- 사용자 프로필 모달 -->
+    <UserProfileModal
+      v-model="showUserProfileModal"
+      :user="userProfileData"
+      @chat="handleUserProfileChat"
+      @report="handleUserProfileReport"
+    />
+
 
   </div>
 </template>
@@ -727,20 +745,27 @@
 <script>
 import Header from '@/components/Header.vue';
 import DeleteConfirmModal from '@/components/common/DeleteConfirmModal.vue';
+import ReportModal from '@/components/common/ReportModal.vue';
+import UserProfileModal from '@/components/common/UserProfileModal.vue';
 
 import { lectureService } from '@/store/lecture/lectureService';
 import { useCartStore } from '@/store/cart/cart';
+import { useChatStore } from '@/store/chat/chat';
+import { useAuthStore } from '@/store/auth/auth';
 import { getUserIdFromToken } from '@/utils/api';
+import { reportService } from '@/services/report/reportService';
 import { lectureProgressService } from '@/services/lecture/lectureProgressService';
 
 
 export default {
   name: 'LectureDetail',
-  components: { Header, DeleteConfirmModal },
+  components: { Header, DeleteConfirmModal, ReportModal, UserProfileModal },
   data() {
     return {
       ready: false, // 초기화 완료 상태
       cartStore: null, // 장바구니 스토어 인스턴스
+      chatStore: null, // 채팅 스토어 인스턴스
+      authStore: null, // 인증 스토어 인스턴스
       activeTab: 'reviews',
       lecture: null,
       showShareModal: false,
@@ -755,6 +780,20 @@ export default {
       showLoginRequiredModal: false,
       showDeleteConfirmModal: false,
       showLectureDeleteModal: false,
+      showReportModal: false,
+      reportModalData: {
+        reportType: 'LECTURE',
+        targetId: '',
+        targetName: ''
+      },
+      showUserProfileModal: false,
+      userProfileData: {
+        id: '',
+        nickname: '',
+        email: '',
+        profileImage: '',
+        joinDate: ''
+      },
       deleteConfirmData: {},
       notificationData: {},
       errorMessage: '',
@@ -1162,6 +1201,10 @@ export default {
               teacher: lectureData.name, // 강사명
               // 강사 프로필 이미지 URL 추가
               submittedByProfile: lectureData.submittedByProfile,
+              // 강사 가입일 추가
+              submittedJoinedAt: lectureData.submittedJoinedAt,
+              // 강사 이메일 추가
+              submittedByEmail: lectureData.submittedByEmail,
               // 강의 수강률 추가
               progressPercent: lectureData.progressPercent,
               // 백엔드에서 제공하는 좋아요 정보 추가
@@ -1943,11 +1986,214 @@ export default {
          }
        },
 
-       // 강의 삭제 취소
-       cancelLectureDelete() {
-         this.showLectureDeleteModal = false;
-       },
-      
+             // 강의 삭제 취소
+      cancelLectureDelete() {
+        this.showLectureDeleteModal = false;
+      },
+
+      // 신고 성공 처리
+      handleReportSuccess(response) {
+        this.showSuccess('신고가 성공적으로 접수되었습니다.');
+      },
+
+      // 신고 실패 처리
+      handleReportError(error) {
+                  this.showError(error || '신고 처리 중 오류가 발생했습니다.');
+        },      
+
+      // 신고하기 버튼 클릭 처리 (중복 신고 확인)
+      async handleReportClick() {
+        try {
+          // 중복 신고 확인
+          const response = await reportService.checkReport(this.lecture.id);
+          
+          if (response.success && response.data) {
+            // 중복 신고인 경우 경고 메시지 표시
+            this.showError('이미 신고한 강의입니다. 신고가 처리된 이후에 다시 시도해주세요.');
+          } else {
+            // 중복 신고가 아닌 경우 신고 모달 표시
+            this.reportModalData = {
+              reportType: 'LECTURE',
+              targetId: this.lecture.id,
+              targetName: this.lecture.title
+            };
+            this.showReportModal = true;
+          }
+        } catch (error) {
+          console.error('중복 신고 확인 중 오류:', error);
+          // 오류 발생 시 신고 모달을 열지 않고 오류 메시지만 표시
+          this.showError('신고 확인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+        }
+      },
+
+      // 프로필 클릭 처리
+      handleProfileClick(event, userId, userName) {
+        // 로그인하지 않은 사용자는 프로필 클릭 불가
+        if (this.isGuest) {
+          this.showLoginRequiredModal = true;
+          return;
+        }
+
+        // 자신의 프로필은 클릭 불가
+        if (userId === this.currentUserId) {
+          return;
+        }
+
+        // API 응답에서 해당 사용자 정보 찾기
+        let userInfo = null;
+        let profileImageUrl = '';
+        let joinDate = '';
+
+        // 강사 정보인 경우
+        if (userId === this.lecture.instructor.id) {
+          // API 응답에서 강사 정보를 직접 가져옴
+          const lectureData = this.lecture;
+          userInfo = {
+            id: userId,
+            nickname: userName,
+            email: lectureData.submittedByEmail || `${userName}@example.com`,
+            profileImage: lectureData.submittedByProfile || '',
+            joinDate: this.formatDate(lectureData.submittedJoinedAt) || '정보 없음'
+          };
+        }
+        // 리뷰 작성자인 경우
+        else {
+          const reviewer = this.lecture.reviews.find(review => review.reviewerId === userId);
+          if (reviewer) {
+            userInfo = {
+              id: userId,
+              nickname: userName,
+              email: reviewer.reviewerEmail || `${userName}@example.com`,
+              profileImage: reviewer.profileUrl || '',
+              joinDate: this.formatDate(reviewer.reviewerJoinedAt) || '정보 없음'
+            };
+          }
+          // Q&A 작성자인 경우
+          else {
+            const qaAuthor = this.lecture.qa.find(qa => 
+              qa.questionerUUID === userId || qa.answererUUID === userId
+            );
+            if (qaAuthor) {
+              const isQuestioner = qaAuthor.questionerUUID === userId;
+              userInfo = {
+                id: userId,
+                nickname: userName,
+                email: isQuestioner ? qaAuthor.parentEmail || `${userName}@example.com` : qaAuthor.answerEmail || `${userName}@example.com`,
+                profileImage: isQuestioner ? qaAuthor.parentProfileUrl || '' : qaAuthor.answerProfileUrl || '',
+                joinDate: this.formatDate(isQuestioner ? qaAuthor.parentJoinedAt : qaAuthor.answerJoinedAt) || '정보 없음'
+              };
+            }
+          }
+        }
+
+        // 기본값 설정 (사용자 정보를 찾지 못한 경우)
+        if (!userInfo) {
+          userInfo = {
+            id: userId,
+            nickname: userName,
+            email: `${userName}@example.com`,
+            profileImage: '',
+            joinDate: '정보 없음'
+          };
+        }
+
+        // 사용자 프로필 데이터 설정
+        this.userProfileData = {
+          id: userInfo.id,
+          nickname: userInfo.nickname,
+          email: userInfo.email,
+          profileImage: userInfo.profileImage,
+          joinDate: userInfo.joinDate
+        };
+
+        // 사용자 프로필 모달 표시
+        this.showUserProfileModal = true;
+      },
+
+      // 사용자 프로필 채팅 처리
+      async handleUserProfileChat(userId) {
+        try {
+          // 로그인 확인
+          if (!this.authStore.user?.id) {
+            this.showNotification({
+              title: '로그인 필요',
+              icon: '🔒',
+              message: '채팅 기능을 사용하려면 로그인이 필요합니다.',
+              submessage: '로그인 페이지로 이동합니다.'
+            });
+            setTimeout(() => {
+              this.$router.push('/login');
+            }, 1500);
+            return;
+          }
+
+          // 자기 자신과는 채팅할 수 없음
+          if (this.authStore.user.id === userId) {
+            this.showNotification({
+              title: '채팅 불가',
+              icon: '❌',
+              message: '자기 자신과는 채팅할 수 없습니다.',
+              submessage: ''
+            });
+            this.showUserProfileModal = false;
+            return;
+          }
+
+          const myId = this.authStore.user.id;
+          console.log('채팅방 생성 시작:', { myId, userId });
+
+          // 채팅방 생성
+          const roomId = await this.chatStore.createRoom(myId, userId);
+          console.log('채팅방 생성 성공, roomId:', roomId);
+
+          // 바로 채팅방으로 이동
+          this.$router.push(`/chat?autoSelect=true&roomId=${roomId}`);
+
+          // 프로필 모달 닫기
+          this.showUserProfileModal = false;
+
+        } catch (error) {
+          console.error('채팅방 생성 실패:', error);
+          this.showNotification({
+            title: '채팅 실패',
+            icon: '❌',
+            message: '채팅방 생성에 실패했습니다.',
+            submessage: error.message || '알 수 없는 오류가 발생했습니다.'
+          });
+          this.showUserProfileModal = false;
+        }
+      },
+
+      // 사용자 프로필 신고 처리
+      async handleUserProfileReport(userId) {
+        try {
+          // 중복 신고 확인
+          const response = await reportService.checkReport(userId);
+
+          if (response.success && response.data) {
+            // 중복 신고인 경우 경고 메시지 표시
+            this.showError('이미 신고한 사용자입니다. 신고가 처리된 이후에 다시 시도해주세요.');
+          } else {
+            // 중복 신고가 아닌 경우 신고 모달 표시
+            this.reportModalData = {
+              reportType: 'USER',
+              targetId: userId,
+              targetName: this.userProfileData.nickname
+            };
+            this.showReportModal = true;
+          }
+        } catch (error) {
+          console.error('중복 신고 확인 중 오류:', error);
+          // 오류 발생 시에도 신고 모달을 열어서 사용자가 시도할 수 있도록 함
+          this.reportModalData = {
+            reportType: 'USER',
+            targetId: userId,
+            targetName: this.userProfileData.nickname
+          };
+          this.showReportModal = true;
+        }
+        this.showUserProfileModal = false;
+      },
 
       
       // 서버에서 강의 삭제
@@ -2541,8 +2787,19 @@ export default {
      
   },
       async mounted() {
+      // 스토어 초기화
+      const urlParams = new URLSearchParams(window.location.search);
+      const tab = urlParams.get('tab');
+  
+      if (tab === 'qa') {
+        this.activeTab = 'qa';
+      } else if (tab === 'reviews') {
+        this.activeTab = 'reviews';
+    }  
       // 장바구니 스토어 초기화
       this.cartStore = useCartStore();
+      this.chatStore = useChatStore();
+      this.authStore = useAuthStore();
       
       // 현재 사용자 ID 가져오기
       this.currentUserId = getUserIdFromToken();
@@ -2980,6 +3237,13 @@ export default {
   font-weight: 600;
   color: #666;
   overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.instructor-avatar:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .instructor-profile-img {
@@ -3071,6 +3335,13 @@ export default {
   border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.reviewer-profile:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .reviewer-profile-img {
@@ -3143,6 +3414,13 @@ export default {
   border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.questioner-profile:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .questioner-profile-img {
@@ -3188,6 +3466,13 @@ export default {
   border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.answerer-profile:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .answerer-profile-img {
