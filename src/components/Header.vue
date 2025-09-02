@@ -281,7 +281,7 @@
 
 <script setup>
 import { ref, computed, watch, onUnmounted, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/store/auth/auth'
 import { useCartStore } from '@/store/cart/cart'
 import { useNotificationStore } from '@/store/notification/notification.js'
@@ -289,6 +289,7 @@ import { useAdminLoginStore } from '@/store/admin/adminLogin'
 import CommonModal from '@/components/common/CommonModal.vue'
 
 const router = useRouter();
+const route = useRoute();
 const authStore = useAuthStore();
 const cartStore = useCartStore();
 
@@ -455,6 +456,9 @@ watch(isLoggedIn, async (newValue) => {
     notificationStore.clearAllData();
     localStorage.removeItem('cartItems');
     cartStore.serverCartItems = [];
+    
+    // 알림 스트림 연결 해제
+    notificationStore.disconnectFromNotificationStream();
   }
 })
 
@@ -504,6 +508,15 @@ watch(userRole, async (newRole) => {
     await fetchProfileInfo();
   }
 })
+
+// 라우터 변경 감시하여 알림 구독 제어
+watch(() => route.meta, (newMeta) => {
+  // 탈퇴한 사용자 확인 페이지나 알림 구독을 건너뛰어야 하는 페이지에서는 알림 구독 해제
+  if (newMeta?.skipNotificationSubscription) {
+    console.log('알림 구독 건너뛰기:', route.name);
+    notificationStore.disconnectFromNotificationStream();
+  }
+}, { immediate: true })
 
 // 컴포넌트 마운트 시 리사이즈 이벤트 리스너 추가 및 프로필 정보 가져오기
 onMounted(async () => {

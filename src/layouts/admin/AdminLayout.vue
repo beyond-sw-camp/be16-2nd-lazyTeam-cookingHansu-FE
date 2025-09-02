@@ -11,13 +11,13 @@
   </v-app>
 </template>
   
-  <script setup>
-  import AppHeader from '@/components/admin/Appheader.vue'
-  import AppSlider from '@/components/admin/AppSlider.vue'
-  </script>
-  
-  <style scoped>
-  .admin-main {
-    margin-top: 64px; /* 헤더 높이만큼 여백 */
-  }
-  </style>
+<script setup>
+import AppHeader from '@/components/admin/Appheader.vue'
+import AppSlider from '@/components/admin/AppSlider.vue'
+</script>
+
+<style scoped>
+.admin-main {
+  margin-top: 64px; /* 헤더 높이만큼 여백 */
+}
+</style>

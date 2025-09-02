@@ -17,6 +17,9 @@ export const useAuthStore = defineStore('auth', {
     accessToken: null,
     refreshToken: null,
     
+    // OAuth 원본 액세스 토큰 (소셜 연동 해제용)
+    oauthAccessToken: null,
+    
     // 로그인 상태
     isAuthenticated: false,
     
@@ -34,6 +37,10 @@ export const useAuthStore = defineStore('auth', {
     
     // 로그인 제공자 (google, kakao, naver, local)
     provider: null,
+
+    // 회원 복구 관련 상태
+    isRestoredUser: false,
+    showRestoreModal: false,
   }),
 
   getters: {
@@ -110,7 +117,7 @@ export const useAuthStore = defineStore('auth', {
         return true;
       }
       
-      // 공통 필수 정보 확인
+      // 공통 필수 정보 확인 (info는 선택사항이므로 체크하지 않음)
       if (!state.user.nickname || !state.user.role) {
         return false;
       }
@@ -145,7 +152,7 @@ export const useAuthStore = defineStore('auth', {
         return 'complete';
       }
       
-      // 기본 정보가 없으면 add-info 단계
+      // 기본 정보가 없으면 add-info 단계 (info는 선택사항이므로 체크하지 않음)
       if (!state.user.nickname || !state.user.role) {
         return 'add-info';
       }
@@ -199,7 +206,13 @@ export const useAuthStore = defineStore('auth', {
         const response = await authService.login(loginData);
         
         if (response.success && response.data) {
-          const { accessToken, refreshToken, user, expiresIn } = response.data;
+          const { accessToken, refreshToken, user, expiresIn, isRestored } = response.data;
+          
+          // 회원 복구 여부 확인
+          if (isRestored) {
+            this.isRestoredUser = true;
+            this.showRestoreModal = true;
+          }
           
           // 토큰 및 사용자 정보 저장 
           this.setAuthData(accessToken, refreshToken, user, expiresIn, 'local');
@@ -233,6 +246,7 @@ export const useAuthStore = defineStore('auth', {
         const savedExpiry = localStorage.getItem('expiresIn');
         const savedUser = localStorage.getItem('user');
         const savedProvider = localStorage.getItem('provider');
+        const savedOauthAccessToken = localStorage.getItem('oauthAccessToken');
         
         if (savedAccessToken && savedRefreshToken && savedExpiry && savedUser) {
           const expiry = parseInt(savedExpiry);
@@ -245,6 +259,11 @@ export const useAuthStore = defineStore('auth', {
             this.user = JSON.parse(savedUser);
             this.provider = savedProvider || 'local';
             this.isAuthenticated = true;
+            
+            // OAuth 원본 액세스 토큰 복원
+            if (savedOauthAccessToken) {
+              this.oauthAccessToken = savedOauthAccessToken;
+            }
             
             // 최신 사용자 정보 조회
             try {
@@ -345,7 +364,7 @@ export const useAuthStore = defineStore('auth', {
     },
 
     // 인증 데이터 설정
-    setAuthData(accessToken, refreshToken, user, expiresIn, provider) {
+    setAuthData(accessToken, refreshToken, user, expiresIn, provider, oauthAccessToken = null) {
       this.accessToken = accessToken;
       this.refreshToken = refreshToken;
       this.expiresIn = expiresIn;
@@ -353,13 +372,19 @@ export const useAuthStore = defineStore('auth', {
       this.isAuthenticated = true;
       this.provider = provider;
       
+      // OAuth 원본 액세스 토큰 저장
+      if (oauthAccessToken) {
+        this.oauthAccessToken = oauthAccessToken;
+        localStorage.setItem('oauthAccessToken', oauthAccessToken);
+      }
+      
       // 토큰 만료 시간 설정 (현재 시간 + 만료 시간)
       this.expiresIn = Date.now() + (expiresIn * 1000);
       
       // 로컬 스토리지에 저장 (페이지 새로고침 시 복원용)
       localStorage.setItem('accessToken', accessToken);
-      localStorage.setItem('refreshToken', refreshToken);
       localStorage.setItem('expiresIn', this.expiresIn);
+      localStorage.setItem('refreshToken', refreshToken);
       localStorage.setItem('user', JSON.stringify(user));
       localStorage.setItem('provider', provider);
       
@@ -534,6 +559,7 @@ export const useAuthStore = defineStore('auth', {
       this.expiresIn = null;
       this.error = null;
       this.provider = null;
+      this.oauthAccessToken = null;
       
       // 로컬 스토리지 정리
       localStorage.removeItem('accessToken');
@@ -559,6 +585,96 @@ export const useAuthStore = defineStore('auth', {
     updateUserInfo(userInfo) {
       this.user = { ...this.user, ...userInfo };
       localStorage.setItem('user', JSON.stringify(this.user));
+    },
+
+    // 회원 탈퇴 (soft delete)
+    async deleteUser() {
+      try {
+        this.isLoading = true;
+        this.error = null;
+        
+        // accessToken이 없는 경우 에러 처리
+        if (!this.accessToken) {
+          throw new Error('인증 토큰을 찾을 수 없습니다.');
+        }
+        
+        // 통합된 회원 탈퇴 API 호출
+        const response = await userService.deleteUser();
+        
+        if (response.success) {
+          await this.logout();
+          return { success: true, message: '회원 탈퇴가 완료되었습니다.' };
+        } else {
+          throw new Error(response.message || '회원 탈퇴에 실패했습니다.');
+        }
+      } catch (error) {
+        console.error('User deletion failed:', error);
+        this.error = error.message || '회원 탈퇴에 실패했습니다.';
+        throw error;
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    // 회원 복구
+    async restoreUser(restoreData) {
+      try {
+        this.isLoading = true;
+        this.error = null;
+        
+        const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.RESTORE_USER}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(restoreData)
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const responseData = await response.json();
+        
+        if (responseData.success && responseData.data) {
+          const { accessToken, refreshToken, user, expiresIn } = responseData.data;
+          
+          // 토큰 및 사용자 정보 저장
+          this.setAuthData(accessToken, refreshToken, user, expiresIn, restoreData.oauthType.toLowerCase());
+          
+          // 최신 사용자 정보 조회
+          try {
+            await this.getCurrentUser();
+          } catch (error) {
+            console.error('Failed to get current user after restore:', error);
+          }
+          
+          return { 
+            success: true, 
+            message: responseData.data.message || '회원 정보가 성공적으로 복원되었습니다.' 
+          };
+        } else {
+          throw new Error(responseData.message || '회원 복구에 실패했습니다.');
+        }
+      } catch (error) {
+        console.error('User restoration failed:', error);
+        this.error = error.message || '회원 복구에 실패했습니다.';
+        throw error;
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    // 회원 복구 모달 닫기
+    closeRestoreModal() {
+      this.showRestoreModal = false;
+      this.isRestoredUser = false;
+    },
+
+    // 회원 복구 상태 초기화
+    resetRestoreState() {
+      this.isRestoredUser = false;
+      this.showRestoreModal = false;
     },
 
     // 백엔드에서 최신 프로필 정보 가져오기

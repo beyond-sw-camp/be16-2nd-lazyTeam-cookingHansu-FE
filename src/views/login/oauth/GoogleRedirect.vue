@@ -14,15 +14,7 @@
               class="mb-6"
             ></v-progress-circular>
             
-            <!-- 성공 아이콘 -->
-            <v-icon
-              v-else-if="isSuccess"
-              color="success"
-              size="64"
-              class="mb-6"
-            >
-              mdi-check-circle
-            </v-icon>
+
             
             <!-- 에러 아이콘 -->
             <v-icon
@@ -98,20 +90,17 @@ export default {
     
     // 반응형 상태
     const isLoading = ref(true);
-    const isSuccess = ref(false);
     const error = ref(null);
     const authorizationCode = ref(null);
     
     // 상태에 따른 메시지 계산
     const getStatusMessage = computed(() => {
       if (error.value) return '로그인 실패';
-      if (isSuccess.value) return '로그인 성공';
       return '로그인 처리 중...';
     });
     
     const getDetailMessage = computed(() => {
       if (error.value) return 'Google 로그인 처리 중 오류가 발생했습니다.';
-      if (isSuccess.value) return '잠시 후 자동으로 이동합니다.';
       return 'Google에서 받은 정보를 처리하고 있습니다.';
     });
     
@@ -147,21 +136,22 @@ export default {
         // 서버에 인가 코드 전송하여 로그인 처리
         const user = await authStore.handleGoogleLogin(authorizationCode.value);
         
-        // 성공 상태 설정
-        isSuccess.value = true;
+        // handleGoogleLogin에서 탈퇴한 회원인 경우 null을 반환하므로 체크
+        if (user === null) {
+          // 탈퇴한 회원인 경우 이미 리다이렉트가 처리되었으므로 여기서는 아무것도 하지 않음
+          return;
+        }
         
-        // 사용자 상태에 따른 리다이렉트
-        setTimeout(() => {
-          // 백엔드에서 isNewUser 컬럼을 제거하고 DB 조회로 기존 사용자 판단
-          // 프론트엔드에서는 사용자의 기본 프로필 정보 완성 여부로 판단
-          if (authStore.isNewUser) {
-            // 신규 사용자: 추가 정보 입력 페이지로 이동
-            router.push('/add-info');
-          } else {
-            // 기존 사용자: 홈페이지로 이동
-            router.push('/');
-          }
-        }, 2000); // 2초 후 자동 이동
+        // 사용자 상태에 따른 즉시 리다이렉트 (로그인 성공 표시 없이)
+        // 백엔드에서 isNewUser 컬럼을 제거하고 DB 조회로 기존 사용자 판단
+        // 프론트엔드에서는 사용자의 기본 프로필 정보 완성 여부로 판단
+        if (authStore.isNewUser) {
+          // 신규 사용자: 추가 정보 입력 페이지로 이동
+          router.push('/add-info');
+        } else {
+          // 기존 사용자: 홈페이지로 이동
+          router.push('/');
+        }
         
       } catch (err) {
         console.error('Google login error:', err);
@@ -230,7 +220,6 @@ export default {
     
     return {
       isLoading,
-      isSuccess,
       error,
       getStatusMessage,
       getDetailMessage,
