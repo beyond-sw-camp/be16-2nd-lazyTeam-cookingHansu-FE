@@ -171,7 +171,7 @@ export default {
 
 .lectures-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 24px;
 }
 
@@ -192,7 +192,7 @@ export default {
 .lecture-image {
   position: relative;
   width: 100%;
-  height: 180px;
+  height: 200px;
   overflow: hidden;
   cursor: pointer;
   transition: transform 0.2s;
@@ -209,7 +209,7 @@ export default {
 }
 
 .lecture-content {
-  padding: 20px;
+  padding: 16px;
 }
 
 .lecture-header {

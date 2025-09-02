@@ -19,8 +19,8 @@
           />
         </div>
         <div class="like-content">
-          <div class="like-type">
-            <span class="type-badge type-recipe">레시피</span>
+          <div class="like-header">
+            <span class="category-badge" :class="categoryClass(item.category)">{{ getCategoryName(item.category) }}</span>
             <span class="like-date">{{ formatDate(item.createdAt) }}</span>
           </div>
           <h3 class="like-title">
@@ -162,6 +162,28 @@ export default {
     handleImageError(event) {
       // 이미지 로드 실패 시 기본 이미지로 대체
       event.target.src = defaultThumbnail;
+    },
+    
+    categoryClass(category) {
+      switch (category) {
+        case 'KOREAN': return 'cat-korean';
+        case 'WESTERN': return 'cat-western';
+        case 'JAPANESE': return 'cat-japanese';
+        case 'CHINESE': return 'cat-chinese';
+        case 'DESSERT': return 'cat-dessert';
+        default: return '';
+      }
+    },
+    
+    getCategoryName(category) {
+      switch (category) {
+        case 'KOREAN': return '한식';
+        case 'WESTERN': return '양식';
+        case 'JAPANESE': return '일식';
+        case 'CHINESE': return '중식';
+        case 'DESSERT': return '디저트';
+        default: return category;
+      }
     }
   }
 };
@@ -260,6 +282,8 @@ export default {
   border: 1px solid #f0f0f0;
   transition: transform 0.2s, box-shadow 0.2s;
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
 }
 
 .like-card:hover {
@@ -270,7 +294,7 @@ export default {
 .like-image {
   position: relative;
   width: 100%;
-  height: 160px;
+  height: 200px;
   overflow: hidden;
 }
 
@@ -297,22 +321,42 @@ export default {
   padding: 16px;
 }
 
-.like-type {
+.like-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
 }
 
-.type-badge {
+.category-badge {
   font-size: 12px;
   font-weight: 600;
   padding: 4px 12px;
   border-radius: 20px;
 }
 
-.type-recipe {
+.cat-korean {
   background: #ffe5c2;
+  color: #ff7a00;
+}
+
+.cat-western {
+  background: #e2f0ff;
+  color: #007aff;
+}
+
+.cat-japanese {
+  background: #e2ffe7;
+  color: #00b86b;
+}
+
+.cat-chinese {
+  background: #ffe2e2;
+  color: #ff3b3b;
+}
+
+.cat-dessert {
+  background: #fff3e2;
   color: #ff7a00;
 }
 
@@ -323,7 +367,7 @@ export default {
 }
 
 .like-title {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   color: #222;
   margin: 0 0 8px 0;

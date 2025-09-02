@@ -1077,17 +1077,17 @@ const submitComment = async () => {
   })
   
   try {
-    const response = await fetch('http://localhost:8080/post/comment/create', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-      },
-      body: JSON.stringify({
-        postId: recipe.id,
-        content: newComment.value
-      })
-    })
+            const response = await fetch('http://localhost:8080/post/comment/create', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          },
+          body: JSON.stringify({
+            postId: recipe.id,
+            content: newComment.value
+          })
+        })
 
     console.log('댓글 생성 응답 상태:', response.status, response.statusText)
     
@@ -1262,7 +1262,7 @@ const deleteComment = async (commentId) => {
   console.log('답글 개수:', commentToDelete?.replies?.length || 0)
   
   try {
-    const response = await fetch(`http://localhost:8080/post/comment/delete/${commentId}`, {
+            const response = await fetch(`http://localhost:8080/post/comment/delete/${commentId}`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
@@ -1382,7 +1382,7 @@ const saveEditComment = async (comment) => {
   }
   
   try {
-    const response = await fetch(`http://localhost:8080/post/comment/update/${comment.id}`, {
+            const response = await fetch(`http://localhost:8080/post/comment/update/${comment.id}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -1456,7 +1456,7 @@ const loadComments = async () => {
       headers['Authorization'] = `Bearer ${token}`
     }
     
-    const response = await fetch(`http://localhost:8080/post/comment/list/${recipe.id}`, {
+            const response = await fetch(`http://localhost:8080/post/comment/list/${recipe.id}`, {
       headers
     })
 
@@ -1847,9 +1847,9 @@ const confirmDelete = () => {
 
 const deleteRecipe = async () => {
   try {
-    console.log('🗑️ 삭제 API 호출:', `http://localhost:8080/api/posts/${recipe.id}`)
+    console.log('🗑️ 삭제 API 호출:', `http://localhost:8080/api/posts/delete/${recipe.id}`)
     
-    const response = await fetch(`http://localhost:8080/api/posts/${recipe.id}`, {
+    const response = await fetch(`http://localhost:8080/api/posts/delete/${recipe.id}`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('accessToken')}`

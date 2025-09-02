@@ -1,75 +1,74 @@
 <template>
-  <div class="bookmarks">
+  <div class="liked-lectures">
     <div class="section-header">
-      <h2>북마크</h2>
+      <h2>강의 좋아요</h2>
     </div>
 
     <div v-if="loading" class="loading-state">
       <div class="loading-spinner"></div>
-      <p>북마크를 불러오는 중...</p>
+      <p>강의 좋아요 목록을 불러오는 중...</p>
     </div>
 
-    <div v-else-if="bookmarks.length > 0" class="bookmarks-grid">
-      <div v-for="item in pagedBookmarks" :key="item.id" class="bookmark-card" @click="goToPostDetail(item)">
-        <div class="bookmark-image">
-          <img 
-            :src="item.thumbnailUrl || defaultThumbnail" 
-            :alt="item.title"
-            @error="handleImageError"
-          />
+    <div v-else-if="likes.length > 0" class="lectures-grid">
+      <div v-for="lecture in pagedLikes" :key="lecture.id" class="lecture-card">
+        <div class="lecture-image" @click="goToLectureDetail(lecture.id)">
+          <img :src="lecture.thumbUrl || defaultThumbnail" :alt="lecture.title" @error="handleImageError" />
         </div>
-        <div class="bookmark-content">
-          <div class="bookmark-header">
-            <span class="category-badge" :class="categoryClass(item.category)">{{ getCategoryName(item.category) }}</span>
-            <span class="bookmark-date">{{ formatDate(item.createdAt) }}</span>
+        <div class="lecture-content">
+          <div class="lecture-header">
+            <span class="category-badge" :class="categoryClass(lecture.category)">{{ getCategoryName(lecture.category) }}</span>
+            <span class="like-date">{{ formatDate(lecture.createdAt || lecture.date) }}</span>
           </div>
-          <h3 class="bookmark-title">
-            <span v-if="isPrivatePost(item)" class="lock-icon">🔒</span>
-            {{ item.title }}
-          </h3>
-          <p class="bookmark-description">{{ item.description }}</p>
-          <div class="bookmark-meta">
-            <div class="author-stats">
-              <span v-if="item.writerNickname" class="author">{{ item.writerNickname }}</span>
-              <div class="bookmark-stats">
-                <span class="stat-item">
-                  <span class="stat-icon">❤️</span>
-                  {{ item.likeCount }}
-                </span>
-                <span class="stat-item">
-                  <span class="stat-icon">🔖</span>
-                  {{ item.bookmarkCount }}
-                </span>
-                <span class="stat-item">
-                  <span class="stat-icon">💬</span>
-                  {{ item.commentCount || 0 }}
-                </span>
-              </div>
+          <h3 class="lecture-title" @click="goToLectureDetail(lecture.id)">{{ lecture.title }}</h3>
+          <p class="lecture-description">{{ lecture.description }}</p>
+          <div class="lecture-rating-stats">
+            <div class="lecture-rating">
+              <span class="stars">
+                <span v-for="i in 5" :key="i" class="star" :class="{ filled: i <= Math.round(lecture.reviewAvg || 0) }">★</span>
+              </span>
+              <span class="rating-count">({{ lecture.reviewCount || 0 }})</span>
             </div>
+            <div class="lecture-stats">
+              <span class="stat-item">
+                <span class="stat-icon">❤️</span>
+                {{ lecture.likeCount || 0 }}
+              </span>
+              <span class="stat-item">
+                <span class="stat-icon">💬</span>
+                {{ lecture.qnaCount || 0 }}
+              </span>
+              <span class="stat-item">
+                <span class="stat-icon">👥</span>
+                {{ lecture.purchaseCount || 0 }}
+              </span>
+            </div>
+          </div>
+          <div class="lecture-bottom">
+            <div class="lecture-date">{{ lecture.date || '' }}</div>
           </div>
         </div>
       </div>
     </div>
 
     <Pagination 
-      v-if="bookmarks.length > 0"
+      v-if="likes.length > 0"
       :current-page="currentPage"
       :total-pages="totalPages"
       @page-change="changePage"
     />
 
-    <div v-if="!loading && bookmarks.length === 0" class="empty-state">
-      <div class="empty-icon">🔖</div>
-      <h3>아직 북마크한 항목이 없어요</h3>
-      <p>관심 있는 레시피를 북마크해보세요!</p>
-      <button class="browse-content-btn">콘텐츠 둘러보기</button>
+    <div v-if="!loading && likes.length === 0" class="empty-state">
+      <div class="empty-icon">📚</div>
+      <h3>아직 좋아요한 강의가 없어요</h3>
+      <p>마음에 드는 강의에 좋아요를 눌러보세요!</p>
+      <button class="browse-content-btn">강의 둘러보기</button>
     </div>
 
     <div v-if="error" class="error-state">
       <div class="error-icon">❌</div>
-      <h3>북마크를 불러오는데 실패했습니다</h3>
+      <h3>강의 좋아요 목록을 불러오는데 실패했습니다</h3>
       <p>{{ error }}</p>
-      <button @click="fetchBookmarks" class="retry-btn">다시 시도</button>
+      <button @click="fetchLikes" class="retry-btn">다시 시도</button>
     </div>
   </div>
 </template>
@@ -81,57 +80,50 @@ import { apiGet } from '@/utils/api';
 const defaultThumbnail = '/src/assets/images/smu_mascort1.jpg';
 
 export default {
-  name: 'Bookmarks',
+  name: 'LikedLectures',
   components: {
     Pagination
   },
   data() {
     return {
       currentPage: 1,
-      bookmarksPerPage: 6,
-      bookmarks: [],
+      likesPerPage: 6,
+      likes: [],
       loading: false,
       error: null
     };
   },
   computed: {
-    pagedBookmarks() {
-      const start = (this.currentPage - 1) * this.bookmarksPerPage;
-      const end = start + this.bookmarksPerPage;
-      return this.bookmarks.slice(start, end);
+    pagedLikes() {
+      const start = (this.currentPage - 1) * this.likesPerPage;
+      const end = start + this.likesPerPage;
+      return this.likes.slice(start, end);
     },
     totalPages() {
-      return Math.ceil(this.bookmarks.length / this.bookmarksPerPage);
+      return Math.ceil(this.likes.length / this.likesPerPage);
     }
   },
   async mounted() {
-    await this.fetchBookmarks();
+    await this.fetchLikes();
   },
   methods: {
-    async fetchBookmarks() {
+    async fetchLikes() {
       this.loading = true;
       this.error = null;
       
       try {
-        const response = await apiGet('/api/my/bookmarked-posts');
+        const response = await apiGet('/api/my/liked-lectures');
         
         if (response.ok) {
           const result = await response.json();
-          // 삭제된 게시글 필터링
-          const allBookmarks = result.data || [];
-          this.bookmarks = allBookmarks.filter(bookmark => {
-            // 삭제되지 않은 게시글만 표시
-            return !bookmark.deleted && !bookmark.deletedAt && bookmark.status !== 'DELETED';
-          });
-          
-          console.log(`🔍 전체 북마크: ${allBookmarks.length}개, 삭제되지 않은 북마크: ${this.bookmarks.length}개`);
-          console.log('📋 북마크 데이터 샘플:', this.bookmarks[0]);
+          this.likes = result.data || [];
+          console.log(`🔍 강의 좋아요: ${this.likes.length}개`);
         } else {
-          throw new Error('북마크를 불러오는데 실패했습니다.');
+          throw new Error('강의 좋아요 목록을 불러오는데 실패했습니다.');
         }
       } catch (error) {
-        console.error('북마크 조회 오류:', error);
-        this.error = error.message || '북마크를 불러오는데 실패했습니다.';
+        console.error('강의 좋아요 조회 오류:', error);
+        this.error = error.message || '강의 좋아요 목록을 불러오는데 실패했습니다.';
       } finally {
         this.loading = false;
       }
@@ -141,18 +133,8 @@ export default {
         this.currentPage = page;
       }
     },
-    goToPostDetail(item) {
-      // Navigate to post detail page
-      console.log('🚀 북마크 클릭:', item);
-      console.log('🆔 게시글 ID:', item.id);
-      
-      // 여러 가능한 ID 필드 시도
-      const postId = item.id || item.postId || item.recipeId;
-      if (postId) {
-        this.$router.push(`/recipes/${postId}`);
-      } else {
-        console.error('❌ 게시글 ID를 찾을 수 없습니다:', item);
-      }
+    goToLectureDetail(lectureId) {
+      this.$router.push(`/lectures/${lectureId}`);
     },
 
     formatDate(dateString) {
@@ -164,14 +146,6 @@ export default {
       const day = String(date.getDate()).padStart(2, '0');
       
       return `${year}.${month}.${day}`;
-    },
-    isPrivatePost(item) {
-      // isOpen 필드로 비밀글 체크
-      return item.isOpen === false;
-    },
-    handleImageError(event) {
-      // 이미지 로드 실패 시 기본 이미지로 대체
-      event.target.src = defaultThumbnail;
     },
     
     categoryClass(category) {
@@ -194,13 +168,17 @@ export default {
         case 'DESSERT': return '디저트';
         default: return category;
       }
+    },
+    
+    handleImageError(event) {
+      event.target.src = defaultThumbnail;
     }
   }
 };
 </script>
 
 <style scoped>
-.bookmarks {
+.liked-lectures {
   width: 100%;
 }
 
@@ -228,7 +206,7 @@ export default {
   width: 40px;
   height: 40px;
   border: 4px solid #f3f3f3;
-  border-top: 4px solid #ff7a00;
+  border-top: 4px solid #17a2b8;
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin: 0 auto 16px;
@@ -264,7 +242,7 @@ export default {
 }
 
 .retry-btn {
-  background: #ff7a00;
+  background: #17a2b8;
   color: white;
   border: none;
   padding: 12px 24px;
@@ -275,63 +253,53 @@ export default {
 }
 
 .retry-btn:hover {
-  background: #e66a00;
+  background: #138496;
 }
 
-.bookmarks-grid {
+.lectures-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 24px;
 }
 
-.bookmark-card {
+.lecture-card {
   background: white;
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   border: 1px solid #f0f0f0;
   transition: transform 0.2s, box-shadow 0.2s;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
 }
 
-.bookmark-card:hover {
+.lecture-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
 }
 
-.bookmark-image {
+.lecture-image {
   position: relative;
   width: 100%;
   height: 200px;
   overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s;
 }
 
-.bookmark-image img {
+.lecture-image:hover {
+  transform: scale(1.02);
+}
+
+.lecture-image img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.no-image {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #f5f5f5;
-  color: #999;
-  font-size: 14px;
-}
-
-
-
-.bookmark-content {
+.lecture-content {
   padding: 16px;
 }
 
-.bookmark-header {
+.lecture-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -370,29 +338,27 @@ export default {
   color: #ff7a00;
 }
 
-.bookmark-date {
+.like-date {
   font-size: 12px;
   color: #999;
   font-weight: 500;
 }
 
-.bookmark-title {
+.lecture-title {
   font-size: 18px;
   font-weight: 700;
   color: #222;
   margin: 0 0 8px 0;
   line-height: 1.3;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  cursor: pointer;
+  transition: color 0.2s;
 }
 
-.lock-icon {
-  font-size: 14px;
-  color: #ff7a00;
+.lecture-title:hover {
+  color: #17a2b8;
 }
 
-.bookmark-description {
+.lecture-description {
   font-size: 14px;
   color: #666;
   line-height: 1.5;
@@ -404,27 +370,41 @@ export default {
   overflow: hidden;
 }
 
-.bookmark-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.author-stats {
+.lecture-rating-stats {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 8px;
 }
 
-.author {
+.lecture-rating {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stars {
+  display: flex;
+  gap: 1px;
+}
+
+.star {
+  color: #ddd;
+  font-size: 14px;
+}
+
+.star.filled {
+  color: #ffc107;
+}
+
+.rating-count {
   font-size: 12px;
   color: #888;
-  font-weight: 500;
 }
 
-.bookmark-stats {
+.lecture-stats {
   display: flex;
-  gap: 8px;
+  gap: 12px;
 }
 
 .stat-item {
@@ -438,6 +418,17 @@ export default {
 
 .stat-icon {
   font-size: 12px;
+}
+
+.lecture-bottom {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.lecture-date {
+  font-size: 12px;
+  color: #999;
+  font-weight: 500;
 }
 
 .empty-state {
@@ -465,7 +456,7 @@ export default {
 }
 
 .browse-content-btn {
-  background: #ff7a00;
+  background: #17a2b8;
   color: white;
   border: none;
   padding: 16px 32px;
@@ -477,7 +468,7 @@ export default {
 }
 
 .browse-content-btn:hover {
-  background: #e66a00;
+  background: #138496;
 }
 
 @media (max-width: 768px) {
@@ -487,8 +478,8 @@ export default {
     align-items: stretch;
   }
   
-  .bookmarks-grid {
+  .lectures-grid {
     grid-template-columns: 1fr;
   }
 }
-</style> 
+</style>
