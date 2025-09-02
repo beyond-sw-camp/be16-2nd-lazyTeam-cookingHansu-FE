@@ -275,6 +275,8 @@ const approveLecture = async () => {
   try {
     await lectureApprovalStore.approveLecture(selectedLecture.value.id);
     approvalDialog.value = false;
+    
+    // store에서 이미 승인된 강의를 자동으로 제거하므로 추가 API 호출 불필요
   } catch (error) {
     console.error('강의 승인 실패:', error);
     // 네트워크 오류가 아닌 경우에만 스낵바 메시지 표시
@@ -299,6 +301,8 @@ const rejectLecture = async (reason) => {
   try {
     await lectureApprovalStore.rejectLecture(selectedLecture.value.id, reason);
     rejectDialog.value = false;
+    
+    // store에서 이미 거절된 강의를 자동으로 제거하므로 추가 API 호출 불필요
   } catch (error) {
     console.error('강의 거절 실패:', error);
     // 네트워크 오류가 아닌 경우에만 스낵바 메시지 표시

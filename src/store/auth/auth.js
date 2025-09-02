@@ -422,12 +422,32 @@ export const useAuthStore = defineStore('auth', {
           throw new Error('Refresh token not found');
         }
 
-        const response = await apiClient.post('/user/refresh', {
-          refreshToken: this.refreshToken
-        });
+        // 관리자 판단 로직 개선
+        const isAdmin = this.provider === 'admin' && localStorage.getItem('adminAccessToken');
+        const endpoint = isAdmin ? '/admin/refresh' : '/user/refresh';
         
-        if (response.data.success && response.data.data) {
-          const { accessToken, refreshToken } = response.data.data;
+        try {
+          const response = await apiClient.post(endpoint, {
+            refreshToken: this.refreshToken
+          });
+          
+          // 응답 구조 처리 (관리자와 일반 사용자 응답 구조가 다를 수 있음)
+          let accessToken, refreshToken;
+          
+          if (response.data.success && response.data.data) {
+            // success: true, data: {...} 구조
+            accessToken = response.data.data.accessToken;
+            refreshToken = response.data.data.refreshToken;
+          } else if (response.data.accessToken && response.data.refreshToken) {
+            // 직접 토큰 데이터가 있는 구조
+            accessToken = response.data.accessToken;
+            refreshToken = response.data.refreshToken;
+          } else if (response.data.success === false && response.data.message === 'Refresh token is required') {
+            return; // 에러 없이 조용히 종료
+          } else {
+            console.error('Unexpected response structure:', response.data);
+            throw new Error('Invalid response structure from server');
+          }
           
           // 새로운 토큰으로 업데이트
           this.accessToken = accessToken;
@@ -438,8 +458,38 @@ export const useAuthStore = defineStore('auth', {
           localStorage.setItem('accessToken', accessToken);
           localStorage.setItem('refreshToken', refreshToken);
           localStorage.setItem('expiresIn', this.expiresIn);
-        } else {
-          throw new Error('Invalid response structure from server');
+          
+          console.log('Token refresh successful');
+          
+        } catch (adminError) {
+          // 관리자 엔드포인트 실패 시 일반 사용자 엔드포인트로 폴백
+          if (isAdmin && adminError.response?.status === 401) {
+            console.warn('Admin refresh failed, trying user refresh endpoint:', adminError.message);
+            
+            const userResponse = await apiClient.post('/user/refresh', {
+              refreshToken: this.refreshToken
+            });
+            
+            if (userResponse.data.success && userResponse.data.data) {
+              const { accessToken, refreshToken } = userResponse.data.data;
+              
+              // 새로운 토큰으로 업데이트
+              this.accessToken = accessToken;
+              this.refreshToken = refreshToken;
+              this.expiresIn = Date.now() + (3600 * 1000);
+              
+              // 로컬 스토리지 업데이트
+              localStorage.setItem('accessToken', accessToken);
+              localStorage.setItem('refreshToken', refreshToken);
+              localStorage.setItem('expiresIn', this.expiresIn);
+              
+              console.log('Token refresh successful (fallback to user endpoint)');
+            } else {
+              throw new Error('Invalid response structure from user refresh endpoint');
+            }
+          } else {
+            throw adminError;
+          }
         }
         
       } catch (error) {

@@ -464,8 +464,13 @@ const showApprovalDialog = (user) => {
 // 사용자 승인
 const approveUser = async () => {
   try {
-    await userApprovalStore.approveUser(selectedUser.value.id);
+    // userType을 결정 (chef인지 business인지)
+    const userType = selectedUser.value.role === 'CHEF' ? 'chef' : 'business';
+    
+    await userApprovalStore.approveUser(selectedUser.value.id, userType);
     approvalDialog.value = false;
+    
+    // store에서 이미 승인된 사용자를 자동으로 제거하므로 추가 API 호출 불필요
   } catch (error) {
     console.error('사용자 승인 실패:', error);
     // 네트워크 오류가 아닌 경우에만 스낵바 메시지 표시
@@ -493,8 +498,13 @@ const showRejectDialog = (user) => {
 // 사용자 거절
 const rejectUser = async (reason) => {
   try {
-    await userApprovalStore.rejectUser(selectedUser.value.id, reason);
+    // userType을 결정 (chef인지 business인지)
+    const userType = selectedUser.value.role === 'CHEF' ? 'chef' : 'business';
+    
+    await userApprovalStore.rejectUser(selectedUser.value.id, reason, userType);
     rejectDialog.value = false;
+    
+    // store에서 이미 거절된 사용자를 자동으로 제거하므로 추가 API 호출 불필요
   } catch (error) {
     console.error('사용자 거절 실패:', error);
     // 네트워크 오류가 아닌 경우에만 스낵바 메시지 표시

@@ -129,7 +129,7 @@ export const useNoticeStore = defineStore('notice', {
         
         // 개별 공지사항 캐시 업데이트
         this.noticeCache.set(id, {
-          data: noticeData,
+          data: this.currentNotice,
           timestamp: Date.now()
         });
       } catch (error) {
@@ -150,8 +150,14 @@ export const useNoticeStore = defineStore('notice', {
         if (response.success && response.data) {
           const newNotice = response.data;
           
-          // 서버에서 반환된 완전한 데이터로 목록 새로고침
-          await this.fetchNotices(0, this.pagination.pageSize);
+          // 새로 생성된 공지사항을 목록 맨 앞에 추가 (API 호출 없이 즉시 반영)
+          this.notices.unshift(newNotice);
+          
+          // 페이지네이션 정보 업데이트
+          this.pagination.totalElements += 1;
+          
+          // 마지막 업데이트 시간 갱신
+          this.lastUpdate = Date.now();
           
           // 공지사항 생성 후 알림 생성 및 개수 업데이트 (실시간 반영)
           try {
@@ -177,9 +183,39 @@ export const useNoticeStore = defineStore('notice', {
       this.error = null;
       
       try {
-        await noticeService.updateNotice(id, noticeData);
-        // 수정 후 목록 새로고침으로 최신 데이터 확보
-        await this.fetchNotices(this.pagination.currentPage, this.pagination.pageSize);
+        const response = await noticeService.updateNotice(id, noticeData);
+        
+        if (response.success) {
+          // 수정된 공지사항을 목록에서 직접 업데이트 (API 호출 없이 즉시 반영)
+          const noticeIndex = this.notices.findIndex(notice => notice.id === id);
+          if (noticeIndex !== -1) {
+            // 기존 공지사항 데이터와 수정된 데이터를 병합
+            this.notices[noticeIndex] = {
+              ...this.notices[noticeIndex],
+              ...noticeData,
+              updatedAt: new Date().toISOString() // 수정 시간 업데이트
+            };
+          }
+          
+          // 현재 공지사항도 업데이트
+          if (this.currentNotice && this.currentNotice.id === id) {
+            this.currentNotice = {
+              ...this.currentNotice,
+              ...noticeData,
+              updatedAt: new Date().toISOString()
+            };
+          }
+          
+          // 캐시도 업데이트
+          if (this.noticeCache.has(id)) {
+            this.noticeCache.set(id, {
+              data: this.currentNotice || this.notices[noticeIndex],
+              timestamp: Date.now()
+            });
+          }
+        } else {
+          throw new Error(response.message || '공지사항 수정에 실패했습니다.');
+        }
         
         // 공지사항 수정 후 알림 생성 및 개수 업데이트
         try {

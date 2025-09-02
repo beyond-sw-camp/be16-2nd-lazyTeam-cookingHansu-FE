@@ -87,13 +87,24 @@ export const useReportManagementStore = defineStore('reportManagement', {
       
       try {
         const apiResponse = await reportManagementService.getReportList(page, size);
-        const responseData = apiResponse.getData();
         
-        this.reports = responseData.content;
+        // 응답 구조 확인 및 처리
+        let responseData;
+        if (apiResponse.success && apiResponse.data) {
+          // success: true, data: {...} 구조
+          responseData = apiResponse.data;
+        } else if (apiResponse.content) {
+          // 직접 데이터가 있는 구조
+          responseData = apiResponse;
+        } else {
+          throw new Error('Invalid response structure from server');
+        }
+        
+        this.reports = responseData.content || [];
         this.pagination = {
-          totalPages: responseData.totalPages,
-          currentPage: responseData.number,
-          totalElements: responseData.totalElements,
+          totalPages: responseData.totalPages || 0,
+          currentPage: responseData.number || 0,
+          totalElements: responseData.totalElements || 0,
           pageSize: size,
         };
       } catch (error) {
