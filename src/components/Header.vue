@@ -74,9 +74,9 @@
             </v-badge>
           </v-btn>
 
-          <!-- 장바구니 버튼 (관리자가 아닐 때만 표시) -->
+          <!-- 장바구니 버튼 (로그인한 일반 사용자만 표시) -->
           <v-btn
-            v-if="!isAdmin"
+            v-if="isLoggedIn && !isAdmin"
             icon
             variant="text"
             class="cart-btn"
@@ -183,9 +183,9 @@
             </v-badge>
           </v-btn>
 
-          <!-- 모바일 장바구니 버튼 (관리자가 아닐 때만 표시) -->
+          <!-- 모바일 장바구니 버튼 (로그인한 일반 사용자만 표시) -->
           <v-btn
-            v-if="!isAdmin"
+            v-if="isLoggedIn && !isAdmin"
             icon
             variant="text"
             size="small"
@@ -244,9 +244,9 @@
       >
         <v-list-item-title>{{ item.title }}</v-list-item-title>
       </v-list-item>
-      <!-- 모바일 메뉴에 장바구니 추가 (관리자가 아닐 때만 표시) -->
+      <!-- 모바일 메뉴에 장바구니 추가 (로그인한 일반 사용자만 표시) -->
       <v-list-item
-        v-if="!isAdmin"
+        v-if="isLoggedIn && !isAdmin"
         to="/cart"
         @click="mobileMenuOpen = false"
         class="cart-menu-item"
@@ -570,9 +570,7 @@ const cartCount = computed(() => {
 })
 
 // 장바구니 개수 변경 감시 (디버깅용)
-watch(() => cartStore.serverCartCount, (newCount) => {
-  console.log('장바구니 개수 변경:', newCount)
-})
+watch(() => cartStore.serverCartCount, (newCount, oldCount) => {})
 
 // 읽지 않은 알림 개수
 const unreadCount = computed(() => {

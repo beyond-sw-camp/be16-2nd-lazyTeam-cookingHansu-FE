@@ -111,10 +111,25 @@ export const lectureService = {
   // 강의 생성
   async createLecture(lectureData) {
     try {
-      const response = await apiClient.post('/lecture/create', lectureData);
+      const response = await apiClient.post('/lecture/post', lectureData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
       return response.data;
     } catch (error) {
       console.error('강의 생성 실패:', error);
+      throw error;
+    }
+  },
+
+  // 영상 진행도 저장 (lectureProgressService 통합)
+  async saveVideoProgress(videoId, second) {
+    try {
+      const response = await apiClient.post(`/lecture/progress/${videoId}?second=${second}`);
+      return response.data;
+    } catch (error) {
+      console.error('영상 진행도 저장 실패:', error);
       throw error;
     }
   },

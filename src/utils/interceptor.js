@@ -3,19 +3,6 @@ import axios from 'axios';
 // API 기본 URL
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-// 공개 엔드포인트 (인증 불필요)
-const PUBLIC_ENDPOINTS = [
-  '/api/posts', '/lecture/qna', '/post/comment/list',
-  '/lecture/list', '/lecture/detail', '/notice/list', '/notice/detail',
-  '/landing',
-];
-
-// 인증 관련 엔드포인트 (토큰 불필요)
-const AUTH_ENDPOINTS = [
-  '/user/login', '/user/register', '/user/social', '/user/refresh',
-  '/admin/login', '/admin/refresh', '/add-info'
-];
-
 // axios 인스턴스 생성
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -24,21 +11,6 @@ export const apiClient = axios.create({
     'Content-Type': 'application/json; charset=utf-8',
   },
 });
-
-// 엔드포인트가 공개인지 확인
-const isPublicEndpoint = (endpoint) => {
-  return PUBLIC_ENDPOINTS.some(pattern => endpoint.includes(pattern));
-};
-
-// 엔드포인트가 인증 관련인지 확인
-const isAuthEndpoint = (endpoint) => {
-  return AUTH_ENDPOINTS.some(pattern => endpoint.includes(pattern));
-};
-
-// 토큰을 추가해야 하는지 확인
-const shouldAddToken = (endpoint) => {
-  return !isPublicEndpoint(endpoint) && !isAuthEndpoint(endpoint);
-};
 
 // 토큰 만료 확인
 const isTokenExpired = (token) => {
@@ -147,15 +119,17 @@ export const setupAxiosInterceptors = (authStore, adminLoginStore) => {
         if (adminAccessToken) {
           config.headers.Authorization = `Bearer ${adminAccessToken}`;
         }
-      } else if (shouldAddToken(endpoint)) {
+      } else {
         // 일반 API인 경우 토큰 체크 및 추가
         let accessToken = localStorage.getItem('accessToken');
         
         if (accessToken && isTokenExpired(accessToken)) {
+          console.log('⚠️ 토큰 만료됨, 갱신 시도');
           try {
             accessToken = await refreshToken(authStore);
+            console.log('✅ 토큰 갱신 성공');
           } catch (error) {
-            console.error('토큰 갱신 실패:', error);
+            console.error('❌ 토큰 갱신 실패:', error);
             // 토큰 갱신 실패 시 요청 중단
             return Promise.reject(error);
           }
@@ -169,6 +143,7 @@ export const setupAxiosInterceptors = (authStore, adminLoginStore) => {
       return config;
     },
     (error) => {
+      console.error('❌ 요청 인터셉터 오류:', error);
       return Promise.reject(error);
     }
   );
@@ -201,12 +176,32 @@ export const setupAxiosInterceptors = (authStore, adminLoginStore) => {
             return apiClient(originalRequest);
           }
         } catch (refreshError) {
-          // 토큰 갱신 실패 시 로그인 페이지로 리다이렉트
-          if (isAdminEndpoint) {
-            window.location.href = '/admin-login';
-          } else {
-            window.location.href = '/login';
+          // 토큰 갱신 실패 시 처리
+          console.log('토큰 갱신 실패:', refreshError.message);
+          
+          // 공개 API는 리다이렉트하지 않음 (비회원 접근 허용)
+          const publicEndpoints = [
+            '/lecture/detail/',
+            '/lecture/list',
+            '/api/posts',
+            '/api/recipes',
+            '/notice',
+            '/landing'
+          ];
+          
+          const isPublicEndpoint = publicEndpoints.some(publicPath => 
+            endpoint.includes(publicPath)
+          );
+          
+          // 공개 API가 아닌 경우에만 리다이렉트
+          if (!isPublicEndpoint) {
+            if (isAdminEndpoint) {
+              window.location.href = '/admin-login';
+            } else {
+              window.location.href = '/login';
+            }
           }
+          
           return Promise.reject(refreshError);
         }
       }

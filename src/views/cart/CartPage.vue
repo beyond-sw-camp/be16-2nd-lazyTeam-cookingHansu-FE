@@ -141,7 +141,7 @@
   </template>
 
 <script>
-import { lectureService } from '@/store/lecture/lectureService'
+import { useLectureStore } from '@/store/lecture/lecture'
 import { useCartStore } from '@/store/cart/cart'
 import CommonModal from '@/components/common/CommonModal.vue'
 
@@ -150,7 +150,12 @@ export default {
   components: {
     CommonModal
   },
-
+  setup() {
+    const lectureStore = useLectureStore();
+    return {
+      lectureStore
+    };
+  },
   data() {
     return {
       cartStore: null, // 장바구니 스토어 인스턴스
@@ -230,15 +235,17 @@ export default {
   // 장바구니에서 강의 제거 (단건)
   async removeFromCart(lectureId) {
     try {
-      await lectureService.removeFromCart(lectureId);
+      await this.lectureStore.removeFromCart(lectureId);
       // 선택된 아이템에서도 제거
       this.selectedItems = this.selectedItems.filter(id => id !== lectureId)
       console.log('강의가 장바구니에서 제거되었습니다.');
       // 모달 닫기
       this.showRemoveItemModal = false;
-      // 장바구니 스토어 상태만 업데이트 (API 호출 없음)
+      // 장바구니 스토어 상태 업데이트
       if (this.cartStore) {
         this.cartStore.removeCartItem(lectureId);
+        // 헤더 업데이트를 위해 강제 새로고침
+        await this.cartStore.fetchServerCartList(true);
       }
     } catch (error) {
       console.error('장바구니 삭제 오류:', error);
@@ -257,7 +264,7 @@ export default {
   // 장바구니 전체 비우기
   async clearAllItems() {
     try {
-      await lectureService.clearCart();
+      await this.lectureStore.clearCart();
       this.selectedItems = [];
       console.log('장바구니가 모두 비워졌습니다.');
       // 모달 닫기
@@ -330,9 +337,18 @@ export default {
   // 결제 성공 후 선택된 아이템들을 장바구니에서 제거
   async removeSelectedItemsFromCart() {
     for (const itemId of this.selectedItems) {
-      await lectureService.removeFromCart(itemId);
+      await this.lectureStore.removeFromCart(itemId);
+      // 장바구니 스토어에서도 제거
+      if (this.cartStore) {
+        this.cartStore.removeCartItem(itemId);
+      }
     }
     this.selectedItems = []
+    
+    // 헤더 업데이트를 위해 강제 새로고침
+    if (this.cartStore) {
+      await this.cartStore.fetchServerCartList(true);
+    }
   },
 
   // UUID 생성기

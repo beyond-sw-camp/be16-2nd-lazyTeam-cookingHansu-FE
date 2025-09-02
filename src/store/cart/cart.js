@@ -99,7 +99,7 @@ export const useCartStore = defineStore('cart', {
             instructorName: '로딩 중...',
             thumbnailUrl: null
           });
-        }
+        } 
       }
       this.lastUpdate = Date.now(); // 캐시 무효화
     },
@@ -107,6 +107,12 @@ export const useCartStore = defineStore('cart', {
     // 전체 아이템 제거 (API 호출 없이 상태만 업데이트)
     clearAllItems() {
       this.serverCartItems = [];
+      this.lastUpdate = Date.now(); // 캐시 무효화
+    },
+
+    // 개별 아이템 제거 (API 호출 없이 상태만 업데이트)
+    removeCartItem(lectureId) {
+      this.serverCartItems = this.serverCartItems.filter(item => item.lectureId !== lectureId);
       this.lastUpdate = Date.now(); // 캐시 무효화
     },
 

@@ -92,13 +92,13 @@
                 @dragover.prevent
                 @drop.prevent="handleThumbnailDrop"
               >
-                                                   <input
-                    ref="thumbnailInput"
-                    type="file"
-                    accept=".png,.jpg,.jpeg,.bmp"
-                    @change="handleThumbnailChange"
-                    style="display: none"
-                  />
+                <input
+                  ref="thumbnailInput"
+                  type="file"
+                  accept=".png,.jpg,.jpeg,.bmp"
+                  @change="handleThumbnailChange"
+                  style="display: none"
+                />
                 <div v-if="!thumbnailPreview" class="upload-placeholder">
                   <div class="upload-icon">📷</div>
                   <p>이미지를 클릭하여 등록</p>
@@ -295,411 +295,410 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { ref, reactive } from 'vue';
+import { useRouter } from 'vue-router';
 import Header from '@/components/Header.vue';
 import CommonModal from '@/components/common/CommonModal.vue';
+import { useLectureStore } from '@/store/lecture/lecture';
 
-export default {
-  name: 'LectureCreate',
-  components: { Header, CommonModal },
-  data() {
-    return {
-      isSubmitting: false,
-      thumbnailPreview: null,
-      thumbnailFile: null,
-      // 모달 관련 데이터
-      showModal: false,
-      modalType: 'info',
-      modalTitle: '',
-      modalMessage: '',
-      modalConfirmText: '확인',
-      modalCancelText: '취소',
-      modalShowCancelButton: true,
-      modalLoading: false,
-      modalCallback: null,
-      formData: {
-        title: '',
-        description: '',
-        level: '',
-        category: '',
-        price: 0,
-        ingredients: [
-          { ingredientsName: '', amount: '' }
-        ],
-        steps: [
-          { stepSequence: 1, content: '' }
-        ],
-        videos: [
-          { title: '', sequence: 1 }
-        ]
-      },
-      videoFiles: []
+const router = useRouter();
+const lectureStore = useLectureStore();
+
+// 반응형 데이터
+const isSubmitting = ref(false);
+const thumbnailPreview = ref(null);
+const thumbnailFile = ref(null);
+const videoFiles = ref([]);
+
+// 모달 관련 데이터
+const showModal = ref(false);
+const modalType = ref('info');
+const modalTitle = ref('');
+const modalMessage = ref('');
+const modalConfirmText = ref('확인');
+const modalCancelText = ref('취소');
+const modalShowCancelButton = ref(true);
+const modalLoading = ref(false);
+const modalCallback = ref(null);
+
+// 폼 데이터
+const formData = reactive({
+  title: '',
+  description: '',
+  level: '',
+  category: '',
+  price: 0,
+  ingredients: [
+    { ingredientsName: '', amount: '' }
+  ],
+  steps: [
+    { stepSequence: 1, content: '' }
+  ],
+  videos: [
+    { title: '', sequence: 1 }
+  ]
+});
+
+// refs
+const thumbnailInput = ref(null);
+
+// 메서드들
+// 썸네일 관련 메서드
+const triggerThumbnailUpload = () => {
+  thumbnailInput.value.click();
+};
+
+const handleThumbnailChange = (event) => {
+  const file = event.target.files[0];
+  if (file) {
+    // 파일 타입 검증
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/bmp'];
+    if (!allowedTypes.includes(file.type)) {
+      showModalDialog('error', '파일 타입 오류', '썸네일은 PNG, JPG, JPEG, BMP 파일만 업로드 가능합니다.', '확인', '', false);
+      event.target.value = '';
+      return;
+    }
+    
+    // 파일명 길이 검증
+    if (file.name.length > 20) {
+      showModalDialog('error', '파일명 오류', '파일명은 20자 이하여야 합니다.', '확인', '', false);
+      event.target.value = '';
+      return;
+    }
+    
+    // 파일 크기 검증 (서버 제한: 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      showModalDialog('error', '파일 크기 오류', '썸네일 파일 크기는 10MB 이하여야 합니다. 더 작은 이미지 파일을 사용해주세요.', '확인', '', false);
+      event.target.value = '';
+      return;
+    }
+    
+    thumbnailFile.value = file;
+    createThumbnailPreview(file);
+  }
+};
+
+const handleThumbnailDrop = (event) => {
+  const file = event.dataTransfer.files[0];
+  if (file) {
+    // 파일 타입 검증
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/bmp'];
+    if (!allowedTypes.includes(file.type)) {
+      showModalDialog('error', '파일 타입 오류', '썸네일은 PNG, JPG, JPEG, BMP 파일만 업로드 가능합니다.', '확인', '', false);
+      return;
+    }
+    
+    // 파일명 길이 검증
+    if (file.name.length > 20) {
+      showModalDialog('error', '파일명 오류', '파일명은 20자 이하여야 합니다.', '확인', '', false);
+      return;
+    }
+    
+    // 파일 크기 검증 (서버 제한: 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      showModalDialog('error', '파일 크기 오류', '썸네일 파일 크기는 10MB 이하여야 합니다. 더 작은 이미지 파일을 사용해주세요.', '확인', '', false);
+      return;
+    }
+    
+    thumbnailFile.value = file;
+    createThumbnailPreview(file);
+  }
+};
+
+const createThumbnailPreview = (file) => {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    thumbnailPreview.value = e.target.result;
+  };
+  reader.readAsDataURL(file);
+};
+
+// 비디오 관련 메서드
+const addVideo = () => {
+  formData.videos.push({
+    title: '',
+    sequence: formData.videos.length + 1
+  });
+  videoFiles.value.push(null);
+};
+
+const removeVideo = (index) => {
+  formData.videos.splice(index, 1);
+  videoFiles.value.splice(index, 1);
+};
+
+const handleVideoFileChange = (event, index) => {
+  const file = event.target.files[0];
+  if (file) {
+    // 파일 타입 검증
+    const allowedTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo'];
+    if (!allowedTypes.includes(file.type)) {
+      showModalDialog('error', '파일 타입 오류', '동영상은 MP4, MOV, AVI 파일만 업로드 가능합니다.', '확인', '', false);
+      event.target.value = '';
+      return;
+    }
+    
+    // 파일명 길이 검증
+    if (file.name.length > 20) {
+      showModalDialog('error', '파일명 오류', '파일명은 20자 이하여야 합니다.', '확인', '', false);
+      event.target.value = '';
+      return;
+    }
+    
+    // 파일 크기 검증 (서버 제한: 50MB)
+    if (file.size > 50 * 1024 * 1024) {
+      showModalDialog('error', '파일 크기 오류', '비디오 파일 크기는 50MB 이하여야 합니다. 더 작은 파일로 압축하거나 분할하여 업로드해주세요.', '확인', '', false);
+      event.target.value = '';
+      return;
+    }
+    
+    videoFiles.value[index] = file;
+  }
+};
+
+// 재료 관련 메서드
+const addIngredient = () => {
+  formData.ingredients.push({
+    ingredientsName: '',
+    amount: ''
+  });
+};
+
+const removeIngredient = (index) => {
+  formData.ingredients.splice(index, 1);
+};
+
+// 조리 순서 관련 메서드
+const addStep = () => {
+  formData.steps.push({
+    stepSequence: formData.steps.length + 1,
+    content: ''
+  });
+};
+
+const removeStep = (index) => {
+  formData.steps.splice(index, 1);
+  // 순서 재정렬
+  formData.steps.forEach((step, idx) => {
+    step.stepSequence = idx + 1;
+  });
+};
+
+// 전체 파일 크기 체크
+const checkTotalFileSize = () => {
+  let totalSize = 0;
+  
+  // 썸네일 파일 크기
+  if (thumbnailFile.value) {
+    totalSize += thumbnailFile.value.size;
+  }
+  
+  // 비디오 파일 크기
+  videoFiles.value.forEach(file => {
+    if (file) {
+      totalSize += file.size;
+    }
+  });
+  
+  // 서버 제한: 100MB
+  const maxSize = 100 * 1024 * 1024;
+  
+  if (totalSize > maxSize) {
+    const totalSizeMB = (totalSize / (1024 * 1024)).toFixed(1);
+    showModalDialog('error', '파일 크기 초과', `전체 파일 크기가 ${totalSizeMB}MB로 서버 제한(100MB)을 초과했습니다. 파일 크기를 줄여주세요.`, '확인', '', false);
+    return false;
+  }
+  
+  return true;
+};
+
+// 폼 제출
+const submitForm = async () => {
+  if (!validateForm()) {
+    return;
+  }
+  
+  // 전체 파일 크기 체크
+  if (!checkTotalFileSize()) {
+    return;
+  }
+
+  isSubmitting.value = true;
+
+  try {
+    const formDataToSend = new FormData();
+
+    // ✅ JSON은 반드시 Blob(application/json)으로
+    const lectureCreateDto = {
+      title: formData.title,
+      description: formData.description,
+      level: formData.level,
+      category: formData.category,
+      price: formData.price
     };
-  },
-  methods: {
-    // 썸네일 관련 메서드
-    triggerThumbnailUpload() {
-      this.$refs.thumbnailInput.click();
-    },
-                   handleThumbnailChange(event) {
-        const file = event.target.files[0];
-        if (file) {
-          // 파일 타입 검증
-          const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/bmp'];
-          if (!allowedTypes.includes(file.type)) {
-            this.showModalDialog('error', '파일 타입 오류', '썸네일은 PNG, JPG, JPEG, BMP 파일만 업로드 가능합니다.', '확인', '', false);
-            event.target.value = '';
-            return;
-          }
-          
-          // 파일명 길이 검증
-          if (file.name.length > 20) {
-            this.showModalDialog('error', '파일명 오류', '파일명은 20자 이하여야 합니다.', '확인', '', false);
-            event.target.value = '';
-            return;
-          }
-          
-          // 파일 크기 검증 (서버 제한: 10MB)
-          if (file.size > 10 * 1024 * 1024) {
-            this.showModalDialog('error', '파일 크기 오류', '썸네일 파일 크기는 10MB 이하여야 합니다. 더 작은 이미지 파일을 사용해주세요.', '확인', '', false);
-            event.target.value = '';
-            return;
-          }
-          
-          this.thumbnailFile = file;
-          this.createThumbnailPreview(file);
-        }
-      },
-                   handleThumbnailDrop(event) {
-        const file = event.dataTransfer.files[0];
-        if (file) {
-          // 파일 타입 검증
-          const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/bmp'];
-          if (!allowedTypes.includes(file.type)) {
-            this.showModalDialog('error', '파일 타입 오류', '썸네일은 PNG, JPG, JPEG, BMP 파일만 업로드 가능합니다.', '확인', '', false);
-            return;
-          }
-          
-          // 파일명 길이 검증
-          if (file.name.length > 20) {
-            this.showModalDialog('error', '파일명 오류', '파일명은 20자 이하여야 합니다.', '확인', '', false);
-            return;
-          }
-          
-          // 파일 크기 검증 (서버 제한: 10MB)
-          if (file.size > 10 * 1024 * 1024) {
-            this.showModalDialog('error', '파일 크기 오류', '썸네일 파일 크기는 10MB 이하여야 합니다. 더 작은 이미지 파일을 사용해주세요.', '확인', '', false);
-            return;
-          }
-          
-          this.thumbnailFile = file;
-          this.createThumbnailPreview(file);
-        }
-      },
-    createThumbnailPreview(file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        this.thumbnailPreview = e.target.result;
-      };
-      reader.readAsDataURL(file);
-    },
+    
+    const lectureIngredientsListDto = formData.ingredients.filter(ing => ing.ingredientsName && ing.amount).length > 0
+      ? formData.ingredients.filter(ing => ing.ingredientsName && ing.amount)
+      : [];
+    const lectureStepDto = formData.steps.filter(step => step.content).length > 0
+      ? formData.steps.filter(step => step.content)
+      : [];
+    const lectureVideoDto = formData.videos.filter(video => video.title).length > 0
+      ? formData.videos.filter(video => video.title)
+      : [];
 
-    // 비디오 관련 메서드
-    addVideo() {
-      this.formData.videos.push({
-        title: '',
-        sequence: this.formData.videos.length + 1
-      });
-      this.videoFiles.push(null);
-    },
-    removeVideo(index) {
-      this.formData.videos.splice(index, 1);
-      this.videoFiles.splice(index, 1);
-    },
-                   handleVideoFileChange(event, index) {
-        const file = event.target.files[0];
-        if (file) {
-          // 파일 타입 검증
-          const allowedTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo'];
-          if (!allowedTypes.includes(file.type)) {
-            this.showModalDialog('error', '파일 타입 오류', '동영상은 MP4, MOV, AVI 파일만 업로드 가능합니다.', '확인', '', false);
-            event.target.value = '';
-            return;
-          }
-          
-          // 파일명 길이 검증
-          if (file.name.length > 20) {
-            this.showModalDialog('error', '파일명 오류', '파일명은 20자 이하여야 합니다.', '확인', '', false);
-            event.target.value = '';
-            return;
-          }
-          
-          // 파일 크기 검증 (서버 제한: 50MB)
-          if (file.size > 50 * 1024 * 1024) {
-            this.showModalDialog('error', '파일 크기 오류', '비디오 파일 크기는 50MB 이하여야 합니다. 더 작은 파일로 압축하거나 분할하여 업로드해주세요.', '확인', '', false);
-            event.target.value = '';
-            return;
-          }
-          
-          this.videoFiles[index] = file;
-        }
-      },
+    formDataToSend.append('lectureCreateDto',
+      new Blob([JSON.stringify(lectureCreateDto)], { type: 'application/json' })
+    );
 
-    // 재료 관련 메서드
-    addIngredient() {
-      this.formData.ingredients.push({
-        ingredientsName: '',
-        amount: ''
-      });
-    },
-    removeIngredient(index) {
-      this.formData.ingredients.splice(index, 1);
-    },
+    formDataToSend.append('lectureIngredientsListDto',
+      new Blob([JSON.stringify(lectureIngredientsListDto)], { type: 'application/json' })
+    );
 
-    // 조리 순서 관련 메서드
-    addStep() {
-      this.formData.steps.push({
-        stepSequence: this.formData.steps.length + 1,
-        content: ''
-      });
-    },
-    removeStep(index) {
-      this.formData.steps.splice(index, 1);
-      // 순서 재정렬
-      this.formData.steps.forEach((step, idx) => {
-        step.stepSequence = idx + 1;
-      });
-    },
+    formDataToSend.append('lectureStepDto',
+      new Blob([JSON.stringify(lectureStepDto)], { type: 'application/json' })
+    );
 
-         // 전체 파일 크기 체크
-    checkTotalFileSize() {
-      let totalSize = 0;
-      
-      // 썸네일 파일 크기
-      if (this.thumbnailFile) {
-        totalSize += this.thumbnailFile.size;
+    formDataToSend.append('lectureVideoDto',
+      new Blob([JSON.stringify(lectureVideoDto)], { type: 'application/json' })
+    );
+
+    // 파일 배열 (같은 키로 여러 번 append)
+    (videoFiles.value || []).forEach(file => {
+      if (file) {
+        formDataToSend.append('lectureVideoFiles', file, file.name);
       }
-      
-      // 비디오 파일 크기
-      this.videoFiles.forEach(file => {
-        if (file) {
-          totalSize += file.size;
-        }
-      });
-      
-      // 서버 제한: 100MB
-      const maxSize = 100 * 1024 * 1024;
-      
-      if (totalSize > maxSize) {
-        const totalSizeMB = (totalSize / (1024 * 1024)).toFixed(1);
-        this.showModalDialog('error', '파일 크기 초과', `전체 파일 크기가 ${totalSizeMB}MB로 서버 제한(100MB)을 초과했습니다. 파일 크기를 줄여주세요.`, '확인', '', false);
-        return false;
-      }
-      
-      return true;
-    },
+    });
 
-    // 폼 제출
-     async submitForm() {
-       if (!this.validateForm()) {
-         return;
-       }
-       
-       // 전체 파일 크기 체크
-       if (!this.checkTotalFileSize()) {
-         return;
-       }
+    // 썸네일(선택)
+    if (thumbnailFile.value) {
+      formDataToSend.append('multipartFile', thumbnailFile.value, thumbnailFile.value.name);
+    }
 
-       this.isSubmitting = true;
+    // 스토어를 통한 강의 생성
+    await lectureStore.createLecture(formDataToSend);
+    
+    showModalDialog('success', '등록 완료', '강의가 성공적으로 등록되었습니다!', '확인', '', false, () => {
+      router.push({ name: 'LectureList' });
+    });
 
-       try {
-         const formData = new FormData();
+  } catch (error) {
+    console.error('강의 등록 오류:', error);
+    
+    // 스토어에서 에러 메시지 가져오기
+    const errorMessage = lectureStore.getError || error.message || '강의 등록 중 오류가 발생했습니다.';
+    
+    // 413 에러 처리 (파일 크기 초과)
+    if (errorMessage.includes('파일 크기가 너무 큽니다') || errorMessage.includes('413')) {
+      showModalDialog('error', '파일 크기 오류', '업로드한 파일의 크기가 서버에서 허용하는 최대 크기를 초과했습니다. 파일 크기를 줄이거나 압축 후 다시 시도해주세요.', '확인', '', false);
+    }
+    // 415 에러 처리 (파일 타입 불일치)
+    else if (errorMessage.includes('415')) {
+      showModalDialog('error', '파일 타입 오류', '업로드한 파일의 타입이 서버에서 지원하지 않는 형식입니다. 썸네일은 PNG, JPG, JPEG, BMP, 동영상은 MP4, MOV, AVI 파일만 업로드 가능합니다.', '확인', '', false);
+    } else {
+      showModalDialog('error', '등록 실패', errorMessage, '확인', '', false);
+    }
+  } finally {
+    isSubmitting.value = false;
+  }
+};
 
-         // ✅ JSON은 반드시 Blob(application/json)으로
-         const lectureCreateDto = {
-           title: this.formData.title,
-           description: this.formData.description,
-           level: this.formData.level,
-           category: this.formData.category,
-           price: this.formData.price
-         };
-         
-                   const lectureIngredientsListDto = this.formData.ingredients.filter(ing => ing.ingredientsName && ing.amount).length > 0
-            ? this.formData.ingredients.filter(ing => ing.ingredientsName && ing.amount)
-            : [];
-          const lectureStepDto = this.formData.steps.filter(step => step.content).length > 0
-            ? this.formData.steps.filter(step => step.content)
-            : [];
-          const lectureVideoDto = this.formData.videos.filter(video => video.title).length > 0
-            ? this.formData.videos.filter(video => video.title)
-            : [];
+// 모달 관련 메서드
+const showModalDialog = (type, title, message, confirmText = '확인', cancelText = '취소', showCancelButton = true, callback = null) => {
+  modalType.value = type;
+  modalTitle.value = title;
+  modalMessage.value = message;
+  modalConfirmText.value = confirmText;
+  modalCancelText.value = cancelText;
+  modalShowCancelButton.value = showCancelButton;
+  modalCallback.value = callback;
+  showModal.value = true;
+};
 
-                   formData.append('lectureCreateDto',
-            new Blob([JSON.stringify(lectureCreateDto)], { type: 'application/json' })
-          );
+const handleModalConfirm = () => {
+  if (modalCallback.value) {
+    modalCallback.value();
+  }
+  showModal.value = false;
+};
 
-          formData.append('lectureIngredientsListDto',
-            new Blob([JSON.stringify(lectureIngredientsListDto)], { type: 'application/json' })
-          );
+const handleModalCancel = () => {
+  showModal.value = false;
+};
 
-          formData.append('lectureStepDto',
-            new Blob([JSON.stringify(lectureStepDto)], { type: 'application/json' })
-          );
-
-          formData.append('lectureVideoDto',
-            new Blob([JSON.stringify(lectureVideoDto)], { type: 'application/json' })
-          );
-
-          // 파일 배열 (같은 키로 여러 번 append)
-          (this.videoFiles || []).forEach(file => {
-            if (file) {
-              formData.append('lectureVideoFiles', file, file.name);
-            }
-          });
-
-          // 썸네일(선택)
-          if (this.thumbnailFile) {
-            formData.append('multipartFile', this.thumbnailFile, this.thumbnailFile.name);
-          }
-
-         // Authorization 헤더 추가
-         const token = localStorage.getItem('accessToken');
-         const response = await fetch('http://localhost:8080/lecture/post', {
-           method: 'POST',
-           headers: {
-             'Authorization': `Bearer ${token}`
-           },
-           body: formData
-         });
-
-        if (response.ok) {
-          const result = await response.json();
-          this.showModalDialog('success', '등록 완료', '강의가 성공적으로 등록되었습니다!', '확인', '', false, () => {
-            this.$router.push({ name: 'LectureList' });
-          });
-        } else {
-          // 응답 상태에 따른 에러 처리
-          if (response.status === 413) {
-            throw new Error('파일 크기가 너무 큽니다. 파일 크기를 줄여주세요.');
-          } else {
-            throw new Error(`강의 등록에 실패했습니다. (상태 코드: ${response.status})`);
-          }
-        }
-      } catch (error) {
-        console.error('강의 등록 오류:', error);
-        
-        // 413 에러 처리 (파일 크기 초과)
-        if (error.message?.includes('파일 크기가 너무 큽니다') || error.message?.includes('413')) {
-          this.showModalDialog('error', '파일 크기 오류', '업로드한 파일의 크기가 서버에서 허용하는 최대 크기를 초과했습니다. 파일 크기를 줄이거나 압축 후 다시 시도해주세요.', '확인', '', false);
-        }
-        // 415 에러 처리 (파일 타입 불일치)
-        else if (error.message?.includes('415')) {
-          this.showModalDialog('error', '파일 타입 오류', '업로드한 파일의 타입이 서버에서 지원하지 않는 형식입니다. 썸네일은 PNG, JPG, JPEG, BMP, 동영상은 MP4, MOV, AVI 파일만 업로드 가능합니다.', '확인', '', false);
-        } else {
-          this.showModalDialog('error', '등록 실패', `강의 등록 중 오류가 발생했습니다: ${error.message}`, '확인', '', false);
-        }
-       } finally {
-         this.isSubmitting = false;
-       }
-    },
-
-    // 모달 관련 메서드
-    showModalDialog(type, title, message, confirmText = '확인', cancelText = '취소', showCancelButton = true, callback = null) {
-      this.modalType = type;
-      this.modalTitle = title;
-      this.modalMessage = message;
-      this.modalConfirmText = confirmText;
-      this.modalCancelText = cancelText;
-      this.modalShowCancelButton = showCancelButton;
-      this.modalCallback = callback;
-      this.showModal = true;
-    },
-
-    handleModalConfirm() {
-      if (this.modalCallback) {
-        this.modalCallback();
-      }
-      this.showModal = false;
-    },
-
-    handleModalCancel() {
-      this.showModal = false;
-    },
-
-    validateForm() {
-      if (!this.formData.title.trim()) {
-        this.showModalDialog('warning', '입력 오류', '강의 제목을 입력해주세요.', '확인', '', false);
-        return false;
-      }
-      if (!this.formData.description.trim()) {
-        this.showModalDialog('warning', '입력 오류', '강의 설명을 입력해주세요.', '확인', '', false);
-        return false;
-      }
-      if (!this.formData.level) {
-        this.showModalDialog('warning', '입력 오류', '난이도를 선택해주세요.', '확인', '', false);
-        return false;
-      }
-      if (!this.formData.category) {
-        this.showModalDialog('warning', '입력 오류', '카테고리를 선택해주세요.', '확인', '', false);
-        return false;
-      }
-      if (!this.formData.price || this.formData.price <= 0) {
-        this.showModalDialog('warning', '입력 오류', '가격을 입력해주세요.', '확인', '', false);
-        return false;
-      }
-      if (!this.thumbnailFile) {
-        this.showModalDialog('warning', '입력 오류', '썸네일 이미지를 등록해주세요.', '확인', '', false);
-        return false;
-      }
-      
-      // 비디오 검증
-      for (let i = 0; i < this.formData.videos.length; i++) {
-        if (!this.formData.videos[i].title.trim()) {
-          this.showModalDialog('warning', '입력 오류', `강의 ${i + 1}의 제목을 입력해주세요.`, '확인', '', false);
-          return false;
-        }
-        
-        // 제목 길이 검증 (50자 제한)
-        if (this.formData.videos[i].title.length > 50) {
-          this.showModalDialog('warning', '입력 오류', `강의 ${i + 1}의 제목은 50자 이하여야 합니다.`, '확인', '', false);
-          return false;
-        }
-        
-        if (!this.videoFiles[i]) {
-          this.showModalDialog('warning', '입력 오류', `강의 ${i + 1}의 비디오 파일을 등록해주세요.`, '확인', '', false);
-          return false;
-        }
-      }
-      
-      // 재료 검증
-      for (let i = 0; i < this.formData.ingredients.length; i++) {
-        if (!this.formData.ingredients[i].ingredientsName.trim()) {
-          this.showModalDialog('warning', '입력 오류', `재료 ${i + 1}의 재료명을 입력해주세요.`, '확인', '', false);
-          return false;
-        }
-        if (!this.formData.ingredients[i].amount.trim()) {
-          this.showModalDialog('warning', '입력 오류', `재료 ${i + 1}의 양을 입력해주세요.`, '확인', '', false);
-          return false;
-        }
-      }
-      
-      // 조리순서 검증
-      for (let i = 0; i < this.formData.steps.length; i++) {
-        if (!this.formData.steps[i].content.trim()) {
-          this.showModalDialog('warning', '입력 오류', `단계 ${i + 1}의 조리과정을 입력해주세요.`, '확인', '', false);
-          return false;
-        }
-      }
-      
-      return true;
-    },
-
-    cancelForm() {
-      this.showModalDialog('warning', '작성 취소', '작성 중인 내용이 사라집니다. 정말 취소하시겠습니까?', '취소', '계속 작성', true, () => {
-        this.$router.push({ name: 'LectureList' });
-      });
+const validateForm = () => {
+  if (!formData.title.trim()) {
+    showModalDialog('warning', '입력 오류', '강의 제목을 입력해주세요.', '확인', '', false);
+    return false;
+  }
+  if (!formData.description.trim()) {
+    showModalDialog('warning', '입력 오류', '강의 설명을 입력해주세요.', '확인', '', false);
+    return false;
+  }
+  if (!formData.level) {
+    showModalDialog('warning', '입력 오류', '난이도를 선택해주세요.', '확인', '', false);
+    return false;
+  }
+  if (!formData.category) {
+    showModalDialog('warning', '입력 오류', '카테고리를 선택해주세요.', '확인', '', false);
+    return false;
+  }
+  if (!formData.price || formData.price <= 0) {
+    showModalDialog('warning', '입력 오류', '가격을 입력해주세요.', '확인', '', false);
+    return false;
+  }
+  if (!thumbnailFile.value) {
+    showModalDialog('warning', '입력 오류', '썸네일 이미지를 등록해주세요.', '확인', '', false);
+    return false;
+  }
+  
+  // 비디오 검증
+  for (let i = 0; i < formData.videos.length; i++) {
+    if (!formData.videos[i].title.trim()) {
+      showModalDialog('warning', '입력 오류', `강의 ${i + 1}의 제목을 입력해주세요.`, '확인', '', false);
+      return false;
+    }
+    
+    // 제목 길이 검증 (50자 제한)
+    if (formData.videos[i].title.length > 50) {
+      showModalDialog('warning', '입력 오류', `강의 ${i + 1}의 제목은 50자 이하여야 합니다.`, '확인', '', false);
+      return false;
+    }
+    
+    if (!videoFiles.value[i]) {
+      showModalDialog('warning', '입력 오류', `강의 ${i + 1}의 비디오 파일을 등록해주세요.`, '확인', '', false);
+      return false;
     }
   }
+  
+  // 재료 검증
+  for (let i = 0; i < formData.ingredients.length; i++) {
+    if (!formData.ingredients[i].ingredientsName.trim()) {
+      showModalDialog('warning', '입력 오류', `재료 ${i + 1}의 재료명을 입력해주세요.`, '확인', '', false);
+      return false;
+    }
+    if (!formData.ingredients[i].amount.trim()) {
+      showModalDialog('warning', '입력 오류', `재료 ${i + 1}의 양을 입력해주세요.`, '확인', '', false);
+      return false;
+    }
+  }
+  
+  // 조리순서 검증
+  for (let i = 0; i < formData.steps.length; i++) {
+    if (!formData.steps[i].content.trim()) {
+      showModalDialog('warning', '입력 오류', `단계 ${i + 1}의 조리과정을 입력해주세요.`, '확인', '', false);
+      return false;
+    }
+  }
+  
+  return true;
+};
+
+const cancelForm = () => {
+  showModalDialog('warning', '작성 취소', '작성 중인 내용이 사라집니다. 정말 취소하시겠습니까?', '취소', '계속 작성', true, () => {
+    router.push({ name: 'LectureList' });
+  });
 };
 </script>
 
@@ -944,73 +943,67 @@ export default {
   transition: opacity 0.3s ease;
 }
 
-/* 섹션 호버링 제거 - 추가 버튼 호버링은 유지 */
+.video-header,
+.ingredient-header,
+.step-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
 
- .video-header,
- .ingredient-header,
- .step-header {
-   display: flex;
-   justify-content: space-between;
-   align-items: center;
-   margin-bottom: 16px;
- }
+.video-header h3,
+.ingredient-header h3,
+.step-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 0;
+  letter-spacing: 0.3px;
+  position: relative;
+  padding-left: 12px;
+}
 
-       .video-header h3,
-   .ingredient-header h3,
-   .step-header h3 {
-     font-size: 16px;
-     font-weight: 600;
-     color: #2c3e50;
-     margin: 0;
-     letter-spacing: 0.3px;
-     position: relative;
-     padding-left: 12px;
-   }
+.video-header h3::after,
+.ingredient-header h3::after,
+.step-header h3::after {
+  content: '';
+  position: absolute;
+  left: 12px;
+  bottom: -4px;
+  width: 20px;
+  height: 2px;
+  background: #ff7a00;
+  border-radius: 1px;
+}
 
-               .video-header h3::after,
-     .ingredient-header h3::after,
-     .step-header h3::after {
-       content: '';
-       position: absolute;
-       left: 12px;
-       bottom: -4px;
-       width: 20px;
-       height: 2px;
-       background: #ff7a00;
-       border-radius: 1px;
-     }
+.video-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
 
-   .video-content {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
+.ingredient-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: end;
+}
 
-   
+.step-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
 
-  .ingredient-content {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    align-items: end;
-  }
+.step-process-group {
+  margin-bottom: 0;
+}
 
-     .step-content {
-     display: flex;
-     flex-direction: column;
-     gap: 16px;
-   }
-
-       
-
- .step-process-group {
-   margin-bottom: 0;
- }
-
- .step-process-textarea {
-   min-height: 80px;
-   resize: vertical;
- }
+.step-process-textarea {
+  min-height: 80px;
+  resize: vertical;
+}
 
 .remove-btn {
   padding: 10px 18px;
@@ -1150,13 +1143,9 @@ export default {
     gap: 20px;
   }
   
-  
-  
   .ingredient-content {
     grid-template-columns: 1fr;
   }
-
-  
   
   .form-actions {
     flex-direction: column;

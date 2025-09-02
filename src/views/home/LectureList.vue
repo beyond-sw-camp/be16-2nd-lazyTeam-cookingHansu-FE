@@ -105,13 +105,21 @@
 <script>
 import Header from '@/components/Header.vue';
 import Pagination from '@/components/common/Pagination.vue';
-import { lectureService } from '@/store/lecture/lectureService';
 import { getUserRoleFromToken } from '@/utils/api';
 import { useAuthStore } from '@/store/auth/auth';
+import { useLectureStore } from '@/store/lecture/lecture';
 
 export default {
   name: 'LectureList',
   components: { Header, Pagination },
+  setup() {
+    const authStore = useAuthStore();
+    const lectureStore = useLectureStore();
+    return {
+      authStore,
+      lectureStore
+    };
+  },
   data() {
     return {
       currentTab: 'lecture',
@@ -189,7 +197,7 @@ export default {
       
       try {
         // 페이지 정보를 포함하여 API 호출
-        const response = await lectureService.getLectureList(this.currentPage - 1, this.lecturesPerPage);
+        const response = await this.lectureStore.fetchLectures(this.currentPage - 1, this.lecturesPerPage);
         
                  if (response.success) {
           
@@ -223,7 +231,7 @@ export default {
         }
       } catch (error) {
         console.error('강의 목록 조회 오류:', error);
-        this.error = '서버 연결에 실패했습니다.';
+        this.error = this.lectureStore.getError || '서버 연결에 실패했습니다.';
       } finally {
         this.loading = false;
       }

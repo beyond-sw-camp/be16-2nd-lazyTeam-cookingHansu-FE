@@ -100,315 +100,214 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { ref, computed, watch, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import Header from '@/components/Header.vue';
 import Pagination from '@/components/common/Pagination.vue';
 import CommonModal from '@/components/common/CommonModal.vue';
 import { useAuthStore } from '@/store/auth/auth';
-import axios from 'axios';
+import { useRecipeStore } from '@/store/recipe/recipe';
 
 const defaultThumbnail = '/src/assets/images/smu_mascort1.jpg';
 
-export default {
-  name: "RecipeMainPage",
-  components: {
-    Header,
-    Pagination,
-    CommonModal,
-  },
-  data() {
-    return {
-      currentTab: "recipe",
-      currentPage: 1,
-      recipesPerPage: 8,
-      selectedUserType: "",
-      selectedCategory: "",
-      selectedSort: "latest",
-      selectedRecipe: null,
-      showClickEffect: false,
-      recipes: [], // 하드코딩된 데이터 제거, 빈 배열로 초기화
-      allRecipes: [], // 서버에서 받은 모든 레시피 데이터
-      totalItems: 0, // 서버에서 받은 총 레시피 수
-      showLoginModal: false, // 로그인 모달 표시 여부
+// 스토어 사용
+const authStore = useAuthStore();
+const recipeStore = useRecipeStore();
+const router = useRouter();
+
+// 반응형 데이터
+const currentTab = ref("recipe");
+const currentPage = ref(1);
+const recipesPerPage = ref(8);
+const selectedUserType = ref("");
+const selectedCategory = ref("");
+const selectedSort = ref("latest");
+const selectedRecipe = ref(null);
+const showClickEffect = ref(false);
+const showLoginModal = ref(false);
+// computed 속성
+const isLoggedIn = computed(() => authStore.isAuthenticated);
+const recipes = computed(() => recipeStore.getRecipes);
+const filteredRecipes = computed(() => recipes.value);
+const pagedRecipes = computed(() => {
+  // 클라이언트 사이드 페이지네이션 적용
+  const startIndex = (currentPage.value - 1) * recipesPerPage.value;
+  const endIndex = startIndex + recipesPerPage.value;
+  return recipes.value.slice(startIndex, endIndex);
+});
+const totalPages = computed(() => Math.max(1, Math.ceil(recipes.value.length / recipesPerPage.value)));
+const totalItems = computed(() => recipeStore.getPaginationInfo.totalElements);
+// watch 속성
+watch(selectedUserType, () => {
+  currentPage.value = 1;
+  fetchRecipes();
+});
+
+watch(selectedCategory, () => {
+  currentPage.value = 1;
+  fetchRecipes();
+});
+
+watch(selectedSort, () => {
+  currentPage.value = 1;
+  fetchRecipes();
+});
+
+// 컴포넌트 마운트 시 데이터 가져오기
+onMounted(() => {
+  fetchRecipes();
+});
+// 메서드들
+const fetchRecipes = async () => {
+  try {
+    console.log('🔍 API 호출 시작:', {
+      authorType: selectedUserType.value,
+      category: selectedCategory.value,
+      sort: selectedSort.value,
+      page: currentPage.value,
+      size: recipesPerPage.value
+    });
+
+    // 정렬 옵션을 백엔드 API 형식에 맞게 변환
+    let sortParam = selectedSort.value;
+    if (selectedSort.value === 'latest') {
+      sortParam = 'createdAt,desc';
+    } else if (selectedSort.value === 'views') {
+      sortParam = 'viewCount,desc';
+    } else if (selectedSort.value === 'likes') {
+      sortParam = 'likeCount,desc';
+    } else if (selectedSort.value === 'bookmarks') {
+      sortParam = 'bookmarkCount,desc';
+    }
+
+    // 필터 설정
+    const filters = {
+      authorType: selectedUserType.value || '',
+      category: selectedCategory.value || '',
+      sort: sortParam
     };
-  },
-  computed: {
-    isLoggedIn() {
-      const authStore = useAuthStore();
-      return authStore.isAuthenticated;
-    },
-    filteredRecipes() {
-      // 클라이언트 측 필터링 제거, 서버에서 필터링 처리
-      return this.recipes;
-    },
-    pagedRecipes() {
-      // 클라이언트 사이드 페이지네이션 적용
-      const startIndex = (this.currentPage - 1) * this.recipesPerPage;
-      const endIndex = startIndex + this.recipesPerPage;
-      return this.allRecipes.slice(startIndex, endIndex);
-    },
-    totalPages() {
-      return Math.max(1, Math.ceil(this.allRecipes.length / this.recipesPerPage));
-    },
-  },
-  watch: {
-    selectedUserType() {
-      this.currentPage = 1;
-      this.fetchRecipes();
-    },
-    selectedCategory() {
-      this.currentPage = 1;
-      this.fetchRecipes();
-    },
-    selectedSort() {
-      this.currentPage = 1;
-      this.fetchRecipes();
-    },
-    // currentPage 변경 시에는 API 재요청하지 않고 클라이언트 사이드 페이지네이션만 적용
-    // currentPage() {
-    //   this.fetchRecipes();
-    // },
-  },
-  created() {
-    this.fetchRecipes(); // 컴포넌트 생성 시 데이터 가져오기
-  },
-  methods: {
-    async fetchRecipes() {
-      try {
-        console.log('🔍 API 호출 시작:', {
-          authorType: this.selectedUserType,
-          category: this.selectedCategory,
-          sort: this.selectedSort,
-          page: this.currentPage,
-          size: this.recipesPerPage
-        });
 
-        // 정렬 옵션을 백엔드 API 형식에 맞게 변환
-        let sortParam = this.selectedSort;
-        if (this.selectedSort === 'latest') {
-          sortParam = 'createdAt,desc';
-        } else if (this.selectedSort === 'views') {
-          sortParam = 'viewCount,desc';
-        } else if (this.selectedSort === 'likes') {
-          sortParam = 'likeCount,desc';
-        } else if (this.selectedSort === 'bookmarks') {
-          sortParam = 'bookmarkCount,desc';
-        }
+    // 스토어에 필터 설정
+    recipeStore.setFilters(filters);
 
-        // 빈 값은 undefined로 설정하여 쿼리 파라미터에서 제외
-        // 클라이언트 사이드 페이지네이션을 위해 모든 데이터를 한 번에 가져옴
-        const params = {
-          sort: sortParam,
-          page: 0, // 첫 페이지만 요청
-          size: 100, // 충분히 큰 수로 설정하여 모든 데이터 가져오기
-        };
-
-        if (this.selectedUserType) {
-          params.role = this.selectedUserType; // 백엔드에서 role 파라미터 사용
-        }
-        if (this.selectedCategory) {
-          params.category = this.selectedCategory;
-        }
-
-        console.log('📡 API 요청 파라미터:', JSON.stringify(params, null, 2));
-        console.log('🔑 Authorization 토큰:', localStorage.getItem('accessToken') ? '있음' : '없음');
-        console.log('📊 페이지네이션 정보:', {
-          currentPage: this.currentPage,
-          recipesPerPage: this.recipesPerPage,
-          totalItems: this.totalItems,
-          totalPages: this.totalPages
-        });
-        console.log('🔍 API 요청 URL:', `http://localhost:8080/api/posts?page=${params.page}&size=${params.size}&sort=${params.sort}`);
-        console.log('🔍 실제 요청 파라미터 상세:', {
-          page: params.page,
-          size: params.size,
-          sort: params.sort,
-          role: params.role,
-          category: params.category
-        });
-
-        // 여러 API 엔드포인트 시도
-        let response;
-        try {
-          response = await axios.get('http://localhost:8080/api/posts', {
-            params,
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-            },
-          });
-        } catch (error) {
-          console.log('🔄 첫 번째 API 실패, 두 번째 시도...');
-          // 다른 엔드포인트 시도
-          response = await axios.get('http://localhost:8080/api/recipes', {
-            params,
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-            },
-          });
-        }
-        
-        console.log('✅ API 응답:', JSON.stringify(response.data, null, 2));
-        
-        // API 응답 데이터를 프론트엔드 형식에 맞게 변환
-        const allRecipes = (response.data.data.content || []).map(post => {
-          console.log('📝 개별 포스트 데이터:', {
-            id: post.id,
-            title: post.title,
-            commentCount: post.commentCount,
-            likeCount: post.likeCount,
-            bookmarkCount: post.bookmarkCount,
-            viewCount: post.viewCount
-          });
-          
-          return {
-            id: post.id,
-            image: post.thumbnailUrl || defaultThumbnail,
-            category: post.category,
-            title: post.title,
-            authorType: post.user?.role || 'GENERAL', // user.role 필드 사용
-            description: post.description,
-            likes: post.likeCount || 0,
-            bookmarks: post.bookmarkCount || 0, // 북마크수 추가
-            views: post.viewCount || 0,
-            commentCount: post.commentCount || 0, // 댓글 개수 추가
-            time: this.formatTime(post.createdAt)
-          };
-        });
-        
-        // 모든 레시피 데이터를 저장 (클라이언트 사이드 페이지네이션용)
-        this.allRecipes = allRecipes;
-        
-        // 현재 페이지에 표시할 레시피만 선택
-        this.recipes = this.pagedRecipes;
-        
-        this.totalItems = response.data.data.totalElements || allRecipes.length;
-        
-        console.log('🎯 변환된 레시피 데이터:', JSON.stringify(this.recipes, null, 2));
-        console.log('📊 총 아이템 수:', this.totalItems);
-        console.log('📋 현재 페이지 레시피 개수:', this.recipes.length);
-        console.log('📄 총 페이지 수:', this.totalPages);
-        console.log('✅ 페이지네이션 확인 - 한 페이지당 8개 제한:', this.recipes.length <= 8 ? '정상' : '문제있음');
-        
-      } catch (error) {
-        console.error('❌ API 호출 실패:', error);
-        console.error('❌ 에러 상세:', {
-          message: error.message,
-          status: error.response?.status,
-          data: error.response?.data,
-          config: error.config
-        });
-        
-        // 에러 처리 (예: 사용자에게 알림 표시)
-        this.recipes = [];
-        this.totalItems = 0;
-      }
-    },
-    changePage(page) {
-      console.log('페이지 변경 요청:', page, '현재 페이지:', this.currentPage, '총 페이지:', this.totalPages);
-      
-      // 페이지 범위 체크
-      if (page >= 1 && page <= this.totalPages && page !== this.currentPage) {
-        this.currentPage = page;
-        // 클라이언트 사이드 페이지네이션 적용
-        this.recipes = this.pagedRecipes;
-        console.log('페이지 변경됨:', this.currentPage, '표시할 레시피 개수:', this.recipes.length);
-      } else if (page > this.totalPages) {
-        console.log('최대 페이지 초과, 마지막 페이지로 이동');
-        this.currentPage = this.totalPages;
-        this.recipes = this.pagedRecipes;
-      } else if (page < 1) {
-        console.log('최소 페이지 미만, 첫 페이지로 이동');
-        this.currentPage = 1;
-        this.recipes = this.pagedRecipes;
-      } else {
-        console.log('같은 페이지이므로 변경하지 않음');
-      }
-    },
-    goToLecture() {
-      this.$router.push({ name: "LectureList" });
-    },
-    goToWrite() {
-      if (this.isLoggedIn) {
-        // 게시글 등록 페이지로 이동
-        this.$router.push('/recipe/post-write');
-      } else {
-        // 비회원인 경우 로그인 필요 모달 표시
-        this.showLoginModal = true;
-      }
-    },
-    goToLogin() {
-      // 로그인 페이지로 이동
-      this.$router.push({ name: "Login" });
-      this.closeLoginModal();
-    },
-    closeLoginModal() {
-      this.showLoginModal = false;
-    },
-    categoryText(category) {
-      switch (category) {
-        case 'KOREAN': return '한식';
-        case 'CHINESE': return '중식';
-        case 'WESTERN': return '양식';
-        case 'JAPANESE': return '일식';
-        default: return '기타';
-      }
-    },
-    categoryClass(category) {
-      return category ? `cat-${category.toLowerCase()}` : '';
-    },
-    userTypeText(type) {
-      switch (type) {
-        case 'GENERAL': return '일반 사용자';
-        case 'CHEF': return '요리 전문가';
-        case 'OWNER': return '자영업자';
-        default: return '알 수 없음';
-      }
-    },
-    userTypeClass(type) {
-      return type ? `user-${type.toLowerCase()}` : '';
-    },
-    onImgError(e) {
-      if (!e.target.src.includes('smu_mascort1.jpg')) {
-        e.target.src = defaultThumbnail;
-      }
-    },
+    // 레시피 목록 조회
+    await recipeStore.fetchRecipes({
+      page: 0,
+      size: 100, // 모든 데이터를 한 번에 가져와서 클라이언트 사이드 페이지네이션
+      ...filters
+    });
     
-    // 시간 포맷팅
-    formatTime(createdAt) {
-      if (!createdAt) return '';
-      
-      const now = new Date();
-      const created = new Date(createdAt);
-      const diffTime = Math.abs(now - created);
-      const diffHours = Math.ceil(diffTime / (1000 * 60 * 60));
-      
-      if (diffHours < 1) return '방금 전';
-      if (diffHours < 24) return `${diffHours}시간 전`;
-      
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      if (diffDays < 7) return `${diffDays}일 전`;
-      
-      return created.toLocaleDateString('ko-KR', {
-        month: 'short',
-        day: 'numeric'
-      });
-    },
-    handleCardClick(recipe) {
-      // 레시피 상세 페이지로 이동
-      this.$router.push(`/recipes/${recipe.id}`);
-    },
-
+    console.log('✅ 레시피 목록 조회 완료');
     
+  } catch (error) {
+    console.error('❌ 레시피 목록 조회 실패:', error);
+  }
+};
+const changePage = (page) => {
+  console.log('페이지 변경 요청:', page, '현재 페이지:', currentPage.value, '총 페이지:', totalPages.value);
+  
+  // 페이지 범위 체크
+  if (page >= 1 && page <= totalPages.value && page !== currentPage.value) {
+    currentPage.value = page;
+    console.log('페이지 변경됨:', currentPage.value);
+  } else if (page > totalPages.value) {
+    console.log('최대 페이지 초과, 마지막 페이지로 이동');
+    currentPage.value = totalPages.value;
+  } else if (page < 1) {
+    console.log('최소 페이지 미만, 첫 페이지로 이동');
+    currentPage.value = 1;
+  } else {
+    console.log('같은 페이지이므로 변경하지 않음');
+  }
+};
 
-    
+const goToLecture = () => {
+  router.push({ name: "LectureList" });
+};
 
-    
-    // 필터 변경 시 목록 재조회
-    onFilterChange() {
-      this.currentPage = 1;
-      this.fetchRecipes();
-    },
-  },
+const goToWrite = () => {
+  if (isLoggedIn.value) {
+    // 게시글 등록 페이지로 이동
+    router.push('/recipe/post-write');
+  } else {
+    // 비회원인 경우 로그인 필요 모달 표시
+    showLoginModal.value = true;
+  }
+};
+
+const goToLogin = () => {
+  // 로그인 페이지로 이동
+  router.push({ name: "Login" });
+  closeLoginModal();
+};
+
+const closeLoginModal = () => {
+  showLoginModal.value = false;
+};
+const categoryText = (category) => {
+  switch (category) {
+    case 'KOREAN': return '한식';
+    case 'CHINESE': return '중식';
+    case 'WESTERN': return '양식';
+    case 'JAPANESE': return '일식';
+    default: return '기타';
+  }
+};
+
+const categoryClass = (category) => {
+  return category ? `cat-${category.toLowerCase()}` : '';
+};
+
+const userTypeText = (type) => {
+  switch (type) {
+    case 'GENERAL': return '일반 사용자';
+    case 'CHEF': return '요리 전문가';
+    case 'OWNER': return '자영업자';
+    default: return '알 수 없음';
+  }
+};
+
+const userTypeClass = (type) => {
+  return type ? `user-${type.toLowerCase()}` : '';
+};
+
+const onImgError = (e) => {
+  if (!e.target.src.includes('smu_mascort1.jpg')) {
+    e.target.src = defaultThumbnail;
+  }
+};
+
+// 시간 포맷팅
+const formatTime = (createdAt) => {
+  if (!createdAt) return '';
+  
+  const now = new Date();
+  const created = new Date(createdAt);
+  const diffTime = Math.abs(now - created);
+  const diffHours = Math.ceil(diffTime / (1000 * 60 * 60));
+  
+  if (diffHours < 1) return '방금 전';
+  if (diffHours < 24) return `${diffHours}시간 전`;
+  
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  if (diffDays < 7) return `${diffDays}일 전`;
+  
+  return created.toLocaleDateString('ko-KR', {
+    month: 'short',
+    day: 'numeric'
+  });
+};
+
+const handleCardClick = (recipe) => {
+  // 레시피 상세 페이지로 이동
+  router.push(`/recipes/${recipe.id}`);
+};
+
+// 필터 변경 시 목록 재조회
+const onFilterChange = () => {
+  currentPage.value = 1;
+  fetchRecipes();
 };
 </script>
 

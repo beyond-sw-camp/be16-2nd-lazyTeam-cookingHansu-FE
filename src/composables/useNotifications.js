@@ -67,6 +67,13 @@ export function useNotifications() {
 
   // 컴포넌트 마운트시 자동 연결
   onMounted(async () => {
+    // 로그인한 사용자만 알림 구독
+    const currentUserId = getCurrentUserId()
+    if (!currentUserId) {
+      console.log('비회원 - 알림 구독 건너뜀')
+      return
+    }
+
     await requestNotificationPermission()
     await loadNotifications()
 

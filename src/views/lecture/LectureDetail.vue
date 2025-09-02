@@ -748,18 +748,29 @@ import DeleteConfirmModal from '@/components/common/DeleteConfirmModal.vue';
 import ReportModal from '@/components/common/ReportModal.vue';
 import UserProfileModal from '@/components/common/UserProfileModal.vue';
 
-import { lectureService } from '@/store/lecture/lectureService';
+import { useLectureStore } from '@/store/lecture/lecture';
 import { useCartStore } from '@/store/cart/cart';
 import { useChatStore } from '@/store/chat/chat';
 import { useAuthStore } from '@/store/auth/auth';
 import { getUserIdFromToken } from '@/utils/api';
 import { reportService } from '@/services/report/reportService';
-import { lectureProgressService } from '@/services/lecture/lectureProgressService';
 
 
 export default {
   name: 'LectureDetail',
   components: { Header, DeleteConfirmModal, ReportModal, UserProfileModal },
+  setup() {
+    const lectureStore = useLectureStore();
+    const cartStore = useCartStore();
+    const chatStore = useChatStore();
+    const authStore = useAuthStore();
+    return {
+      lectureStore,
+      cartStore,
+      chatStore,
+      authStore
+    };
+  },
   data() {
     return {
       ready: false, // 초기화 완료 상태
@@ -1090,8 +1101,14 @@ export default {
     
              // 장바구니 상태 확인 (백엔드 API 사용)
     async checkCartStatus(lectureId) {
+      // 비회원이나 관리자는 장바구니 조회하지 않음
+      if (this.isGuest || this.userRole === 'ADMIN') {
+        this.isInCart = false;
+        return;
+      }
+
       try {
-        const response = await lectureService.getCartItems();
+        const response = await this.lectureStore.fetchCartItems();
         if (response.success) {
           // 장바구니 목록에서 현재 강의 ID가 있는지 확인
           this.isInCart = response.data.some(item => 
@@ -1114,7 +1131,7 @@ export default {
          }
          
          // 강의 데이터에 좋아요 상태가 없는 경우 별도 API 호출
-         const response = await lectureService.checkLectureLikeStatus(lectureId);
+         const response = await this.lectureStore.fetchLectureDetail(lectureId);
          if (response.success) {
            this.isLiked = response.data.liked || false;
          }
@@ -1135,7 +1152,7 @@ export default {
         this.videoThumb = null;
        
        try {
-        const response = await lectureService.getLectureDetail(lectureId);
+        const response = await this.lectureStore.fetchLectureDetail(lectureId);
         
         if (response.success) {
           const lectureData = response.data;
@@ -1581,7 +1598,7 @@ export default {
        if (currentTime >= currentLesson.durationSeconds) {
          try {
            // API 호출
-           await lectureProgressService.saveVideoProgress(currentLesson.videoId, currentLesson.durationSeconds);
+           await this.lectureStore.saveVideoProgress(currentLesson.videoId, currentLesson.durationSeconds);
            
            // 진행도 저장 후 강의 정보 새로고침
            await this.refreshLectureProgress();
@@ -1596,7 +1613,7 @@ export default {
      // 강의 진행도 새로고침
      async refreshLectureProgress() {
        try {
-         const response = await lectureService.getLectureDetail(this.lecture.id);
+         const response = await this.lectureStore.fetchLectureDetail(this.lecture.id);
          if (response.success) {
            this.lecture.progressPercent = response.data.progressPercent;
          }
@@ -1784,12 +1801,12 @@ export default {
         if (this.isEditingReview) {
           // 리뷰 수정 API 호출
           
-          response = await lectureService.modifyReview(reviewData);
+          response = await this.lectureStore.updateReview(reviewData);
           
         } else {
           // 리뷰 등록 API 호출
           
-          response = await lectureService.createReview(reviewData);
+          response = await this.lectureStore.createReview(reviewData);
           
         }
 
@@ -2173,7 +2190,7 @@ export default {
       // 서버에서 강의 삭제
       async deleteLectureFromServer() {
         try {
-          const result = await lectureService.deleteLecture(this.lecture.id);
+          const result = await this.lectureStore.deleteLecture(this.lecture.id);
    
           return result;
         } catch (error) {
@@ -2232,7 +2249,7 @@ export default {
             const lectureId = this.lecture.lectureId || this.lecture.id;
      
             
-            const response = await lectureService.deleteReview(lectureId);
+            const response = await this.lectureStore.deleteReview(lectureId);
      
             
             if (response && (response.success === true || response.code === 200)) {
@@ -2445,9 +2462,19 @@ export default {
       async purchaseLecture() {
         try {
           // 장바구니에 추가
-          await lectureService.addToCart([this.lecture.id]);
+          await this.lectureStore.addToCart([this.lecture.id]);
           
           this.isInCart = true;
+          
+          // 장바구니 스토어 업데이트
+          if (this.cartStore) {
+            console.log('🛒 강의 구매: 장바구니 스토어 업데이트 시작');
+            this.cartStore.updateCartItem(this.lecture.id, false); // 장바구니에 추가
+            console.log('🛒 강의 구매: updateCartItem 완료, fetchServerCartList 시작');
+            await this.cartStore.fetchServerCartList(true); // 강제 새로고침
+            console.log('🛒 강의 구매: fetchServerCartList 완료, 현재 장바구니 개수:', this.cartStore.serverCartCount);
+          }
+          
           // 장바구니 페이지로 이동
           this.$router.push('/cart');
         } catch (error) {
@@ -2458,10 +2485,14 @@ export default {
 
     // 장바구니에 강의 추가/제거 (토글 기능)
     async enrollLecture() {
-      
-      
       if (!this.lecture) {
         this.showError('강의 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+        return;
+      }
+
+      // 로그인 확인
+      if (!this.currentUserId) {
+        this.showLoginRequiredModal = true;
         return;
       }
 
@@ -2475,14 +2506,15 @@ export default {
           callback: async () => {
             try {
               // 백엔드 API를 통해 장바구니에서 제거
-              await lectureService.removeFromCart(this.lecture.id);
+              await this.lectureStore.removeFromCart(this.lecture.id);
               
               // 성공 시 상태 업데이트
               this.isInCart = false;
               
               // 장바구니 스토어 업데이트
               if (this.cartStore) {
-                await this.cartStore.fetchServerCartList();
+                this.cartStore.updateCartItem(this.lecture.id, true); // 장바구니에서 제거
+                await this.cartStore.fetchServerCartList(true); // 강제 새로고침
               }
               
               this.showSuccess('장바구니에서 강의가 제거되었습니다.');
@@ -2497,14 +2529,15 @@ export default {
 
       try {
         // 백엔드 API를 통해 장바구니에 추가
-        await lectureService.addToCart([this.lecture.id]);
+        await this.lectureStore.addToCart([this.lecture.id]);
         
         // 성공 시 상태 업데이트
         this.isInCart = true;
         
         // 장바구니 스토어 업데이트
         if (this.cartStore) {
-          await this.cartStore.fetchServerCartList();
+          this.cartStore.updateCartItem(this.lecture.id, false); // 장바구니에 추가
+          await this.cartStore.fetchServerCartList(true); // 강제 새로고침
         }
         
         this.showCartModal = true;
@@ -2516,8 +2549,6 @@ export default {
 
     // 강의 구매하기
     purchaseLecture() {
-      
-      
       if (!this.lecture) {
         this.showError('강의 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
         return;
@@ -2547,7 +2578,7 @@ export default {
        }
 
        try {
-         const response = await lectureService.toggleLectureLike(this.lecture.id);
+         const response = await this.lectureStore.toggleLectureLike(this.lecture.id);
          
          if (response.success) {
            // 좋아요 상태 토글

@@ -271,11 +271,17 @@
 <script>
 import Header from '@/components/Header.vue';
 import CommonModal from '@/components/common/CommonModal.vue';
-import { lectureService } from '@/store/lecture/lectureService';
+import { useLectureStore } from '@/store/lecture/lecture';
 
 export default {
   name: 'LectureEdit',
   components: { Header, CommonModal },
+  setup() {
+    const lectureStore = useLectureStore();
+    return {
+      lectureStore
+    };
+  },
   data() {
     return {
              lectureId: null,
@@ -316,7 +322,7 @@ export default {
     // 강의 데이터 로드
     async loadLectureData() {
       try {
-        const response = await lectureService.getLectureDetail(this.lectureId);
+        const response = await this.lectureStore.fetchLectureDetail(this.lectureId);
         if (response.success) {
           const lectureData = response.data;
           
@@ -750,9 +756,9 @@ export default {
          console.log('this.lectureId:', this.lectureId);
          console.log('FormData 키 개수:', Array.from(formData.keys()).length);
          console.log('FormData 키들:', Array.from(formData.keys()));
-         console.log('lectureService:', lectureService);
+         console.log('lectureStore:', this.lectureStore);
          
-                   const response = await lectureService.updateLecture(this.lectureId, formData);
+                   const response = await this.lectureStore.updateLecture(this.lectureId, formData);
           
           console.log('=== 강의 수정 응답 ===');
           console.log('응답 성공 여부:', response.success);
@@ -765,7 +771,7 @@ export default {
              // 수정된 강의 데이터를 다시 조회하여 확인
              try {
                console.log('=== 수정된 강의 데이터 재조회 ===');
-               const updatedLectureResponse = await lectureService.getLectureDetail(this.lectureId);
+               const updatedLectureResponse = await this.lectureStore.fetchLectureDetail(this.lectureId);
                if (updatedLectureResponse.success) {
                  console.log('수정된 강의 데이터:', updatedLectureResponse.data);
                  console.log('수정된 비디오 목록:', updatedLectureResponse.data.lectureVideoResDtoList);
