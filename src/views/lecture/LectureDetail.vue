@@ -1126,36 +1126,7 @@ export default {
 
      
 
-     // 구매 여부 확인 (백엔드 API 사용)
-     async checkPurchaseStatus(lectureId) {
-       try {
-         const response = await lectureService.getPurchasedLectures();
-         
-         if (response.success) {
-           // 구매한 강의 목록에서 현재 강의 ID가 있는지 확인
-           // purchase 객체에서 id 또는 lectureId 필드를 확인
-           const isPurchased = response.data.content.some(purchase => 
-             purchase.id === lectureId || purchase.lectureId === lectureId
-           );
-           
-           // 구매 상태가 변경된 경우에만 업데이트
-           if (this.isPurchased !== isPurchased) {
-             this.isPurchased = isPurchased;
-             
-             // UI 강제 업데이트
-             this.$nextTick(() => {
-               this.$forceUpdate();
-             });
-           }
-         }
-       } catch (error) {
-         console.error('구매 상태 확인 실패:', error);
-         this.isPurchased = false;
-         this.$nextTick(() => {
-           this.$forceUpdate();
-         });
-       }
-     },
+
 
          // 강의 데이터를 받아오는 메서드 (백엔드 API 호출)
      async fetchLectureData(lectureId) {
@@ -1209,8 +1180,13 @@ export default {
               progressPercent: lectureData.progressPercent,
               // 백엔드에서 제공하는 좋아요 정보 추가
               likeCount: lectureData.likeCount || 0,
-              isLiked: lectureData.isLiked || false
+              isLiked: lectureData.isLiked || false,
+              // 백엔드에서 제공하는 구매 여부 정보 추가
+              isPurchased: lectureData.isPurchased || false
             };
+            
+            // 구매 상태를 백엔드에서 받은 데이터로 설정
+            this.isPurchased = lectureData.isPurchased || false;
             
 
           } catch (error) {
@@ -1226,9 +1202,6 @@ export default {
                                               // 사용자 역할 및 장바구니 상태 확인
            await this.checkUserRole(lectureId);
            await this.checkCartStatus(lectureId);
-           
-           // 구매 상태 확인
-           await this.checkPurchaseStatus(lectureId);
            
            // 좋아요 상태 확인
            await this.checkLikeStatus(lectureId);
@@ -1941,8 +1914,9 @@ export default {
           this.isPurchased = true;
           this.userRole = 'PURCHASER';
           
-          // 구매 상태를 백엔드에서 다시 확인하여 동기화
-          await this.checkPurchaseStatus(this.lecture.id);
+          // 강의 데이터 새로고침으로 백엔드와 동기화
+          await this.fetchLectureData(lectureId);
+
           
           this.showNotification({
             title: '구매 완료',
@@ -2815,10 +2789,11 @@ export default {
         
         // 결제 완료 후 돌아온 경우 구매 상태를 다시 확인
         if (paymentCompleted === 'true') {
-   
           setTimeout(async () => {
-            await this.checkPurchaseStatus(lectureId);
+            // 강의 데이터 새로고침으로 구매 상태 동기화
+            await this.fetchLectureData(lectureId);
             await this.checkCartStatus(lectureId);
+            
             // URL에서 paymentCompleted 파라미터 제거
             const newUrl = new URL(window.location);
             newUrl.searchParams.delete('paymentCompleted');

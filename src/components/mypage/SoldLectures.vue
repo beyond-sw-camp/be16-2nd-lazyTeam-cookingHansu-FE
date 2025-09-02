@@ -152,12 +152,11 @@ export default {
         });
         
         const response = await apiGet(`/lecture/mylist?${params.toString()}`);
-        const data = await response.json();
 
-        if (data.success) {
-          this.lectures = data.data.content;
-          this.totalPages = data.data.totalPages;
-          this.totalElements = data.data.totalElements;
+        if (response.data && response.data.success) {
+          this.lectures = response.data.data.content;
+          this.totalPages = response.data.data.totalPages;
+          this.totalElements = response.data.data.totalElements;
         }
       } catch (error) {
         console.error('판매한 강의 조회 실패:', error);
@@ -172,14 +171,7 @@ export default {
       }
     },
     categoryClass(category) {
-      switch (category) {
-        case 'KOREAN': return 'cat-korean';
-        case 'WESTERN': return 'cat-western';
-        case 'JAPANESE': return 'cat-japanese';
-        case 'CHINESE': return 'cat-chinese';
-        case 'DESSERT': return 'cat-dessert';
-        default: return '';
-      }
+      return category ? `cat-${category.toLowerCase()}` : '';
     },
     getCategoryName(category) {
       switch (category) {
@@ -187,7 +179,6 @@ export default {
         case 'WESTERN': return '양식';
         case 'JAPANESE': return '일식';
         case 'CHINESE': return '중식';
-        case 'DESSERT': return '디저트';
         default: return category;
       }
     },
@@ -406,10 +397,7 @@ export default {
   color: #ff3b3b;
 }
 
-.cat-dessert {
-  background: #fff3e2;
-  color: #ff7a00;
-}
+
 
 .status-badge {
   font-size: 12px;

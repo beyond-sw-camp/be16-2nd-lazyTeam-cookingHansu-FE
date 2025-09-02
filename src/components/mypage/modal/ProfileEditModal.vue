@@ -229,12 +229,11 @@ export default {
 
           const uploadResponse = await apiPostFormData('/api/my/profile/image', fd);
 
-          if (!uploadResponse.ok) {
+          if (uploadResponse.data && uploadResponse.data.success) {
+            imageUrl = uploadResponse.data.data;
+          } else {
             throw new Error('이미지 업로드 실패');
           }
-
-          const uploadResult = await uploadResponse.json();
-          imageUrl = uploadResult.data;
         }
 
         // 프로필 업데이트 API 호출
@@ -244,11 +243,11 @@ export default {
           profileImageUrl: imageUrl
         });
 
-        if (!updateResponse.ok) {
+        if (!updateResponse.data || !updateResponse.data.success) {
           throw new Error('프로필 업데이트 실패');
         }
 
-        const updateResult = await updateResponse.json();
+        const updateResult = updateResponse.data;
 
         this.$emit('update', updateResult.data);
         this.$emit('showMessage', {

@@ -98,7 +98,6 @@
                     accept=".png,.jpg,.jpeg,.bmp"
                     @change="handleThumbnailChange"
                     style="display: none"
-                    required
                   />
                 <div v-if="!thumbnailPreview" class="upload-placeholder">
                   <div class="upload-icon">📷</div>
@@ -153,7 +152,6 @@
                         accept=".mp4,.mov,.avi"
                         @change="handleVideoFileChange($event, index)"
                         class="form-input"
-                        required
                       />
                       <p class="file-size-limit">📏 파일 크기: 최대 50MB</p>
                     </div>

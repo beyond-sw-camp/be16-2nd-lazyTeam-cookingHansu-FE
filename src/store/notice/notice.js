@@ -161,9 +161,12 @@ export const useNoticeStore = defineStore('notice', {
           
           // 공지사항 생성 후 알림 생성 및 개수 업데이트 (실시간 반영)
           try {
-            const { useNotificationStore } = await import('@/store/notification/notification');
-            const notificationStore = useNotificationStore();
-            await notificationStore.handleNoticeNotification(newNotice, 'create');
+            // NoticeResDto 구조: { id, title, content, imageUrl, createdAt }
+            if (newNotice.id && newNotice.title) {
+              const { useNotificationStore } = await import('@/store/notification/notification');
+              const notificationStore = useNotificationStore();
+              await notificationStore.handleNoticeNotification(newNotice, 'create');
+            }
           } catch (error) {
             console.warn('공지사항 알림 생성 실패:', error);
           }
@@ -185,45 +188,45 @@ export const useNoticeStore = defineStore('notice', {
       try {
         const response = await noticeService.updateNotice(id, noticeData);
         
-        if (response.success) {
+        if (response.success && response.data) {
+          const updatedNotice = response.data;
+          
+          
           // 수정된 공지사항을 목록에서 직접 업데이트 (API 호출 없이 즉시 반영)
           const noticeIndex = this.notices.findIndex(notice => notice.id === id);
           if (noticeIndex !== -1) {
-            // 기존 공지사항 데이터와 수정된 데이터를 병합
-            this.notices[noticeIndex] = {
-              ...this.notices[noticeIndex],
-              ...noticeData,
-              updatedAt: new Date().toISOString() // 수정 시간 업데이트
-            };
+            // 서버에서 반환된 NoticeResDto로 업데이트
+            this.notices[noticeIndex] = updatedNotice;
           }
           
           // 현재 공지사항도 업데이트
           if (this.currentNotice && this.currentNotice.id === id) {
-            this.currentNotice = {
-              ...this.currentNotice,
-              ...noticeData,
-              updatedAt: new Date().toISOString()
-            };
+            this.currentNotice = updatedNotice;
           }
           
           // 캐시도 업데이트
           if (this.noticeCache.has(id)) {
             this.noticeCache.set(id, {
-              data: this.currentNotice || this.notices[noticeIndex],
+              data: updatedNotice,
               timestamp: Date.now()
             });
           }
+          
+          // 공지사항 수정 후 알림 생성 및 개수 업데이트
+          try {
+            // NoticeResDto 구조: { id, title, content, imageUrl, createdAt }
+            if (updatedNotice.id && updatedNotice.title) {
+              const { useNotificationStore } = await import('@/store/notification/notification');
+              const notificationStore = useNotificationStore();
+              await notificationStore.handleNoticeNotification(updatedNotice, 'update');
+            } else {
+              console.warn('공지사항 수정 응답에 필수 필드가 없습니다:', updatedNotice);
+            }
+          } catch (error) {
+            console.warn('공지사항 알림 생성 실패:', error);
+          }
         } else {
           throw new Error(response.message || '공지사항 수정에 실패했습니다.');
-        }
-        
-        // 공지사항 수정 후 알림 생성 및 개수 업데이트
-        try {
-          const { useNotificationStore } = await import('@/store/notification/notification');
-          const notificationStore = useNotificationStore();
-          await notificationStore.handleNoticeNotification(noticeData, 'update');
-        } catch (error) {
-          console.warn('공지사항 알림 생성 실패:', error);
         }
       } catch (error) {
         this._handleError(error, '공지사항 수정에 실패했습니다.');
@@ -239,8 +242,28 @@ export const useNoticeStore = defineStore('notice', {
       
       try {
         await noticeService.deleteNotice(id);
-        // 삭제 후 목록 새로고침 (현재 페이지 유지)
-        await this.fetchNotices(this.pagination.currentPage, this.pagination.pageSize);
+        
+        // 삭제된 공지사항을 목록에서 즉시 제거 (API 호출 없이 즉시 반영)
+        const noticeIndex = this.notices.findIndex(notice => notice.id === id);
+        if (noticeIndex !== -1) {
+          this.notices.splice(noticeIndex, 1);
+        }
+        
+        // 페이지네이션 정보 업데이트
+        this.pagination.totalElements = Math.max(0, this.pagination.totalElements - 1);
+        
+        // 현재 공지사항도 초기화 (삭제된 공지사항이 현재 선택된 경우)
+        if (this.currentNotice && this.currentNotice.id === id) {
+          this.currentNotice = null;
+        }
+        
+        // 캐시에서도 제거
+        if (this.noticeCache.has(id)) {
+          this.noticeCache.delete(id);
+        }
+        
+        // 마지막 업데이트 시간 갱신
+        this.lastUpdate = Date.now();
         
         // 공지사항 삭제 후 알림 생성 및 개수 업데이트
         try {

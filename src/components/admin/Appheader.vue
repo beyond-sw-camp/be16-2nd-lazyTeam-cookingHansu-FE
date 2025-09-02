@@ -55,7 +55,7 @@ export default {
 .user-info {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 16px;
   color: #fff;
 }
 

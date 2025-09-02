@@ -18,7 +18,7 @@
       <div class="nav-menu">
         <router-link to="/notice" class="nav-link">공지사항</router-link>
         <router-link to="/recipes" class="nav-link">레시피 공유 게시글</router-link>
-        <router-link to="/lectures" class="nav-link">판매중인 강의</router-link>
+        <router-link to="/lectures" class="nav-link">강의</router-link>
         <!-- 관리자가 아닐 때만 표시할 메뉴 -->
         <a v-if="!isAdmin" @click="handleChatClick" class="nav-link" style="cursor: pointer;">1:1채팅</a>
         <!-- 관리자일 때는 관리자페이지, 일반 사용자일 때는 마이페이지 -->
@@ -56,15 +56,6 @@
 
         <!-- Logged In State -->
         <div v-else class="user-section">
-          <v-avatar size="32" class="profile-avatar">
-            <v-img 
-              v-if="profileInfo.profileImageUrl" 
-              :src="profileInfo.profileImageUrl" 
-              alt="프로필 이미지"
-            ></v-img>
-            <v-icon v-else size="20" color="grey">mdi-account</v-icon>
-          </v-avatar>
-          
           <!-- 알림 버튼 (관리자가 아닐 때만 표시) -->
           <v-btn
             v-if="!isAdmin"
@@ -100,6 +91,15 @@
               <v-icon>mdi-cart</v-icon>
             </v-badge>
           </v-btn>
+          
+          <v-avatar size="32" class="profile-avatar">
+            <v-img 
+              v-if="profileInfo.profileImageUrl" 
+              :src="profileInfo.profileImageUrl" 
+              alt="프로필 이미지"
+            ></v-img>
+            <v-icon v-else size="20" color="grey">mdi-account</v-icon>
+          </v-avatar>
           
           <span class="welcome-text">{{ userNickname }}님 환영합니다!</span>
 
@@ -304,7 +304,7 @@ const mobileMenuItems = computed(() => {
   const baseItems = [
     { title: '공지사항', path: '/notice' },
     { title: '레시피 공유 게시글', path: '/recipes' },
-    { title: '판매중인 강의', path: '/lectures' }
+    { title: '강의', path: '/lectures' }
   ];
   
   // 관리자가 아닐 때만 표시할 메뉴
@@ -765,6 +765,7 @@ const closeLoginModal = () => {
   align-items: center;
   width: 100%;
   justify-content: flex-end;
+  gap: 12px;
 }
 
 .profile-avatar {

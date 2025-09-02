@@ -484,11 +484,18 @@ export const useNotificationStore = defineStore('notification', {
     // 공지사항 관련 알림 처리 (관리자가 공지사항 작성/수정/삭제 시)
     async handleNoticeNotification(noticeData, action = 'create') {
       try {
+        // NoticeResDto 구조: { id, title, content, imageUrl, createdAt }
+        // 필수 필드 검증
+        if (!noticeData.id || !noticeData.title) {
+          console.warn('공지사항 알림 처리 실패: 필수 필드가 없습니다:', noticeData);
+          return;
+        }
+        
         // 공지사항 알림을 notifications 배열에 추가
         const notification = {
           id: `notice_${Date.now()}`,
           type: 'notice',
-          content: `새로운 공지사항이 ${action === 'create' ? '작성' : action === 'update' ? '수정' : '삭제'}되었습니다: ${noticeData.title || '제목 없음'}`,
+          content: `새로운 공지사항이 ${action === 'create' ? '작성' : action === 'update' ? '수정' : '삭제'}되었습니다: ${noticeData.title}`,
           recipientId: 'all', // 모든 사용자에게
           createdAt: new Date().toISOString(),
           isRead: false,
