@@ -709,9 +709,11 @@ import { useRoute, useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import CommonModal from '@/components/common/CommonModal.vue'
 import { useNotifications } from '@/composables/useNotifications'
+import { useAuthStore } from '@/store/auth/auth'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 
 // 실시간 알림 설정
 const { isConnected: notificationConnected } = useNotifications()
@@ -732,36 +734,34 @@ const isLoggedIn = computed(() => {
   return !!localStorage.getItem('accessToken')
 })
 
-// JWT 토큰에서 사용자 정보 추출
-const getCurrentUserIdFromToken = () => {
-  try {
-    const token = localStorage.getItem('accessToken')
-    if (!token) {
-      console.log('🔍 JWT 토큰이 없습니다')
-      return null
-    }
-    
-    const payload = JSON.parse(atob(token.split('.')[1]))
-    console.log('🔍 JWT 토큰 페이로드:', payload)
-    
-    // 다양한 필드명으로 사용자 ID 찾기
-    const userId = payload.sub || payload.userId || payload.id || payload.user_id || payload.userId
-    console.log('🔍 추출된 사용자 ID:', userId)
-    
-    return userId
-  } catch (error) {
-    console.error('JWT 토큰 파싱 실패:', error)
-    return null
+// store나 localStorage에서 사용자 ID 가져오기 (JWT 파싱 대신)
+const getCurrentUserIdFromStore = () => {
+  // 1. store에서 먼저 확인
+  if (authStore.user?.id) {
+    return authStore.user.id
   }
+  
+  // 2. store에 없으면 localStorage에서 확인
+  try {
+    const savedUser = localStorage.getItem('user')
+    if (savedUser) {
+      const userData = JSON.parse(savedUser)
+      return userData.id
+    }
+  } catch (error) {
+    console.error('localStorage 사용자 정보 파싱 실패:', error)
+  }
+  
+  return null
 }
 
-// 현재 사용자가 작성자인지 확인 (JWT 토큰 기반)
+// 현재 사용자가 작성자인지 확인 (store/localStorage 기반)
 const isAuthor = computed(() => {
-  // JWT 토큰에서 사용자 ID 추출
-  const currentUserId = getCurrentUserIdFromToken()
+  // store나 localStorage에서 사용자 ID 가져오기
+  const currentUserId = getCurrentUserIdFromStore()
   
   if (!currentUserId) {
-    console.log('🔍 isAuthor: JWT 토큰에서 사용자 ID 추출 실패')
+    console.log('🔍 isAuthor: store/localStorage에서 사용자 ID 추출 실패')
     return false
   }
   
@@ -772,8 +772,8 @@ const isAuthor = computed(() => {
   
   // 타입 변환하여 비교 (문자열과 숫자 모두 지원)
   const isMatch = String(currentUserId) === String(recipe.authorId)
-  console.log('🔍 isAuthor 체크 (JWT 토큰 기준):', {
-    currentUserIdFromToken: currentUserId,
+  console.log('🔍 isAuthor 체크 (store/localStorage 기준):', {
+    currentUserIdFromStore: currentUserId,
     currentUserIdType: typeof currentUserId,
     recipeAuthorId: recipe.authorId,
     recipeAuthorIdType: typeof recipe.authorId,
@@ -791,7 +791,7 @@ const canAccessRecipe = computed(() => {
     isOpen: recipe.isOpen,
     isOpenType: typeof recipe.isOpen,
     isAuthor: isAuthor.value,
-    currentUserId: getCurrentUserIdFromToken(),
+    currentUserId: getCurrentUserIdFromStore(),
     recipeAuthorId: recipe.authorId
   })
   
@@ -952,7 +952,7 @@ const canEditComment = (comment) => {
   }
   
   // 현재 사용자 UUID 가져오기 (JWT 토큰에서 추출)
-  const currentUserUUID = getCurrentUserIdFromToken() || currentUser.value.id || currentUser.value.uuid || currentUser.value.userId
+  const currentUserUUID = getCurrentUserIdFromStore() || currentUser.value.id || currentUser.value.uuid || currentUser.value.userId
   
   console.log('🔍 canEditComment 디버깅:', {
     isLoggedIn: isLoggedIn.value,
@@ -1056,7 +1056,7 @@ const submitComment = async () => {
     const checkData = await checkResponse.json()
     if (checkData.data && checkData.data.isOpen === false) {
       // 비밀글인 경우 작성자 체크
-      const currentUserId = getCurrentUserIdFromToken()
+      const currentUserId = getCurrentUserIdFromStore()
       if (!currentUserId || String(currentUserId) !== String(checkData.data.authorId)) {
         alert('비공개된 게시글입니다.')
         router.push('/recipes')
@@ -1157,7 +1157,7 @@ const submitReply = async (comment) => {
     const checkData = await checkResponse.json()
     if (checkData.data && checkData.data.isOpen === false) {
       // 비밀글인 경우 작성자 체크
-      const currentUserId = getCurrentUserIdFromToken()
+      const currentUserId = getCurrentUserIdFromStore()
       if (!currentUserId || String(currentUserId) !== String(checkData.data.authorId)) {
         alert('비공개된 게시글입니다.')
         router.push('/recipes')
@@ -1239,7 +1239,7 @@ const deleteComment = async (commentId) => {
     const checkData = await checkResponse.json()
     if (checkData.data && checkData.data.isOpen === false) {
       // 비밀글인 경우 작성자 체크
-      const currentUserId = getCurrentUserIdFromToken()
+      const currentUserId = getCurrentUserIdFromStore()
       if (!currentUserId || String(currentUserId) !== String(checkData.data.authorId)) {
         alert('비공개된 게시글입니다.')
         router.push('/recipes')
@@ -1367,7 +1367,7 @@ const saveEditComment = async (comment) => {
     const checkData = await checkResponse.json()
     if (checkData.data && checkData.data.isOpen === false) {
       // 비밀글인 경우 작성자 체크
-      const currentUserId = getCurrentUserIdFromToken()
+      const currentUserId = getCurrentUserIdFromStore()
       if (!currentUserId || String(currentUserId) !== String(checkData.data.authorId)) {
         alert('비공개된 게시글입니다.')
         router.push('/recipes')
