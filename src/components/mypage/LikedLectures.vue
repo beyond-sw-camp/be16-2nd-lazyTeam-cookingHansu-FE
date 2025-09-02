@@ -61,7 +61,7 @@
       <div class="empty-icon">📚</div>
       <h3>아직 좋아요한 강의가 없어요</h3>
       <p>마음에 드는 강의에 좋아요를 눌러보세요!</p>
-      <button class="browse-content-btn">강의 둘러보기</button>
+      <button class="browse-content-btn" @click="goToLectures">강의 둘러보기</button>
     </div>
 
     <div v-if="error" class="error-state">
@@ -172,6 +172,9 @@ export default {
     
     handleImageError(event) {
       event.target.src = defaultThumbnail;
+    },
+    goToLectures() {
+      this.$router.push('/lectures');
     }
   }
 };

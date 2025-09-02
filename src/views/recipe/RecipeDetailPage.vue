@@ -103,7 +103,7 @@
                       <!-- 작성자 프로필 섹션 (서브타이틀 아래) -->
                       <div class="author-profile-section">
                         <div class="author-profile-card">
-                          <v-avatar size="60" class="author-avatar">
+                          <v-avatar size="60" class="author-avatar" @click="openAuthorProfile">
                             <v-img 
                               v-if="recipe.profileImageUrl" 
                               :src="recipe.profileImageUrl" 
@@ -700,6 +700,22 @@
         </div>
       </div>
     </div>
+
+    <!-- 사용자 프로필 모달 -->
+    <UserProfileModal
+      v-model="showUserProfileModal"
+      :user="userProfileData"
+      @chat="handleUserProfileChat"
+      @report="handleUserProfileReport"
+    />
+
+    <!-- 사용자 신고 모달 -->
+    <ReportModal
+      v-model="showUserReportModal"
+      report-type="USER"
+      :target-id="reportTargetId"
+      :target-name="reportTargetName"
+    />
   </div>
 </template>
 
@@ -708,10 +724,16 @@ import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import CommonModal from '@/components/common/CommonModal.vue'
+import UserProfileModal from '@/components/common/UserProfileModal.vue'
+import ReportModal from '@/components/common/ReportModal.vue'
+import { useChatStore } from '@/store/chat/chat'
+import { useAuthStore } from '@/store/auth/auth'
 import { useNotifications } from '@/composables/useNotifications'
 
 const route = useRoute()
 const router = useRouter()
+const chatStore = useChatStore()
+const authStore = useAuthStore()
 
 // 실시간 알림 설정
 const { isConnected: notificationConnected } = useNotifications()
@@ -726,6 +748,17 @@ const newComment = ref('')
 const currentUser = ref(null)
 const showLoginModal = ref(false)
 const showShareModal = ref(false)
+const showUserProfileModal = ref(false)
+const userProfileData = ref({
+  id: '',
+  nickname: '',
+  email: '',
+  profileImage: '',
+  joinDate: ''
+})
+const showUserReportModal = ref(false)
+const reportTargetId = ref('')
+const reportTargetName = ref('')
 
 // 로그인 상태 확인
 const isLoggedIn = computed(() => {
@@ -753,6 +786,62 @@ const getCurrentUserIdFromToken = () => {
     console.error('JWT 토큰 파싱 실패:', error)
     return null
   }
+}
+// 작성자 아바타 클릭 → 프로필 모달 표시
+const openAuthorProfile = () => {
+  // 비로그인 → 로그인 모달
+  if (!isLoggedIn.value) {
+    showLoginModal.value = true
+    return
+  }
+
+  const currentUserId = getCurrentUserIdFromToken()
+  if (currentUserId && String(currentUserId) === String(recipe.authorId)) {
+    return
+  }
+
+  userProfileData.value = {
+    id: recipe.authorId,
+    nickname: recipe.nickname,
+    email: '',
+    profileImage: recipe.profileImageUrl || '',
+    joinDate: ''
+  }
+  showUserProfileModal.value = true
+}
+
+// 프로필 모달: 채팅하기
+const handleUserProfileChat = async (userId) => {
+  try {
+    if (!authStore.user?.id) {
+      showLoginModal.value = true
+      return
+    }
+
+    if (String(authStore.user.id) === String(userId)) {
+      showUserProfileModal.value = false
+      return
+    }
+
+    const myId = authStore.user.id
+    const roomId = await chatStore.createRoom(myId, userId)
+    router.push(`/chat?autoSelect=true&roomId=${roomId}`)
+    showUserProfileModal.value = false
+  } catch (error) {
+    console.error('채팅방 생성 실패:', error)
+    showUserProfileModal.value = false
+  }
+}
+
+// 프로필 모달: 신고하기
+const handleUserProfileReport = (userId) => {
+  if (!isLoggedIn.value) {
+    showLoginModal.value = true
+    return
+  }
+  reportTargetId.value = String(userId)
+  reportTargetName.value = recipe.nickname || '사용자'
+  showUserReportModal.value = true
 }
 
 // 현재 사용자가 작성자인지 확인 (JWT 토큰 기반)
