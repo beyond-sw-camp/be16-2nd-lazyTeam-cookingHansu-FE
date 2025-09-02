@@ -35,10 +35,6 @@ export const API_CONFIG = {
     NAVER_LOGIN: "/user/login/naver",
     LOGOUT: "/user/logout",
     REFRESH: "/user/refresh",
-    // 새로운 회원 탈퇴 엔드포인트
-    DELETE_USER_GOOGLE: "/user/delete/google",
-    DELETE_USER_KAKAO: "/user/delete/kakao",
-    DELETE_USER_NAVER: "/user/delete/naver",
     // 회원 복구 엔드포인트
     RESTORE_USER: "/user/restore",
   },
