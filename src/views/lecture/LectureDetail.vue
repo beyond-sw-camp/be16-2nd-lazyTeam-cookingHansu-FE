@@ -715,7 +715,7 @@
       v-model="showLectureDeleteModal"
       title="강의 삭제"
       message="정말로 이 강의를 삭제하시겠습니까?"
-      :item-info="`강의명: ${lecture?.title || ''}`"
+      :item-info="{ title: lecture?.title || '' }"
       @confirm="deleteLecture"
       @cancel="cancelLectureDelete"
     />
@@ -983,8 +983,13 @@ export default {
       return result;
     },
     
-    // 강의 수정 버튼 표시 여부 (등록자만 표시)
+    // 강의 수정 버튼 표시 여부 (등록자, 관리자)
     showEditButton() {
+      // 관리자는 모든 강의 수정 가능
+      if (this.isAdmin) {
+        return true;
+      }
+      
       // 토큰에서 현재 사용자 ID 가져오기
       const currentUserId = getUserIdFromToken();
       
@@ -1069,18 +1074,21 @@ export default {
         // TODO: 실제 로그인 API에서 사용자 정보 가져오기
         // 현재는 localStorage에서 임시로 가져옴
         const userInfo = localStorage.getItem('user');
+        console.log('🔍 checkUserRole - userInfo:', userInfo);
         
         if (userInfo) {
           const user = JSON.parse(userInfo);
           this.currentUserId = user.id;
+          console.log('🔍 checkUserRole - user:', user);
           
           // 강의 작성자인지 확인 (CHEF, OWNER 모두 자영업자/요리사)
           if (this.lecture && this.lecture.instructor && user.id === this.lecture.instructor.id) {
             this.userRole = user.role === 'OWNER' ? 'OWNER' : 'CHEF';
           }
-          // 관리자인지 확인
-          else if (user.role === 'ADMIN') {
+          // 관리자인지 확인 (대소문자 구분 없이)
+          else if (user.role === 'ADMIN' || user.role === 'admin') {
             this.userRole = 'ADMIN';
+            console.log('✅ 관리자로 설정됨');
           }
           // 구매자인지 확인 (구매 상태는 별도로 확인)
           else if (this.isPurchased) {
@@ -1102,7 +1110,15 @@ export default {
              // 장바구니 상태 확인 (백엔드 API 사용)
     async checkCartStatus(lectureId) {
       // 비회원이나 관리자는 장바구니 조회하지 않음
-      if (this.isGuest || this.userRole === 'ADMIN') {
+      console.log('🔍 checkCartStatus - isGuest:', this.isGuest, 'userRole:', this.userRole);
+      
+      // authStore에서도 관리자 체크 (대소문자 구분 없이)
+      const authStore = useAuthStore();
+      const isAdminFromStore = authStore.user?.role === 'ADMIN' || authStore.user?.role === 'admin';
+      console.log('🔍 checkCartStatus - isAdminFromStore:', isAdminFromStore);
+      
+      if (this.isGuest || this.userRole === 'ADMIN' || isAdminFromStore) {
+        console.log('✅ 장바구니 조회 건너뜀 (비회원 또는 관리자)');
         this.isInCart = false;
         return;
       }
@@ -1216,7 +1232,7 @@ export default {
           this.showError('강의 정보를 불러오는데 실패했습니다.');
         }
         
-                                              // 사용자 역할 및 장바구니 상태 확인
+                                              // 사용자 역할 먼저 확인 후 장바구니 상태 확인
            await this.checkUserRole(lectureId);
            await this.checkCartStatus(lectureId);
            
@@ -1955,6 +1971,11 @@ export default {
       
                    // 강의 수정
       editLecture() {
+        // 관리자 또는 작성자만 수정 가능
+        if (!this.isAuthor && !this.isAdmin) {
+          this.showError('수정 권한이 없습니다.');
+          return;
+        }
         // 강의 수정 페이지로 라우팅
         this.$router.push(`/lectures/edit/${this.lecture.id}`);
       },
@@ -1966,6 +1987,13 @@ export default {
 
        // 강의 삭제 실행
        async deleteLecture() {
+         // 관리자 또는 작성자만 삭제 가능
+         if (!this.isAuthor && !this.isAdmin) {
+           this.showError('삭제 권한이 없습니다.');
+           this.showLectureDeleteModal = false;
+           return;
+         }
+         
          try {
            await this.deleteLectureFromServer();
            this.showSuccess('강의가 삭제되었습니다.');
@@ -2201,7 +2229,11 @@ export default {
       
       // 리뷰 수정 가능 여부 확인
       canEditReview(review) {
-        return this.currentUserId && review.reviewerId && this.currentUserId === review.reviewerId;
+        if (!this.currentUserId) { return false; }
+        // 관리자는 모든 리뷰 수정/삭제 가능
+        if (this.isAdmin) { return true; }
+        // 리뷰 작성자만 수정/삭제 가능
+        return review.reviewerId && this.currentUserId === review.reviewerId;
       },
       
       // Q&A 수정 가능 여부 확인
@@ -2594,9 +2626,7 @@ export default {
              this.lecture.likeCount = Math.max(0, (this.lecture.likeCount || 0) - 1);
            }
            
-           // 성공 메시지 표시
-           const message = this.isLiked ? '좋아요를 눌렀습니다!' : '좋아요를 취소했습니다.';
-           this.showSuccess(message);
+           // 팝업 없이 바로 토글 (게시글 좋아요와 동일한 UX)
          } else {
            this.showError(response.message || '좋아요 처리에 실패했습니다.');
          }

@@ -175,8 +175,8 @@
                   </div>
                 </div>
                 
-                <!-- 수정/삭제 버튼들 (작성자만 보임) -->
-                <div v-if="isAuthor" class="action-buttons">
+                <!-- 수정/삭제 버튼들 (작성자, 관리자) -->
+                <div v-if="isAuthor || isAdmin" class="action-buttons">
                   <v-btn 
                     color="success" 
                     variant="outlined" 
@@ -872,6 +872,20 @@ const isAuthor = computed(() => {
   return isMatch
 })
 
+// 관리자 여부 확인
+const isAdmin = computed(() => {
+  const userInfo = localStorage.getItem('user')
+  if (!userInfo) return false
+  
+  try {
+    const user = JSON.parse(userInfo)
+    return user.role === 'ADMIN' || user.role === 'admin'
+  } catch (error) {
+    console.error('사용자 정보 파싱 오류:', error)
+    return false
+  }
+})
+
 // 비밀글 접근 권한 확인
 const canAccessRecipe = computed(() => {
   console.log('🔍 비밀글 접근 권한 체크:', {
@@ -1036,6 +1050,12 @@ const canEditComment = (comment) => {
   if (!isLoggedIn.value || !currentUser.value) {
     console.log('🔍 canEditComment: 로그인하지 않았거나 사용자 정보 없음')
     return false
+  }
+  
+  // 관리자는 모든 댓글 수정/삭제 가능
+  if (isAdmin.value) {
+    console.log('🔍 canEditComment: 관리자 권한으로 수정 가능')
+    return true
   }
   
   // 현재 사용자 UUID 가져오기 (JWT 토큰에서 추출)
@@ -1925,6 +1945,11 @@ const loadRecipe = async () => {
 }
 
 const editRecipe = () => {
+  // 관리자 또는 작성자만 수정 가능
+  if (!isAuthor.value && !isAdmin.value) {
+    alert('수정 권한이 없습니다.')
+    return
+  }
   router.push({ path: '/recipe/post-edit', query: { id: recipe.id } })
 }
 
@@ -1933,6 +1958,13 @@ const confirmDelete = () => {
 }
 
 const deleteRecipe = async () => {
+  // 관리자 또는 작성자만 삭제 가능
+  if (!isAuthor.value && !isAdmin.value) {
+    alert('삭제 권한이 없습니다.')
+    showDeleteModal.value = false
+    return
+  }
+  
   try {
     console.log('🗑️ 삭제 API 호출:', `http://localhost:8080/api/posts/delete/${recipe.id}`)
     

@@ -67,10 +67,17 @@ export function useNotifications() {
 
   // 컴포넌트 마운트시 자동 연결
   onMounted(async () => {
-    // 로그인한 사용자만 알림 구독
+    // 로그인한 사용자만 알림 구독 (관리자 제외)
     const currentUserId = getCurrentUserId()
+    const userRole = authStore.user?.role
+    
     if (!currentUserId) {
       console.log('비회원 - 알림 구독 건너뜀')
+      return
+    }
+    
+    if (userRole === 'ADMIN' || userRole === 'admin') {
+      console.log('관리자 - 알림 구독 건너뜀')
       return
     }
 

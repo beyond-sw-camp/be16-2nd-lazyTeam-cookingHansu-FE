@@ -67,6 +67,13 @@ export const useNotificationStore = defineStore('notification', {
 
     // 알림 목록 조회 (커서 기반 페이지네이션)
     async fetchNotifications(cursor = null, size = 10) {
+      // 관리자는 알림 목록 조회하지 않음
+      const authStore = useAuthStore();
+      if (authStore.user?.role === 'ADMIN' || authStore.user?.role === 'admin') {
+        console.log('관리자 - 알림 목록 조회 건너뜀 (store 레벨)');
+        return;
+      }
+      
       this._setLoading(true);
       this.error = null;
       
@@ -295,6 +302,12 @@ export const useNotificationStore = defineStore('notification', {
       // 인증 상태 확인
       const authStore = useAuthStore();
       if (!authStore.isAuthenticated || !authStore.accessToken) {
+        return;
+      }
+
+      // 관리자는 알림 구독하지 않음
+      if (authStore.user?.role === 'ADMIN' || authStore.user?.role === 'admin') {
+        console.log('관리자 - 알림 구독 건너뜀 (store 레벨)');
         return;
       }
 

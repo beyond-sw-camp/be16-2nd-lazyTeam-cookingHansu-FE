@@ -74,25 +74,10 @@ export const lectureService = {
   // 강의 좋아요 토글
   async toggleLectureLike(lectureId) {
     try {
-      const response = await apiClient.post('/lecture/like', {
-        lectureId: lectureId
-      });
+      const response = await apiClient.post(`/api/interactions/lectures/${lectureId}/likes`);
       return response.data;
     } catch (error) {
       console.error('강의 좋아요 토글 실패:', error);
-      throw error;
-    }
-  },
-
-  // 강의 북마크 토글
-  async toggleLectureBookmark(lectureId) {
-    try {
-      const response = await apiClient.post('/lecture/bookmark', {
-        lectureId: lectureId
-      });
-      return response.data;
-    } catch (error) {
-      console.error('강의 북마크 토글 실패:', error);
       throw error;
     }
   },
