@@ -272,6 +272,7 @@
 import Header from '@/components/Header.vue';
 import CommonModal from '@/components/common/CommonModal.vue';
 import { useLectureStore } from '@/store/lecture/lecture';
+import { useAuthStore } from '@/store/auth/auth';
 
 export default {
   name: 'LectureEdit',
@@ -315,30 +316,19 @@ export default {
   computed: {
     // 강의 작성자인지 확인
     isAuthor() {
-      const userInfo = localStorage.getItem('user');
-      if (!userInfo || !this.lectureStore.lecture) return false;
+      const authStore = useAuthStore();
+      if (!authStore.user || !this.lectureStore.lecture) return false;
       
-      try {
-        const user = JSON.parse(userInfo);
-        return user.id === this.lectureStore.lecture.instructor?.id;
-      } catch (error) {
-        console.error('사용자 정보 파싱 오류:', error);
-        return false;
-      }
+      return authStore.user.id === this.lectureStore.lecture.instructor?.id;
     },
     
-    // 관리자인지 확인 (대소문자 구분 없이)
+    // 관리자, OWNER, CHEF인지 확인
     isAdmin() {
-      const userInfo = localStorage.getItem('user');
-      if (!userInfo) return false;
+      const authStore = useAuthStore();
+      if (!authStore.user) return false;
       
-      try {
-        const user = JSON.parse(userInfo);
-        return user.role === 'ADMIN' || user.role === 'admin';
-      } catch (error) {
-        console.error('사용자 정보 파싱 오류:', error);
-        return false;
-      }
+      const role = authStore.user.role;
+      return role === 'ADMIN' || role === 'admin' || role === 'OWNER' || role === 'CHEF';
     }
   },
   async mounted() {
