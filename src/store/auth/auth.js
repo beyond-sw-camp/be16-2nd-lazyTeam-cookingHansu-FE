@@ -191,7 +191,7 @@ export const useAuthStore = defineStore('auth', {
     getProfileInfo: (state) => {
       return {
         nickname: state.user?.nickname, 
-        profileImageUrl: state.user?.profileImageUrl,
+        profileImageUrl: state.user?.picture, // 백엔드 DTO의 picture 필드 사용
       };
     }
   },
@@ -677,29 +677,7 @@ export const useAuthStore = defineStore('auth', {
       this.showRestoreModal = false;
     },
 
-    // 백엔드에서 최신 프로필 정보 가져오기
-    async fetchProfileInfo() {
-      try {
-        if (!this.accessToken) {
-          console.warn('Access token not available');
-          return null;
-        }
 
-        const response = await authService.getProfileInfo();
-        
-        if (response.success && response.data) {
-          this.user = { ...this.user, ...response.data };
-          localStorage.setItem('user', JSON.stringify(this.user));
-          return response.data;
-        } else {
-          console.error('Failed to fetch profile info:', response.message);
-          return null;
-        }
-      } catch (error) {
-        console.error('Error fetching profile info:', error);
-        return null;
-      }
-    },
 
     // 현재 로그인한 사용자 정보 조회 (/user/me 엔드포인트)
     async getCurrentUser() {

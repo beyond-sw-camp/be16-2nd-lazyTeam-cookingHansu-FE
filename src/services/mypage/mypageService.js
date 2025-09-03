@@ -5,18 +5,13 @@ const API_ENDPOINTS = {
   PROFILE: '/api/my/profile',
   POSTS: '/api/my/posts',
   LECTURES: '/api/my/lectures',
+  SOLD_LECTURES: '/lecture/mylist',
   BOOKMARKED_POSTS: '/api/my/bookmarked-posts',
   LIKED_POSTS: '/api/my/liked-posts',
   LIKED_LECTURES: '/api/my/liked-lectures',
 };
 
 export const mypageService = {
-  // 프로필 조회
-  async getProfile() {
-    const response = await apiClient.get(API_ENDPOINTS.PROFILE);
-    return response.data;
-  },
-
   // 프로필 수정
   async updateProfile(profileData) {
     const response = await apiClient.put(API_ENDPOINTS.PROFILE, profileData);
@@ -63,6 +58,12 @@ export const mypageService = {
   // 좋아요한 강의 조회
   async getMyLikedLectures(page = 0, size = 6) {
     const response = await apiClient.get(`${API_ENDPOINTS.LIKED_LECTURES}?page=${page}&size=${size}`);
+    return response.data;
+  },
+
+  // 판매한 강의 조회
+  async getSoldLectures(page = 0, size = 6) {
+    const response = await apiClient.get(`${API_ENDPOINTS.SOLD_LECTURES}?page=${page}&size=${size}`);
     return response.data;
   },
 };

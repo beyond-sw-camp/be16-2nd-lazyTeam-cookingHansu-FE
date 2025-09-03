@@ -235,6 +235,7 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { recipeService } from '@/services/recipe/recipeService'
 
 const route = useRoute()
 const router = useRouter()
@@ -322,40 +323,38 @@ const getDifficultyText = (difficulty) => {
   return difficultyMap[difficulty] || '보통'
 }
 
-// 현재 사용자 정보
-const currentUser = ref(null)
+// 현재 사용자 정보 (localStorage에서 실시간 읽기)
+const currentUser = computed(() => {
+  try {
+    const userInfo = localStorage.getItem('user')
+    if (userInfo) {
+      return JSON.parse(userInfo)
+    }
+  } catch (error) {
+    console.error('사용자 정보 파싱 오류:', error)
+  }
+  return null
+})
+
+// 관리자 여부 확인
+const isAdmin = computed(() => {
+  const userInfo = localStorage.getItem('user')
+  if (!userInfo) return false
+  
+  try {
+    const user = JSON.parse(userInfo)
+    return user.role === 'ADMIN' || user.role === 'admin'
+  } catch (error) {
+    console.error('사용자 정보 파싱 오류:', error)
+    return false
+  }
+})
 
 // 현재 사용자가 작성자인지 확인 (닉네임으로 비교)
 const isAuthor = computed(() => {
   if (!post.authorNickname || !currentUser.value) return false
   return currentUser.value.nickname === post.authorNickname
 })
-
-// 현재 사용자 정보 로드
-const loadCurrentUser = async () => {
-  const token = localStorage.getItem('accessToken')
-  if (!token) {
-    currentUser.value = null
-    return
-  }
-  
-  try {
-    const response = await fetch('http://localhost:8080/user/profile', {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    })
-    
-    if (response.ok) {
-      const data = await response.json()
-      currentUser.value = data.data
-      console.log('🔍 현재 사용자 정보 로드 성공:', currentUser.value)
-    }
-  } catch (error) {
-    console.error('사용자 정보 로드 실패:', error)
-    currentUser.value = null
-  }
-}
 
 // 기존 게시글 데이터 로드
 const loadPost = async () => {
@@ -367,17 +366,12 @@ const loadPost = async () => {
       return
     }
 
-    // 현재 사용자 정보 로드 (API에서 가져오기)
-    await loadCurrentUser()
 
-    const response = await fetch(`http://localhost:8080/api/posts/${postId}`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-      }
-    })
 
-    if (response.ok) {
-      const data = await response.json()
+    const response = await recipeService.getRecipeDetail(postId)
+
+    if (response.success) {
+      const data = response
       console.log('게시글 데이터 로드 성공:', data)
       
       if (data.data) {
@@ -419,14 +413,8 @@ const loadPost = async () => {
           post.steps = [{ stepSequence: 1, content: '', comment: '' }]
         }
 
-        // 작성자 권한 체크
-        console.log('🔍 권한 체크:', {
-          currentUserNickname: currentUser.value?.nickname,
-          postAuthorNickname: post.authorNickname,
-          isAuthor: isAuthor.value
-        })
-        
-        if (!isAuthor.value) {
+        // 작성자/관리자 권한 체크
+        if (!isAuthor.value && !isAdmin.value) {
           alert('본인이 작성한 게시글만 수정할 수 있습니다.')
           router.push(`/recipes/${postId}`)
           return
@@ -509,8 +497,8 @@ const updatePost = async () => {
   try {
     isUpdating.value = true
     
-    // 작성자 권한 재확인
-    if (!isAuthor.value) {
+    // 작성자/관리자 권한 재확인
+    if (!isAuthor.value && !isAdmin.value) {
       alert('본인이 작성한 게시글만 수정할 수 있습니다.')
       return
     }
@@ -612,20 +600,10 @@ const updatePost = async () => {
     console.log('🚀 fetch 요청 시작...')
     
     const postId = route.query.id
-    const response = await fetch(
-      `http://localhost:8080/api/posts/update/${postId}`,
-      {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-          // Content-Type은 브라우저가 자동으로 multipart/form-data로 설정
-        },
-        body: formData
-      }
-    )
+    const response = await recipeService.updateRecipe(postId, formData)
     
-    if (response.ok) {
-      const responseData = await response.json()
+    if (response.success) {
+      const responseData = response
       console.log('게시글 수정 응답:', responseData)
       alert('게시글이 수정되었습니다!')
       
@@ -657,11 +635,7 @@ const updatePost = async () => {
     }
     
   } catch (error) {
-    console.error('❌ 게시글 수정 실패 - 전체 에러 객체:', error)
-    console.error('❌ 에러 타입:', error.constructor.name)
-    console.error('❌ 에러 메시지:', error.message)
-    console.error('❌ 에러 스택:', error.stack)
-    
+    console.error('게시글 수정 실패:', error)
     const errorMessage = error.message || '알 수 없는 오류가 발생했습니다.'
     alert(`게시글 수정에 실패했습니다: ${errorMessage}`)
   } finally {

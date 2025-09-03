@@ -19,7 +19,7 @@
                 <div class="d-flex align-center mb-3">
                   <v-avatar size="48" class="me-3">
                     <v-img 
-                      :src="userInfo.profileImageUrl" 
+                      :src="userInfo.picture" 
                       alt="profile"
                       cover
                       @error="handleImageError"
@@ -145,7 +145,7 @@ const userInfo = computed(() => {
       const normalizedUserInfo = {
         ...parsed,
         // 프로필 이미지 URL을 표준화된 필드로 설정
-        profileImageUrl: parsed.picture || parsed.profileImageUrl || parsed.profileImage || parsed.avatar || parsed.image || '/default-avatar.png'
+        picture: parsed.picture || parsed.profileImageUrl || parsed.profileImage || parsed.avatar || parsed.image || '/default-avatar.png'
       };
       
       console.log('탈퇴한 사용자 정보 (정규화됨):', normalizedUserInfo);
@@ -153,10 +153,10 @@ const userInfo = computed(() => {
     }
     
     console.warn('사용자 정보를 찾을 수 없습니다.');
-    return { profileImageUrl: '/default-avatar.png' };
+    return { picture: '/default-avatar.png' };
   } catch (error) {
     console.error('사용자 정보 파싱 실패:', error);
-    return { profileImageUrl: '/default-avatar.png' };
+    return { picture: '/default-avatar.png' };
   }
 })
 
@@ -197,7 +197,7 @@ const getOAuthName = (oauthType) => {
         const restoreData = {
           socialId: userInfo.value.socialId,
           oauthType: userInfo.value.oauthType,
-          picture: userInfo.value.profileImageUrl // 정규화된 프로필 이미지 URL 사용
+          picture: userInfo.value.picture // 정규화된 프로필 이미지 URL 사용
         }
 
         const response = await authStore.restoreUser(restoreData)

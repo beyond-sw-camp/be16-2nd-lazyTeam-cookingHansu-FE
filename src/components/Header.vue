@@ -366,45 +366,47 @@ const isAdmin = computed(() => {
   return userRoleValue === 'ADMIN';
 })
 
-// 프로필 정보 가져오기
-const fetchProfileInfo = async () => {
+// 프로필 정보 가져오기 (authStore 데이터만 사용)
+const fetchProfileInfo = () => {
   if (isLoggedIn.value) {
-    try {
-      // 관리자인 경우 adminLoginStore의 정보 사용
-      if (isAdmin.value) {
-        const adminUser = adminLoginStore.admin;
+    // 관리자인 경우 adminLoginStore의 정보 사용
+    if (isAdmin.value) {
+      const adminUser = adminLoginStore.admin;
+      profileData.value = {
+        nickname: adminUser?.adminName || '관리자',
+        profileImageUrl: '' // 관리자는 기본적으로 프로필 이미지 없음
+      };
+    } else {
+      // 일반 사용자인 경우 authStore의 user 데이터 사용
+      if (authStore.user) {
         profileData.value = {
-          nickname: adminUser?.adminName || '관리자',
-          profileImageUrl: '' // 관리자는 기본적으로 프로필 이미지 없음
+          nickname: authStore.user.nickname || '사용자',
+          profileImageUrl: authStore.user.picture || '' // 백엔드 DTO의 picture 필드 사용
         };
       } else {
-        // 일반 사용자인 경우 기존 로직 사용
-        if (authStore.accessToken) {
-          const profileInfo = await authStore.fetchProfileInfo();
-          if (profileInfo) {
-            profileData.value = {
-              nickname: profileInfo.nickname || '사용자',
-              profileImageUrl: profileInfo.profileImageUrl || ''
-            };
-          } else {
-            // 프로필 정보가 없는 경우 기본값 설정
-            profileData.value = {
-              nickname: '사용자',
-              profileImageUrl: ''
-            };
-          }
-        }
+        // authStore에 사용자 정보가 없는 경우 기본값 설정
+        profileData.value = {
+          nickname: '사용자',
+          profileImageUrl: ''
+        };
       }
-    } catch (error) {
-      console.error('프로필 정보 가져오기 실패:', error);
-      // 에러 발생 시 기본값 설정
-      profileData.value = {
-        nickname: isAdmin.value ? '관리자' : '사용자',
-        profileImageUrl: ''
-      };
     }
   }
 }
+
+// authStore.user 변경 감시하여 프로필 정보 업데이트
+watch(() => authStore.user, (newUser) => {
+  if (newUser && isLoggedIn.value && !isAdmin.value) {
+    fetchProfileInfo();
+  }
+}, { immediate: true });
+
+// 로그인 상태 변경 감시
+watch(isLoggedIn, (newValue) => {
+  if (newValue) {
+    fetchProfileInfo();
+  }
+}, { immediate: true });
 
 // 모바일 메뉴 상태 감시하여 스크롤 제어
 watch(mobileMenuOpen, (isOpen) => {
@@ -522,25 +524,25 @@ watch(() => route.meta, (newMeta) => {
 onMounted(async () => {
   window.addEventListener('resize', handleResize);
   
-  // 로그인된 상태라면 프로필 정보 가져오기 (중복 호출 제거)
+  // 로그인된 상태라면 프로필 정보 가져오기
   if (isLoggedIn.value || adminLoginStore.isLoggedIn) {
-    await fetchProfileInfo(); // 한 번만 호출
+    fetchProfileInfo();
     
-            // 일반 사용자인 경우 읽지 않은 알림 개수만 가져오기 (캐싱 적용)
-        if (!isAdmin.value) {
-          try {
-            // 알림 개수는 캐시된 데이터 우선 사용
-            await notificationStore.fetchUnreadCount(false);
-            
-            // SSE 연결 시작 (실시간 알림 수신용)
-            notificationStore.startNotificationSubscription();
-            
-            // 장바구니 정보는 캐시된 데이터 우선 사용
-            await cartStore.fetchServerCartList(false);
-          } catch (error) {
-            console.error('🔍 Header: 읽지 않은 알림 개수, 장바구니 정보 조회 실패:', error);
-          }
-        }
+    // 일반 사용자인 경우 읽지 않은 알림 개수만 가져오기 (캐싱 적용)
+    if (!isAdmin.value) {
+      try {
+        // 알림 개수는 캐시된 데이터 우선 사용
+        await notificationStore.fetchUnreadCount(false);
+        
+        // SSE 연결 시작 (실시간 알림 수신용)
+        notificationStore.startNotificationSubscription();
+        
+        // 장바구니 정보는 캐시된 데이터 우선 사용
+        await cartStore.fetchServerCartList(false);
+      } catch (error) {
+        console.error('🔍 Header: 읽지 않은 알림 개수, 장바구니 정보 조회 실패:', error);
+      }
+    }
   }
 })
 

@@ -944,9 +944,9 @@ export default {
       return this.isPurchased;
     },
     
-    // 관리자인지 확인
+    // 관리자인지 확인 (대소문자 구분 없이)
     isAdmin() {
-      const isAdmin = this.userRole === 'ADMIN';
+      const isAdmin = this.userRole === 'ADMIN' || this.userRole === 'admin';
       return isAdmin;
     },
     
@@ -2060,12 +2060,10 @@ export default {
 
         // API 응답에서 해당 사용자 정보 찾기
         let userInfo = null;
-        let profileImageUrl = '';
-        let joinDate = '';
 
         // 강사 정보인 경우
         if (userId === this.lecture.instructor.id) {
-          // API 응답에서 강사 정보를 직접 가져옴
+          // 강사 정보를 백엔드 데이터에서 가져옴
           const lectureData = this.lecture;
           userInfo = {
             id: userId,

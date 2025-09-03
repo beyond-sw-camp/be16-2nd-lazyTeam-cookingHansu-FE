@@ -303,7 +303,7 @@ export default {
 </script>
 
 <style scoped>
-.lecture-list-page { background: #fafbfc; min-height: 100vh; margin-top: 64px; }
+.lecture-list-page { background: #fafbfc; margin-top: 64px; }
 .nav-tabs { 
   display: flex; 
   justify-content: center; 
@@ -337,8 +337,7 @@ export default {
 .lecture-create-btn-container {
   position: absolute;
   right: 20px;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 20px;
 }
 
 .lecture-create-btn {
@@ -399,6 +398,7 @@ export default {
   gap: 16px;
   max-width: 1040px;
   margin: 0 auto 24px auto;
+  min-height: 480px; /* 페이지네이션 위치 고정을 위한 최소 높이 */
 }
 
 .lecture-card {

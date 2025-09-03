@@ -110,5 +110,74 @@ export const recipeService = {
       console.error('레시피 북마크 실패:', error);
       throw error;
     }
+  },
+
+  // 댓글 목록 조회
+  async getComments(postId) {
+    try {
+      const response = await apiClient.get(`/post/comment/list/${postId}`);
+      return response.data;
+    } catch (error) {
+      console.error('댓글 목록 조회 실패:', error);
+      throw error;
+    }
+  },
+
+  // 댓글 생성
+  async createComment(postId, commentData) {
+    try {
+      const response = await apiClient.post('/post/comment/create', {
+        postId,
+        ...commentData
+      });
+      return response.data;
+    } catch (error) {
+      console.error('댓글 생성 실패:', error);
+      throw error;
+    }
+  },
+
+  // 댓글 수정
+  async updateComment(commentId, commentData) {
+    try {
+      const response = await apiClient.patch(`/post/comment/update/${commentId}`, commentData);
+      return response.data;
+    } catch (error) {
+      console.error('댓글 수정 실패:', error);
+      throw error;
+    }
+  },
+
+  // 댓글 삭제
+  async deleteComment(commentId) {
+    try {
+      const response = await apiClient.delete(`/post/comment/delete/${commentId}`);
+      return response.data;
+    } catch (error) {
+      console.error('댓글 삭제 실패:', error);
+      throw error;
+    }
+  },
+
+  // 조회수 증가
+  async incrementViews(postId) {
+    try {
+      const response = await apiClient.post(`/api/interactions/posts/${postId}/views`);
+      return response.data;
+    } catch (error) {
+      console.error('조회수 증가 실패:', error);
+      throw error;
+    }
+  },
+
+  // 신고하기
+  async reportPost(reportData) {
+    try {
+      const response = await apiClient.post('/api/reports', reportData);
+      return response.data;
+    } catch (error) {
+      console.error('신고 실패:', error);
+      throw error;
+    }
   }
 };

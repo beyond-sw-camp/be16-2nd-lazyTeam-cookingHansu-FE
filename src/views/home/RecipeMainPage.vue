@@ -1,20 +1,27 @@
 <template>
   <div class="recipe-main-page">
-    <!-- 상단 탭 -->
+    <!-- 상단 탭과 게시글 등록 버튼 -->
     <div class="nav-tabs">
-      <button :class="{ active: currentTab === 'recipe' }" @click="currentTab = 'recipe'">
-        레시피 게시글
-      </button>
-      <button :class="{ active: currentTab === 'lecture' }" @click="goToLecture">
-        강의 목록
-      </button>
+      <div class="nav-buttons">
+        <button :class="{ active: currentTab === 'recipe' }" @click="currentTab = 'recipe'">
+          레시피 게시글
+        </button>
+        <button :class="{ active: currentTab === 'lecture' }" @click="goToLecture">
+          강의 목록
+        </button>
+      </div>
+      <!-- 게시글 등록하기 버튼 -->
+      <div class="recipe-create-btn-container">
+        <button class="recipe-create-btn" @click="goToWrite">
+          게시글 등록하기
+        </button>
+      </div>
     </div>
 
     <!-- 필터 영역 -->
     <div class="filter-card">
       <div class="filter-title-row">
         <div class="filter-title">레시피 필터</div>
-        <button class="write-btn" @click="goToWrite">게시글 등록하기</button>
       </div>
       <div class="filter-row">
         <div class="filter-col">
@@ -65,7 +72,7 @@
               <span class="meta-bookmarks">🔖 {{ recipe.bookmarks }}</span>
               <span class="meta-comments">💬 {{ recipe.commentCount || 0 }}</span>
             </div>
-            <div class="time">{{ recipe.time }}</div>
+            <div class="time">{{ formatRelativeTime(recipe.createdAt || recipe.time) }}</div>
           </div>
         </div>
       </div>
@@ -278,25 +285,49 @@ const onImgError = (e) => {
   }
 };
 
-// 시간 포맷팅
-const formatTime = (createdAt) => {
-  if (!createdAt) return '';
+// 상대적 시간 포맷팅
+const formatRelativeTime = (timeString) => {
+  if (!timeString) return '시간 정보 없음';
   
-  const now = new Date();
-  const created = new Date(createdAt);
-  const diffTime = Math.abs(now - created);
-  const diffHours = Math.ceil(diffTime / (1000 * 60 * 60));
-  
-  if (diffHours < 1) return '방금 전';
-  if (diffHours < 24) return `${diffHours}시간 전`;
-  
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  if (diffDays < 7) return `${diffDays}일 전`;
-  
-  return created.toLocaleDateString('ko-KR', {
-    month: 'short',
-    day: 'numeric'
-  });
+  try {
+    const now = new Date();
+    const created = new Date(timeString);
+    
+    // 유효하지 않은 날짜인 경우
+    if (isNaN(created.getTime())) {
+      return timeString; // 원본 문자열 반환
+    }
+    
+    const diffTime = Math.abs(now - created);
+    
+    // 분 단위
+    const diffMinutes = Math.floor(diffTime / (1000 * 60));
+    if (diffMinutes < 1) return '방금 전';
+    if (diffMinutes < 60) return `${diffMinutes}분 전`;
+    
+    // 시간 단위
+    const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+    if (diffHours < 24) return `${diffHours}시간 전`;
+    
+    // 일 단위
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    if (diffDays < 7) return `${diffDays}일 전`;
+    
+    // 주 단위
+    const diffWeeks = Math.floor(diffDays / 7);
+    if (diffWeeks < 4) return `${diffWeeks}주 전`;
+    
+    // 월 단위
+    const diffMonths = Math.floor(diffDays / 30);
+    if (diffMonths < 12) return `${diffMonths}개월 전`;
+    
+    // 년 단위
+    const diffYears = Math.floor(diffDays / 365);
+    return `${diffYears}년 전`;
+  } catch (error) {
+    console.error('시간 포맷팅 오류:', error);
+    return timeString; // 오류 시 원본 문자열 반환
+  }
 };
 
 const handleCardClick = (recipe) => {
@@ -323,12 +354,17 @@ const onFilterChange = () => {
   justify-content: center;
   align-items: center;
   margin: 16px 0 24px 0;
-  gap: 12px;
   max-width: 1040px;
   margin-left: auto;
   margin-right: auto;
   padding: 20px 20px 0 20px;
+  position: relative;
   min-height: 60px; /* 최소 높이 설정으로 높이 변화 방지 */
+}
+
+.nav-buttons {
+  display: flex;
+  gap: 12px;
 }
 .nav-tabs button {
   padding: 10px 24px;
@@ -364,25 +400,29 @@ const onFilterChange = () => {
   align-items: center;
   margin-bottom: 4px;
 }
-.write-btn {
+.recipe-create-btn-container {
+  position: absolute;
+  right: 20px;
+  top: 20px;
+}
+
+.recipe-create-btn {
+  padding: 10px 20px;
   background: #ff7a00;
   color: #fff;
   border: none;
   border-radius: 6px;
-  padding: 6px 14px;
   font-weight: 600;
-  cursor: pointer;
   font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(255, 122, 0, 0.2);
 }
 
-.write-btn.disabled {
-  background: #ccc;
-  color: #666;
-  cursor: not-allowed;
-}
-
-.write-btn.disabled:hover {
-  background: #ccc;
+.recipe-create-btn:hover {
+  background: #e66a00;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(255, 122, 0, 0.3);
 }
 .filter-row {
   display: flex;
@@ -415,6 +455,7 @@ const onFilterChange = () => {
   gap: 16px;
   max-width: 1040px;
   margin: 0 auto 24px auto;
+  min-height: 480px; /* 페이지네이션 위치 고정을 위한 최소 높이 */
 }
 .recipe-card {
   background: #fff;

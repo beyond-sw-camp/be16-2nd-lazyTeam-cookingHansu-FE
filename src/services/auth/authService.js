@@ -8,7 +8,7 @@ const API_ENDPOINTS = {
   KAKAO_LOGIN: "/user/login/kakao",
   NAVER_LOGIN: "/user/login/naver",
   LOGOUT: "/user/logout",
-  PROFILE_INFO: "/user/profile",
+
   ADD_INFO: "/user/add-info",
   REFRESH: "/user/refresh",
   CURRENT_USER_INFO: "/user/me", 
@@ -51,11 +51,7 @@ export const authService = {
     return handleApiResponse(response);
   },
 
-  // 프로필 정보 조회
-  async getProfileInfo() {
-    const response = await apiClient.get(API_ENDPOINTS.PROFILE_INFO);
-    return handleApiResponse(response);
-  },
+
 
   // 추가 정보 입력 (통합)
   async addUserInfo(userId, userInfo) {

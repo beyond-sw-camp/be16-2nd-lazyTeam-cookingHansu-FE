@@ -8,8 +8,8 @@
         <div class="profile-info">
           <div class="profile-avatar">
             <img 
-              v-if="userProfile.profileImageUrl" 
-              :src="userProfile.profileImageUrl" 
+              v-if="userProfile.picture" 
+              :src="userProfile.picture" 
               alt="프로필 이미지"
               class="avatar-image"
             />
@@ -17,7 +17,7 @@
           </div>
           <div class="profile-details">
             <h2 class="user-name">{{ userProfile.nickname }}</h2>
-            <p class="user-type">{{ userProfile.userType }}</p>
+            <p class="user-type">{{ getUserRoleText(userProfile.role || userProfile.userType) }}</p>
             <!-- 자기소개 추가 -->
             <p v-if="userProfile.info" class="user-info">{{ userProfile.info }}</p>
           </div>
@@ -87,9 +87,11 @@ import LikedLectures from '@/components/mypage/LikedLectures.vue';
 import ProfileEditModal from '@/components/mypage/modal/ProfileEditModal.vue';
 import WithdrawConfirmModal from '@/components/mypage/modal/WithdrawConfirmModal.vue';
 import { useMypageStore } from '@/store/mypage/mypage';
+import { useAuthStore } from '@/store/auth/auth';
 
 // Store
 const mypageStore = useMypageStore();
+const authStore = useAuthStore();
 
 // Reactive data
 const currentTab = ref('posts');
@@ -130,17 +132,39 @@ const updateUrlWithTab = (tab) => {
   window.history.replaceState({}, '', url);
 };
 
-const fetchUserProfile = async () => {
-  try {
-    await mypageStore.fetchProfile();
-  } catch (error) {
-    console.error('프로필 조회 실패');
+const fetchUserProfile = () => {
+  // authStore의 데이터를 mypageStore에 복사
+  if (authStore.user) {
+    mypageStore.userProfile = { 
+      ...authStore.user,
+      // role 정보도 포함 (userType과 호환성을 위해)
+      userType: authStore.user.role || authStore.user.userType || 'GENERAL'
+    };
+  } else {
+    // authStore에 사용자 정보가 없는 경우 기본값 설정
+    mypageStore.userProfile = {
+      nickname: '사용자',
+      picture: '', // 백엔드 DTO의 picture 필드 사용
+      role: 'GENERAL',
+      userType: 'GENERAL'
+    };
   }
 };
 
 const updateUserProfile = (updatedData) => {
-  // store의 프로필 데이터를 직접 업데이트
+  // mypageStore의 프로필 데이터 업데이트
   mypageStore.userProfile = { ...mypageStore.userProfile, ...updatedData };
+  
+  // authStore의 사용자 정보도 함께 업데이트 (실시간 동기화)
+  if (authStore.user) {
+    authStore.user = { ...authStore.user, ...updatedData };
+    // role 정보도 userType과 동기화
+    if (updatedData.role) {
+      authStore.user.userType = updatedData.role;
+    }
+    localStorage.setItem('user', JSON.stringify(authStore.user));
+  }
+  
   console.log('프로필 업데이트됨:', updatedData);
 };
 
@@ -151,6 +175,17 @@ const showMessage = (messageData) => {
     message.value = null;
     messageType.value = null;
   }, 3000);
+};
+
+// 사용자 역할을 한글로 변환하는 함수
+const getUserRoleText = (role) => {
+  const roleMap = {
+    'GENERAL': '일반 사용자',
+    'CHEF': '요리 전문가',
+    'OWNER': '자영업자',
+    'ADMIN': '관리자'
+  };
+  return roleMap[role] || '일반 사용자';
 };
 
 // 회원탈퇴 실패 처리
@@ -217,8 +252,8 @@ watch(showProfileModal, (newVal) => {
 });
 
 // Lifecycle
-onMounted(async () => {
-  await fetchUserProfile();
+onMounted(() => {
+  fetchUserProfile();
   updateUserRoleFromProfile();
   checkSellerRole();
   

@@ -8,7 +8,7 @@ export const useMypageStore = defineStore('mypage', {
       nickname: '',
       email: '',
       info: '',
-      profileImageUrl: null,
+      picture: null, // 백엔드 DTO의 picture 필드 사용
       userType: ''
     },
     
@@ -119,26 +119,7 @@ export const useMypageStore = defineStore('mypage', {
       this.error = null;
     },
 
-    // 프로필 조회
-    async fetchProfile() {
-      this.loadingProfile = true;
-      this.error = null;
-      
-      try {
-        const response = await mypageService.getProfile();
-        
-        if (response.success && response.data) {
-          this.userProfile = response.data;
-        } else {
-          throw new Error(response.message || '프로필을 불러오는데 실패했습니다.');
-        }
-      } catch (error) {
-        this._handleError(error, '프로필 조회 실패');
-        throw error;
-      } finally {
-        this.loadingProfile = false;
-      }
-    },
+
 
     // 프로필 수정
     async updateProfile(profileData) {
@@ -171,7 +152,7 @@ export const useMypageStore = defineStore('mypage', {
         const response = await mypageService.uploadProfileImage(imageFile);
         
         if (response.success && response.data) {
-          this.userProfile.profileImageUrl = response.data.profileImageUrl;
+          this.userProfile.picture = response.data.picture; // 백엔드 DTO의 picture 필드 사용
           this.setSuccessMessage('프로필 이미지가 성공적으로 업로드되었습니다.');
         } else {
           throw new Error(response.message || '프로필 이미지 업로드에 실패했습니다.');
@@ -335,7 +316,7 @@ export const useMypageStore = defineStore('mypage', {
         nickname: '',
         email: '',
         info: '',
-        profileImageUrl: null,
+        picture: null, // 백엔드 DTO의 picture 필드 사용
         userType: ''
       };
       this.myPosts = [];
