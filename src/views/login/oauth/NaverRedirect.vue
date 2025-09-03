@@ -137,9 +137,11 @@ export default {
         const user = await authStore.handleNaverLogin(authorizationCode.value);
         console.log('user: ' + user)
         
-        // handleNaverLogin에서 탈퇴한 회원인 경우 null을 반환하므로 체크
-        if (user === null) {
-          // 탈퇴한 회원인 경우 이미 리다이렉트가 처리되었으므로 여기서는 아무것도 하지 않음
+        // handleNaverLogin에서 탈퇴한 회원인 경우 특별한 객체를 반환하므로 체크
+        if (user && user.isDeleted) {
+          // 탈퇴한 회원인 경우 복구 페이지로 리다이렉트
+          const encodedUserInfo = encodeURIComponent(JSON.stringify(user.userInfo));
+          router.push(`/deleted-user-confirm/${encodedUserInfo}`);
           return;
         }
         

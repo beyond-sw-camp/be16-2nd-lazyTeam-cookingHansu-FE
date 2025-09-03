@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { authService } from '@/services/auth/authService';
+import { mypageService } from '@/services/mypage/mypageService';
 import { apiClient } from '@/utils/interceptor';
 import { useNotificationStore } from '@/store/notification/notification';
 
@@ -325,7 +326,18 @@ export const useAuthStore = defineStore('auth', {
         }
         
         if (response.success && response.data) {
-          const { accessToken, refreshToken, user, expiresIn } = response.data;
+          const { accessToken, refreshToken, user, expiresIn, isDeleted, socialId, oauthType, email, name, picture } = response.data;
+          
+          // 탈퇴한 회원인 경우
+          if (isDeleted === true) {
+            console.log('탈퇴한 회원 감지됨:', { isDeleted, socialId, oauthType, email, name, picture });
+            // 로그인 상태를 설정하지 않고 탈퇴한 회원 정보와 함께 특별한 객체 반환
+            return { 
+              isDeleted: true, 
+              userInfo: { socialId, oauthType, email, name, picture } 
+            };
+          }
+          
           this.setAuthData(accessToken, refreshToken, user, expiresIn, provider);
           
           // 최신 사용자 정보 조회
@@ -599,7 +611,7 @@ export const useAuthStore = defineStore('auth', {
         }
         
         // 통합된 회원 탈퇴 API 호출
-        const response = await userService.deleteUser();
+        const response = await mypageService.deleteUser();
         
         if (response.success) {
           await this.logout();
@@ -622,22 +634,10 @@ export const useAuthStore = defineStore('auth', {
         this.isLoading = true;
         this.error = null;
         
-        const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.RESTORE_USER}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(restoreData)
-        });
+        const response = await authService.restoreUser(restoreData);
         
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const responseData = await response.json();
-        
-        if (responseData.success && responseData.data) {
-          const { accessToken, refreshToken, user, expiresIn } = responseData.data;
+        if (response.success && response.data) {
+          const { accessToken, refreshToken, user, expiresIn } = response.data;
           
           // 토큰 및 사용자 정보 저장
           this.setAuthData(accessToken, refreshToken, user, expiresIn, restoreData.oauthType.toLowerCase());
@@ -651,10 +651,10 @@ export const useAuthStore = defineStore('auth', {
           
           return { 
             success: true, 
-            message: responseData.data.message || '회원 정보가 성공적으로 복원되었습니다.' 
+            message: response.data.message || '회원 정보가 성공적으로 복원되었습니다.' 
           };
         } else {
-          throw new Error(responseData.message || '회원 복구에 실패했습니다.');
+          throw new Error(response.message || '회원 복구에 실패했습니다.');
         }
       } catch (error) {
         console.error('User restoration failed:', error);

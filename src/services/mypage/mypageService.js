@@ -9,6 +9,7 @@ const API_ENDPOINTS = {
   BOOKMARKED_POSTS: '/api/my/bookmarked-posts',
   LIKED_POSTS: '/api/my/liked-posts',
   LIKED_LECTURES: '/api/my/liked-lectures',
+  DELETE_USER: '/user/delete',
 };
 
 export const mypageService = {
@@ -65,5 +66,16 @@ export const mypageService = {
   async getSoldLectures(page = 0, size = 6) {
     const response = await apiClient.get(`${API_ENDPOINTS.SOLD_LECTURES}?page=${page}&size=${size}`);
     return response.data;
+  },
+
+  // 회원 탈퇴
+  async deleteUser() {
+    try {
+      const response = await apiClient.delete(API_ENDPOINTS.DELETE_USER);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to delete user:', error);
+      throw error;
+    }
   },
 };

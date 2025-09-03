@@ -11,7 +11,8 @@ const API_ENDPOINTS = {
 
   ADD_INFO: "/user/add-info",
   REFRESH: "/user/refresh",
-  CURRENT_USER_INFO: "/user/me", 
+  CURRENT_USER_INFO: "/user/me",
+  RESTORE_USER: "/user/restore",
 };
 
 export const authService = {
@@ -82,5 +83,16 @@ export const authService = {
   async getCurrentUserInfo() {
     const response = await apiClient.get(API_ENDPOINTS.CURRENT_USER_INFO);
     return handleApiResponse(response); 
+  },
+
+  // 회원 복구
+  async restoreUser(restoreData) {
+    try {
+      const response = await apiClient.post(API_ENDPOINTS.RESTORE_USER, restoreData);
+      return handleApiResponse(response);
+    } catch (error) {
+      console.error('Failed to restore user:', error);
+      throw error;
+    }
   }
 };

@@ -93,7 +93,7 @@ export const recipeService = {
   // 레시피 좋아요
   async likeRecipe(recipeId) {
     try {
-      const response = await apiClient.post(`/api/posts/${recipeId}/like`);
+      const response = await apiClient.post(`/api/interactions/posts/${recipeId}/likes`);
       return response.data;
     } catch (error) {
       console.error('레시피 좋아요 실패:', error);
@@ -104,7 +104,7 @@ export const recipeService = {
   // 레시피 북마크
   async bookmarkRecipe(recipeId) {
     try {
-      const response = await apiClient.post(`/api/posts/${recipeId}/bookmark`);
+      const response = await apiClient.post(`/api/interactions/posts/${recipeId}/bookmarks`);
       return response.data;
     } catch (error) {
       console.error('레시피 북마크 실패:', error);
@@ -170,14 +170,5 @@ export const recipeService = {
     }
   },
 
-  // 신고하기
-  async reportPost(reportData) {
-    try {
-      const response = await apiClient.post('/api/reports', reportData);
-      return response.data;
-    } catch (error) {
-      console.error('신고 실패:', error);
-      throw error;
-    }
-  }
+
 };

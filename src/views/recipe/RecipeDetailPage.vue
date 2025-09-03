@@ -686,6 +686,40 @@
       @cancel="closeLoginModal"
     />
 
+    <!-- 에러 모달 -->
+    <div v-if="showErrorModal" class="modal-overlay" @click="showErrorModal = false">
+      <div class="cart-modal" @click.stop>
+        <div class="modal-header">
+          <h3>오류</h3>
+          <button class="close-btn" @click="showErrorModal = false">×</button>
+        </div>
+        <div class="modal-content">
+          <div class="modal-icon">⚠️</div>
+          <p class="modal-message">{{ errorMessage }}</p>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-secondary" @click="showErrorModal = false">확인</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 성공 모달 -->
+    <div v-if="showSuccessModal" class="modal-overlay" @click="showSuccessModal = false">
+      <div class="cart-modal" @click.stop>
+        <div class="modal-header">
+          <h3>완료</h3>
+          <button class="close-btn" @click="showSuccessModal = false">×</button>
+        </div>
+        <div class="modal-content">
+          <div class="modal-icon">✅</div>
+          <p class="modal-message">{{ successMessage }}</p>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-primary" @click="showSuccessModal = false">확인</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 공유 모달 -->
     <div v-if="showShareModal" class="share-modal-overlay" @click="showShareModal = false">
       <div class="share-modal" @click.stop>
@@ -736,6 +770,18 @@
       report-type="USER"
       :target-id="reportTargetId"
       :target-name="reportTargetName"
+      @success="handleReportSuccess"
+      @error="handleReportError"
+    />
+
+    <!-- 댓글 신고 모달 -->
+    <ReportModal
+      v-model="showReportModal"
+      :report-type="reportModalData?.reportType"
+      :target-id="reportModalData?.targetId"
+      :target-name="reportModalData?.targetName"
+      @success="handleReportSuccess"
+      @error="handleReportError"
     />
   </div>
 </template>
@@ -751,6 +797,7 @@ import { useChatStore } from '@/store/chat/chat'
 import { useAuthStore } from '@/store/auth/auth'
 import { useNotifications } from '@/composables/useNotifications'
 import { recipeService } from '@/services/recipe/recipeService'
+import { reportService } from '@/services/report/reportService'
 
 
 const route = useRoute()
@@ -770,6 +817,12 @@ const showDeleteModal = ref(false)
 const newComment = ref('')
 
 const showLoginModal = ref(false)
+const showReportModal = ref(false)
+const reportModalData = ref(null)
+const showErrorModal = ref(false)
+const showSuccessModal = ref(false)
+const errorMessage = ref('')
+const successMessage = ref('')
 const showShareModal = ref(false)
 const showUserProfileModal = ref(false)
 const userProfileData = ref({
@@ -844,14 +897,61 @@ const handleUserProfileChat = async (userId) => {
 }
 
 // 프로필 모달: 신고하기
-const handleUserProfileReport = (userId) => {
-  if (!isLoggedIn.value) {
-    showLoginModal.value = true
-    return
+const handleUserProfileReport = async (userId) => {
+  try {
+    if (!isLoggedIn.value) {
+      showLoginModal.value = true
+      return
+    }
+
+    // 중복 신고 확인
+    const response = await reportService.checkReport(userId)
+    
+    if (response.success && response.data) {
+      // 중복 신고인 경우 프로필 모달 닫고 경고 모달 표시
+      showUserProfileModal.value = false
+      showError('이미 신고한 사용자입니다. 신고가 처리된 이후에 다시 시도해주세요.')
+      return
+    }
+
+    reportTargetId.value = String(userId)
+    reportTargetName.value = recipe.nickname || '사용자'
+    showUserReportModal.value = true
+  } catch (error) {
+    console.error('사용자 신고 확인 오류:', error)
+    showUserProfileModal.value = false
+    showError('신고 확인 중 오류가 발생했습니다.')
   }
-  reportTargetId.value = String(userId)
-  reportTargetName.value = recipe.nickname || '사용자'
-  showUserReportModal.value = true
+}
+
+// 에러 모달 표시
+const showError = (message) => {
+  errorMessage.value = message
+  showErrorModal.value = true
+}
+
+// 성공 모달 표시
+const showSuccess = (message) => {
+  successMessage.value = message
+  showSuccessModal.value = true
+}
+
+// 신고 성공 처리
+const handleReportSuccess = (response) => {
+  showSuccess('신고가 성공적으로 접수되었습니다.')
+  // 모든 모달들 닫기
+  showReportModal.value = false
+  showUserReportModal.value = false
+  showUserProfileModal.value = false
+}
+
+// 신고 실패 처리
+const handleReportError = (errorMessage) => {
+  showError(errorMessage || '신고 처리 중 오류가 발생했습니다.')
+  // 신고 관련 모달들 닫기
+  showReportModal.value = false
+  showUserReportModal.value = false
+  showUserProfileModal.value = false
 }
 
 // 댓글 작성자 프로필 클릭 처리
@@ -1922,29 +2022,27 @@ const reportComment = async (comment) => {
       return
     }
 
-    const reportReason = prompt('신고 사유를 입력해주세요:')
-    if (!reportReason || !reportReason.trim()) {
+    // 중복 신고 확인
+    const response = await reportService.checkReport(comment.id)
+    
+    if (response.success && response.data) {
+      // 중복 신고인 경우 경고 모달 표시
+      showError('이미 신고한 댓글입니다. 신고가 처리된 이후에 다시 시도해주세요.')
       return
     }
 
-    const response = await recipeService.reportPost({
-      targetType: 'COMMENT',
+    // 신고 모달 데이터 설정
+    reportModalData.value = {
+      reportType: 'COMMENT',
       targetId: comment.id,
-      reason: reportReason.trim()
-    })
-
-    if (response.success) {
-      alert('신고가 접수되었습니다.')
-      // 더보기 메뉴 닫기
-      comment.showMoreMenu = false
-    } else {
-      const errorData = await response.text()
-      console.error('신고 실패:', response.status, errorData)
-      alert('신고 접수에 실패했습니다.')
+      targetName: `댓글: ${comment.content.substring(0, 30)}${comment.content.length > 30 ? '...' : ''}`
     }
+    
+    // 신고 모달 표시
+    showReportModal.value = true
   } catch (error) {
     console.error('신고 에러:', error)
-    alert('신고 중 오류가 발생했습니다.')
+    showError('신고 처리 중 오류가 발생했습니다.')
   }
 }
 
@@ -3438,5 +3536,119 @@ onUnmounted(() => {
 
 .reply-notice .v-icon {
   font-size: 16px;
+}
+
+/* 에러/성공 모달 스타일 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.cart-modal {
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  text-align: center;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #eee;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #222;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #999;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.modal-content {
+  margin-bottom: 32px;
+}
+
+.modal-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.modal-message {
+  font-size: 18px;
+  color: #333;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.btn-primary, .btn-secondary {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  min-width: 100px;
+}
+
+.btn-primary {
+  background: #007bff;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #0056b3;
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background: #545b62;
+  transform: translateY(-1px);
 }
 </style>

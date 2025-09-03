@@ -116,12 +116,10 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/auth/auth'
-import { useNotifications } from '@/composables/useNotifications'
 import { useNotificationStore } from '@/store/notification/notification'
 
 const router = useRouter()
 const authStore = useAuthStore()
-const { showNotification } = useNotifications()
 const notificationStore = useNotificationStore()
 
 // 상태 관리
@@ -209,7 +207,7 @@ const getOAuthName = (oauthType) => {
         }
       } catch (error) {
         console.error('User restoration failed:', error)
-        showNotification(error.message || '회원 복구에 실패했습니다.', 'error')
+        alert(error.message || '회원 복구에 실패했습니다.')
       } finally {
         isLoading.value = false
       }
@@ -222,7 +220,7 @@ const handleSuccessConfirm = () => {
   // 실시간 알림 재연결
   if (authStore.user?.id) {
     try {
-      notificationStore.connectToNotificationStream(authStore.user.id)
+      notificationStore.startNotificationSubscription()
       console.log('회원 복구 후 실시간 알림 재연결 완료')
     } catch (error) {
       console.error('실시간 알림 재연결 실패:', error)
