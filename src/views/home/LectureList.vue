@@ -105,7 +105,7 @@
 <script>
 import Header from '@/components/Header.vue';
 import Pagination from '@/components/common/Pagination.vue';
-import { getUserRoleFromToken } from '@/utils/api';
+
 import { useAuthStore } from '@/store/auth/auth';
 import { useLectureStore } from '@/store/lecture/lecture';
 
@@ -168,14 +168,9 @@ export default {
        const pages = Math.ceil(this.totalLectures / this.lecturesPerPage);
        return Math.max(1, pages);
      },
-         // 사용자 역할 (토큰에서 동적으로 가져옴)
+         // 사용자 역할 (authStore에서 직접 가져옴)
      userRole() {
-       const authStore = useAuthStore();
-       const tokenRole = getUserRoleFromToken();
-       const storeRole = authStore.getUserRole;
-       
-       // 스토어의 역할을 우선 사용, 없으면 토큰에서 추출
-       return storeRole || tokenRole;
+       return this.authStore.getUserRole;
      },
 
   },

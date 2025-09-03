@@ -428,23 +428,17 @@ watch(isLoggedIn, async (newValue) => {
   if (newValue) {
     await fetchProfileInfo();
     
-    // 일반 사용자인 경우 읽지 않은 알림 개수만 가져오기 (가벼운 API)
+    // 일반 사용자인 경우 병렬로 API 호출하여 성능 향상
     if (!isAdmin.value) {
       try {
-        await notificationStore.fetchUnreadCount();
+        await Promise.all([
+          notificationStore.fetchUnreadCount(),
+          cartStore.fetchServerCartList()
+        ]);
         // SSE 연결 시작 (실시간 알림 수신용)
         notificationStore.startNotificationSubscription();
-        await cartStore.fetchServerCartList();
       } catch (error) {
         console.error('🔍 Header: 로그인 후 읽지 않은 알림 개수, 장바구니 정보 조회 실패:', error);
-      }
-    }
-    // 일반 사용자인 경우 알림 목록 가져오고 SSE 연결 시작
-    if (!isAdmin.value) {
-      try {
-        await notificationStore.fetchNotifications();
-      } catch (error) {
-        console.error('🔍 Header: 로그인 후 알림 목록 조회 실패:', error);
       }
     }
   } else {
@@ -528,17 +522,15 @@ onMounted(async () => {
   if (isLoggedIn.value || adminLoginStore.isLoggedIn) {
     fetchProfileInfo();
     
-    // 일반 사용자인 경우 읽지 않은 알림 개수만 가져오기 (캐싱 적용)
+    // 일반 사용자인 경우 병렬로 API 호출하여 성능 향상
     if (!isAdmin.value) {
       try {
-        // 알림 개수는 캐시된 데이터 우선 사용
-        await notificationStore.fetchUnreadCount(false);
-        
+        await Promise.all([
+          notificationStore.fetchUnreadCount(false),
+          cartStore.fetchServerCartList(false)
+        ]);
         // SSE 연결 시작 (실시간 알림 수신용)
         notificationStore.startNotificationSubscription();
-        
-        // 장바구니 정보는 캐시된 데이터 우선 사용
-        await cartStore.fetchServerCartList(false);
       } catch (error) {
         console.error('🔍 Header: 읽지 않은 알림 개수, 장바구니 정보 조회 실패:', error);
       }

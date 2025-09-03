@@ -52,7 +52,7 @@ export const recipeService = {
   // 레시피 생성
   async createRecipe(recipeData) {
     try {
-      const response = await apiClient.post('/api/posts', recipeData, {
+      const response = await apiClient.post('/api/posts/create', recipeData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },

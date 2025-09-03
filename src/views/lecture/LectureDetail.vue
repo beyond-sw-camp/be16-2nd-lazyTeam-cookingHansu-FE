@@ -146,7 +146,7 @@
               :alt="lecture.instructor.name + ' 프로필 이미지'"
               class="instructor-profile-img"
             />
-            <span v-else>{{ lecture.instructor.name.charAt(0) }}</span>
+            <span v-else>{{ lecture.instructor.name ? lecture.instructor.name.charAt(0) : '?' }}</span>
           </div>
           <div class="instructor-details">
             <h3>{{ lecture.instructor.name }}</h3>
@@ -191,7 +191,7 @@
                           class="reviewer-profile-img"
                         />
                         <div v-else class="reviewer-profile-placeholder">
-                          {{ review.writer.charAt(0) }}
+                          {{ review.writer ? review.writer.charAt(0) : '?' }}
                         </div>
                       </div>
                       <div class="reviewer-details">
@@ -244,13 +244,13 @@
                       <div class="questioner-info">
                         <div class="questioner-profile" @click="handleProfileClick($event, qa.questionerUUID, qa.questionerId)">
                           <img 
-                            v-if="qa.parentProfileUrl" 
-                            :src="qa.parentProfileUrl" 
+                            v-if="qa.questionerProfileUrl" 
+                            :src="qa.questionerProfileUrl" 
                             :alt="qa.questionerId + ' 프로필 이미지'"
                             class="questioner-profile-img"
                           />
                           <div v-else class="questioner-profile-placeholder">
-                            {{ qa.questionerId.charAt(0) }}
+                            {{ qa.questionerId ? qa.questionerId.charAt(0) : '?' }}
                           </div>
                         </div>
                         <span class="questioner-name">{{ qa.questionerId }}</span>
@@ -282,13 +282,13 @@
                        <div class="answerer-info">
                          <div class="answerer-profile" @click="handleProfileClick($event, qa.answererUUID, qa.answererId)">
                            <img 
-                             v-if="qa.answerProfileUrl" 
-                             :src="qa.answerProfileUrl" 
+                             v-if="qa.answererProfileUrl" 
+                             :src="qa.answererProfileUrl" 
                              :alt="qa.answererId + ' 프로필 이미지'"
                              class="answerer-profile-img"
                            />
                            <div v-else class="answerer-profile-placeholder">
-                             {{ qa.answererId.charAt(0) }}
+                             {{ qa.answererId ? qa.answererId.charAt(0) : '?' }}
                            </div>
                          </div>
                          <span class="answerer-name">{{ qa.answererId }}</span>
@@ -542,15 +542,15 @@
     <div v-if="showQAModal" class="modal-overlay" @click="showQAModal = false">
       <div class="modal" @click.stop>
         <div class="modal-header">
-          <h3>{{ isEditingQA ? '질문 수정하기' : '질문하기' }}</h3>
+          <h3>{{ isEditingQA ? '질문 수정하기' : (newQuestion.parentId ? '답변하기' : '질문하기') }}</h3>
           <button class="close-btn" @click="showQAModal = false">×</button>
         </div>
         <div class="modal-content">
           <div class="content-section">
-            <label>질문 내용</label>
+            <label>{{ newQuestion.parentId ? '답변 내용' : '질문 내용' }}</label>
             <textarea 
               v-model="newQuestion.content" 
-              placeholder="강의에 대한 궁금한 점을 질문해주세요."
+              :placeholder="newQuestion.parentId ? '질문에 대한 답변을 작성해주세요.' : '강의에 대한 궁금한 점을 질문해주세요.'"
               rows="5"
             ></textarea>
           </div>
@@ -560,7 +560,7 @@
         </div>
         <div class="modal-footer">
           <button class="cancel-btn" @click="showQAModal = false">취소</button>
-          <button class="submit-btn" @click="submitQuestion">{{ isEditingQA ? '질문 수정' : '질문 등록' }}</button>
+          <button class="submit-btn" @click="submitQuestion">{{ isEditingQA ? '질문 수정' : (newQuestion.parentId ? '답변 등록' : '질문 등록') }}</button>
         </div>
       </div>
     </div>
@@ -754,6 +754,7 @@ import { useChatStore } from '@/store/chat/chat';
 import { useAuthStore } from '@/store/auth/auth';
 import { getUserIdFromToken } from '@/utils/api';
 import { reportService } from '@/services/report/reportService';
+import { lectureService } from '@/services/lecture/lectureService';
 
 
 export default {
@@ -1172,6 +1173,7 @@ export default {
         
         if (response.success) {
           const lectureData = response.data;
+          console.log('🔍 강의 데이터 로드:', lectureData);
 
 
           
@@ -1189,6 +1191,7 @@ export default {
               totalDuration: this.calculateTotalDuration(lectureData.lectureVideoResDtoList),
               instructor: {
                 name: lectureData.name,
+                nickname: lectureData.nickname, // 백엔드 DTO의 nickname 필드 추가
                 title: '요리 전문가',
                 id: lectureData.submittedById
               },
@@ -1209,6 +1212,8 @@ export default {
               submittedJoinedAt: lectureData.submittedJoinedAt,
               // 강사 이메일 추가
               submittedByEmail: lectureData.submittedByEmail,
+              // 강사 닉네임 추가
+              nickname: lectureData.nickname,
               // 강의 수강률 추가
               progressPercent: lectureData.progressPercent,
               // 백엔드에서 제공하는 좋아요 정보 추가
@@ -1357,16 +1362,19 @@ export default {
       
       const self = this; // this 컨텍스트를 명시적으로 저장
       
-      return reviews.map((review, index) => {
+      const convertedReviews = reviews.map((review, index) => {
         try {
           const convertedReview = {
             id: Math.random().toString(36).substr(2, 9),
-            writer: review.writer || '익명',
-            rating: review.rating || 0,
-            content: review.content || '',
+            writer: review.writerName || review.writerNickname,
+            rating: review.rating,
+            content: review.content,
             date: self.formatReviewDate(review.updateAt, review.createAt),
-            reviewerId: review.reviewerId || null,
-            profileUrl: review.profileUrl || null
+            // 백엔드 DTO 필드명에 맞게 수정
+            reviewerId: review.writerId,
+            profileUrl: review.profileImageUrl,
+            reviewerEmail: review.writerEmail,
+            reviewerJoinDate: review.userCreatedAt
           };
           
           return convertedReview;
@@ -1375,49 +1383,61 @@ export default {
           // 오류가 발생해도 기본값으로 반환
           return {
             id: Math.random().toString(36).substr(2, 9),
-            writer: '익명',
+            writer: review.writerNickname || '사용자',
             rating: 0,
             content: '리뷰를 불러오는 중 오류가 발생했습니다.',
             date: '',
             reviewerId: null,
-            profileUrl: null
+            profileUrl: null,
+            reviewerEmail: null,
+            reviewerJoinDate: null
           };
         }
       });
+      
+      return convertedReviews;
     },
     
          // Q&A 데이터 변환 (질문-답글 구조)
      convertQA(qaList) {
-
-       
+       console.log('🔍 convertQA 시작 - 입력 데이터:', qaList);
        if (!qaList || qaList.length === 0) {
-
          return [];
        }
        
-       const convertedQA = qaList.map(qa => ({
-         id: qa.qnaId || qa.parentId, // Use qnaId if available, fallback to parentId
-         qnaId: qa.qnaId, // Store the actual qnaId for API calls
-         questionerId: qa.parentName || '익명',
-         questionerUUID: qa.parentId, // Add UUID for comparison
-         question: qa.parentContent,
-         questionDate: this.formatQADate(qa.parentCreatedAt),
-         questionUpdatedAt: qa.questionUpdatedAt ? this.formatQADate(qa.questionUpdatedAt) : null,
-         // 답글이 있는 경우에만 답글 정보 포함
-         hasAnswer: !!(qa.answerContent && qa.answerName),
-         answer: qa.answerContent || null,
-         answererId: qa.answerName || null,
-         answererUUID: qa.answerId || null, // Add UUID for comparison
-         answerDate: qa.answerCreatedAt ? this.formatQADate(qa.answerCreatedAt) : null,
-         answerUpdatedAt: qa.answerUpdatedAt ? this.formatQADate(qa.answerUpdatedAt) : null,
-         // 상태 정보
-         parentStatus: qa.parentStatus,
-         answerStatus: qa.answerStatus,
-         // 프로필 이미지 URL 추가
-         parentProfileUrl: qa.parentProfileUrl || null,
-         answerProfileUrl: qa.answerProfileUrl || null
-       }));
-       
+       const convertedQA = qaList.map((qa, index) => {
+         // 디버깅 로그 제거
+         
+         const converted = {
+           id: qa.qnaId || qa.id,
+           qnaId: qa.qnaId || qa.id,
+           // 질문자 정보
+           questionerId: qa.parentName || qa.userNickname,
+           questionerUUID: qa.userId,
+           questionerEmail: qa.email,
+           questionerJoinDate: qa.userCreatedAt,
+           questionerProfileUrl: qa.profileImageUrl, // 질문자 프로필 이미지
+           question: qa.parentContent || qa.content,
+           questionDate: this.formatQADate(qa.parentCreatedAt || qa.createdAt),
+           questionUpdatedAt: qa.questionUpdatedAt ? this.formatQADate(qa.questionUpdatedAt) : null,
+           // 답글 정보 (백엔드에서 직접 답변 필드 제공)
+           hasAnswer: !!(qa.answerContent && qa.answerContent.trim()),
+           answer: qa.answerContent,
+           answererId: qa.answerName,
+           answererUUID: qa.answerId,
+           answererEmail: qa.answerEmail,
+           answererJoinDate: qa.answerJoinedAt,
+           answererProfileUrl: qa.answerProfileUrl, // 답변자 프로필 이미지
+           answerDate: qa.answerCreatedAt ? this.formatQADate(qa.answerCreatedAt) : null,
+           answerUpdatedAt: qa.answerUpdatedAt ? this.formatQADate(qa.answerUpdatedAt) : null,
+           // 상태 정보
+           status: qa.parentStatus || qa.status,
+           // 답글 목록 전체
+           answers: qa.answers || []
+         };
+         
+         return converted;
+       });
        
        return convertedQA;
      },
@@ -2067,37 +2087,55 @@ export default {
           const lectureData = this.lecture;
           userInfo = {
             id: userId,
-            nickname: userName,
-            email: lectureData.submittedByEmail || `${userName}@example.com`,
+            nickname: lectureData.nickname || userName, // 백엔드 DTO의 nickname 필드 사용
+            email: lectureData.submittedByEmail || '정보 없음',
             profileImage: lectureData.submittedByProfile || '',
-            joinDate: this.formatDate(lectureData.submittedJoinedAt) || '정보 없음'
+            joinDate: lectureData.submittedJoinedAt || '정보 없음'
           };
         }
         // 리뷰 작성자인 경우
         else {
-          const reviewer = this.lecture.reviews.find(review => review.reviewerId === userId);
+          // userId가 undefined인 경우 userName으로 찾기
+          let reviewer = null;
+          if (userId) {
+            reviewer = this.lecture.reviews.find(review => review.reviewerId === userId);
+          } else {
+            // userId가 undefined인 경우 userName으로 찾기
+            reviewer = this.lecture.reviews.find(review => review.writer === userName);
+          }
+          
           if (reviewer) {
             userInfo = {
-              id: userId,
-              nickname: userName,
-              email: reviewer.reviewerEmail || `${userName}@example.com`,
-              profileImage: reviewer.profileUrl || '',
-              joinDate: this.formatDate(reviewer.reviewerJoinedAt) || '정보 없음'
+              id: reviewer.reviewerId || userId,
+              nickname: reviewer.writer || userName,
+              email: reviewer.reviewerEmail,
+              profileImage: reviewer.profileUrl,
+              joinDate: reviewer.reviewerJoinDate
             };
           }
           // Q&A 작성자인 경우
           else {
-            const qaAuthor = this.lecture.qa.find(qa => 
-              qa.questionerUUID === userId || qa.answererUUID === userId
-            );
+            // userId가 undefined인 경우 userName으로 찾기
+            let qaAuthor = null;
+            if (userId) {
+              qaAuthor = this.lecture.qa.find(qa => 
+                qa.questionerUUID === userId || qa.answererUUID === userId
+              );
+            } else {
+              // userId가 undefined인 경우 userName으로 찾기
+              qaAuthor = this.lecture.qa.find(qa => 
+                qa.questionerId === userName || qa.answererId === userName
+              );
+            }
+            
             if (qaAuthor) {
-              const isQuestioner = qaAuthor.questionerUUID === userId;
+              const isQuestioner = userId ? (qaAuthor.questionerUUID === userId) : (qaAuthor.questionerId === userName);
               userInfo = {
-                id: userId,
-                nickname: userName,
-                email: isQuestioner ? qaAuthor.parentEmail || `${userName}@example.com` : qaAuthor.answerEmail || `${userName}@example.com`,
-                profileImage: isQuestioner ? qaAuthor.parentProfileUrl || '' : qaAuthor.answerProfileUrl || '',
-                joinDate: this.formatDate(isQuestioner ? qaAuthor.parentJoinedAt : qaAuthor.answerJoinedAt) || '정보 없음'
+                id: userId || (isQuestioner ? qaAuthor.questionerUUID : qaAuthor.answererUUID),
+                nickname: isQuestioner ? qaAuthor.questionerId : qaAuthor.answererId,
+                email: isQuestioner ? qaAuthor.questionerEmail : qaAuthor.answererEmail,
+                profileImage: isQuestioner ? qaAuthor.questionerProfileUrl : qaAuthor.answererProfileUrl,
+                joinDate: isQuestioner ? qaAuthor.questionerJoinDate : qaAuthor.answererJoinDate
               };
             }
           }
@@ -2108,9 +2146,9 @@ export default {
           userInfo = {
             id: userId,
             nickname: userName,
-            email: `${userName}@example.com`,
-            profileImage: '',
-            joinDate: '정보 없음'
+            email: null,
+            profileImage: null,
+            joinDate: null
           };
         }
 
@@ -2463,8 +2501,6 @@ export default {
 
       // Q&A 답변 작성 처리
       handleAnswerQA(qa) {
- 
-        
         // 답변 작성 모드로 설정
         this.isEditingQA = false;
         this.editingQAId = null;
@@ -4776,4 +4812,28 @@ export default {
       max-height: 60vh;
     }
   }
-</style> 
+  
+  .video-error p {
+    margin: 0;
+    font-size: 16px;
+  }
+
+  @media (max-width: 768px) {
+    .video-modal {
+      max-width: 95vw;
+      max-height: 95vh;
+    }
+    
+    .video-modal-header {
+      padding: 15px;
+    }
+    
+    .video-modal-header h3 {
+      font-size: 16px;
+    }
+    
+    .video-player {
+      max-height: 60vh;
+    }
+  }
+</style>

@@ -144,6 +144,7 @@
 import { useLectureStore } from '@/store/lecture/lecture'
 import { useCartStore } from '@/store/cart/cart'
 import CommonModal from '@/components/common/CommonModal.vue'
+import { apiPost } from '@/utils/api'
 
 export default {
   name: 'CartPage',
@@ -363,21 +364,19 @@ export default {
   // prepay: 백엔드에 주문 정보 저장
   async saveOrderToBackend(orderId, amount, lectureIds) {
     try {
-      const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/purchase/prepay`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ orderId, amount, lectureIds })
+      const response = await apiPost('/purchase/prepay', { 
+        orderId, 
+        amount, 
+        lectureIds 
       })
 
-      if (!response.ok) {
+      console.log('Prepay 응답:', response)
+
+      if (response.data && response.data.success) {
+        return response.data
+      } else {
         throw new Error('백엔드 사전 저장 실패')
       }
-
-      return await response.json()
     } catch (error) {
       console.error('Prepay 저장 오류:', error)
       throw error

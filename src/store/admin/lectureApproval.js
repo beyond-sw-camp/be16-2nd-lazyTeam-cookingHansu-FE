@@ -97,8 +97,8 @@ export const useLectureApprovalStore = defineStore('lectureApproval', {
         const response = await lectureApprovalService.approveLecture(lectureId);
         
         if (response.success) {
-          // 승인된 강의를 목록에서 제거
-          this.waitingLectures = this.waitingLectures.filter(lecture => lecture.id !== lectureId);
+          // 승인된 강의를 목록에서 제거 (반응성을 위해 새 배열 생성)
+          this.waitingLectures = [...this.waitingLectures.filter(lecture => lecture.id !== lectureId)];
           
           // 페이지네이션 정보 업데이트
           this.pagination.totalElements = Math.max(0, this.pagination.totalElements - 1);
@@ -124,8 +124,8 @@ export const useLectureApprovalStore = defineStore('lectureApproval', {
         const response = await lectureApprovalService.rejectLecture(lectureId, rejectReason);
         
         if (response.success) {
-          // 거절된 강의를 목록에서 제거
-          this.waitingLectures = this.waitingLectures.filter(lecture => lecture.id !== lectureId);
+          // 거절된 강의를 목록에서 제거 (반응성을 위해 새 배열 생성)
+          this.waitingLectures = [...this.waitingLectures.filter(lecture => lecture.id !== lectureId)];
           
           // 페이지네이션 정보 업데이트
           this.pagination.totalElements = Math.max(0, this.pagination.totalElements - 1);

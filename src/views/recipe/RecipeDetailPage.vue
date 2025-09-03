@@ -285,10 +285,15 @@
             >
               <div class="comment-header">
                 <div class="comment-info">
-                  <v-avatar size="40" class="comment-avatar">
+                  <v-avatar 
+                    size="40" 
+                    class="comment-avatar"
+                    :class="{ 'clickable-avatar': !isCurrentUserCommentAuthor(comment) }"
+                    @click="!isCurrentUserCommentAuthor(comment) && handleCommentProfileClick(comment)"
+                  >
                     <v-img 
-                      v-if="comment.profileImageUrl || comment.picture || comment.authorProfileImage" 
-                      :src="comment.profileImageUrl || comment.picture || comment.authorProfileImage" 
+                      v-if="comment.authorProfileImage || comment.picture" 
+                      :src="comment.authorProfileImage || comment.picture" 
                       :alt="comment.nickname + ' 프로필 이미지'"
                       @error="handleCommentProfileImageError(comment)"
                     ></v-img>
@@ -297,7 +302,11 @@
                     </span>
                   </v-avatar>
                   <div class="comment-author-info">
-                    <h4 class="comment-author-name">
+                    <h4 
+                      class="comment-author-name"
+                      :class="{ 'clickable-name': !isCurrentUserCommentAuthor(comment) }"
+                      @click="!isCurrentUserCommentAuthor(comment) && handleCommentProfileClick(comment)"
+                    >
                       {{ comment.nickname }}
                       <span 
                         v-if="isCommentAuthor(comment)" 
@@ -478,10 +487,15 @@
                 </div>
               <div class="comment-header">
                 <div class="comment-info">
-                  <v-avatar size="40" class="comment-avatar">
+                  <v-avatar 
+                    size="40" 
+                    class="comment-avatar"
+                    :class="{ 'clickable-avatar': !isCurrentUserCommentAuthor(reply) }"
+                    @click="!isCurrentUserCommentAuthor(reply) && handleCommentProfileClick(reply)"
+                  >
                     <v-img 
-                      v-if="reply.profileImageUrl || reply.picture || reply.authorProfileImage" 
-                      :src="reply.profileImageUrl || reply.picture || reply.authorProfileImage" 
+                      v-if="reply.authorProfileImage || reply.picture" 
+                      :src="reply.authorProfileImage || reply.picture" 
                       :alt="reply.nickname + ' 프로필 이미지'"
                       @error="handleCommentProfileImageError(reply)"
                     ></v-img>
@@ -490,7 +504,11 @@
                     </span>
                   </v-avatar>
                   <div class="comment-author-info">
-                    <h4 class="comment-author-name">
+                    <h4 
+                      class="comment-author-name"
+                      :class="{ 'clickable-name': !isCurrentUserCommentAuthor(reply) }"
+                      @click="!isCurrentUserCommentAuthor(reply) && handleCommentProfileClick(reply)"
+                    >
                       {{ reply.nickname }}
                       <span 
                         v-if="isCommentAuthor(reply)" 
@@ -765,44 +783,17 @@ const showUserReportModal = ref(false)
 const reportTargetId = ref('')
 const reportTargetName = ref('')
 
-// 로그인 상태 확인
+// 로그인 상태 확인 (authStore에서 직접 가져오기)
 const isLoggedIn = computed(() => {
-  return !!localStorage.getItem('accessToken')
+  return authStore.isAuthenticated
 })
 
-// 현재 사용자 정보
+// 현재 사용자 정보 (authStore에서 직접 가져오기)
 const currentUser = computed(() => {
-  try {
-    const userInfo = localStorage.getItem('user')
-    if (userInfo) {
-      return JSON.parse(userInfo)
-    }
-  } catch (error) {
-    console.error('사용자 정보 파싱 오류:', error)
-  }
-  return null
+  return authStore.user
 })
 
-// store나 localStorage에서 사용자 ID 가져오기 (JWT 파싱 대신)
-const getCurrentUserIdFromStore = () => {
-  // 1. store에서 먼저 확인
-  if (authStore.user?.id) {
-    return authStore.user.id
-  }
-  
-  // 2. store에 없으면 localStorage에서 확인
-  try {
-    const savedUser = localStorage.getItem('user')
-    if (savedUser) {
-      const userData = JSON.parse(savedUser)
-      return userData.id
-    }
-  } catch (error) {
-    console.error('localStorage 사용자 정보 파싱 실패:', error)
-  }
-  
-  return null
-}
+// getCurrentUserIdFromStore 함수 제거됨 - authStore에서 직접 사용
 // 작성자 아바타 클릭 → 프로필 모달 표시
 const openAuthorProfile = () => {
   // 비로그인 → 로그인 모달
@@ -811,17 +802,20 @@ const openAuthorProfile = () => {
     return
   }
 
-  const currentUserId = getCurrentUserIdFromToken()
+  // 자신의 프로필은 클릭 불가
+  const currentUserId = authStore.user?.id || authStore.user?.userId
   if (currentUserId && String(currentUserId) === String(recipe.authorId)) {
     return
   }
 
+  // 디버깅 로그 제거됨
+
   userProfileData.value = {
     id: recipe.authorId,
     nickname: recipe.nickname,
-    email: '',
-    profileImage: recipe.picture || '', // 백엔드 DTO의 picture 필드 사용
-    joinDate: ''
+    email: recipe.authorEmail || '정보 없음',
+    profileImage: recipe.picture || '',
+    joinDate: recipe.authorJoinDate || '정보 없음'
   }
   showUserProfileModal.value = true
 }
@@ -860,10 +854,36 @@ const handleUserProfileReport = (userId) => {
   showUserReportModal.value = true
 }
 
-// 현재 사용자가 작성자인지 확인 (store/localStorage 기반)
+// 댓글 작성자 프로필 클릭 처리
+const handleCommentProfileClick = (comment) => {
+  // 로그인하지 않은 사용자는 프로필 클릭 불가
+  if (!isLoggedIn.value) {
+    showLoginModal.value = true
+    return
+  }
+
+  // 자신의 프로필은 클릭 불가
+  if (isCurrentUserCommentAuthor(comment)) {
+    return
+  }
+
+  // 댓글 작성자 정보를 프로필 모달 데이터로 설정
+  userProfileData.value = {
+    id: comment.authorUUID || comment.authorId || comment.userId,
+    nickname: comment.nickname,
+    email: comment.email || '정보 없음',
+    profileImage: comment.authorProfileImage || comment.picture || '',
+    joinDate: comment.joinDate || '정보 없음'
+  }
+
+  // 사용자 프로필 모달 표시
+  showUserProfileModal.value = true
+}
+
+// 현재 사용자가 작성자인지 확인 (authStore 기반)
 const isAuthor = computed(() => {
-  // store나 localStorage에서 사용자 ID 가져오기
-  const currentUserId = getCurrentUserIdFromStore()
+  // authStore에서 사용자 ID 가져오기
+  const currentUserId = authStore.user?.id || authStore.user?.userId
   
   if (!currentUserId) {
     return false
@@ -878,18 +898,13 @@ const isAuthor = computed(() => {
   return isMatch
 })
 
-// 관리자 여부 확인
+// 관리자 여부 확인 (authStore에서 직접 가져오기)
 const isAdmin = computed(() => {
-  const userInfo = localStorage.getItem('user')
-  if (!userInfo) return false
-  
-  try {
-    const user = JSON.parse(userInfo)
-    return user.role === 'ADMIN' || user.role === 'admin'
-  } catch (error) {
-    console.error('사용자 정보 파싱 오류:', error)
-    return false
-  }
+  const role = authStore.getUserRole
+  const userRole = authStore.user?.role
+  const isAdminRole = role === 'ADMIN' || role === 'admin'
+  console.log('🔍 관리자 체크:', { role, userRole, isAdmin: isAdminRole })
+  return isAdminRole
 })
 
 // 비밀글 접근 권한 확인
@@ -931,7 +946,9 @@ const recipe = reactive({
   commentCount: 0, // 댓글 개수 추가
     nickname: '',
   role: '',
-  authorId: null // 작성자 ID 추가
+  authorId: null, // 작성자 ID 추가
+  authorEmail: '', // 작성자 이메일 추가
+  authorJoinDate: '' // 작성자 가입일 추가
 })
 
 const getDifficultyText = (level) => {
@@ -1028,9 +1045,8 @@ const handleProfileImageError = (type) => {
 
 const handleCommentProfileImageError = (comment) => {
   console.log('댓글 프로필 이미지 로드 실패:', comment.nickname)
-  comment.profileImageUrl = null // 백엔드 DTO의 profileImageUrl 필드 사용
+  comment.authorProfileImage = null // 백엔드 DTO의 authorProfileImage 필드 사용
   comment.picture = null // 백엔드 DTO의 picture 필드 사용
-  comment.authorProfileImage = null
 }
 
 // 댓글 작성자가 레시피 작성자인지 확인 (UUID 기반)
@@ -1044,6 +1060,24 @@ const isCommentAuthor = (comment) => {
   return comment.nickname === recipe.nickname
 }
 
+// 현재 사용자가 댓글 작성자인지 확인
+const isCurrentUserCommentAuthor = (comment) => {
+  if (!isLoggedIn.value || !authStore.user) {
+    return false
+  }
+  
+  const currentUserId = authStore.user?.id || authStore.user?.userId
+  const commentAuthorId = comment.authorUUID || comment.authorId || comment.userId
+  
+  // UUID로 비교
+  if (currentUserId && commentAuthorId) {
+    return String(currentUserId) === String(commentAuthorId)
+  }
+  
+  // UUID가 없는 경우 닉네임으로 fallback
+  return authStore.user?.nickname === comment.nickname
+}
+
 // 댓글 수정/삭제 권한 확인 (UUID 기반)
 const canEditComment = (comment) => {
   if (!isLoggedIn.value || !currentUser.value) {
@@ -1055,8 +1089,8 @@ const canEditComment = (comment) => {
     return true
   }
   
-  // 현재 사용자 UUID 가져오기 (JWT 토큰에서 추출)
-  const currentUserUUID = getCurrentUserIdFromStore() || currentUser.value.id || currentUser.value.uuid || currentUser.value.userId
+  // 현재 사용자 UUID 가져오기 (authStore에서 직접)
+  const currentUserUUID = authStore.user?.id || authStore.user?.userId || authStore.user?.uuid
   
   // 댓글 작성자 UUID가 없는 경우 nickname으로 fallback (하위 호환성)
   if (!comment.authorUUID) {
@@ -1135,7 +1169,7 @@ const submitComment = async () => {
     const checkData = checkResponse
     if (checkData.data && checkData.data.isOpen === false) {
       // 비밀글인 경우 작성자 체크
-      const currentUserId = getCurrentUserIdFromStore()
+      const currentUserId = authStore.user?.id || authStore.user?.userId
       if (!currentUserId || String(currentUserId) !== String(checkData.data.authorId)) {
         alert('비공개된 게시글입니다.')
         router.push('/recipes')
@@ -1224,7 +1258,7 @@ const submitReply = async (comment) => {
     const checkData = checkResponse
     if (checkData.data && checkData.data.isOpen === false) {
       // 비밀글인 경우 작성자 체크
-      const currentUserId = getCurrentUserIdFromStore()
+      const currentUserId = authStore.user?.id || authStore.user?.userId
       if (!currentUserId || String(currentUserId) !== String(checkData.data.authorId)) {
         alert('비공개된 게시글입니다.')
         router.push('/recipes')
@@ -1294,7 +1328,7 @@ const deleteComment = async (commentId) => {
     const checkData = checkResponse
     if (checkData.data && checkData.data.isOpen === false) {
       // 비밀글인 경우 작성자 체크
-      const currentUserId = getCurrentUserIdFromStore()
+      const currentUserId = authStore.user?.id || authStore.user?.userId
       if (!currentUserId || String(currentUserId) !== String(checkData.data.authorId)) {
         alert('비공개된 게시글입니다.')
         router.push('/recipes')
@@ -1413,7 +1447,7 @@ const saveEditComment = async (comment) => {
     const checkData = checkResponse
     if (checkData.data && checkData.data.isOpen === false) {
       // 비밀글인 경우 작성자 체크
-      const currentUserId = getCurrentUserIdFromStore()
+      const currentUserId = authStore.user?.id || authStore.user?.userId
       if (!currentUserId || String(currentUserId) !== String(checkData.data.authorId)) {
         alert('비공개된 게시글입니다.')
         router.push('/recipes')
@@ -1521,8 +1555,10 @@ const loadComments = async () => {
             createdAt: comment.createdAt,
             isDeleted: comment.isDeleted || false, // 삭제 상태 추가
             showMoreMenu: false, // 더보기 메뉴 상태
-            picture: comment.profileImageUrl || comment.picture, // 백엔드 DTO의 profileImageUrl 필드 우선 사용
-            authorProfileImage: getProfileImageUrl(comment),
+            picture: comment.authorProfileImage || comment.picture, // 백엔드 DTO의 authorProfileImage 필드 사용
+            authorProfileImage: comment.authorProfileImage, // 백엔드 DTO의 authorProfileImage 필드 사용
+            email: comment.authorEmail, // 작성자 이메일
+            joinDate: comment.authorCreatedAt, // 작성자 가입일
             replies: comment.childComments ? comment.childComments
               .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)) // 대댓글도 오래된 순으로 정렬
               .map(reply => {
@@ -1533,9 +1569,11 @@ const loadComments = async () => {
                   content: reply.content,
                   createdAt: reply.createdAt,
                   isDeleted: reply.isDeleted || false, // 답글 삭제 상태도 추가
-                  picture: reply.profileImageUrl || reply.picture, // 백엔드 DTO의 profileImageUrl 필드 우선 사용
-                  authorProfileImage: getProfileImageUrl(reply),
-                  showMoreMenu: false // 더보기 메뉴 상태
+                  picture: reply.authorProfileImage || reply.picture, // 백엔드 DTO의 authorProfileImage 필드 사용
+                  authorProfileImage: reply.authorProfileImage, // 백엔드 DTO의 authorProfileImage 필드 사용
+                  showMoreMenu: false, // 더보기 메뉴 상태
+                  email: reply.authorEmail, // 답글 작성자 이메일
+                  joinDate: reply.authorCreatedAt // 답글 작성자 가입일
                 }
               }) : []
           }
@@ -1705,12 +1743,21 @@ const loadRecipe = async () => {
 
     
     // 조회수 증가 (로그인한 일반 사용자만, 관리자 제외)
+    console.log('🔍 조회수 증가 체크:', {
+      isLoggedIn: isLoggedIn.value,
+      isAdmin: isAdmin.value,
+      userRole: authStore.getUserRole,
+      shouldIncrement: isLoggedIn.value && !isAdmin.value
+    })
+    
     if (isLoggedIn.value && !isAdmin.value) {
       try {
         await recipeService.incrementViews(recipeId)
       } catch (error) {
         console.log('조회수 증가 실패 (무시)', error)
       }
+    } else {
+      console.log('🚫 조회수 증가 건너뜀 - 관리자 또는 비로그인')
     }
     
 
@@ -1728,6 +1775,8 @@ const loadRecipe = async () => {
     
     if (response.success) {
       const data = response
+      
+      // 디버깅 로그 제거됨
       
       if (data.data) {
         Object.assign(recipe, {
@@ -1749,8 +1798,10 @@ const loadRecipe = async () => {
           updatedAt: data.data.updatedAt,
           nickname: data.data.user?.nickname,
           role: data.data.user?.role,
-          picture: data.data.user?.profileImageUrl || data.data.user?.picture || data.data.submittedByProfile, // 백엔드 DTO의 profileImageUrl 필드 우선 사용
+          picture: data.data.user?.profileImageUrl, // 백엔드 DTO의 profileImageUrl 필드 사용
           authorId: data.data.user?.id, // 작성자 ID 추가
+          authorEmail: data.data.user?.email, // 작성자 이메일 추가
+          authorJoinDate: data.data.user?.createdAt, // 작성자 가입일 추가
           ingredients: data.data.ingredients || [],
           steps: data.data.steps || []
         })
@@ -2981,6 +3032,26 @@ onUnmounted(() => {
   color: #333;
   display: flex;
   align-items: center;
+}
+
+/* 클릭 가능한 프로필 스타일 */
+.clickable-avatar {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.clickable-avatar:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.clickable-name {
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.clickable-name:hover {
+  color: #ff7a00;
 }
 
 .comment-time {

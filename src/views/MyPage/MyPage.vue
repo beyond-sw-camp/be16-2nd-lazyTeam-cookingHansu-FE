@@ -110,8 +110,8 @@ const tabs = ref([
   { id: 'liked-lectures', name: '강의 좋아요' }
 ]);
 
-// Computed
-const userProfile = computed(() => mypageStore.getUserProfile);
+// Computed (authStore에서 직접 가져오기)
+const userProfile = computed(() => authStore.user);
 
 // Methods
 const getInitialTab = () => {
@@ -132,30 +132,10 @@ const updateUrlWithTab = (tab) => {
   window.history.replaceState({}, '', url);
 };
 
-const fetchUserProfile = () => {
-  // authStore의 데이터를 mypageStore에 복사
-  if (authStore.user) {
-    mypageStore.userProfile = { 
-      ...authStore.user,
-      // role 정보도 포함 (userType과 호환성을 위해)
-      userType: authStore.user.role || authStore.user.userType || 'GENERAL'
-    };
-  } else {
-    // authStore에 사용자 정보가 없는 경우 기본값 설정
-    mypageStore.userProfile = {
-      nickname: '사용자',
-      picture: '', // 백엔드 DTO의 picture 필드 사용
-      role: 'GENERAL',
-      userType: 'GENERAL'
-    };
-  }
-};
+// fetchUserProfile 제거 - authStore에서 직접 사용하므로 불필요
 
 const updateUserProfile = (updatedData) => {
-  // mypageStore의 프로필 데이터 업데이트
-  mypageStore.userProfile = { ...mypageStore.userProfile, ...updatedData };
-  
-  // authStore의 사용자 정보도 함께 업데이트 (실시간 동기화)
+  // authStore의 사용자 정보 직접 업데이트
   if (authStore.user) {
     authStore.user = { ...authStore.user, ...updatedData };
     // role 정보도 userType과 동기화
@@ -253,7 +233,6 @@ watch(showProfileModal, (newVal) => {
 
 // Lifecycle
 onMounted(() => {
-  fetchUserProfile();
   updateUserRoleFromProfile();
   checkSellerRole();
   

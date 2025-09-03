@@ -352,7 +352,7 @@ const snackbarMessage = ref('');
 
 // 모든 사용자 목록 (요리사 + 자영업자)
 const allUsers = computed(() => {
-  const chefs = userApprovalStore.getWaitingChefs.map(chef => ({
+  const chefs = userApprovalStore.waitingChefs.map(chef => ({
     ...chef,
     roleType: 'chef',
     id: chef.userId,
@@ -361,7 +361,7 @@ const allUsers = computed(() => {
     licenseImageUrl: chef.licenseImageUrl || chef.licenseImage || chef.certificateImageUrl
   }));
   
-  const businesses = userApprovalStore.getWaitingBusinesses.map(business => ({
+  const businesses = userApprovalStore.waitingBusinesses.map(business => ({
     ...business,
     roleType: 'business',
     // 이미지 URL 필드명 통일
@@ -470,7 +470,12 @@ const approveUser = async () => {
     await userApprovalStore.approveUser(selectedUser.value.id, userType);
     approvalDialog.value = false;
     
-    // store에서 이미 승인된 사용자를 자동으로 제거하므로 추가 API 호출 불필요
+    // 승인 후 목록 새로고침 제거 - store에서 자동으로 제거됨
+    // if (userType === 'chef') {
+    //   await userApprovalStore.fetchWaitingChefs(currentPage.value - 1, 10);
+    // } else {
+    //   await userApprovalStore.fetchWaitingBusinesses(currentPage.value - 1, 10);
+    // }
   } catch (error) {
     console.error('사용자 승인 실패:', error);
     // 네트워크 오류가 아닌 경우에만 스낵바 메시지 표시
@@ -504,7 +509,12 @@ const rejectUser = async (reason) => {
     await userApprovalStore.rejectUser(selectedUser.value.id, reason, userType);
     rejectDialog.value = false;
     
-    // store에서 이미 거절된 사용자를 자동으로 제거하므로 추가 API 호출 불필요
+    // 거절 후 목록 새로고침 제거 - store에서 자동으로 제거됨
+    // if (userType === 'chef') {
+    //   await userApprovalStore.fetchWaitingChefs(currentPage.value - 1, 10);
+    // } else {
+    //   await userApprovalStore.fetchWaitingBusinesses(currentPage.value - 1, 10);
+    // }
   } catch (error) {
     console.error('사용자 거절 실패:', error);
     // 네트워크 오류가 아닌 경우에만 스낵바 메시지 표시

@@ -236,9 +236,11 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { recipeService } from '@/services/recipe/recipeService'
+import { useAuthStore } from '@/store/auth/auth'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 
 // 게시글 데이터
 const post = reactive({
@@ -323,31 +325,14 @@ const getDifficultyText = (difficulty) => {
   return difficultyMap[difficulty] || '보통'
 }
 
-// 현재 사용자 정보 (localStorage에서 실시간 읽기)
+// 현재 사용자 정보 (authStore에서 직접 가져오기)
 const currentUser = computed(() => {
-  try {
-    const userInfo = localStorage.getItem('user')
-    if (userInfo) {
-      return JSON.parse(userInfo)
-    }
-  } catch (error) {
-    console.error('사용자 정보 파싱 오류:', error)
-  }
-  return null
+  return authStore.user
 })
 
-// 관리자 여부 확인
+// 관리자 여부 확인 (authStore에서 직접 가져오기)
 const isAdmin = computed(() => {
-  const userInfo = localStorage.getItem('user')
-  if (!userInfo) return false
-  
-  try {
-    const user = JSON.parse(userInfo)
-    return user.role === 'ADMIN' || user.role === 'admin'
-  } catch (error) {
-    console.error('사용자 정보 파싱 오류:', error)
-    return false
-  }
+  return authStore.getUserRole === 'ADMIN'
 })
 
 // 현재 사용자가 작성자인지 확인 (닉네임으로 비교)

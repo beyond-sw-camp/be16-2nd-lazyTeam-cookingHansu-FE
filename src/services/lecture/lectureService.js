@@ -71,6 +71,39 @@ export const lectureService = {
     }
   },
 
+  // Q&A 등록
+  async createQna(lectureId, qnaData) {
+    try {
+      const response = await apiClient.post(`/lecture/qna/${lectureId}/create`, qnaData);
+      return response.data;
+    } catch (error) {
+      console.error('Q&A 등록 실패:', error);
+      throw error;
+    }
+  },
+
+  // Q&A 수정
+  async updateQna(qnaId, qnaData) {
+    try {
+      const response = await apiClient.put(`/lecture/qna/${qnaId}/update`, qnaData);
+      return response.data;
+    } catch (error) {
+      console.error('Q&A 수정 실패:', error);
+      throw error;
+    }
+  },
+
+  // Q&A 삭제
+  async deleteQna(qnaId) {
+    try {
+      const response = await apiClient.delete(`/lecture/qna/${qnaId}/delete`);
+      return response.data;
+    } catch (error) {
+      console.error('Q&A 삭제 실패:', error);
+      throw error;
+    }
+  },
+
   // 강의 좋아요 토글
   async toggleLectureLike(lectureId) {
     try {

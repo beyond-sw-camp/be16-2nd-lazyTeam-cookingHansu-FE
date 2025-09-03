@@ -145,18 +145,8 @@ const pagedRecipes = computed(() => {
 });
 const totalPages = computed(() => Math.max(1, Math.ceil(recipes.value.length / recipesPerPage.value)));
 const totalItems = computed(() => recipeStore.getPaginationInfo.totalElements);
-// watch 속성
-watch(selectedUserType, () => {
-  currentPage.value = 1;
-  fetchRecipes();
-});
-
-watch(selectedCategory, () => {
-  currentPage.value = 1;
-  fetchRecipes();
-});
-
-watch(selectedSort, () => {
+// watch 속성 (통합하여 중복 API 호출 방지)
+watch([selectedUserType, selectedCategory, selectedSort], () => {
   currentPage.value = 1;
   fetchRecipes();
 });

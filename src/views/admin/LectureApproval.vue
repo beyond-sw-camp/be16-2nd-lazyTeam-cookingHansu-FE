@@ -232,16 +232,13 @@ const formatDuration = (duration) => {
   
   let totalSeconds;
   
-  // duration이 1000 이상이면 밀리초, 100 이상이면 초 단위로 판단
+  // duration이 1000 이상이면 밀리초, 그 외에는 초 단위로 판단
   if (duration >= 1000) {
     // 밀리초 단위
     totalSeconds = Math.floor(duration / 1000);
-  } else if (duration >= 100) {
+  } else {
     // 초 단위 (일반적으로 강의 시간은 초 단위)
     totalSeconds = duration;
-  } else {
-    // 분 단위
-    totalSeconds = duration * 60;
   }
   
   const hours = Math.floor(totalSeconds / 3600);
@@ -276,7 +273,8 @@ const approveLecture = async () => {
     await lectureApprovalStore.approveLecture(selectedLecture.value.id);
     approvalDialog.value = false;
     
-    // store에서 이미 승인된 강의를 자동으로 제거하므로 추가 API 호출 불필요
+    // 승인 후 목록 새로고침 제거 - store에서 자동으로 제거됨
+    // await lectureApprovalStore.fetchWaitingLectures(currentPage.value - 1, 10);
   } catch (error) {
     console.error('강의 승인 실패:', error);
     // 네트워크 오류가 아닌 경우에만 스낵바 메시지 표시
@@ -302,7 +300,8 @@ const rejectLecture = async (reason) => {
     await lectureApprovalStore.rejectLecture(selectedLecture.value.id, reason);
     rejectDialog.value = false;
     
-    // store에서 이미 거절된 강의를 자동으로 제거하므로 추가 API 호출 불필요
+    // 거절 후 목록 새로고침 제거 - store에서 자동으로 제거됨
+    // await lectureApprovalStore.fetchWaitingLectures(currentPage.value - 1, 10);
   } catch (error) {
     console.error('강의 거절 실패:', error);
     // 네트워크 오류가 아닌 경우에만 스낵바 메시지 표시
