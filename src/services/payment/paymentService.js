@@ -9,17 +9,10 @@ export const paymentService = {
       const response = await apiGet(`/purchase/history/${lectureId}`);
       
       console.log('API 응답 상태:', response.status);
-      console.log('API 응답 헤더:', response.headers);
+      console.log('API 응답 데이터:', response.data);
       
-      if (!response.ok) {
-        console.error('HTTP 에러:', response.status, response.statusText);
-        const errorText = await response.text();
-        console.error('에러 응답 내용:', errorText);
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      console.log('API 응답 데이터:', data);
+      // axios는 자동으로 JSON 파싱을 하므로 response.data를 직접 사용
+      const data = response.data;
       
       if (data.success) {
         console.log('성공적으로 데이터 반환:', data.data);

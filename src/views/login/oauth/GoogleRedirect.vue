@@ -136,9 +136,11 @@ export default {
         // 서버에 인가 코드 전송하여 로그인 처리
         const user = await authStore.handleGoogleLogin(authorizationCode.value);
         
-        // handleGoogleLogin에서 탈퇴한 회원인 경우 null을 반환하므로 체크
-        if (user === null) {
-          // 탈퇴한 회원인 경우 이미 리다이렉트가 처리되었으므로 여기서는 아무것도 하지 않음
+        // handleGoogleLogin에서 탈퇴한 회원인 경우 특별한 객체를 반환하므로 체크
+        if (user && user.isDeleted) {
+          // 탈퇴한 회원인 경우 복구 페이지로 리다이렉트
+          const encodedUserInfo = encodeURIComponent(JSON.stringify(user.userInfo));
+          router.push(`/deleted-user-confirm/${encodedUserInfo}`);
           return;
         }
         

@@ -146,7 +146,7 @@
               :alt="lecture.instructor.name + ' 프로필 이미지'"
               class="instructor-profile-img"
             />
-            <span v-else>{{ lecture.instructor.name.charAt(0) }}</span>
+            <span v-else>{{ lecture.instructor.name ? lecture.instructor.name.charAt(0) : '?' }}</span>
           </div>
           <div class="instructor-details">
             <h3>{{ lecture.instructor.name }}</h3>
@@ -191,7 +191,7 @@
                           class="reviewer-profile-img"
                         />
                         <div v-else class="reviewer-profile-placeholder">
-                          {{ review.writer.charAt(0) }}
+                          {{ review.writer ? review.writer.charAt(0) : '?' }}
                         </div>
                       </div>
                       <div class="reviewer-details">
@@ -244,13 +244,13 @@
                       <div class="questioner-info">
                         <div class="questioner-profile" @click="handleProfileClick($event, qa.questionerUUID, qa.questionerId)">
                           <img 
-                            v-if="qa.parentProfileUrl" 
-                            :src="qa.parentProfileUrl" 
+                            v-if="qa.questionerProfileUrl" 
+                            :src="qa.questionerProfileUrl" 
                             :alt="qa.questionerId + ' 프로필 이미지'"
                             class="questioner-profile-img"
                           />
                           <div v-else class="questioner-profile-placeholder">
-                            {{ qa.questionerId.charAt(0) }}
+                            {{ qa.questionerId ? qa.questionerId.charAt(0) : '?' }}
                           </div>
                         </div>
                         <span class="questioner-name">{{ qa.questionerId }}</span>
@@ -282,13 +282,13 @@
                        <div class="answerer-info">
                          <div class="answerer-profile" @click="handleProfileClick($event, qa.answererUUID, qa.answererId)">
                            <img 
-                             v-if="qa.answerProfileUrl" 
-                             :src="qa.answerProfileUrl" 
+                             v-if="qa.answererProfileUrl" 
+                             :src="qa.answererProfileUrl" 
                              :alt="qa.answererId + ' 프로필 이미지'"
                              class="answerer-profile-img"
                            />
                            <div v-else class="answerer-profile-placeholder">
-                             {{ qa.answererId.charAt(0) }}
+                             {{ qa.answererId ? qa.answererId.charAt(0) : '?' }}
                            </div>
                          </div>
                          <span class="answerer-name">{{ qa.answererId }}</span>
@@ -542,15 +542,15 @@
     <div v-if="showQAModal" class="modal-overlay" @click="showQAModal = false">
       <div class="modal" @click.stop>
         <div class="modal-header">
-          <h3>{{ isEditingQA ? '질문 수정하기' : '질문하기' }}</h3>
+          <h3>{{ isEditingQA ? '질문 수정하기' : (newQuestion.parentId ? '답변하기' : '질문하기') }}</h3>
           <button class="close-btn" @click="showQAModal = false">×</button>
         </div>
         <div class="modal-content">
           <div class="content-section">
-            <label>질문 내용</label>
+            <label>{{ newQuestion.parentId ? '답변 내용' : '질문 내용' }}</label>
             <textarea 
               v-model="newQuestion.content" 
-              placeholder="강의에 대한 궁금한 점을 질문해주세요."
+              :placeholder="newQuestion.parentId ? '질문에 대한 답변을 작성해주세요.' : '강의에 대한 궁금한 점을 질문해주세요.'"
               rows="5"
             ></textarea>
           </div>
@@ -560,7 +560,7 @@
         </div>
         <div class="modal-footer">
           <button class="cancel-btn" @click="showQAModal = false">취소</button>
-          <button class="submit-btn" @click="submitQuestion">{{ isEditingQA ? '질문 수정' : '질문 등록' }}</button>
+          <button class="submit-btn" @click="submitQuestion">{{ isEditingQA ? '질문 수정' : (newQuestion.parentId ? '답변 등록' : '질문 등록') }}</button>
         </div>
       </div>
     </div>
@@ -715,7 +715,7 @@
       v-model="showLectureDeleteModal"
       title="강의 삭제"
       message="정말로 이 강의를 삭제하시겠습니까?"
-      :item-info="`강의명: ${lecture?.title || ''}`"
+      :item-info="{ title: lecture?.title || '' }"
       @confirm="deleteLecture"
       @cancel="cancelLectureDelete"
     />
@@ -748,18 +748,30 @@ import DeleteConfirmModal from '@/components/common/DeleteConfirmModal.vue';
 import ReportModal from '@/components/common/ReportModal.vue';
 import UserProfileModal from '@/components/common/UserProfileModal.vue';
 
-import { lectureService } from '@/store/lecture/lectureService';
+import { useLectureStore } from '@/store/lecture/lecture';
 import { useCartStore } from '@/store/cart/cart';
 import { useChatStore } from '@/store/chat/chat';
 import { useAuthStore } from '@/store/auth/auth';
 import { getUserIdFromToken } from '@/utils/api';
 import { reportService } from '@/services/report/reportService';
-import { lectureProgressService } from '@/services/lecture/lectureProgressService';
+import { lectureService } from '@/services/lecture/lectureService';
 
 
 export default {
   name: 'LectureDetail',
   components: { Header, DeleteConfirmModal, ReportModal, UserProfileModal },
+  setup() {
+    const lectureStore = useLectureStore();
+    const cartStore = useCartStore();
+    const chatStore = useChatStore();
+    const authStore = useAuthStore();
+    return {
+      lectureStore,
+      cartStore,
+      chatStore,
+      authStore
+    };
+  },
   data() {
     return {
       ready: false, // 초기화 완료 상태
@@ -933,9 +945,9 @@ export default {
       return this.isPurchased;
     },
     
-    // 관리자인지 확인
+    // 관리자인지 확인 (대소문자 구분 없이)
     isAdmin() {
-      const isAdmin = this.userRole === 'ADMIN';
+      const isAdmin = this.userRole === 'ADMIN' || this.userRole === 'admin';
       return isAdmin;
     },
     
@@ -972,8 +984,13 @@ export default {
       return result;
     },
     
-    // 강의 수정 버튼 표시 여부 (등록자만 표시)
+    // 강의 수정 버튼 표시 여부 (등록자, 관리자)
     showEditButton() {
+      // 관리자는 모든 강의 수정 가능
+      if (this.isAdmin) {
+        return true;
+      }
+      
       // 토큰에서 현재 사용자 ID 가져오기
       const currentUserId = getUserIdFromToken();
       
@@ -1058,18 +1075,21 @@ export default {
         // TODO: 실제 로그인 API에서 사용자 정보 가져오기
         // 현재는 localStorage에서 임시로 가져옴
         const userInfo = localStorage.getItem('user');
+        console.log('🔍 checkUserRole - userInfo:', userInfo);
         
         if (userInfo) {
           const user = JSON.parse(userInfo);
           this.currentUserId = user.id;
+          console.log('🔍 checkUserRole - user:', user);
           
           // 강의 작성자인지 확인 (CHEF, OWNER 모두 자영업자/요리사)
           if (this.lecture && this.lecture.instructor && user.id === this.lecture.instructor.id) {
             this.userRole = user.role === 'OWNER' ? 'OWNER' : 'CHEF';
           }
-          // 관리자인지 확인
-          else if (user.role === 'ADMIN') {
+          // 관리자인지 확인 (대소문자 구분 없이)
+          else if (user.role === 'ADMIN' || user.role === 'admin') {
             this.userRole = 'ADMIN';
+            console.log('✅ 관리자로 설정됨');
           }
           // 구매자인지 확인 (구매 상태는 별도로 확인)
           else if (this.isPurchased) {
@@ -1090,8 +1110,22 @@ export default {
     
              // 장바구니 상태 확인 (백엔드 API 사용)
     async checkCartStatus(lectureId) {
+      // 비회원이나 관리자는 장바구니 조회하지 않음
+      console.log('🔍 checkCartStatus - isGuest:', this.isGuest, 'userRole:', this.userRole);
+      
+      // authStore에서도 관리자 체크 (대소문자 구분 없이)
+      const authStore = useAuthStore();
+      const isAdminFromStore = authStore.user?.role === 'ADMIN' || authStore.user?.role === 'admin';
+      console.log('🔍 checkCartStatus - isAdminFromStore:', isAdminFromStore);
+      
+      if (this.isGuest || this.userRole === 'ADMIN' || isAdminFromStore) {
+        console.log('✅ 장바구니 조회 건너뜀 (비회원 또는 관리자)');
+        this.isInCart = false;
+        return;
+      }
+
       try {
-        const response = await lectureService.getCartItems();
+        const response = await this.lectureStore.fetchCartItems();
         if (response.success) {
           // 장바구니 목록에서 현재 강의 ID가 있는지 확인
           this.isInCart = response.data.some(item => 
@@ -1114,7 +1148,7 @@ export default {
          }
          
          // 강의 데이터에 좋아요 상태가 없는 경우 별도 API 호출
-         const response = await lectureService.checkLectureLikeStatus(lectureId);
+         const response = await this.lectureStore.fetchLectureDetail(lectureId);
          if (response.success) {
            this.isLiked = response.data.liked || false;
          }
@@ -1126,36 +1160,7 @@ export default {
 
      
 
-     // 구매 여부 확인 (백엔드 API 사용)
-     async checkPurchaseStatus(lectureId) {
-       try {
-         const response = await lectureService.getPurchasedLectures();
-         
-         if (response.success) {
-           // 구매한 강의 목록에서 현재 강의 ID가 있는지 확인
-           // purchase 객체에서 id 또는 lectureId 필드를 확인
-           const isPurchased = response.data.content.some(purchase => 
-             purchase.id === lectureId || purchase.lectureId === lectureId
-           );
-           
-           // 구매 상태가 변경된 경우에만 업데이트
-           if (this.isPurchased !== isPurchased) {
-             this.isPurchased = isPurchased;
-             
-             // UI 강제 업데이트
-             this.$nextTick(() => {
-               this.$forceUpdate();
-             });
-           }
-         }
-       } catch (error) {
-         console.error('구매 상태 확인 실패:', error);
-         this.isPurchased = false;
-         this.$nextTick(() => {
-           this.$forceUpdate();
-         });
-       }
-     },
+
 
          // 강의 데이터를 받아오는 메서드 (백엔드 API 호출)
      async fetchLectureData(lectureId) {
@@ -1164,10 +1169,11 @@ export default {
         this.videoThumb = null;
        
        try {
-        const response = await lectureService.getLectureDetail(lectureId);
+        const response = await this.lectureStore.fetchLectureDetail(lectureId);
         
         if (response.success) {
           const lectureData = response.data;
+          console.log('🔍 강의 데이터 로드:', lectureData);
 
 
           
@@ -1185,6 +1191,7 @@ export default {
               totalDuration: this.calculateTotalDuration(lectureData.lectureVideoResDtoList),
               instructor: {
                 name: lectureData.name,
+                nickname: lectureData.nickname, // 백엔드 DTO의 nickname 필드 추가
                 title: '요리 전문가',
                 id: lectureData.submittedById
               },
@@ -1205,12 +1212,19 @@ export default {
               submittedJoinedAt: lectureData.submittedJoinedAt,
               // 강사 이메일 추가
               submittedByEmail: lectureData.submittedByEmail,
+              // 강사 닉네임 추가
+              nickname: lectureData.nickname,
               // 강의 수강률 추가
               progressPercent: lectureData.progressPercent,
               // 백엔드에서 제공하는 좋아요 정보 추가
               likeCount: lectureData.likeCount || 0,
-              isLiked: lectureData.isLiked || false
+              isLiked: lectureData.isLiked || false,
+              // 백엔드에서 제공하는 구매 여부 정보 추가
+              isPurchased: lectureData.isPurchased || false
             };
+            
+            // 구매 상태를 백엔드에서 받은 데이터로 설정
+            this.isPurchased = lectureData.isPurchased || false;
             
 
           } catch (error) {
@@ -1223,12 +1237,9 @@ export default {
           this.showError('강의 정보를 불러오는데 실패했습니다.');
         }
         
-                                              // 사용자 역할 및 장바구니 상태 확인
+                                              // 사용자 역할 먼저 확인 후 장바구니 상태 확인
            await this.checkUserRole(lectureId);
            await this.checkCartStatus(lectureId);
-           
-           // 구매 상태 확인
-           await this.checkPurchaseStatus(lectureId);
            
            // 좋아요 상태 확인
            await this.checkLikeStatus(lectureId);
@@ -1351,16 +1362,19 @@ export default {
       
       const self = this; // this 컨텍스트를 명시적으로 저장
       
-      return reviews.map((review, index) => {
+      const convertedReviews = reviews.map((review, index) => {
         try {
           const convertedReview = {
             id: Math.random().toString(36).substr(2, 9),
-            writer: review.writer || '익명',
-            rating: review.rating || 0,
-            content: review.content || '',
+            writer: review.writerName || review.writerNickname,
+            rating: review.rating,
+            content: review.content,
             date: self.formatReviewDate(review.updateAt, review.createAt),
-            reviewerId: review.reviewerId || null,
-            profileUrl: review.profileUrl || null
+            // 백엔드 DTO 필드명에 맞게 수정
+            reviewerId: review.writerId,
+            profileUrl: review.profileImageUrl,
+            reviewerEmail: review.writerEmail,
+            reviewerJoinDate: review.userCreatedAt
           };
           
           return convertedReview;
@@ -1369,49 +1383,61 @@ export default {
           // 오류가 발생해도 기본값으로 반환
           return {
             id: Math.random().toString(36).substr(2, 9),
-            writer: '익명',
+            writer: review.writerNickname || '사용자',
             rating: 0,
             content: '리뷰를 불러오는 중 오류가 발생했습니다.',
             date: '',
             reviewerId: null,
-            profileUrl: null
+            profileUrl: null,
+            reviewerEmail: null,
+            reviewerJoinDate: null
           };
         }
       });
+      
+      return convertedReviews;
     },
     
          // Q&A 데이터 변환 (질문-답글 구조)
      convertQA(qaList) {
-
-       
+       console.log('🔍 convertQA 시작 - 입력 데이터:', qaList);
        if (!qaList || qaList.length === 0) {
-
          return [];
        }
        
-       const convertedQA = qaList.map(qa => ({
-         id: qa.qnaId || qa.parentId, // Use qnaId if available, fallback to parentId
-         qnaId: qa.qnaId, // Store the actual qnaId for API calls
-         questionerId: qa.parentName || '익명',
-         questionerUUID: qa.parentId, // Add UUID for comparison
-         question: qa.parentContent,
-         questionDate: this.formatQADate(qa.parentCreatedAt),
-         questionUpdatedAt: qa.questionUpdatedAt ? this.formatQADate(qa.questionUpdatedAt) : null,
-         // 답글이 있는 경우에만 답글 정보 포함
-         hasAnswer: !!(qa.answerContent && qa.answerName),
-         answer: qa.answerContent || null,
-         answererId: qa.answerName || null,
-         answererUUID: qa.answerId || null, // Add UUID for comparison
-         answerDate: qa.answerCreatedAt ? this.formatQADate(qa.answerCreatedAt) : null,
-         answerUpdatedAt: qa.answerUpdatedAt ? this.formatQADate(qa.answerUpdatedAt) : null,
-         // 상태 정보
-         parentStatus: qa.parentStatus,
-         answerStatus: qa.answerStatus,
-         // 프로필 이미지 URL 추가
-         parentProfileUrl: qa.parentProfileUrl || null,
-         answerProfileUrl: qa.answerProfileUrl || null
-       }));
-       
+       const convertedQA = qaList.map((qa, index) => {
+         // 디버깅 로그 제거
+         
+         const converted = {
+           id: qa.qnaId || qa.id,
+           qnaId: qa.qnaId || qa.id,
+           // 질문자 정보
+           questionerId: qa.parentName || qa.userNickname,
+           questionerUUID: qa.userId,
+           questionerEmail: qa.email,
+           questionerJoinDate: qa.userCreatedAt,
+           questionerProfileUrl: qa.profileImageUrl, // 질문자 프로필 이미지
+           question: qa.parentContent || qa.content,
+           questionDate: this.formatQADate(qa.parentCreatedAt || qa.createdAt),
+           questionUpdatedAt: qa.questionUpdatedAt ? this.formatQADate(qa.questionUpdatedAt) : null,
+           // 답글 정보 (백엔드에서 직접 답변 필드 제공)
+           hasAnswer: !!(qa.answerContent && qa.answerContent.trim()),
+           answer: qa.answerContent,
+           answererId: qa.answerName,
+           answererUUID: qa.answerId,
+           answererEmail: qa.answerEmail,
+           answererJoinDate: qa.answerJoinedAt,
+           answererProfileUrl: qa.answerProfileUrl, // 답변자 프로필 이미지
+           answerDate: qa.answerCreatedAt ? this.formatQADate(qa.answerCreatedAt) : null,
+           answerUpdatedAt: qa.answerUpdatedAt ? this.formatQADate(qa.answerUpdatedAt) : null,
+           // 상태 정보
+           status: qa.parentStatus || qa.status,
+           // 답글 목록 전체
+           answers: qa.answers || []
+         };
+         
+         return converted;
+       });
        
        return convertedQA;
      },
@@ -1608,7 +1634,7 @@ export default {
        if (currentTime >= currentLesson.durationSeconds) {
          try {
            // API 호출
-           await lectureProgressService.saveVideoProgress(currentLesson.videoId, currentLesson.durationSeconds);
+           await this.lectureStore.saveVideoProgress(currentLesson.videoId, currentLesson.durationSeconds);
            
            // 진행도 저장 후 강의 정보 새로고침
            await this.refreshLectureProgress();
@@ -1623,7 +1649,7 @@ export default {
      // 강의 진행도 새로고침
      async refreshLectureProgress() {
        try {
-         const response = await lectureService.getLectureDetail(this.lecture.id);
+         const response = await this.lectureStore.fetchLectureDetail(this.lecture.id);
          if (response.success) {
            this.lecture.progressPercent = response.data.progressPercent;
          }
@@ -1811,12 +1837,12 @@ export default {
         if (this.isEditingReview) {
           // 리뷰 수정 API 호출
           
-          response = await lectureService.modifyReview(reviewData);
+          response = await this.lectureStore.updateReview(reviewData);
           
         } else {
           // 리뷰 등록 API 호출
           
-          response = await lectureService.createReview(reviewData);
+          response = await this.lectureStore.createReview(reviewData);
           
         }
 
@@ -1941,8 +1967,9 @@ export default {
           this.isPurchased = true;
           this.userRole = 'PURCHASER';
           
-          // 구매 상태를 백엔드에서 다시 확인하여 동기화
-          await this.checkPurchaseStatus(this.lecture.id);
+          // 강의 데이터 새로고침으로 백엔드와 동기화
+          await this.fetchLectureData(lectureId);
+
           
           this.showNotification({
             title: '구매 완료',
@@ -1964,6 +1991,11 @@ export default {
       
                    // 강의 수정
       editLecture() {
+        // 관리자 또는 작성자만 수정 가능
+        if (!this.isAuthor && !this.isAdmin) {
+          this.showError('수정 권한이 없습니다.');
+          return;
+        }
         // 강의 수정 페이지로 라우팅
         this.$router.push(`/lectures/edit/${this.lecture.id}`);
       },
@@ -1975,6 +2007,13 @@ export default {
 
        // 강의 삭제 실행
        async deleteLecture() {
+         // 관리자 또는 작성자만 삭제 가능
+         if (!this.isAuthor && !this.isAdmin) {
+           this.showError('삭제 권한이 없습니다.');
+           this.showLectureDeleteModal = false;
+           return;
+         }
+         
          try {
            await this.deleteLectureFromServer();
            this.showSuccess('강의가 삭제되었습니다.');
@@ -2041,46 +2080,62 @@ export default {
 
         // API 응답에서 해당 사용자 정보 찾기
         let userInfo = null;
-        let profileImageUrl = '';
-        let joinDate = '';
 
         // 강사 정보인 경우
         if (userId === this.lecture.instructor.id) {
-          // API 응답에서 강사 정보를 직접 가져옴
+          // 강사 정보를 백엔드 데이터에서 가져옴
           const lectureData = this.lecture;
           userInfo = {
             id: userId,
-            nickname: userName,
-            email: lectureData.submittedByEmail || `${userName}@example.com`,
+            nickname: lectureData.nickname || userName, // 백엔드 DTO의 nickname 필드 사용
+            email: lectureData.submittedByEmail || '정보 없음',
             profileImage: lectureData.submittedByProfile || '',
-            joinDate: this.formatDate(lectureData.submittedJoinedAt) || '정보 없음'
+            joinDate: lectureData.submittedJoinedAt || '정보 없음'
           };
         }
         // 리뷰 작성자인 경우
         else {
-          const reviewer = this.lecture.reviews.find(review => review.reviewerId === userId);
+          // userId가 undefined인 경우 userName으로 찾기
+          let reviewer = null;
+          if (userId) {
+            reviewer = this.lecture.reviews.find(review => review.reviewerId === userId);
+          } else {
+            // userId가 undefined인 경우 userName으로 찾기
+            reviewer = this.lecture.reviews.find(review => review.writer === userName);
+          }
+          
           if (reviewer) {
             userInfo = {
-              id: userId,
-              nickname: userName,
-              email: reviewer.reviewerEmail || `${userName}@example.com`,
-              profileImage: reviewer.profileUrl || '',
-              joinDate: this.formatDate(reviewer.reviewerJoinedAt) || '정보 없음'
+              id: reviewer.reviewerId || userId,
+              nickname: reviewer.writer || userName,
+              email: reviewer.reviewerEmail,
+              profileImage: reviewer.profileUrl,
+              joinDate: reviewer.reviewerJoinDate
             };
           }
           // Q&A 작성자인 경우
           else {
-            const qaAuthor = this.lecture.qa.find(qa => 
-              qa.questionerUUID === userId || qa.answererUUID === userId
-            );
+            // userId가 undefined인 경우 userName으로 찾기
+            let qaAuthor = null;
+            if (userId) {
+              qaAuthor = this.lecture.qa.find(qa => 
+                qa.questionerUUID === userId || qa.answererUUID === userId
+              );
+            } else {
+              // userId가 undefined인 경우 userName으로 찾기
+              qaAuthor = this.lecture.qa.find(qa => 
+                qa.questionerId === userName || qa.answererId === userName
+              );
+            }
+            
             if (qaAuthor) {
-              const isQuestioner = qaAuthor.questionerUUID === userId;
+              const isQuestioner = userId ? (qaAuthor.questionerUUID === userId) : (qaAuthor.questionerId === userName);
               userInfo = {
-                id: userId,
-                nickname: userName,
-                email: isQuestioner ? qaAuthor.parentEmail || `${userName}@example.com` : qaAuthor.answerEmail || `${userName}@example.com`,
-                profileImage: isQuestioner ? qaAuthor.parentProfileUrl || '' : qaAuthor.answerProfileUrl || '',
-                joinDate: this.formatDate(isQuestioner ? qaAuthor.parentJoinedAt : qaAuthor.answerJoinedAt) || '정보 없음'
+                id: userId || (isQuestioner ? qaAuthor.questionerUUID : qaAuthor.answererUUID),
+                nickname: isQuestioner ? qaAuthor.questionerId : qaAuthor.answererId,
+                email: isQuestioner ? qaAuthor.questionerEmail : qaAuthor.answererEmail,
+                profileImage: isQuestioner ? qaAuthor.questionerProfileUrl : qaAuthor.answererProfileUrl,
+                joinDate: isQuestioner ? qaAuthor.questionerJoinDate : qaAuthor.answererJoinDate
               };
             }
           }
@@ -2091,9 +2146,9 @@ export default {
           userInfo = {
             id: userId,
             nickname: userName,
-            email: `${userName}@example.com`,
-            profileImage: '',
-            joinDate: '정보 없음'
+            email: null,
+            profileImage: null,
+            joinDate: null
           };
         }
 
@@ -2199,7 +2254,7 @@ export default {
       // 서버에서 강의 삭제
       async deleteLectureFromServer() {
         try {
-          const result = await lectureService.deleteLecture(this.lecture.id);
+          const result = await this.lectureStore.deleteLecture(this.lecture.id);
    
           return result;
         } catch (error) {
@@ -2210,7 +2265,11 @@ export default {
       
       // 리뷰 수정 가능 여부 확인
       canEditReview(review) {
-        return this.currentUserId && review.reviewerId && this.currentUserId === review.reviewerId;
+        if (!this.currentUserId) { return false; }
+        // 관리자는 모든 리뷰 수정/삭제 가능
+        if (this.isAdmin) { return true; }
+        // 리뷰 작성자만 수정/삭제 가능
+        return review.reviewerId && this.currentUserId === review.reviewerId;
       },
       
       // Q&A 수정 가능 여부 확인
@@ -2258,7 +2317,7 @@ export default {
             const lectureId = this.lecture.lectureId || this.lecture.id;
      
             
-            const response = await lectureService.deleteReview(lectureId);
+            const response = await this.lectureStore.deleteReview(lectureId);
      
             
             if (response && (response.success === true || response.code === 200)) {
@@ -2442,8 +2501,6 @@ export default {
 
       // Q&A 답변 작성 처리
       handleAnswerQA(qa) {
- 
-        
         // 답변 작성 모드로 설정
         this.isEditingQA = false;
         this.editingQAId = null;
@@ -2471,9 +2528,19 @@ export default {
       async purchaseLecture() {
         try {
           // 장바구니에 추가
-          await lectureService.addToCart([this.lecture.id]);
+          await this.lectureStore.addToCart([this.lecture.id]);
           
           this.isInCart = true;
+          
+          // 장바구니 스토어 업데이트
+          if (this.cartStore) {
+            console.log('🛒 강의 구매: 장바구니 스토어 업데이트 시작');
+            this.cartStore.updateCartItem(this.lecture.id, false); // 장바구니에 추가
+            console.log('🛒 강의 구매: updateCartItem 완료, fetchServerCartList 시작');
+            await this.cartStore.fetchServerCartList(true); // 강제 새로고침
+            console.log('🛒 강의 구매: fetchServerCartList 완료, 현재 장바구니 개수:', this.cartStore.serverCartCount);
+          }
+          
           // 장바구니 페이지로 이동
           this.$router.push('/cart');
         } catch (error) {
@@ -2484,10 +2551,14 @@ export default {
 
     // 장바구니에 강의 추가/제거 (토글 기능)
     async enrollLecture() {
-      
-      
       if (!this.lecture) {
         this.showError('강의 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+        return;
+      }
+
+      // 로그인 확인
+      if (!this.currentUserId) {
+        this.showLoginRequiredModal = true;
         return;
       }
 
@@ -2501,14 +2572,15 @@ export default {
           callback: async () => {
             try {
               // 백엔드 API를 통해 장바구니에서 제거
-              await lectureService.removeFromCart(this.lecture.id);
+              await this.lectureStore.removeFromCart(this.lecture.id);
               
               // 성공 시 상태 업데이트
               this.isInCart = false;
               
               // 장바구니 스토어 업데이트
               if (this.cartStore) {
-                await this.cartStore.fetchServerCartList();
+                this.cartStore.updateCartItem(this.lecture.id, true); // 장바구니에서 제거
+                await this.cartStore.fetchServerCartList(true); // 강제 새로고침
               }
               
               this.showSuccess('장바구니에서 강의가 제거되었습니다.');
@@ -2523,14 +2595,15 @@ export default {
 
       try {
         // 백엔드 API를 통해 장바구니에 추가
-        await lectureService.addToCart([this.lecture.id]);
+        await this.lectureStore.addToCart([this.lecture.id]);
         
         // 성공 시 상태 업데이트
         this.isInCart = true;
         
         // 장바구니 스토어 업데이트
         if (this.cartStore) {
-          await this.cartStore.fetchServerCartList();
+          this.cartStore.updateCartItem(this.lecture.id, false); // 장바구니에 추가
+          await this.cartStore.fetchServerCartList(true); // 강제 새로고침
         }
         
         this.showCartModal = true;
@@ -2542,8 +2615,6 @@ export default {
 
     // 강의 구매하기
     purchaseLecture() {
-      
-      
       if (!this.lecture) {
         this.showError('강의 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
         return;
@@ -2573,7 +2644,7 @@ export default {
        }
 
        try {
-         const response = await lectureService.toggleLectureLike(this.lecture.id);
+         const response = await this.lectureStore.toggleLectureLike(this.lecture.id);
          
          if (response.success) {
            // 좋아요 상태 토글
@@ -2589,9 +2660,7 @@ export default {
              this.lecture.likeCount = Math.max(0, (this.lecture.likeCount || 0) - 1);
            }
            
-           // 성공 메시지 표시
-           const message = this.isLiked ? '좋아요를 눌렀습니다!' : '좋아요를 취소했습니다.';
-           this.showSuccess(message);
+           // 팝업 없이 바로 토글 (게시글 좋아요와 동일한 UX)
          } else {
            this.showError(response.message || '좋아요 처리에 실패했습니다.');
          }
@@ -2815,10 +2884,11 @@ export default {
         
         // 결제 완료 후 돌아온 경우 구매 상태를 다시 확인
         if (paymentCompleted === 'true') {
-   
           setTimeout(async () => {
-            await this.checkPurchaseStatus(lectureId);
+            // 강의 데이터 새로고침으로 구매 상태 동기화
+            await this.fetchLectureData(lectureId);
             await this.checkCartStatus(lectureId);
+            
             // URL에서 paymentCompleted 파라미터 제거
             const newUrl = new URL(window.location);
             newUrl.searchParams.delete('paymentCompleted');
@@ -4742,4 +4812,28 @@ export default {
       max-height: 60vh;
     }
   }
-</style> 
+  
+  .video-error p {
+    margin: 0;
+    font-size: 16px;
+  }
+
+  @media (max-width: 768px) {
+    .video-modal {
+      max-width: 95vw;
+      max-height: 95vh;
+    }
+    
+    .video-modal-header {
+      padding: 15px;
+    }
+    
+    .video-modal-header h3 {
+      font-size: 16px;
+    }
+    
+    .video-player {
+      max-height: 60vh;
+    }
+  }
+</style>

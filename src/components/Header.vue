@@ -18,7 +18,7 @@
       <div class="nav-menu">
         <router-link to="/notice" class="nav-link">공지사항</router-link>
         <router-link to="/recipes" class="nav-link">레시피 공유 게시글</router-link>
-        <router-link to="/lectures" class="nav-link">판매중인 강의</router-link>
+        <router-link to="/lectures" class="nav-link">강의</router-link>
         <!-- 관리자가 아닐 때만 표시할 메뉴 -->
         <a v-if="!isAdmin" @click="handleChatClick" class="nav-link" style="cursor: pointer;">1:1채팅</a>
         <!-- 관리자일 때는 관리자페이지, 일반 사용자일 때는 마이페이지 -->
@@ -56,15 +56,6 @@
 
         <!-- Logged In State -->
         <div v-else class="user-section">
-          <v-avatar size="32" class="profile-avatar">
-            <v-img 
-              v-if="profileInfo.profileImageUrl" 
-              :src="profileInfo.profileImageUrl" 
-              alt="프로필 이미지"
-            ></v-img>
-            <v-icon v-else size="20" color="grey">mdi-account</v-icon>
-          </v-avatar>
-          
           <!-- 알림 버튼 (관리자가 아닐 때만 표시) -->
           <v-btn
             v-if="!isAdmin"
@@ -83,9 +74,9 @@
             </v-badge>
           </v-btn>
 
-          <!-- 장바구니 버튼 (관리자가 아닐 때만 표시) -->
+          <!-- 장바구니 버튼 (로그인한 일반 사용자만 표시) -->
           <v-btn
-            v-if="!isAdmin"
+            v-if="isLoggedIn && !isAdmin"
             icon
             variant="text"
             class="cart-btn"
@@ -100,6 +91,15 @@
               <v-icon>mdi-cart</v-icon>
             </v-badge>
           </v-btn>
+          
+          <v-avatar size="32" class="profile-avatar">
+            <v-img 
+              v-if="profileInfo.profileImageUrl" 
+              :src="profileInfo.profileImageUrl" 
+              alt="프로필 이미지"
+            ></v-img>
+            <v-icon v-else size="20" color="grey">mdi-account</v-icon>
+          </v-avatar>
           
           <span class="welcome-text">{{ userNickname }}님 환영합니다!</span>
 
@@ -183,9 +183,9 @@
             </v-badge>
           </v-btn>
 
-          <!-- 모바일 장바구니 버튼 (관리자가 아닐 때만 표시) -->
+          <!-- 모바일 장바구니 버튼 (로그인한 일반 사용자만 표시) -->
           <v-btn
-            v-if="!isAdmin"
+            v-if="isLoggedIn && !isAdmin"
             icon
             variant="text"
             size="small"
@@ -244,9 +244,9 @@
       >
         <v-list-item-title>{{ item.title }}</v-list-item-title>
       </v-list-item>
-      <!-- 모바일 메뉴에 장바구니 추가 (관리자가 아닐 때만 표시) -->
+      <!-- 모바일 메뉴에 장바구니 추가 (로그인한 일반 사용자만 표시) -->
       <v-list-item
-        v-if="!isAdmin"
+        v-if="isLoggedIn && !isAdmin"
         to="/cart"
         @click="mobileMenuOpen = false"
         class="cart-menu-item"
@@ -304,7 +304,7 @@ const mobileMenuItems = computed(() => {
   const baseItems = [
     { title: '공지사항', path: '/notice' },
     { title: '레시피 공유 게시글', path: '/recipes' },
-    { title: '판매중인 강의', path: '/lectures' }
+    { title: '강의', path: '/lectures' }
   ];
   
   // 관리자가 아닐 때만 표시할 메뉴
@@ -366,45 +366,47 @@ const isAdmin = computed(() => {
   return userRoleValue === 'ADMIN';
 })
 
-// 프로필 정보 가져오기
-const fetchProfileInfo = async () => {
+// 프로필 정보 가져오기 (authStore 데이터만 사용)
+const fetchProfileInfo = () => {
   if (isLoggedIn.value) {
-    try {
-      // 관리자인 경우 adminLoginStore의 정보 사용
-      if (isAdmin.value) {
-        const adminUser = adminLoginStore.admin;
+    // 관리자인 경우 adminLoginStore의 정보 사용
+    if (isAdmin.value) {
+      const adminUser = adminLoginStore.admin;
+      profileData.value = {
+        nickname: adminUser?.adminName || '관리자',
+        profileImageUrl: '' // 관리자는 기본적으로 프로필 이미지 없음
+      };
+    } else {
+      // 일반 사용자인 경우 authStore의 user 데이터 사용
+      if (authStore.user) {
         profileData.value = {
-          nickname: adminUser?.adminName || '관리자',
-          profileImageUrl: '' // 관리자는 기본적으로 프로필 이미지 없음
+          nickname: authStore.user.nickname || '사용자',
+          profileImageUrl: authStore.user.picture || '' // 백엔드 DTO의 picture 필드 사용
         };
       } else {
-        // 일반 사용자인 경우 기존 로직 사용
-        if (authStore.accessToken) {
-          const profileInfo = await authStore.fetchProfileInfo();
-          if (profileInfo) {
-            profileData.value = {
-              nickname: profileInfo.nickname || '사용자',
-              profileImageUrl: profileInfo.profileImageUrl || ''
-            };
-          } else {
-            // 프로필 정보가 없는 경우 기본값 설정
-            profileData.value = {
-              nickname: '사용자',
-              profileImageUrl: ''
-            };
-          }
-        }
+        // authStore에 사용자 정보가 없는 경우 기본값 설정
+        profileData.value = {
+          nickname: '사용자',
+          profileImageUrl: ''
+        };
       }
-    } catch (error) {
-      console.error('프로필 정보 가져오기 실패:', error);
-      // 에러 발생 시 기본값 설정
-      profileData.value = {
-        nickname: isAdmin.value ? '관리자' : '사용자',
-        profileImageUrl: ''
-      };
     }
   }
 }
+
+// authStore.user 변경 감시하여 프로필 정보 업데이트
+watch(() => authStore.user, (newUser) => {
+  if (newUser && isLoggedIn.value && !isAdmin.value) {
+    fetchProfileInfo();
+  }
+}, { immediate: true });
+
+// 로그인 상태 변경 감시
+watch(isLoggedIn, (newValue) => {
+  if (newValue) {
+    fetchProfileInfo();
+  }
+}, { immediate: true });
 
 // 모바일 메뉴 상태 감시하여 스크롤 제어
 watch(mobileMenuOpen, (isOpen) => {
@@ -426,23 +428,17 @@ watch(isLoggedIn, async (newValue) => {
   if (newValue) {
     await fetchProfileInfo();
     
-    // 일반 사용자인 경우 읽지 않은 알림 개수만 가져오기 (가벼운 API)
+    // 일반 사용자인 경우 병렬로 API 호출하여 성능 향상
     if (!isAdmin.value) {
       try {
-        await notificationStore.fetchUnreadCount();
+        await Promise.all([
+          notificationStore.fetchUnreadCount(),
+          cartStore.fetchServerCartList()
+        ]);
         // SSE 연결 시작 (실시간 알림 수신용)
         notificationStore.startNotificationSubscription();
-        await cartStore.fetchServerCartList();
       } catch (error) {
         console.error('🔍 Header: 로그인 후 읽지 않은 알림 개수, 장바구니 정보 조회 실패:', error);
-      }
-    }
-    // 일반 사용자인 경우 알림 목록 가져오고 SSE 연결 시작
-    if (!isAdmin.value) {
-      try {
-        await notificationStore.fetchNotifications();
-      } catch (error) {
-        console.error('🔍 Header: 로그인 후 알림 목록 조회 실패:', error);
       }
     }
   } else {
@@ -524,15 +520,17 @@ onMounted(async () => {
   
   // 로그인된 상태라면 프로필 정보 가져오기
   if (isLoggedIn.value || adminLoginStore.isLoggedIn) {
-    await fetchProfileInfo();
-    await fetchProfileInfo();
-    // 일반 사용자인 경우 읽지 않은 알림 개수만 가져오기 (가벼운 API)
+    fetchProfileInfo();
+    
+    // 일반 사용자인 경우 병렬로 API 호출하여 성능 향상
     if (!isAdmin.value) {
       try {
-        await notificationStore.fetchUnreadCount();
+        await Promise.all([
+          notificationStore.fetchUnreadCount(false),
+          cartStore.fetchServerCartList(false)
+        ]);
         // SSE 연결 시작 (실시간 알림 수신용)
         notificationStore.startNotificationSubscription();
-        await cartStore.fetchServerCartList();
       } catch (error) {
         console.error('🔍 Header: 읽지 않은 알림 개수, 장바구니 정보 조회 실패:', error);
       }
@@ -566,9 +564,7 @@ const cartCount = computed(() => {
 })
 
 // 장바구니 개수 변경 감시 (디버깅용)
-watch(() => cartStore.serverCartCount, (newCount) => {
-  console.log('장바구니 개수 변경:', newCount)
-})
+watch(() => cartStore.serverCartCount, (newCount, oldCount) => {})
 
 // 읽지 않은 알림 개수
 const unreadCount = computed(() => {
@@ -761,6 +757,7 @@ const closeLoginModal = () => {
   align-items: center;
   width: 100%;
   justify-content: flex-end;
+  gap: 12px;
 }
 
 .profile-avatar {

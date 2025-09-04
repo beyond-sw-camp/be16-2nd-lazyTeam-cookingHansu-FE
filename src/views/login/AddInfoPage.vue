@@ -10,22 +10,22 @@
       <FormInput
         v-model="form.nickname"
         label="닉네임"
-        placeholder="닉네임을 입력하세요"
+        placeholder="닉네임을 입력하세요 (2-20자)"
         :required="true"
         :has-error="errors.nickname"
         :error-message="getNicknameErrorMessage()"
-        :maxlength="50"
+        :maxlength="20"
         @input="onNicknameInput"
       />
 
       <FormInput
         v-model="form.info"
         label="간단 소개"
-        placeholder="자신을 간단히 소개해주세요 (200자 이하)"
+        placeholder="자신을 간단히 소개해주세요 (20자 이하)"
         :required="false"
         :has-error="errors.info"
         :error-message="getInfoErrorMessage()"
-        :maxlength="200"
+        :maxlength="20"
         @input="onInfoInput"
       />
 
@@ -176,13 +176,13 @@ function validate() {
     return false;
   }
   
-  if (nickname.length > 50) {
+  if (nickname.length > 20) {
     errors.value.nickname = true;
     return false;
   }
 
   const info = form.value.info.trim();
-  if (info.length > 200) {
+  if (info.length > 20) {
     errors.value.info = true;
     return false;
   }
@@ -218,8 +218,8 @@ function getNicknameErrorMessage() {
     return "닉네임은 2자 이상이어야 합니다!";
   }
   
-  if (nickname.length > 50) {
-    return "닉네임은 50자 이하여야 합니다!";
+  if (nickname.length > 20) {
+    return "닉네임은 20자 이하여야 합니다!";
   }
   
   return "닉네임을 입력해 주세요!";
@@ -228,8 +228,8 @@ function getNicknameErrorMessage() {
 // 간단 소개 에러 메시지 생성
 function getInfoErrorMessage() {
   const info = form.value.info.trim();
-  if (info.length > 200) {
-    return "간단 소개는 200자 이하여야 합니다!";
+  if (info.length > 20) {
+    return "간단 소개는 20자 이하여야 합니다!";
   }
   return "";
 }

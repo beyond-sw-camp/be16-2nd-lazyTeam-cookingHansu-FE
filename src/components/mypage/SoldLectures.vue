@@ -14,13 +14,6 @@
             <span class="category-badge" :class="categoryClass(lecture.category)">{{ getCategoryName(lecture.category) }}</span>
             <div class="header-right">
               <span class="status-badge" :class="statusClass(lecture.status)">{{ getStatusName(lecture.status) }}</span>
-              <button 
-                v-if="lecture.status === 'REJECTED'"
-                class="delete-lecture-btn"
-                @click.stop="showDeleteConfirm(lecture)"
-              >
-                삭제
-              </button>
             </div>
           </div>
           <h3 class="lecture-title" @click="goToLectureDetail(lecture)">{{ lecture.title }}</h3>
@@ -80,36 +73,14 @@
       @confirm="closeUnapprovedModal"
     />
 
-    <!-- 강의 삭제 확인 모달 -->
-    <CommonModal
-      v-model="showDeleteModal"
-      type="warning"
-      title="강의 삭제"
-      message="정말로 이 강의를 삭제하시겠습니까? 삭제된 강의는 복구할 수 없습니다."
-      confirm-text="삭제"
-      cancel-text="취소"
-      :show-cancel-button="true"
-      @confirm="deleteLecture"
-      @cancel="closeDeleteModal"
-    />
 
-    <!-- 삭제 완료 모달 -->
-    <CommonModal
-      v-model="showDeleteSuccessModal"
-      type="success"
-      title="삭제 완료"
-      message="강의가 성공적으로 삭제되었습니다."
-      confirm-text="확인"
-      :show-cancel-button="false"
-      @confirm="closeDeleteSuccessModal"
-    />
   </div>
 </template>
 
 <script>
 import Pagination from '../common/Pagination.vue';
 import CommonModal from '../common/CommonModal.vue';
-import { apiGet } from '../../utils/api.js';
+import { mypageService } from '../../services/mypage/mypageService.js';
 
 export default {
   name: 'SoldLectures',
@@ -128,10 +99,7 @@ export default {
       showUnapprovedModal: false,
       modalType: 'warning',
       modalTitle: '',
-      modalMessage: '',
-      showDeleteModal: false,
-      lectureToDelete: null,
-      showDeleteSuccessModal: false
+      modalMessage: ''
     };
   },
   computed: {
@@ -146,18 +114,12 @@ export default {
     async fetchSoldLectures() {
       try {
         this.loading = true;
-        const params = new URLSearchParams({
-          page: this.currentPage - 1,
-          size: this.lecturesPerPage
-        });
-        
-        const response = await apiGet(`/lecture/mylist?${params.toString()}`);
-        const data = await response.json();
+        const response = await mypageService.getSoldLectures(this.currentPage - 1, this.lecturesPerPage);
 
-        if (data.success) {
-          this.lectures = data.data.content;
-          this.totalPages = data.data.totalPages;
-          this.totalElements = data.data.totalElements;
+        if (response && response.success) {
+          this.lectures = response.data.content;
+          this.totalPages = response.data.totalPages;
+          this.totalElements = response.data.totalElements;
         }
       } catch (error) {
         console.error('판매한 강의 조회 실패:', error);
@@ -172,14 +134,7 @@ export default {
       }
     },
     categoryClass(category) {
-      switch (category) {
-        case 'KOREAN': return 'cat-korean';
-        case 'WESTERN': return 'cat-western';
-        case 'JAPANESE': return 'cat-japanese';
-        case 'CHINESE': return 'cat-chinese';
-        case 'DESSERT': return 'cat-dessert';
-        default: return '';
-      }
+      return category ? `cat-${category.toLowerCase()}` : '';
     },
     getCategoryName(category) {
       switch (category) {
@@ -187,7 +142,6 @@ export default {
         case 'WESTERN': return '양식';
         case 'JAPANESE': return '일식';
         case 'CHINESE': return '중식';
-        case 'DESSERT': return '디저트';
         default: return category;
       }
     },
@@ -251,41 +205,6 @@ export default {
     },
     closeUnapprovedModal() {
       this.showUnapprovedModal = false;
-    },
-    showDeleteConfirm(lecture) {
-      this.lectureToDelete = lecture;
-      this.showDeleteModal = true;
-    },
-    closeDeleteModal() {
-      this.showDeleteModal = false;
-      this.lectureToDelete = null;
-    },
-    async deleteLecture() {
-      if (!this.lectureToDelete) return;
-      
-      try {
-        const response = await fetch(`http://localhost:8080/lecture/delete/${this.lectureToDelete.id}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (response.ok) {
-          this.lectures = this.lectures.filter(lecture => lecture.id !== this.lectureToDelete.id);
-          this.closeDeleteModal();
-          this.showDeleteSuccessModal = true;
-        } else {
-          throw new Error('강의 삭제에 실패했습니다.');
-        }
-      } catch (error) {
-        console.error('강의 삭제 실패:', error);
-        alert('강의 삭제에 실패했습니다. 다시 시도해주세요.');
-      }
-    },
-    closeDeleteSuccessModal() {
-      this.showDeleteSuccessModal = false;
     }
   }
 };
@@ -363,21 +282,7 @@ export default {
   gap: 8px;
 }
 
-.delete-lecture-btn {
-  background: #dc3545;
-  color: white;
-  border: none;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s;
-}
 
-.delete-lecture-btn:hover {
-  background: #c82333;
-}
 
 .category-badge {
   font-size: 12px;
@@ -406,10 +311,7 @@ export default {
   color: #ff3b3b;
 }
 
-.cat-dessert {
-  background: #fff3e2;
-  color: #ff7a00;
-}
+
 
 .status-badge {
   font-size: 12px;

@@ -9,9 +9,8 @@ export const useUserApprovalStore = defineStore('userApproval', {
     
     // UI 상태
     loading: false,
-    error: null, // 네트워크 연결 오류
+    error: null,
     successMessage: null,
-    loadError: null, // 데이터 로딩 API 오류
     
     // 개별 사용자 로딩 상태
     processingUsers: new Set(),
@@ -40,7 +39,6 @@ export const useUserApprovalStore = defineStore('userApproval', {
     isLoading: (state) => state.loading,
     getError: (state) => state.error,
     getSuccessMessage: (state) => state.successMessage,
-    getLoadError: (state) => state.loadError,
     
     // 개별 사용자 로딩 상태
     isUserProcessing: (state) => (userId) => state.processingUsers.has(userId),
@@ -56,160 +54,136 @@ export const useUserApprovalStore = defineStore('userApproval', {
   },
 
   actions: {
-    // 에러 처리 헬퍼 - 네트워크 에러는 전체 UI 에러로, API 에러는 throw만
-    _handleError(error, defaultMessage) {
-      console.error(defaultMessage, error);
-      
-      // 네트워크 연결 오류인지 확인 (api.js에서 처리된 메시지)
-      if (error.message && (error.message.includes('서버와의 연결') || error.message.includes('네트워크 연결'))) {
-        this.error = error.message || defaultMessage;
-      }
-      
-      throw error;
-    },
-
-    // 로딩 상태 관리
-    _setLoading(loading) {
-      this.loading = loading;
-    },
-
     // 성공 메시지 설정
     setSuccessMessage(message) {
       this.successMessage = message;
-      // 1초 후 자동으로 메시지 제거
+      // 3초 후 자동으로 메시지 제거
       setTimeout(() => {
         this.successMessage = null;
-      }, 1000);
+      }, 3000);
     },
 
     // 메시지 초기화
     clearMessages() {
       this.successMessage = null;
       this.error = null;
-      this.loadError = null;
     },
 
     // 요리사 승인 대기 목록 조회
     async fetchWaitingChefs(page = 0, size = 10) {
-      this._setLoading(true);
+      this.loading = true;
       this.error = null;
-      this.loadError = null;
       
       try {
-        const apiResponse = await userApprovalService.getWaitingChefs(page, size);
-        const responseData = apiResponse.getData();
+        const response = await userApprovalService.getWaitingChefs(page, size);
         
-        this.waitingChefs = responseData.content;
-        this.chefPagination = {
-          totalPages: responseData.totalPages,
-          currentPage: responseData.number,
-          totalElements: responseData.totalElements,
-          pageSize: size,
-        };
-      } catch (error) {
-        console.error('요리사 승인 대기 목록을 불러오는데 실패했습니다.', error);
-        
-        // 네트워크 연결 오류인지 확인 (api.js에서 처리된 메시지)
-        if (error.message && (error.message.includes('서버와의 연결') || error.message.includes('네트워크 연결'))) {
-          this.error = error.message;
-        } else {
-          // API 에러는 loadError에 저장하고 빈 목록 표시
-          this.loadError = error.message || '요리사 승인 대기 목록을 불러오는데 실패했습니다.';
-          this.waitingChefs = [];
+        if (response.success && response.data) {
+          const responseData = response.data;
+          
+          this.waitingChefs = responseData.content || [];
           this.chefPagination = {
-            totalPages: 0,
-            currentPage: 0,
-            totalElements: 0,
+            totalPages: responseData.totalPages || 0,
+            currentPage: responseData.number || 0,
+            totalElements: responseData.totalElements || 0,
             pageSize: size,
           };
+        } else {
+          throw new Error(response.message || '요리사 목록을 불러오는데 실패했습니다.');
         }
+      } catch (error) {
+        console.error('요리사 승인 대기 목록 조회 실패:', error);
+        this.error = error.message || '요리사 목록을 불러오는데 실패했습니다.';
+        throw error;
       } finally {
-        this._setLoading(false);
+        this.loading = false;
       }
     },
 
     // 자영업자 승인 대기 목록 조회
     async fetchWaitingBusinesses(page = 0, size = 10) {
-      this._setLoading(true);
+      this.loading = true;
       this.error = null;
-      this.loadError = null;
       
       try {
-        const apiResponse = await userApprovalService.getWaitingBusinesses(page, size);
-        const responseData = apiResponse.getData();
+        const response = await userApprovalService.getWaitingBusinesses(page, size);
         
-        this.waitingBusinesses = responseData.content;
-        this.businessPagination = {
-          totalPages: responseData.totalPages,
-          currentPage: responseData.number,
-          totalElements: responseData.totalElements,
-          pageSize: size,
-        };
-      } catch (error) {
-        console.error('자영업자 승인 대기 목록을 불러오는데 실패했습니다.', error);
-        
-        // 네트워크 연결 오류인지 확인 (api.js에서 처리된 메시지)
-        if (error.message && (error.message.includes('서버와의 연결') || error.message.includes('네트워크 연결'))) {
-          this.error = error.message;
-        } else {
-          // API 에러는 loadError에 저장하고 빈 목록 표시
-          this.loadError = error.message || '자영업자 승인 대기 목록을 불러오는데 실패했습니다.';
-          this.waitingBusinesses = [];
+        if (response.success && response.data) {
+          const responseData = response.data;
+          
+          this.waitingBusinesses = responseData.content || [];
           this.businessPagination = {
-            totalPages: 0,
-            currentPage: 0,
-            totalElements: 0,
+            totalPages: responseData.totalPages || 0,
+            currentPage: responseData.number || 0,
+            totalElements: responseData.totalElements || 0,
             pageSize: size,
           };
+        } else {
+          throw new Error(response.message || '자영업자 목록을 불러오는데 실패했습니다.');
         }
+      } catch (error) {
+        console.error('자영업자 승인 대기 목록 조회 실패:', error);
+        this.error = error.message || '자영업자 목록을 불러오는데 실패했습니다.';
+        throw error;
       } finally {
-        this._setLoading(false);
+        this.loading = false;
       }
     },
 
     // 사용자 승인
-    async approveUser(userId) {
+    async approveUser(userId, userType) {
       this.processingUsers.add(userId);
       
       try {
-        await userApprovalService.approveUser(userId);
-        this.setSuccessMessage('사용자 승인이 완료되었습니다.');
+        const response = await userApprovalService.approveUser(userId);
         
-        // 로컬 상태만 업데이트 (API 재호출 없음)
-        // 요리사 목록에서 제거
-        this.waitingChefs = this.waitingChefs.filter(chef => chef.userId !== userId);
-        // 자영업자 목록에서 제거
-        this.waitingBusinesses = this.waitingBusinesses.filter(business => business.id !== userId);
-        
-        // 페이지네이션 정보 업데이트
-        this.chefPagination.totalElements = Math.max(0, this.chefPagination.totalElements - 1);
-        this.businessPagination.totalElements = Math.max(0, this.businessPagination.totalElements - 1);
+        if (response.success) {
+          // 승인된 사용자를 해당 목록에서 제거 (반응성을 위해 새 배열 생성)
+          if (userType === 'chef') {
+            this.waitingChefs = [...this.waitingChefs.filter(user => user.userId !== userId)];
+            this.chefPagination.totalElements = Math.max(0, this.chefPagination.totalElements - 1);
+          } else if (userType === 'business') {
+            this.waitingBusinesses = [...this.waitingBusinesses.filter(user => user.id !== userId)];
+            this.businessPagination.totalElements = Math.max(0, this.businessPagination.totalElements - 1);
+          }
+          
+          this.setSuccessMessage('사용자가 승인되었습니다.');
+          return response;
+        } else {
+          throw new Error(response.message || '사용자 승인에 실패했습니다.');
+        }
       } catch (error) {
-        this._handleError(error, '사용자 승인에 실패했습니다.');
+        console.error('사용자 승인 실패:', error);
+        throw error;
       } finally {
         this.processingUsers.delete(userId);
       }
     },
 
     // 사용자 거절
-    async rejectUser(userId, rejectReason) {
+    async rejectUser(userId, rejectReason, userType) {
       this.processingUsers.add(userId);
       
       try {
-        await userApprovalService.rejectUser(userId, rejectReason);
-        this.setSuccessMessage('사용자 거절이 완료되었습니다.');
+        const response = await userApprovalService.rejectUser(userId, rejectReason);
         
-        // 로컬 상태만 업데이트 (API 재호출 없음)
-        // 요리사 목록에서 제거
-        this.waitingChefs = this.waitingChefs.filter(chef => chef.userId !== userId);
-        // 자영업자 목록에서 제거
-        this.waitingBusinesses = this.waitingBusinesses.filter(business => business.id !== userId);
-        
-        // 페이지네이션 정보 업데이트
-        this.chefPagination.totalElements = Math.max(0, this.chefPagination.totalElements - 1);
-        this.businessPagination.totalElements = Math.max(0, this.businessPagination.totalElements - 1);
+        if (response.success) {
+          // 거절된 사용자를 해당 목록에서 제거 (반응성을 위해 새 배열 생성)
+          if (userType === 'chef') {
+            this.waitingChefs = [...this.waitingChefs.filter(user => user.userId !== userId)];
+            this.chefPagination.totalElements = Math.max(0, this.chefPagination.totalElements - 1);
+          } else if (userType === 'business') {
+            this.waitingBusinesses = [...this.waitingBusinesses.filter(user => user.id !== userId)];
+            this.businessPagination.totalElements = Math.max(0, this.businessPagination.totalElements - 1);
+          }
+          
+          this.setSuccessMessage('사용자가 거절되었습니다.');
+          return response;
+        } else {
+          throw new Error(response.message || '사용자 거절에 실패했습니다.');
+        }
       } catch (error) {
-        this._handleError(error, '사용자 거절에 실패했습니다.');
+        console.error('사용자 거절 실패:', error);
+        throw error;
       } finally {
         this.processingUsers.delete(userId);
       }
@@ -227,7 +201,6 @@ export const useUserApprovalStore = defineStore('userApproval', {
       this.loading = false;
       this.error = null;
       this.successMessage = null;
-      this.loadError = null;
       this.processingUsers.clear();
       this.chefPagination = {
         totalPages: 0,

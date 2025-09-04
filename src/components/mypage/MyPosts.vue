@@ -81,122 +81,100 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import Pagination from '../common/Pagination.vue';
-import { apiGet } from '@/utils/api';
+import { useMypageStore } from '@/store/mypage/mypage';
 
 const defaultThumbnail = '/src/assets/images/smu_mascort1.jpg';
 
-export default {
-  name: 'MyPosts',
-  components: {
-    Pagination
-  },
-  data() {
-    return {
-      currentPage: 1,
-      postsPerPage: 6,
-      posts: [],
-      loading: false,
-      error: null
-    };
-  },
-  computed: {
-    pagedPosts() {
-      const start = (this.currentPage - 1) * this.postsPerPage;
-      const end = start + this.postsPerPage;
-      return this.posts.slice(start, end);
-    },
-    totalPages() {
-      return Math.ceil(this.posts.length / this.postsPerPage);
-    }
-  },
-  async mounted() {
-    await this.fetchPosts();
-  },
-  methods: {
-    async fetchPosts() {
-      this.loading = true;
-      this.error = null;
-      
-      try {
-        const response = await apiGet('/api/my/posts');
-        
-        if (response.ok) {
-          const result = await response.json();
-          // 삭제된 게시글 필터링
-          const allPosts = result.data || [];
-          this.posts = allPosts.filter(post => {
-            // 삭제되지 않은 게시글만 표시
-            return !post.deleted && !post.deletedAt && post.status !== 'DELETED';
-          });
-          
-          console.log(`🔍 전체 게시글: ${allPosts.length}개, 삭제되지 않은 게시글: ${this.posts.length}개`);
-        } else {
-          throw new Error('게시글을 불러오는데 실패했습니다.');
-        }
-      } catch (error) {
-        console.error('게시글 조회 오류:', error);
-        this.error = error.message || '게시글을 불러오는데 실패했습니다.';
-      } finally {
-        this.loading = false;
-      }
-    },
-    changePage(page) {
-      if (page >= 1 && page <= this.totalPages) {
-        this.currentPage = page;
-      }
-    },
-    formatDate(dateString) {
-      if (!dateString) return '';
-      
-      const date = new Date(dateString);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      
-      return `${year}.${month}.${day}`;
-    },
-    goToPostDetail(post) {
-      // Navigate to post detail page
-      this.$router.push(`/recipes/${post.id}`);
-    },
-    goToRecipePostWrite() {
-      // Navigate to recipe post write page
-      this.$router.push('/recipe/write');
-    },
-    isPrivatePost(item) {
-      // isOpen 필드로 비밀글 체크
-      return item.isOpen === false;
-    },
-    handleImageError(event) {
-      // 이미지 로드 실패 시 기본 이미지로 대체
-      event.target.src = defaultThumbnail;
-    },
-    
-    categoryClass(category) {
-      switch (category) {
-        case 'KOREAN': return 'cat-korean';
-        case 'WESTERN': return 'cat-western';
-        case 'JAPANESE': return 'cat-japanese';
-        case 'CHINESE': return 'cat-chinese';
-        case 'DESSERT': return 'cat-dessert';
-        default: return '';
-      }
-    },
-    
-    getCategoryName(category) {
-      switch (category) {
-        case 'KOREAN': return '한식';
-        case 'WESTERN': return '양식';
-        case 'JAPANESE': return '일식';
-        case 'CHINESE': return '중식';
-        case 'DESSERT': return '디저트';
-        default: return category;
-      }
-    }
+// Store & Router
+const mypageStore = useMypageStore();
+const router = useRouter();
+
+// Reactive data
+const currentPage = ref(1);
+const postsPerPage = ref(6);
+
+// Computed
+const posts = computed(() => mypageStore.getMyPosts);
+const loading = computed(() => mypageStore.isPostsLoading);
+const error = computed(() => mypageStore.getError);
+
+const pagedPosts = computed(() => {
+  return posts.value;
+});
+
+const totalPages = computed(() => {
+  return mypageStore.myPostsPagination.totalPages;
+});
+
+// Methods
+const fetchPosts = async () => {
+  try {
+    await mypageStore.fetchMyPosts(currentPage.value - 1, postsPerPage.value);
+  } catch (error) {
+    console.error('게시글 조회 오류:', error);
   }
 };
+
+const changePage = async (page) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page;
+    await fetchPosts();
+  }
+};
+
+const formatDate = (dateString) => {
+  if (!dateString) return '';
+  
+  const date = new Date(dateString);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  
+  return `${year}.${month}.${day}`;
+};
+
+const goToPostDetail = (post) => {
+  // Navigate to post detail page
+  router.push(`/recipes/${post.id}`);
+};
+
+const goToRecipePostWrite = () => {
+  // Navigate to recipe post write page
+  router.push('/recipe/post-write');
+};
+
+const isPrivatePost = (item) => {
+  // isOpen 필드로 비밀글 체크
+  return item.isOpen === false;
+};
+
+const handleImageError = (event) => {
+  // 이미지 로드 실패 시 기본 이미지로 대체
+  event.target.src = defaultThumbnail;
+};
+
+const categoryClass = (category) => {
+  return category ? `cat-${category.toLowerCase()}` : '';
+};
+
+const getCategoryName = (category) => {
+  switch (category) {
+    case 'KOREAN': return '한식';
+    case 'WESTERN': return '양식';
+    case 'JAPANESE': return '일식';
+    case 'CHINESE': return '중식';
+    default: return category;
+  }
+};
+
+// Lifecycle
+onMounted(async () => {
+  await fetchPosts();
+});
 </script>
 
 <style scoped>
@@ -364,10 +342,7 @@ export default {
   color: #ff3b3b;
 }
 
-.cat-dessert {
-  background: #fff3e2;
-  color: #ff7a00;
-}
+
 
 .post-title {
   font-size: 18px;

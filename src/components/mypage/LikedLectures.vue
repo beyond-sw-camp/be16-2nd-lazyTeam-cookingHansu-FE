@@ -89,18 +89,14 @@ export default {
       currentPage: 1,
       likesPerPage: 6,
       likes: [],
+      totalPages: 0,
       loading: false,
       error: null
     };
   },
   computed: {
     pagedLikes() {
-      const start = (this.currentPage - 1) * this.likesPerPage;
-      const end = start + this.likesPerPage;
-      return this.likes.slice(start, end);
-    },
-    totalPages() {
-      return Math.ceil(this.likes.length / this.likesPerPage);
+      return this.likes;
     }
   },
   async mounted() {
@@ -112,12 +108,18 @@ export default {
       this.error = null;
       
       try {
-        const response = await apiGet('/api/my/liked-lectures');
+        const params = new URLSearchParams({
+          page: this.currentPage - 1, // API는 0-based pagination
+          size: this.likesPerPage
+        });
         
-        if (response.ok) {
-          const result = await response.json();
-          this.likes = result.data || [];
-          console.log(`🔍 강의 좋아요: ${this.likes.length}개`);
+        const response = await apiGet(`/api/my/liked-lectures?${params.toString()}`);
+        
+        if (response.data && response.data.success) {
+          this.likes = response.data.data.content || [];
+          this.totalPages = response.data.data.totalPages || 0;
+          
+          console.log(`🔍 강의 좋아요: ${this.likes.length}개, 총 ${response.data.data.totalElements}개`);
         } else {
           throw new Error('강의 좋아요 목록을 불러오는데 실패했습니다.');
         }
@@ -128,9 +130,10 @@ export default {
         this.loading = false;
       }
     },
-    changePage(page) {
+    async changePage(page) {
       if (page >= 1 && page <= this.totalPages) {
         this.currentPage = page;
+        await this.fetchLikes();
       }
     },
     goToLectureDetail(lectureId) {
@@ -149,14 +152,7 @@ export default {
     },
     
     categoryClass(category) {
-      switch (category) {
-        case 'KOREAN': return 'cat-korean';
-        case 'WESTERN': return 'cat-western';
-        case 'JAPANESE': return 'cat-japanese';
-        case 'CHINESE': return 'cat-chinese';
-        case 'DESSERT': return 'cat-dessert';
-        default: return '';
-      }
+      return category ? `cat-${category.toLowerCase()}` : '';
     },
     
     getCategoryName(category) {
@@ -165,7 +161,6 @@ export default {
         case 'WESTERN': return '양식';
         case 'JAPANESE': return '일식';
         case 'CHINESE': return '중식';
-        case 'DESSERT': return '디저트';
         default: return category;
       }
     },
@@ -336,10 +331,7 @@ export default {
   color: #ff3b3b;
 }
 
-.cat-dessert {
-  background: #fff3e2;
-  color: #ff7a00;
-}
+
 
 .like-date {
   font-size: 12px;

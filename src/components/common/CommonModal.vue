@@ -7,24 +7,24 @@
     @click:outside="handleOutsideClick"
   >
     <v-card class="common-modal">
-      <!-- 닫기 버튼 -->
-      <v-btn
-        icon
-        size="small"
-        variant="text"
-        class="close-btn"
-        @click="cancel"
-      >
-        <v-icon>mdi-close</v-icon>
-      </v-btn>
+      <!-- 헤더 (제목 + 닫기 버튼) -->
+      <div class="modal-header">
+        <h3 class="main-message">{{ title }}</h3>
+        <v-btn
+          icon
+          size="small"
+          variant="text"
+          class="close-btn"
+          @click="cancel"
+        >
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
+      </div>
 
       <!-- 아이콘 -->
       <div class="modal-icon">
         <v-icon size="48" :color="iconColor">{{ icon }}</v-icon>
       </div>
-
-      <!-- 메인 메시지 -->
-      <h3 class="main-message">{{ title }}</h3>
 
       <!-- 보조 메시지 -->
       <p class="sub-message">{{ message }}</p>
@@ -41,7 +41,7 @@
           {{ cancelText }}
         </v-btn>
         <v-btn 
-          :color="confirmButtonColor" 
+          color="grey" 
           @click="confirm" 
           :loading="loading"
           class="confirm-btn"
@@ -123,18 +123,7 @@ const iconColor = computed(() => {
   }
 });
 
-const confirmButtonColor = computed(() => {
-  switch (props.type) {
-    case 'success':
-      return 'success';
-    case 'warning':
-      return 'warning';
-    case 'error':
-      return 'error';
-    default:
-      return 'primary';
-  }
-});
+
 
 // ESC 키 이벤트 핸들러
 const handleEscKey = (event) => {
@@ -215,10 +204,14 @@ onUnmounted(() => {
   box-shadow: 0 25px 70px rgba(0, 0, 0, 0.2);
 }
 
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
 .close-btn {
-  position: absolute;
-  top: 15px;
-  right: 15px;
   color: #9ca3af;
   transition: all 0.2s ease;
 }

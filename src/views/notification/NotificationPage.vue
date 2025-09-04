@@ -80,11 +80,7 @@
       </div>
     </div>
 
-    <!-- 승인 알림 모달 -->
-    <ApprovalNotificationModal 
-      :is-visible="showApprovalModal"
-      @close="closeApprovalModal"
-    />
+
   </div>
 </template>
 
@@ -92,7 +88,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useNotificationStore } from '@/store/notification/notification.js'
-import ApprovalNotificationModal from '@/components/notification/ApprovalNotificationModal.vue'
 import { formatDistanceToNow } from 'date-fns'
 import { ko } from 'date-fns/locale'
 
@@ -102,7 +97,6 @@ const notificationStore = useNotificationStore()
 // 반응형 데이터
 const activeFilter = ref('ALL')
 const loading = ref(false)
-const showApprovalModal = ref(false)
 
 // computed로 hasMore 상태를 store에서 가져오기
 const hasMore = computed(() => notificationStore.hasMore)
@@ -214,8 +208,7 @@ const handleNotificationClick = async (notification) => {
       router.push('/mypage?tab=lectures')
       break
     case 'APPROVAL':
-      // 승인 알림 모달 표시
-      showApprovalModal.value = true
+      // 승인 알림은 읽음 처리만 (모달은 자동으로 표시됨)
       break
     case 'NOTICE':
       if (notification.relatedId) {
@@ -229,10 +222,7 @@ const handleNotificationClick = async (notification) => {
   }
 }
 
-// 승인 모달 닫기
-const closeApprovalModal = () => {
-  showApprovalModal.value = false
-}
+
 
 // 알림 삭제 처리
 const handleDeleteNotification = async (notificationId) => {

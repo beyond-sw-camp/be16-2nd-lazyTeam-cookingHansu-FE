@@ -75,7 +75,7 @@
              <div class="item-info" @click="goToLectureDetail(item.lectureId)" style="cursor: pointer;">
                <h3 class="item-title">{{ item.lectureTitle }}</h3>
                <p class="item-instructor">{{ item.writerNickName }}</p>
-               <p class="item-price">{{ formatPrice(item.price) }}원</p>
+               <p class="item-price">{{ formatPrice(item.price || 0) }}원</p>
              </div>
                            <button 
                 class="remove-btn" 
@@ -141,16 +141,22 @@
   </template>
 
 <script>
-import { lectureService } from '@/store/lecture/lectureService'
+import { useLectureStore } from '@/store/lecture/lecture'
 import { useCartStore } from '@/store/cart/cart'
 import CommonModal from '@/components/common/CommonModal.vue'
+import { apiPost } from '@/utils/api'
 
 export default {
   name: 'CartPage',
   components: {
     CommonModal
   },
-
+  setup() {
+    const lectureStore = useLectureStore();
+    return {
+      lectureStore
+    };
+  },
   data() {
     return {
       cartStore: null, // 장바구니 스토어 인스턴스
@@ -171,7 +177,7 @@ export default {
     selectedTotalAmount() {
       return this.cartItems
         .filter(item => this.selectedItems.includes(item.lectureId))
-        .reduce((total, item) => total + item.price, 0)
+        .reduce((total, item) => total + (item.price || 0), 0)
     },
     // 전체 선택 여부
     isAllSelected() {
@@ -203,7 +209,8 @@ export default {
 
   // 가격 포맷 (예: 20000 → 20,000)
   formatPrice(price) {
-    return price.toLocaleString()
+    if (!price && price !== 0) return '0';
+    return Number(price).toLocaleString();
   },
 
   // 전체 선택/해제 토글
@@ -229,15 +236,17 @@ export default {
   // 장바구니에서 강의 제거 (단건)
   async removeFromCart(lectureId) {
     try {
-      await lectureService.removeFromCart(lectureId);
+      await this.lectureStore.removeFromCart(lectureId);
       // 선택된 아이템에서도 제거
       this.selectedItems = this.selectedItems.filter(id => id !== lectureId)
       console.log('강의가 장바구니에서 제거되었습니다.');
       // 모달 닫기
       this.showRemoveItemModal = false;
-      // 장바구니 목록 새로고침 (스토어 업데이트)
+      // 장바구니 스토어 상태 업데이트
       if (this.cartStore) {
-        await this.cartStore.fetchServerCartList();
+        this.cartStore.removeCartItem(lectureId);
+        // 헤더 업데이트를 위해 강제 새로고침
+        await this.cartStore.fetchServerCartList(true);
       }
     } catch (error) {
       console.error('장바구니 삭제 오류:', error);
@@ -256,14 +265,14 @@ export default {
   // 장바구니 전체 비우기
   async clearAllItems() {
     try {
-      await lectureService.clearCart();
+      await this.lectureStore.clearCart();
       this.selectedItems = [];
       console.log('장바구니가 모두 비워졌습니다.');
       // 모달 닫기
       this.showClearCartModal = false;
-      // 장바구니 목록 새로고침 (스토어 업데이트)
+      // 장바구니 스토어 상태만 업데이트 (API 호출 없음)
       if (this.cartStore) {
-        await this.cartStore.fetchServerCartList();
+        this.cartStore.clearAllItems();
       }
     } catch (error) {
       console.error('장바구니 전체 삭제 오류:', error);
@@ -272,7 +281,7 @@ export default {
   },
 
   // 장바구니 데이터 가져오기
-  async fetchCartItems() {
+  async fetchCartItems(forceRefresh = false) {
     if (!this.cartStore) {
       console.error('장바구니 스토어가 초기화되지 않았습니다.')
       return
@@ -280,7 +289,7 @@ export default {
     
     this.loading = true;
     try {
-      await this.cartStore.fetchServerCartList();
+      await this.cartStore.fetchServerCartList(forceRefresh);
       console.log('장바구니 데이터 로드 완료:', this.cartItems);
     } catch (error) {
       console.error('장바구니 조회 오류:', error);
@@ -329,9 +338,18 @@ export default {
   // 결제 성공 후 선택된 아이템들을 장바구니에서 제거
   async removeSelectedItemsFromCart() {
     for (const itemId of this.selectedItems) {
-      await lectureService.removeFromCart(itemId);
+      await this.lectureStore.removeFromCart(itemId);
+      // 장바구니 스토어에서도 제거
+      if (this.cartStore) {
+        this.cartStore.removeCartItem(itemId);
+      }
     }
     this.selectedItems = []
+    
+    // 헤더 업데이트를 위해 강제 새로고침
+    if (this.cartStore) {
+      await this.cartStore.fetchServerCartList(true);
+    }
   },
 
   // UUID 생성기
@@ -346,21 +364,19 @@ export default {
   // prepay: 백엔드에 주문 정보 저장
   async saveOrderToBackend(orderId, amount, lectureIds) {
     try {
-      const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/purchase/prepay`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ orderId, amount, lectureIds })
+      const response = await apiPost('/purchase/prepay', { 
+        orderId, 
+        amount, 
+        lectureIds 
       })
 
-      if (!response.ok) {
+      console.log('Prepay 응답:', response)
+
+      if (response.data && response.data.success) {
+        return response.data
+      } else {
         throw new Error('백엔드 사전 저장 실패')
       }
-
-      return await response.json()
     } catch (error) {
       console.error('Prepay 저장 오류:', error)
       throw error
@@ -401,8 +417,8 @@ export default {
      console.log('CartPage mounted 시작')
      // 장바구니 스토어 초기화
      this.initCartStore();
-     // 페이지 로드 시 장바구니 데이터 가져오기
-     this.fetchCartItems();
+     // 페이지 로드 시 장바구니 데이터 가져오기 (강제 새로고침)
+     this.fetchCartItems(true);
      console.log('CartPage mounted 완료')
    }
  

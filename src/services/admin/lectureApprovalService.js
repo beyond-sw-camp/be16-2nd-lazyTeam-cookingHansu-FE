@@ -1,8 +1,4 @@
-import { 
-  apiGet, 
-  apiPatch 
-} from '../../utils/api';
-import { handleApiResponse } from '../../models/common/ApiResponse';
+import { apiClient } from '../../utils/interceptor';
 
 // API 엔드포인트 상수
 const API_ENDPOINTS = {
@@ -14,21 +10,21 @@ const API_ENDPOINTS = {
 export const lectureApprovalService = {
   // 승인 대기 강의 목록 조회
   async getWaitingLectures(page = 0, size = 10) {
-    const response = await apiGet(`${API_ENDPOINTS.WAITING_LECTURES}?page=${page}&size=${size}`);
-    return handleApiResponse(response);
+    const response = await apiClient.get(`${API_ENDPOINTS.WAITING_LECTURES}?page=${page}&size=${size}`);
+    return response.data;
   },
 
   // 강의 승인
   async approveLecture(lectureId) {
-    const response = await apiPatch(`${API_ENDPOINTS.APPROVE_LECTURE}/${lectureId}`);
-    return handleApiResponse(response);
+    const response = await apiClient.patch(`${API_ENDPOINTS.APPROVE_LECTURE}/${lectureId}`);
+    return response.data;
   },
 
   // 강의 거절
   async rejectLecture(lectureId, rejectReason) {
-    const response = await apiPatch(`${API_ENDPOINTS.REJECT_LECTURE}/${lectureId}`, {
+    const response = await apiClient.patch(`${API_ENDPOINTS.REJECT_LECTURE}/${lectureId}`, {
       reason: rejectReason
     });
-    return handleApiResponse(response);
+    return response.data;
   },
 };

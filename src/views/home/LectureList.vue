@@ -105,13 +105,21 @@
 <script>
 import Header from '@/components/Header.vue';
 import Pagination from '@/components/common/Pagination.vue';
-import { lectureService } from '@/store/lecture/lectureService';
-import { getUserRoleFromToken } from '@/utils/api';
+
 import { useAuthStore } from '@/store/auth/auth';
+import { useLectureStore } from '@/store/lecture/lecture';
 
 export default {
   name: 'LectureList',
   components: { Header, Pagination },
+  setup() {
+    const authStore = useAuthStore();
+    const lectureStore = useLectureStore();
+    return {
+      authStore,
+      lectureStore
+    };
+  },
   data() {
     return {
       currentTab: 'lecture',
@@ -160,14 +168,9 @@ export default {
        const pages = Math.ceil(this.totalLectures / this.lecturesPerPage);
        return Math.max(1, pages);
      },
-         // 사용자 역할 (토큰에서 동적으로 가져옴)
+         // 사용자 역할 (authStore에서 직접 가져옴)
      userRole() {
-       const authStore = useAuthStore();
-       const tokenRole = getUserRoleFromToken();
-       const storeRole = authStore.getUserRole;
-       
-       // 스토어의 역할을 우선 사용, 없으면 토큰에서 추출
-       return storeRole || tokenRole;
+       return this.authStore.getUserRole;
      },
 
   },
@@ -189,7 +192,7 @@ export default {
       
       try {
         // 페이지 정보를 포함하여 API 호출
-        const response = await lectureService.getLectureList(this.currentPage - 1, this.lecturesPerPage);
+        const response = await this.lectureStore.fetchLectures(this.currentPage - 1, this.lecturesPerPage);
         
                  if (response.success) {
           
@@ -223,7 +226,7 @@ export default {
         }
       } catch (error) {
         console.error('강의 목록 조회 오류:', error);
-        this.error = '서버 연결에 실패했습니다.';
+        this.error = this.lectureStore.getError || '서버 연결에 실패했습니다.';
       } finally {
         this.loading = false;
       }
@@ -295,7 +298,7 @@ export default {
 </script>
 
 <style scoped>
-.lecture-list-page { background: #fafbfc; min-height: 100vh; margin-top: 64px; }
+.lecture-list-page { background: #fafbfc; margin-top: 64px; }
 .nav-tabs { 
   display: flex; 
   justify-content: center; 
@@ -329,8 +332,7 @@ export default {
 .lecture-create-btn-container {
   position: absolute;
   right: 20px;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 20px;
 }
 
 .lecture-create-btn {
@@ -391,6 +393,7 @@ export default {
   gap: 16px;
   max-width: 1040px;
   margin: 0 auto 24px auto;
+  min-height: 480px; /* 페이지네이션 위치 고정을 위한 최소 높이 */
 }
 
 .lecture-card {

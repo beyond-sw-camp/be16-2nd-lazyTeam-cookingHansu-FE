@@ -131,7 +131,6 @@ const goToNoticeDetail = (id) => {
 const goToCreateNotice = () => {
   router.push('/notice/create');
 };
-
 // 스크롤 위치 저장
 const saveScrollPosition = () => {
   sessionStorage.setItem('noticeListScrollPosition', window.scrollY.toString());
@@ -156,9 +155,10 @@ onMounted(async () => {
   restoreScrollPosition();
 });
 
-// 라우트 변경 감지하여 공지사항 페이지 진입 시 최신 데이터 가져오기
-watch(() => route.path, async (newPath) => {
-  if (newPath === '/notice') {
+// 라우트 변경 감지하여 공지사항 페이지 진입 시 최신 데이터 가져오기 (중복 호출 방지)
+watch(() => route.path, async (newPath, oldPath) => {
+  // /notice로 진입할 때만 호출하고, 같은 페이지 내에서는 중복 호출 방지
+  if (newPath === '/notice' && oldPath !== '/notice') {
     await noticeStore.fetchNotices(0, 10);
   }
 });

@@ -34,31 +34,20 @@ export class ApiResponse {
   }
 }
 
-// API 응답 처리를 위한 유틸리티 함수
-export const handleApiResponse = async (response) => {
-  console.log('API Response Status:', response.status);
-  console.log('API Response URL:', response.url);
+// API 응답 처리를 위한 유틸리티 함수 (axios 응답용)
+export const handleApiResponse = (response) => {
+  // axios 응답에서 data 필드 추출
+  const responseData = response.data;
   
-  const responseText = await response.text();
-  console.log('API Response Text:', responseText);
-  
-  try {
-    const jsonResponse = JSON.parse(responseText);
-    const apiResponse = ApiResponse.fromJson(jsonResponse);
-    
-    if (!apiResponse.isSuccess()) {
-      throw new Error(apiResponse.getMessage() || `API 요청 실패: ${apiResponse.getCode()}`);
-    }
-    
-    return apiResponse;
-  } catch (parseError) {
-    console.error('JSON 파싱 실패:', parseError);
-    
-    // HTML 응답인지 확인
-    if (responseText.includes('<!DOCTYPE') || responseText.includes('<html')) {
-      throw new Error(`서버가 HTML을 반환했습니다. API 서버가 실행 중인지 확인해주세요. (Status: ${response.status})`);
-    }
-    
-    throw new Error(`API 요청 실패: ${response.status} ${response.statusText}`);
+  if (!responseData) {
+    throw new Error('응답 데이터가 없습니다.');
   }
+  
+  const apiResponse = ApiResponse.fromJson(responseData);
+  
+  if (!apiResponse.isSuccess()) {
+    throw new Error(apiResponse.getMessage() || `API 요청 실패: ${apiResponse.getCode()}`);
+  }
+  
+  return apiResponse;
 }; 

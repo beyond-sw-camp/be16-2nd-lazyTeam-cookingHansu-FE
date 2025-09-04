@@ -1,10 +1,8 @@
 import { defineStore } from 'pinia';
-import { API_CONFIG } from '@/constants/oauth';
 import { authService } from '@/services/auth/authService';
-import { userService } from '@/services/auth/userService';
-import { apiGet } from '@/utils/api';
+import { mypageService } from '@/services/mypage/mypageService';
+import { apiClient } from '@/utils/interceptor';
 import { useNotificationStore } from '@/store/notification/notification';
-
 
 // Auth 관련 상태 관리 스토어
 // OAuth2 소셜 로그인 기반의 토큰 관리, 로그인 상태 관리, 사용자 정보 관리
@@ -70,8 +68,6 @@ export const useAuthStore = defineStore('auth', {
     
     // 신규 사용자 여부
     isNewUser: (state) => {
-      // 백엔드에서 isNewUser 컬럼을 제거했으므로
-      // 사용자의 기본 프로필 정보가 완성되었는지 여부로 판단
       if (!state.user) return false;
       
       // 관리자 계정은 항상 신규 사용자가 아님
@@ -79,9 +75,6 @@ export const useAuthStore = defineStore('auth', {
         return false;
       }
       
-      // getRegistrationStep과 일치하도록 수정
-      // getter 내에서 다른 getter를 호출할 때는 this를 사용해야 함
-      // 하지만 state 파라미터만 사용할 수 있으므로 직접 로직을 구현
       if (!state.user.nickname || !state.user.role) {
         return true; // add-info 단계
       }
@@ -199,7 +192,7 @@ export const useAuthStore = defineStore('auth', {
     getProfileInfo: (state) => {
       return {
         nickname: state.user?.nickname, 
-        profileImageUrl: state.user?.profileImageUrl,
+        profileImageUrl: state.user?.picture, // 백엔드 DTO의 picture 필드 사용
       };
     }
   },
@@ -231,8 +224,6 @@ export const useAuthStore = defineStore('auth', {
           } catch (error) {
             console.error('Failed to get current user after local login:', error);
           }
-          
-          // 알림 구독은 initialize()에서 중앙 관리됨
           
           return user;
         } else {
@@ -280,14 +271,12 @@ export const useAuthStore = defineStore('auth', {
               await this.getCurrentUser();
             } catch (error) {
               console.error('Failed to get current user during initialization:', error);
-              // 사용자 정보 조회 실패 시에도 기본 정보는 유지
             }
             
             // 인증된 사용자의 경우 알림 구독 시작
             try {
               const notificationStore = useNotificationStore();
               await notificationStore.requestNotificationPermission();
-              console.log('🔍 초기화 후 알림 구독 시작...');
               notificationStore.startNotificationSubscription();
             } catch (error) {
               console.warn('알림 구독 시작 실패:', error);
@@ -301,218 +290,89 @@ export const useAuthStore = defineStore('auth', {
               try {
                 const notificationStore = useNotificationStore();
                 await notificationStore.requestNotificationPermission();
-                console.log('🔍 토큰 갱신 후 알림 구독 시작...');
                 notificationStore.startNotificationSubscription();
               } catch (error) {
                 console.warn('알림 구독 시작 실패:', error);
               }
             } catch (error) {
               console.warn('Token refresh failed during initialization:', error.message);
-              // 토큰 갱신 실패 시에도 기본 정보는 유지
-              // (refreshToken에서 logout 호출을 제거했으므로 자동으로 유지됨)
             }
           }
         }
       } catch (error) {
         console.error('Auth initialization failed:', error);
-        // this.clearAuth();
-        // 에러가 발생해도 clearAuth는 호출하지 않음 (사용자 경험 개선)
       }
     },
 
-    // Google OAuth 로그인 처리
+    // 통합된 소셜 로그인 처리
+    async handleSocialLogin(provider, authorizationCode) {
+      try {
+        this.isLoading = true;
+        this.error = null;
+        
+        let response;
+        switch (provider) {
+          case 'google':
+            response = await authService.googleLogin(authorizationCode);
+            break;
+          case 'kakao':
+            response = await authService.kakaoLogin(authorizationCode);
+            break;
+          case 'naver':
+            response = await authService.naverLogin(authorizationCode);
+            break;
+          default:
+            throw new Error(`지원하지 않는 소셜 로그인: ${provider}`);
+        }
+        
+        if (response.success && response.data) {
+          const { accessToken, refreshToken, user, expiresIn, isDeleted, socialId, oauthType, email, name, picture } = response.data;
+          
+          // 탈퇴한 회원인 경우
+          if (isDeleted === true) {
+            console.log('탈퇴한 회원 감지됨:', { isDeleted, socialId, oauthType, email, name, picture });
+            // 로그인 상태를 설정하지 않고 탈퇴한 회원 정보와 함께 특별한 객체 반환
+            return { 
+              isDeleted: true, 
+              userInfo: { socialId, oauthType, email, name, picture } 
+            };
+          }
+          
+          this.setAuthData(accessToken, refreshToken, user, expiresIn, provider);
+          
+          // 최신 사용자 정보 조회
+          try {
+            await this.getCurrentUser();
+          } catch (error) {
+            console.error(`Failed to get current user after ${provider} login:`, error);
+          }
+          
+          return user;
+        } else {
+          throw new Error(response.message || `${provider} 로그인에 실패했습니다.`);
+        }
+      } catch (error) {
+        console.error(`${provider} login failed:`, error);
+        this.error = error.message || `${provider} 로그인에 실패했습니다.`;
+        throw error;
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    // Google OAuth 로그인 처리 (기존 호환성 유지)
     async handleGoogleLogin(authorizationCode) {
-      try {
-        this.isLoading = true;
-        this.error = null;
-        
-        const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.GOOGLE_LOGIN}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ code: authorizationCode })
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const responseData = await response.json();
-        
-        // 탈퇴한 회원인지 확인
-        if (responseData.data && responseData.data.isDeleted) {
-          // 탈퇴한 회원인 경우 확인 페이지로 리다이렉트
-          const userInfo = encodeURIComponent(JSON.stringify(responseData.data));
-          // replace를 사용하여 브라우저 히스토리에서 리다이렉트 페이지를 제거
-          window.location.replace(`/deleted-user-confirm/${userInfo}`);
-          return null;
-        }
-        
-        const { accessToken, refreshToken, user, expiresIn, isRestored, oauthAccessToken } = responseData.data;
-
-        // 회원 복구 여부 확인
-        if (isRestored) {
-          this.isRestoredUser = true;
-          this.showRestoreModal = true;
-        }
-
-        // OAuth 원본 액세스 토큰 저장
-        if (oauthAccessToken) {
-          this.oauthAccessToken = oauthAccessToken;
-          localStorage.setItem('oauthAccessToken', oauthAccessToken);
-        }
-
-        // 토큰 및 사용자 정보 저장 (Google 제공자로 설정)
-        this.setAuthData(accessToken, refreshToken, user, expiresIn, 'google', oauthAccessToken);
-        
-        // 최신 사용자 정보 조회
-        try {
-          await this.getCurrentUser();
-        } catch (error) {
-          console.error('Failed to get current user after Google login:', error);
-        }
-        
-        // 알림 구독은 initialize()에서 중앙 관리됨
-        
-        return user;
-      } catch (error) {
-        console.error('Google login failed:', error);
-        this.error = error.message || 'Google 로그인에 실패했습니다.';
-        throw error;
-      } finally {
-        this.isLoading = false;
-      }
+      return this.handleSocialLogin('google', authorizationCode);
     },
 
-    // Kakao OAuth 로그인 처리
+    // Kakao OAuth 로그인 처리 (기존 호환성 유지)
     async handleKakaoLogin(authorizationCode) {
-      try {
-        this.isLoading = true;
-        this.error = null;
-        
-        const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.KAKAO_LOGIN}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ code: authorizationCode })
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const responseData = await response.json();
-        
-        // 탈퇴한 회원인지 확인
-        if (responseData.data && responseData.data.isDeleted) {
-          // 탈퇴한 회원인 경우 확인 페이지로 리다이렉트
-          const userInfo = encodeURIComponent(JSON.stringify(responseData.data));
-          // replace를 사용하여 브라우저 히스토리에서 리다이렉트 페이지를 제거
-          window.location.replace(`/deleted-user-confirm/${userInfo}`);
-          return null;
-        }
-        
-        const { accessToken, refreshToken, user, expiresIn, isRestored, oauthAccessToken } = responseData.data;
-
-        // 회원 복구 여부 확인
-        if (isRestored) {
-          this.isRestoredUser = true;
-          this.showRestoreModal = true;
-        }
-
-        // OAuth 원본 액세스 토큰 저장
-        if (oauthAccessToken) {
-          this.oauthAccessToken = oauthAccessToken;
-          localStorage.setItem('oauthAccessToken', oauthAccessToken);
-        }
-
-        // 토큰 및 사용자 정보 저장 (Kakao 제공자로 설정)
-        this.setAuthData(accessToken, refreshToken, user, expiresIn, 'kakao', oauthAccessToken);
-        
-        // 최신 사용자 정보 조회
-        try {
-          await this.getCurrentUser();
-        } catch (error) {
-          console.error('Failed to get current user after Kakao login:', error);
-        }
-        
-        // 알림 구독은 initialize()에서 중앙 관리됨
-        
-        return user;
-      } catch (error) {
-        console.error('Kakao login failed:', error);
-        this.error = error.message || 'Kakao 로그인에 실패했습니다.';
-        throw error;
-      } finally {
-        this.isLoading = false;
-      }
+      return this.handleSocialLogin('kakao', authorizationCode);
     },
 
-    // Naver OAuth 로그인 처리
+    // Naver OAuth 로그인 처리 (기존 호환성 유지)
     async handleNaverLogin(authorizationCode) {
-      try {
-        this.isLoading = true;
-        this.error = null;
-        
-        const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.NAVER_LOGIN}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ code: authorizationCode })
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const responseData = await response.json();
-        
-        // 탈퇴한 회원인지 확인
-        if (responseData.data && responseData.data.isDeleted) {
-          // 탈퇴한 회원인 경우 확인 페이지로 리다이렉트
-          const userInfo = encodeURIComponent(JSON.stringify(responseData.data));
-          // replace를 사용하여 브라우저 히스토리에서 리다이렉트 페이지를 제거
-          window.location.replace(`/deleted-user-confirm/${userInfo}`);
-          return null;
-        }
-        
-        const { accessToken, refreshToken, user, expiresIn, isRestored, oauthAccessToken } = responseData.data;
-
-        // 회원 복구 여부 확인
-        if (isRestored) {
-          this.isRestoredUser = true;
-          this.showRestoreModal = true;
-        }
-
-        // OAuth 원본 액세스 토큰 저장
-        if (oauthAccessToken) {
-          this.oauthAccessToken = oauthAccessToken;
-          localStorage.setItem('oauthAccessToken', oauthAccessToken);
-        }
-
-        // 토큰 및 사용자 정보 저장 (Naver 제공자로 설정)
-        this.setAuthData(accessToken, refreshToken, user, expiresIn, 'naver', oauthAccessToken);
-        
-        // 최신 사용자 정보 조회
-        try {
-          await this.getCurrentUser();
-        } catch (error) {
-          console.error('Failed to get current user after Naver login:', error);
-        }
-        
-        // 알림 구독은 initialize()에서 중앙 관리됨
-        
-        return user;
-      } catch (error) {
-        console.error('Naver login failed:', error);
-        this.error = error.message || 'Naver 로그인에 실패했습니다.';
-        throw error;
-      } finally {
-        this.isLoading = false;
-      }
+      return this.handleSocialLogin('naver', authorizationCode);
     },
 
     // 인증 데이터 설정
@@ -540,17 +400,15 @@ export const useAuthStore = defineStore('auth', {
       localStorage.setItem('user', JSON.stringify(user));
       localStorage.setItem('provider', provider);
       
-      // 사용자 역할 설정 (user 객체에서 role 추출)
+      // 사용자 역할 설정
       if (user && user.role) {
         localStorage.setItem('userRole', user.role);
-        console.log('🔍 사용자 역할 설정:', user.role);
       }
       
       // 로그인 성공 후 알림 구독 시작
       try {
         const notificationStore = useNotificationStore();
         notificationStore.requestNotificationPermission().then(() => {
-          console.log('🔍 로그인 후 알림 구독 시작...');
           notificationStore.startNotificationSubscription();
         }).catch((error) => {
           console.warn('알림 구독 시작 실패:', error);
@@ -579,14 +437,11 @@ export const useAuthStore = defineStore('auth', {
       localStorage.setItem('provider', 'admin');
       localStorage.setItem('userRole', 'ADMIN');
       localStorage.setItem('adminAccessToken', authData.accessToken);
-      
-      console.log('🔍 관리자 인증 정보 설정 완료');
     },
 
     // 토큰 갱신
     async refreshToken() {
       if (this.isRefreshing) {
-        // 이미 갱신 중인 경우 대기
         return new Promise((resolve) => {
           const checkRefreshing = setInterval(() => {
             if (!this.isRefreshing) {
@@ -604,41 +459,78 @@ export const useAuthStore = defineStore('auth', {
           throw new Error('Refresh token not found');
         }
 
-        const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.REFRESH}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ refreshToken: this.refreshToken })
-        });
+        // 관리자 판단 로직 개선
+        const isAdmin = this.provider === 'admin' && localStorage.getItem('adminAccessToken');
+        const endpoint = isAdmin ? '/admin/refresh' : '/user/refresh';
         
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+        try {
+          const response = await apiClient.post(endpoint, {
+            refreshToken: this.refreshToken
+          });
+          
+          // 응답 구조 처리 (관리자와 일반 사용자 응답 구조가 다를 수 있음)
+          let accessToken, refreshToken;
+          
+          if (response.data.success && response.data.data) {
+            // success: true, data: {...} 구조
+            accessToken = response.data.data.accessToken;
+            refreshToken = response.data.data.refreshToken;
+          } else if (response.data.accessToken && response.data.refreshToken) {
+            // 직접 토큰 데이터가 있는 구조
+            accessToken = response.data.accessToken;
+            refreshToken = response.data.refreshToken;
+          } else if (response.data.success === false && response.data.message === 'Refresh token is required') {
+            return; // 에러 없이 조용히 종료
+          } else {
+            console.error('Unexpected response structure:', response.data);
+            throw new Error('Invalid response structure from server');
+          }
+          
+          // 새로운 토큰으로 업데이트
+          this.accessToken = accessToken;
+          this.refreshToken = refreshToken;
+          this.expiresIn = Date.now() + (3600 * 1000); // 1시간으로 설정
+          
+          // 로컬 스토리지 업데이트
+          localStorage.setItem('accessToken', accessToken);
+          localStorage.setItem('refreshToken', refreshToken);
+          localStorage.setItem('expiresIn', this.expiresIn);
+          
+          console.log('Token refresh successful');
+          
+        } catch (adminError) {
+          // 관리자 엔드포인트 실패 시 일반 사용자 엔드포인트로 폴백
+          if (isAdmin && adminError.response?.status === 401) {
+            console.warn('Admin refresh failed, trying user refresh endpoint:', adminError.message);
+            
+            const userResponse = await apiClient.post('/user/refresh', {
+              refreshToken: this.refreshToken
+            });
+            
+            if (userResponse.data.success && userResponse.data.data) {
+              const { accessToken, refreshToken } = userResponse.data.data;
+              
+              // 새로운 토큰으로 업데이트
+              this.accessToken = accessToken;
+              this.refreshToken = refreshToken;
+              this.expiresIn = Date.now() + (3600 * 1000);
+              
+              // 로컬 스토리지 업데이트
+              localStorage.setItem('accessToken', accessToken);
+              localStorage.setItem('refreshToken', refreshToken);
+              localStorage.setItem('expiresIn', this.expiresIn);
+              
+              console.log('Token refresh successful (fallback to user endpoint)');
+            } else {
+              throw new Error('Invalid response structure from user refresh endpoint');
+            }
+          } else {
+            throw adminError;
+          }
         }
-        
-        const responseData = await response.json();
-        // const { accessToken, refreshToken } = responseData.data;
-
-        if (!responseData.data || !responseData.data.accessToken || !responseData.data.refreshToken) {
-          throw new Error('Invalid response structure from server');
-        }
-
-        const { accessToken, refreshToken } = responseData.data;
-        
-        // 새로운 토큰으로 업데이트
-        this.accessToken = accessToken;
-        this.refreshToken = refreshToken;
-        this.expiresIn = Date.now() + (3600 * 1000); // 1시간으로 설정
-        
-        // 로컬 스토리지 업데이트
-        localStorage.setItem('accessToken', accessToken);
-        localStorage.setItem('refreshToken', refreshToken);
-        localStorage.setItem('expiresIn', this.expiresIn);
         
       } catch (error) {
         console.error('Token refresh failed:', error);
-        // 토큰 갱신 실패 시에도 로그아웃하지 않음 (사용자 경험 개선)
-        // await this.logout(); // 이 줄 제거
         throw error;
       } finally {
         this.isRefreshing = false;
@@ -658,19 +550,12 @@ export const useAuthStore = defineStore('auth', {
         
         // 서버에 로그아웃 요청
         if (this.accessToken) {
-          await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.LOGOUT}`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${this.accessToken}`,
-              'Content-Type': 'application/json',
-            }
-          });
+          await authService.logout();
         }
       } catch (error) {
         console.error('Logout request failed:', error);
       } finally {
         // 클라이언트 상태 정리
-        // 관리자 로그인 상태가 아닌 경우에만 clearAuth 호출
         if (!localStorage.getItem('adminAccessToken')) {
           this.clearAuth();
         }
@@ -726,7 +611,7 @@ export const useAuthStore = defineStore('auth', {
         }
         
         // 통합된 회원 탈퇴 API 호출
-        const response = await userService.deleteUser();
+        const response = await mypageService.deleteUser();
         
         if (response.success) {
           await this.logout();
@@ -749,22 +634,10 @@ export const useAuthStore = defineStore('auth', {
         this.isLoading = true;
         this.error = null;
         
-        const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.RESTORE_USER}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(restoreData)
-        });
+        const response = await authService.restoreUser(restoreData);
         
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const responseData = await response.json();
-        
-        if (responseData.success && responseData.data) {
-          const { accessToken, refreshToken, user, expiresIn } = responseData.data;
+        if (response.success && response.data) {
+          const { accessToken, refreshToken, user, expiresIn } = response.data;
           
           // 토큰 및 사용자 정보 저장
           this.setAuthData(accessToken, refreshToken, user, expiresIn, restoreData.oauthType.toLowerCase());
@@ -778,10 +651,10 @@ export const useAuthStore = defineStore('auth', {
           
           return { 
             success: true, 
-            message: responseData.data.message || '회원 정보가 성공적으로 복원되었습니다.' 
+            message: response.data.message || '회원 정보가 성공적으로 복원되었습니다.' 
           };
         } else {
-          throw new Error(responseData.message || '회원 복구에 실패했습니다.');
+          throw new Error(response.message || '회원 복구에 실패했습니다.');
         }
       } catch (error) {
         console.error('User restoration failed:', error);
@@ -804,30 +677,7 @@ export const useAuthStore = defineStore('auth', {
       this.showRestoreModal = false;
     },
 
-    // 백엔드에서 최신 프로필 정보 가져오기
-    async fetchProfileInfo() {
-      try {
-        if (!this.accessToken) {
-          console.warn('Access token not available');
-          return null;
-        }
 
-        const response = await authService.getProfileInfo();
-        
-        if (response.success && response.data) {
-          // 사용자 정보 업데이트
-          this.user = { ...this.user, ...response.data };
-          localStorage.setItem('user', JSON.stringify(this.user));
-          return response.data;
-        } else {
-          console.error('Failed to fetch profile info:', response.message);
-          return null;
-        }
-      } catch (error) {
-        console.error('Error fetching profile info:', error);
-        return null;
-      }
-    },
 
     // 현재 로그인한 사용자 정보 조회 (/user/me 엔드포인트)
     async getCurrentUser() {
@@ -837,26 +687,14 @@ export const useAuthStore = defineStore('auth', {
           return null;
         }
 
-        const response = await apiGet('/user/me');
+        const response = await apiClient.get('/user/me');
         
-        if (!response.ok) {
-          if (response.status === 401) {
-            // 토큰이 유효하지 않은 경우
-            this.clearAuth();
-            throw new Error('인증이 만료되었습니다. 다시 로그인해주세요.');
-          }
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const responseData = await response.json();
-        
-        if (responseData.success && responseData.data) {
-          // 사용자 정보 업데이트
-          this.user = responseData.data;
+        if (response.data.success && response.data.data) {
+          this.user = response.data.data;
           localStorage.setItem('user', JSON.stringify(this.user));
-          return responseData.data;
+          return response.data.data;
         } else {
-          console.error('Failed to get current user:', responseData.message);
+          console.error('Failed to get current user:', response.data.message);
           return null;
         }
       } catch (error) {

@@ -19,7 +19,7 @@
                 <div class="d-flex align-center mb-3">
                   <v-avatar size="48" class="me-3">
                     <v-img 
-                      :src="userInfo.profileImageUrl" 
+                      :src="userInfo.picture" 
                       alt="profile"
                       cover
                       @error="handleImageError"
@@ -116,12 +116,10 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/auth/auth'
-import { useNotifications } from '@/composables/useNotifications'
 import { useNotificationStore } from '@/store/notification/notification'
 
 const router = useRouter()
 const authStore = useAuthStore()
-const { showNotification } = useNotifications()
 const notificationStore = useNotificationStore()
 
 // 상태 관리
@@ -145,7 +143,7 @@ const userInfo = computed(() => {
       const normalizedUserInfo = {
         ...parsed,
         // 프로필 이미지 URL을 표준화된 필드로 설정
-        profileImageUrl: parsed.picture || parsed.profileImageUrl || parsed.profileImage || parsed.avatar || parsed.image || '/default-avatar.png'
+        picture: parsed.picture || parsed.profileImageUrl || parsed.profileImage || parsed.avatar || parsed.image || '/default-avatar.png'
       };
       
       console.log('탈퇴한 사용자 정보 (정규화됨):', normalizedUserInfo);
@@ -153,10 +151,10 @@ const userInfo = computed(() => {
     }
     
     console.warn('사용자 정보를 찾을 수 없습니다.');
-    return { profileImageUrl: '/default-avatar.png' };
+    return { picture: '/default-avatar.png' };
   } catch (error) {
     console.error('사용자 정보 파싱 실패:', error);
-    return { profileImageUrl: '/default-avatar.png' };
+    return { picture: '/default-avatar.png' };
   }
 })
 
@@ -197,7 +195,7 @@ const getOAuthName = (oauthType) => {
         const restoreData = {
           socialId: userInfo.value.socialId,
           oauthType: userInfo.value.oauthType,
-          picture: userInfo.value.profileImageUrl // 정규화된 프로필 이미지 URL 사용
+          picture: userInfo.value.picture // 정규화된 프로필 이미지 URL 사용
         }
 
         const response = await authStore.restoreUser(restoreData)
@@ -209,7 +207,7 @@ const getOAuthName = (oauthType) => {
         }
       } catch (error) {
         console.error('User restoration failed:', error)
-        showNotification(error.message || '회원 복구에 실패했습니다.', 'error')
+        alert(error.message || '회원 복구에 실패했습니다.')
       } finally {
         isLoading.value = false
       }
@@ -222,7 +220,7 @@ const handleSuccessConfirm = () => {
   // 실시간 알림 재연결
   if (authStore.user?.id) {
     try {
-      notificationStore.connectToNotificationStream(authStore.user.id)
+      notificationStore.startNotificationSubscription()
       console.log('회원 복구 후 실시간 알림 재연결 완료')
     } catch (error) {
       console.error('실시간 알림 재연결 실패:', error)

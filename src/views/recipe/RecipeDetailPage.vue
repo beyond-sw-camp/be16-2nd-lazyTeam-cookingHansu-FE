@@ -105,8 +105,8 @@
                         <div class="author-profile-card">
                           <v-avatar size="60" class="author-avatar" @click="openAuthorProfile">
                             <v-img 
-                              v-if="recipe.profileImageUrl" 
-                              :src="recipe.profileImageUrl" 
+                              v-if="recipe.picture" 
+                              :src="recipe.picture" 
                               :alt="recipe.nickname + ' 프로필 이미지'"
                               @error="handleProfileImageError('recipe')"
                             ></v-img>
@@ -175,8 +175,8 @@
                   </div>
                 </div>
                 
-                <!-- 수정/삭제 버튼들 (작성자만 보임) -->
-                <div v-if="isAuthor" class="action-buttons">
+                <!-- 수정/삭제 버튼들 (작성자, 관리자) -->
+                <div v-if="isAuthor || isAdmin" class="action-buttons">
                   <v-btn 
                     color="success" 
                     variant="outlined" 
@@ -285,10 +285,15 @@
             >
               <div class="comment-header">
                 <div class="comment-info">
-                  <v-avatar size="40" class="comment-avatar">
+                  <v-avatar 
+                    size="40" 
+                    class="comment-avatar"
+                    :class="{ 'clickable-avatar': !isCurrentUserCommentAuthor(comment) }"
+                    @click="!isCurrentUserCommentAuthor(comment) && handleCommentProfileClick(comment)"
+                  >
                     <v-img 
-                      v-if="comment.authorProfileImage" 
-                      :src="comment.authorProfileImage" 
+                      v-if="comment.authorProfileImage || comment.picture" 
+                      :src="comment.authorProfileImage || comment.picture" 
                       :alt="comment.nickname + ' 프로필 이미지'"
                       @error="handleCommentProfileImageError(comment)"
                     ></v-img>
@@ -297,7 +302,11 @@
                     </span>
                   </v-avatar>
                   <div class="comment-author-info">
-                    <h4 class="comment-author-name">
+                    <h4 
+                      class="comment-author-name"
+                      :class="{ 'clickable-name': !isCurrentUserCommentAuthor(comment) }"
+                      @click="!isCurrentUserCommentAuthor(comment) && handleCommentProfileClick(comment)"
+                    >
                       {{ comment.nickname }}
                       <span 
                         v-if="isCommentAuthor(comment)" 
@@ -322,9 +331,9 @@
                   </div>
                 </div>
                 <div class="comment-actions">
-                  <!-- 답글 버튼 (삭제된 댓글이 아닌 경우만, 그리고 답글이 없는 경우만) -->
+                  <!-- 답글 버튼 (삭제된 댓글이 아닌 경우만) -->
                   <v-btn 
-                    v-if="!comment.isDeleted && (!comment.replies || comment.replies.length === 0)"
+                    v-if="!comment.isDeleted"
                     size="small" 
                     variant="text"
                     @click="showReplyForm(comment)"
@@ -434,11 +443,10 @@
               </div>
               
               <div v-if="comment.showReplyForm" class="reply-form">
-                <div class="reply-notice">
-                  <v-icon size="16" color="info">mdi-information</v-icon>
-                  <span>답글은 1개만 작성할 수 있습니다</span>
+                <div class="reply-form-label">
+                  <v-icon size="14" color="#666">mdi-reply</v-icon>
+                  <span>답글 작성</span>
                 </div>
-                
                 <v-textarea
                   v-model="comment.replyText"
                   placeholder="답글을 작성해주세요...."
@@ -473,12 +481,21 @@
                         :key="reply.id"
                   class="reply-item"
                 >
+                <div class="reply-label">
+                  <v-icon size="14" color="#666">mdi-reply</v-icon>
+                  <span>답글</span>
+                </div>
               <div class="comment-header">
                 <div class="comment-info">
-                  <v-avatar size="40" class="comment-avatar">
+                  <v-avatar 
+                    size="40" 
+                    class="comment-avatar"
+                    :class="{ 'clickable-avatar': !isCurrentUserCommentAuthor(reply) }"
+                    @click="!isCurrentUserCommentAuthor(reply) && handleCommentProfileClick(reply)"
+                  >
                     <v-img 
-                      v-if="reply.authorProfileImage" 
-                      :src="reply.authorProfileImage" 
+                      v-if="reply.authorProfileImage || reply.picture" 
+                      :src="reply.authorProfileImage || reply.picture" 
                       :alt="reply.nickname + ' 프로필 이미지'"
                       @error="handleCommentProfileImageError(reply)"
                     ></v-img>
@@ -487,7 +504,11 @@
                     </span>
                   </v-avatar>
                   <div class="comment-author-info">
-                    <h4 class="comment-author-name">
+                    <h4 
+                      class="comment-author-name"
+                      :class="{ 'clickable-name': !isCurrentUserCommentAuthor(reply) }"
+                      @click="!isCurrentUserCommentAuthor(reply) && handleCommentProfileClick(reply)"
+                    >
                       {{ reply.nickname }}
                       <span 
                         v-if="isCommentAuthor(reply)" 
@@ -665,6 +686,40 @@
       @cancel="closeLoginModal"
     />
 
+    <!-- 에러 모달 -->
+    <div v-if="showErrorModal" class="modal-overlay" @click="showErrorModal = false">
+      <div class="cart-modal" @click.stop>
+        <div class="modal-header">
+          <h3>오류</h3>
+          <button class="close-btn" @click="showErrorModal = false">×</button>
+        </div>
+        <div class="modal-content">
+          <div class="modal-icon">⚠️</div>
+          <p class="modal-message">{{ errorMessage }}</p>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-secondary" @click="showErrorModal = false">확인</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 성공 모달 -->
+    <div v-if="showSuccessModal" class="modal-overlay" @click="showSuccessModal = false">
+      <div class="cart-modal" @click.stop>
+        <div class="modal-header">
+          <h3>완료</h3>
+          <button class="close-btn" @click="showSuccessModal = false">×</button>
+        </div>
+        <div class="modal-content">
+          <div class="modal-icon">✅</div>
+          <p class="modal-message">{{ successMessage }}</p>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-primary" @click="showSuccessModal = false">확인</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 공유 모달 -->
     <div v-if="showShareModal" class="share-modal-overlay" @click="showShareModal = false">
       <div class="share-modal" @click.stop>
@@ -715,6 +770,18 @@
       report-type="USER"
       :target-id="reportTargetId"
       :target-name="reportTargetName"
+      @success="handleReportSuccess"
+      @error="handleReportError"
+    />
+
+    <!-- 댓글 신고 모달 -->
+    <ReportModal
+      v-model="showReportModal"
+      :report-type="reportModalData?.reportType"
+      :target-id="reportModalData?.targetId"
+      :target-name="reportModalData?.targetName"
+      @success="handleReportSuccess"
+      @error="handleReportError"
     />
   </div>
 </template>
@@ -729,6 +796,9 @@ import ReportModal from '@/components/common/ReportModal.vue'
 import { useChatStore } from '@/store/chat/chat'
 import { useAuthStore } from '@/store/auth/auth'
 import { useNotifications } from '@/composables/useNotifications'
+import { recipeService } from '@/services/recipe/recipeService'
+import { reportService } from '@/services/report/reportService'
+
 
 const route = useRoute()
 const router = useRouter()
@@ -745,8 +815,14 @@ const loading = ref(true)
 const error = ref(null)
 const showDeleteModal = ref(false)
 const newComment = ref('')
-const currentUser = ref(null)
+
 const showLoginModal = ref(false)
+const showReportModal = ref(false)
+const reportModalData = ref(null)
+const showErrorModal = ref(false)
+const showSuccessModal = ref(false)
+const errorMessage = ref('')
+const successMessage = ref('')
 const showShareModal = ref(false)
 const showUserProfileModal = ref(false)
 const userProfileData = ref({
@@ -760,33 +836,17 @@ const showUserReportModal = ref(false)
 const reportTargetId = ref('')
 const reportTargetName = ref('')
 
-// 로그인 상태 확인
+// 로그인 상태 확인 (authStore에서 직접 가져오기)
 const isLoggedIn = computed(() => {
-  return !!localStorage.getItem('accessToken')
+  return authStore.isAuthenticated
 })
 
-// JWT 토큰에서 사용자 정보 추출
-const getCurrentUserIdFromToken = () => {
-  try {
-    const token = localStorage.getItem('accessToken')
-    if (!token) {
-      console.log('🔍 JWT 토큰이 없습니다')
-      return null
-    }
-    
-    const payload = JSON.parse(atob(token.split('.')[1]))
-    console.log('🔍 JWT 토큰 페이로드:', payload)
-    
-    // 다양한 필드명으로 사용자 ID 찾기
-    const userId = payload.sub || payload.userId || payload.id || payload.user_id || payload.userId
-    console.log('🔍 추출된 사용자 ID:', userId)
-    
-    return userId
-  } catch (error) {
-    console.error('JWT 토큰 파싱 실패:', error)
-    return null
-  }
-}
+// 현재 사용자 정보 (authStore에서 직접 가져오기)
+const currentUser = computed(() => {
+  return authStore.user
+})
+
+// getCurrentUserIdFromStore 함수 제거됨 - authStore에서 직접 사용
 // 작성자 아바타 클릭 → 프로필 모달 표시
 const openAuthorProfile = () => {
   // 비로그인 → 로그인 모달
@@ -795,17 +855,20 @@ const openAuthorProfile = () => {
     return
   }
 
-  const currentUserId = getCurrentUserIdFromToken()
+  // 자신의 프로필은 클릭 불가
+  const currentUserId = authStore.user?.id || authStore.user?.userId
   if (currentUserId && String(currentUserId) === String(recipe.authorId)) {
     return
   }
 
+  // 디버깅 로그 제거됨
+
   userProfileData.value = {
     id: recipe.authorId,
     nickname: recipe.nickname,
-    email: '',
-    profileImage: recipe.profileImageUrl || '',
-    joinDate: ''
+    email: recipe.authorEmail || '정보 없음',
+    profileImage: recipe.picture || '',
+    joinDate: recipe.authorJoinDate || '정보 없음'
   }
   showUserProfileModal.value = true
 }
@@ -834,70 +897,129 @@ const handleUserProfileChat = async (userId) => {
 }
 
 // 프로필 모달: 신고하기
-const handleUserProfileReport = (userId) => {
+const handleUserProfileReport = async (userId) => {
+  try {
+    if (!isLoggedIn.value) {
+      showLoginModal.value = true
+      return
+    }
+
+    // 중복 신고 확인
+    const response = await reportService.checkReport(userId)
+    
+    if (response.success && response.data) {
+      // 중복 신고인 경우 프로필 모달 닫고 경고 모달 표시
+      showUserProfileModal.value = false
+      showError('이미 신고한 사용자입니다. 신고가 처리된 이후에 다시 시도해주세요.')
+      return
+    }
+
+    reportTargetId.value = String(userId)
+    reportTargetName.value = recipe.nickname || '사용자'
+    showUserReportModal.value = true
+  } catch (error) {
+    console.error('사용자 신고 확인 오류:', error)
+    showUserProfileModal.value = false
+    showError('신고 확인 중 오류가 발생했습니다.')
+  }
+}
+
+// 에러 모달 표시
+const showError = (message) => {
+  errorMessage.value = message
+  showErrorModal.value = true
+}
+
+// 성공 모달 표시
+const showSuccess = (message) => {
+  successMessage.value = message
+  showSuccessModal.value = true
+}
+
+// 신고 성공 처리
+const handleReportSuccess = (response) => {
+  showSuccess('신고가 성공적으로 접수되었습니다.')
+  // 모든 모달들 닫기
+  showReportModal.value = false
+  showUserReportModal.value = false
+  showUserProfileModal.value = false
+}
+
+// 신고 실패 처리
+const handleReportError = (errorMessage) => {
+  showError(errorMessage || '신고 처리 중 오류가 발생했습니다.')
+  // 신고 관련 모달들 닫기
+  showReportModal.value = false
+  showUserReportModal.value = false
+  showUserProfileModal.value = false
+}
+
+// 댓글 작성자 프로필 클릭 처리
+const handleCommentProfileClick = (comment) => {
+  // 로그인하지 않은 사용자는 프로필 클릭 불가
   if (!isLoggedIn.value) {
     showLoginModal.value = true
     return
   }
-  reportTargetId.value = String(userId)
-  reportTargetName.value = recipe.nickname || '사용자'
-  showUserReportModal.value = true
+
+  // 자신의 프로필은 클릭 불가
+  if (isCurrentUserCommentAuthor(comment)) {
+    return
+  }
+
+  // 댓글 작성자 정보를 프로필 모달 데이터로 설정
+  userProfileData.value = {
+    id: comment.authorUUID || comment.authorId || comment.userId,
+    nickname: comment.nickname,
+    email: comment.email || '정보 없음',
+    profileImage: comment.authorProfileImage || comment.picture || '',
+    joinDate: comment.joinDate || '정보 없음'
+  }
+
+  // 사용자 프로필 모달 표시
+  showUserProfileModal.value = true
 }
 
-// 현재 사용자가 작성자인지 확인 (JWT 토큰 기반)
+// 현재 사용자가 작성자인지 확인 (authStore 기반)
 const isAuthor = computed(() => {
-  // JWT 토큰에서 사용자 ID 추출
-  const currentUserId = getCurrentUserIdFromToken()
+  // authStore에서 사용자 ID 가져오기
+  const currentUserId = authStore.user?.id || authStore.user?.userId
   
   if (!currentUserId) {
-    console.log('🔍 isAuthor: JWT 토큰에서 사용자 ID 추출 실패')
     return false
   }
   
   if (!recipe.authorId) {
-    console.log('🔍 isAuthor: 레시피 작성자 ID 없음')
     return false
   }
   
   // 타입 변환하여 비교 (문자열과 숫자 모두 지원)
   const isMatch = String(currentUserId) === String(recipe.authorId)
-  console.log('🔍 isAuthor 체크 (JWT 토큰 기준):', {
-    currentUserIdFromToken: currentUserId,
-    currentUserIdType: typeof currentUserId,
-    recipeAuthorId: recipe.authorId,
-    recipeAuthorIdType: typeof recipe.authorId,
-    currentUserNickname: currentUser.value?.nickname,
-    recipeNickname: recipe.nickname,
-    isMatch: isMatch
-  })
-  
   return isMatch
+})
+
+// 관리자 여부 확인 (authStore에서 직접 가져오기)
+const isAdmin = computed(() => {
+  const role = authStore.getUserRole
+  const userRole = authStore.user?.role
+  const isAdminRole = role === 'ADMIN' || role === 'admin'
+  console.log('🔍 관리자 체크:', { role, userRole, isAdmin: isAdminRole })
+  return isAdminRole
 })
 
 // 비밀글 접근 권한 확인
 const canAccessRecipe = computed(() => {
-  console.log('🔍 비밀글 접근 권한 체크:', {
-    isOpen: recipe.isOpen,
-    isOpenType: typeof recipe.isOpen,
-    isAuthor: isAuthor.value,
-    currentUserId: getCurrentUserIdFromToken(),
-    recipeAuthorId: recipe.authorId
-  })
-  
   // 공개글인 경우 모든 사용자가 접근 가능
   if (recipe.isOpen === true || recipe.isOpen === undefined) {
-    console.log('✅ 공개글 - 접근 허용')
     return true
   }
   
   // 비밀글인 경우 작성자만 접근 가능
   if (recipe.isOpen === false) {
-    console.log('🔒 비밀글 - 작성자 체크:', isAuthor.value)
     return isAuthor.value
   }
   
   // 기본값은 접근 허용
-  console.log('⚠️ 기본값 - 접근 허용')
   return true
 })
 
@@ -924,7 +1046,9 @@ const recipe = reactive({
   commentCount: 0, // 댓글 개수 추가
     nickname: '',
   role: '',
-  authorId: null // 작성자 ID 추가
+  authorId: null, // 작성자 ID 추가
+  authorEmail: '', // 작성자 이메일 추가
+  authorJoinDate: '' // 작성자 가입일 추가
 })
 
 const getDifficultyText = (level) => {
@@ -988,11 +1112,13 @@ const getProfileImageUrl = (user) => {
   
   // 다양한 필드명에서 프로필 이미지 URL 찾기
   const possibleFields = [
+    'profileImageUrl', // 백엔드 DTO의 profileImageUrl 필드 우선 사용
+    'picture', // 백엔드 DTO의 picture 필드
     'authorProfileImage',
     'authorProfileUrl', 
-    'profileImageUrl',
     'profileImage',
     'user?.profileImageUrl',
+    'user?.picture',
     'user?.profileImage'
   ]
   
@@ -1013,13 +1139,14 @@ const getProfileImageUrl = (user) => {
 const handleProfileImageError = (type) => {
   console.log(`${type} 프로필 이미지 로드 실패`)
   if (type === 'recipe') {
-    recipe.value.profileImageUrl = null
+    recipe.value.picture = null // 백엔드 DTO의 picture 필드 사용
   }
 }
 
 const handleCommentProfileImageError = (comment) => {
   console.log('댓글 프로필 이미지 로드 실패:', comment.nickname)
-  comment.authorProfileImage = null
+  comment.authorProfileImage = null // 백엔드 DTO의 authorProfileImage 필드 사용
+  comment.picture = null // 백엔드 DTO의 picture 필드 사용
 }
 
 // 댓글 작성자가 레시피 작성자인지 확인 (UUID 기반)
@@ -1033,45 +1160,46 @@ const isCommentAuthor = (comment) => {
   return comment.nickname === recipe.nickname
 }
 
-// 댓글 수정/삭제 권한 확인 (UUID 기반)
-const canEditComment = (comment) => {
-  if (!isLoggedIn.value || !currentUser.value) {
-    console.log('🔍 canEditComment: 로그인하지 않았거나 사용자 정보 없음')
+// 현재 사용자가 댓글 작성자인지 확인
+const isCurrentUserCommentAuthor = (comment) => {
+  if (!isLoggedIn.value || !authStore.user) {
     return false
   }
   
-  // 현재 사용자 UUID 가져오기 (JWT 토큰에서 추출)
-  const currentUserUUID = getCurrentUserIdFromToken() || currentUser.value.id || currentUser.value.uuid || currentUser.value.userId
+  const currentUserId = authStore.user?.id || authStore.user?.userId
+  const commentAuthorId = comment.authorUUID || comment.authorId || comment.userId
   
-  console.log('🔍 canEditComment 디버깅:', {
-    isLoggedIn: isLoggedIn.value,
-    currentUser: currentUser.value,
-    currentUserUUID: currentUserUUID,
-    currentUserNickname: currentUser.value.nickname,
-    commentAuthorUUID: comment.authorUUID,
-    commentNickname: comment.nickname,
-    commentData: comment
-  })
+  // UUID로 비교
+  if (currentUserId && commentAuthorId) {
+    return String(currentUserId) === String(commentAuthorId)
+  }
+  
+  // UUID가 없는 경우 닉네임으로 fallback
+  return authStore.user?.nickname === comment.nickname
+}
+
+// 댓글 수정/삭제 권한 확인 (UUID 기반)
+const canEditComment = (comment) => {
+  if (!isLoggedIn.value || !currentUser.value) {
+    return false
+  }
+  
+  // 관리자는 모든 댓글 수정/삭제 가능
+  if (isAdmin.value) {
+    return true
+  }
+  
+  // 현재 사용자 UUID 가져오기 (authStore에서 직접)
+  const currentUserUUID = authStore.user?.id || authStore.user?.userId || authStore.user?.uuid
   
   // 댓글 작성자 UUID가 없는 경우 nickname으로 fallback (하위 호환성)
   if (!comment.authorUUID) {
-    console.log('🔍 canEditComment: 댓글 작성자 UUID 없음, nickname으로 fallback')
     const nicknameMatch = currentUser.value.nickname === comment.nickname
-    console.log('🔍 nickname 비교 결과:', nicknameMatch)
     return nicknameMatch
   }
   
   // UUID로 비교
   const canEdit = currentUserUUID && String(currentUserUUID) === String(comment.authorUUID)
-  console.log('🔍 canEditComment 체크 (UUID 기준):', {
-    currentUserUUID: currentUserUUID,
-    currentUserUUIDType: typeof currentUserUUID,
-    commentAuthorUUID: comment.authorUUID,
-    commentAuthorUUIDType: typeof comment.authorUUID,
-    commentNickname: comment.nickname,
-    canEdit: canEdit
-  })
-  
   return canEdit
 }
 
@@ -1129,23 +1257,19 @@ const submitComment = async () => {
   
   // 게시글 접근 권한 실시간 체크
   try {
-    const checkResponse = await fetch(`http://localhost:8080/api/posts/${recipe.id}`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-      }
-    })
+    const checkResponse = await recipeService.getRecipeDetail(recipe.id)
     
-    if (!checkResponse.ok) {
+    if (!checkResponse.success) {
       alert('비공개된 게시글입니다.')
       router.push('/recipes')
       return
     }
     
     // 응답에서 isOpen 상태 확인
-    const checkData = await checkResponse.json()
+    const checkData = checkResponse
     if (checkData.data && checkData.data.isOpen === false) {
       // 비밀글인 경우 작성자 체크
-      const currentUserId = getCurrentUserIdFromToken()
+      const currentUserId = authStore.user?.id || authStore.user?.userId
       if (!currentUserId || String(currentUserId) !== String(checkData.data.authorId)) {
         alert('비공개된 게시글입니다.')
         router.push('/recipes')
@@ -1166,22 +1290,14 @@ const submitComment = async () => {
   })
   
   try {
-            const response = await fetch('http://localhost:8080/post/comment/create', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-          },
-          body: JSON.stringify({
-            postId: recipe.id,
-            content: newComment.value
-          })
+            const response = await recipeService.createComment(recipe.id, {
+          content: newComment.value
         })
 
-    console.log('댓글 생성 응답 상태:', response.status, response.statusText)
+    console.log('댓글 생성 응답:', response)
     
-    if (response.ok) {
-      const data = await response.json()
+    if (response.success) {
+      const data = response
       console.log('댓글 생성 성공:', data)
       
       // 댓글 목록 새로고침
@@ -1230,23 +1346,19 @@ const submitReply = async (comment) => {
   
   // 게시글 접근 권한 실시간 체크
   try {
-    const checkResponse = await fetch(`http://localhost:8080/api/posts/${recipe.id}`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-      }
-    })
+    const checkResponse = await recipeService.getRecipeDetail(recipe.id)
     
-    if (!checkResponse.ok) {
+    if (!checkResponse.success) {
       alert('비공개된 게시글입니다.')
       router.push('/recipes')
       return
     }
     
     // 응답에서 isOpen 상태 확인
-    const checkData = await checkResponse.json()
+    const checkData = checkResponse
     if (checkData.data && checkData.data.isOpen === false) {
       // 비밀글인 경우 작성자 체크
-      const currentUserId = getCurrentUserIdFromToken()
+      const currentUserId = authStore.user?.id || authStore.user?.userId
       if (!currentUserId || String(currentUserId) !== String(checkData.data.authorId)) {
         alert('비공개된 게시글입니다.')
         router.push('/recipes')
@@ -1261,21 +1373,13 @@ const submitReply = async (comment) => {
   }
   
   try {
-    const response = await fetch('http://localhost:8080/post/comment/create', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-      },
-      body: JSON.stringify({
-        postId: recipe.id,
-        content: comment.replyText,
-        parentCommentId: comment.id // 대댓글인 경우 부모 댓글 ID
-      })
+    const response = await recipeService.createComment(recipe.id, {
+      content: comment.replyText,
+      parentCommentId: comment.id // 대댓글인 경우 부모 댓글 ID
     })
 
-    if (response.ok) {
-      const data = await response.json()
+    if (response.success) {
+      const data = response
       console.log('대댓글 생성 성공:', data)
       
       // 댓글 목록 새로고침
@@ -1312,23 +1416,19 @@ const deleteComment = async (commentId) => {
   
   // 게시글 접근 권한 실시간 체크
   try {
-    const checkResponse = await fetch(`http://localhost:8080/api/posts/${recipe.id}`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-      }
-    })
+    const checkResponse = await recipeService.getRecipeDetail(recipe.id)
     
-    if (!checkResponse.ok) {
+    if (!checkResponse.success) {
       alert('비공개된 게시글입니다.')
       router.push('/recipes')
       return
     }
     
     // 응답에서 isOpen 상태 확인
-    const checkData = await checkResponse.json()
+    const checkData = checkResponse
     if (checkData.data && checkData.data.isOpen === false) {
       // 비밀글인 경우 작성자 체크
-      const currentUserId = getCurrentUserIdFromToken()
+      const currentUserId = authStore.user?.id || authStore.user?.userId
       if (!currentUserId || String(currentUserId) !== String(checkData.data.authorId)) {
         alert('비공개된 게시글입니다.')
         router.push('/recipes')
@@ -1351,14 +1451,9 @@ const deleteComment = async (commentId) => {
   console.log('답글 개수:', commentToDelete?.replies?.length || 0)
   
   try {
-            const response = await fetch(`http://localhost:8080/post/comment/delete/${commentId}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-      }
-    })
+            const response = await recipeService.deleteComment(commentId)
 
-    if (response.ok) {
+    if (response.success) {
       console.log('댓글 삭제 성공')
       
       if (hasReplies) {
@@ -1440,23 +1535,19 @@ const saveEditComment = async (comment) => {
   
   // 게시글 접근 권한 실시간 체크
   try {
-    const checkResponse = await fetch(`http://localhost:8080/api/posts/${recipe.id}`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-      }
-    })
+    const checkResponse = await recipeService.getRecipeDetail(recipe.id)
     
-    if (!checkResponse.ok) {
+    if (!checkResponse.success) {
       alert('비공개된 게시글입니다.')
       router.push('/recipes')
       return
     }
     
     // 응답에서 isOpen 상태 확인
-    const checkData = await checkResponse.json()
+    const checkData = checkResponse
     if (checkData.data && checkData.data.isOpen === false) {
       // 비밀글인 경우 작성자 체크
-      const currentUserId = getCurrentUserIdFromToken()
+      const currentUserId = authStore.user?.id || authStore.user?.userId
       if (!currentUserId || String(currentUserId) !== String(checkData.data.authorId)) {
         alert('비공개된 게시글입니다.')
         router.push('/recipes')
@@ -1471,19 +1562,12 @@ const saveEditComment = async (comment) => {
   }
   
   try {
-            const response = await fetch(`http://localhost:8080/post/comment/update/${comment.id}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-      },
-      body: JSON.stringify({
-        content: comment.editText
-      })
+            const response = await recipeService.updateComment(comment.id, {
+      content: comment.editText
     })
 
-    if (response.ok) {
-      const data = await response.json()
+    if (response.success) {
+      const data = response
       console.log('댓글 수정 성공:', data)
       
       // 댓글 내용 업데이트
@@ -1545,14 +1629,12 @@ const loadComments = async () => {
       headers['Authorization'] = `Bearer ${token}`
     }
     
-            const response = await fetch(`http://localhost:8080/post/comment/list/${recipe.id}`, {
-      headers
-    })
+            const response = await recipeService.getComments(recipe.id)
 
-    console.log('댓글 목록 응답 상태:', response.status, response.statusText)
+    console.log('댓글 목록 응답:', response)
 
-    if (response.ok) {
-      const data = await response.json()
+    if (response.success) {
+      const data = response
       console.log('댓글 목록 로드 성공:', data)
       
       if (data.data) {
@@ -1573,7 +1655,10 @@ const loadComments = async () => {
             createdAt: comment.createdAt,
             isDeleted: comment.isDeleted || false, // 삭제 상태 추가
             showMoreMenu: false, // 더보기 메뉴 상태
-            authorProfileImage: getProfileImageUrl(comment),
+            picture: comment.authorProfileImage || comment.picture, // 백엔드 DTO의 authorProfileImage 필드 사용
+            authorProfileImage: comment.authorProfileImage, // 백엔드 DTO의 authorProfileImage 필드 사용
+            email: comment.authorEmail, // 작성자 이메일
+            joinDate: comment.authorCreatedAt, // 작성자 가입일
             replies: comment.childComments ? comment.childComments
               .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)) // 대댓글도 오래된 순으로 정렬
               .map(reply => {
@@ -1584,8 +1669,11 @@ const loadComments = async () => {
                   content: reply.content,
                   createdAt: reply.createdAt,
                   isDeleted: reply.isDeleted || false, // 답글 삭제 상태도 추가
-                  authorProfileImage: getProfileImageUrl(reply),
-                  showMoreMenu: false // 더보기 메뉴 상태
+                  picture: reply.authorProfileImage || reply.picture, // 백엔드 DTO의 authorProfileImage 필드 사용
+                  authorProfileImage: reply.authorProfileImage, // 백엔드 DTO의 authorProfileImage 필드 사용
+                  showMoreMenu: false, // 더보기 메뉴 상태
+                  email: reply.authorEmail, // 답글 작성자 이메일
+                  joinDate: reply.authorCreatedAt // 답글 작성자 가입일
                 }
               }) : []
           }
@@ -1612,14 +1700,9 @@ const toggleLike = async () => {
   }
 
   try {
-    const response = await fetch(`http://localhost:8080/api/interactions/posts/${recipe.id}/likes`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-      }
-    })
+    const response = await recipeService.likeRecipe(recipe.id)
 
-    if (response.ok) {
+    if (response.success) {
       // null 상태에서 시작하는 경우 false로 초기화
       if (isLiked.value === null) {
         isLiked.value = false
@@ -1647,14 +1730,9 @@ const toggleBookmark = async () => {
   }
 
   try {
-    const response = await fetch(`http://localhost:8080/api/interactions/posts/${recipe.id}/bookmarks`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-      }
-    })
+    const response = await recipeService.bookmarkRecipe(recipe.id)
 
-    if (response.ok) {
+    if (response.success) {
       // null 상태에서 시작하는 경우 false로 초기화
       if (isBookmarked.value === null) {
         isBookmarked.value = false
@@ -1762,20 +1840,24 @@ const loadRecipe = async () => {
     error.value = null
     
     const recipeId = route.params.id
-    console.log('레시피 ID:', recipeId)
+
     
-    // 조회수 증가 (로그인한 사용자만)
-    if (isLoggedIn.value) {
+    // 조회수 증가 (로그인한 일반 사용자만, 관리자 제외)
+    console.log('🔍 조회수 증가 체크:', {
+      isLoggedIn: isLoggedIn.value,
+      isAdmin: isAdmin.value,
+      userRole: authStore.getUserRole,
+      shouldIncrement: isLoggedIn.value && !isAdmin.value
+    })
+    
+    if (isLoggedIn.value && !isAdmin.value) {
       try {
-        await fetch(`http://localhost:8080/api/interactions/posts/${recipeId}/views`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-          }
-        })
+        await recipeService.incrementViews(recipeId)
       } catch (error) {
         console.log('조회수 증가 실패 (무시)', error)
       }
+    } else {
+      console.log('🚫 조회수 증가 건너뜀 - 관리자 또는 비로그인')
     }
     
 
@@ -1787,52 +1869,14 @@ const loadRecipe = async () => {
       headers['Authorization'] = `Bearer ${token}`
     }
     
-    // 백엔드 API 경로를 여러 개 시도해보기
-    let response
-          let apiUrl = `http://localhost:8080/api/posts/${recipeId}`
+    // 레시피 상세 조회
+    console.log('🔄 레시피 상세 조회 시도:', recipeId)
+    const response = await recipeService.getRecipeDetail(recipeId)
     
-    console.log('🔄 첫 번째 시도:', apiUrl)
-    response = await fetch(apiUrl, { headers })
-    
-    if (!response.ok) {
-      console.log('🔄 두 번째 시도: /api/posts/{id}')
-      apiUrl = `http://localhost:8080/api/posts/${recipeId}`
-      response = await fetch(apiUrl, { headers })
+    if (response.success) {
+      const data = response
       
-      if (!response.ok) {
-        console.log('❌ 두 번째 시도 실패:', response.status, response.statusText)
-        try {
-          const errorText = await response.text()
-          console.log('❌ 에러 상세:', errorText)
-        } catch (e) {
-          console.log('❌ 에러 상세 읽기 실패:', e)
-        }
-      }
-    }
-    
-    if (!response.ok) {
-      console.log('🔄 세 번째 시도: /api/posts/detail/{id}')
-      apiUrl = `http://localhost:8080/api/posts/detail/${recipeId}`
-      response = await fetch(apiUrl, { headers })
-      
-      if (!response.ok) {
-        console.log('❌ 세 번째 시도 실패:', response.status, response.statusText)
-        try {
-          const errorText = await response.text()
-          console.log('❌ 에러 상세:', errorText)
-        } catch (e) {
-          console.log('❌ 에러 상세 읽기 실패:', e)
-        }
-      }
-    }
-    
-    console.log('📡 최종 응답 상태:', response.status, response.statusText, 'URL:', apiUrl)
-    
-    console.log('📡 상세 조회 응답 상태:', response.status, response.statusText)
-
-    if (response.ok) {
-      const data = await response.json()
-      console.log('레시피 상세 응답:', data)
+      // 디버깅 로그 제거됨
       
       if (data.data) {
         Object.assign(recipe, {
@@ -1854,22 +1898,15 @@ const loadRecipe = async () => {
           updatedAt: data.data.updatedAt,
           nickname: data.data.user?.nickname,
           role: data.data.user?.role,
-          profileImageUrl: getProfileImageUrl(data.data.user),
+          picture: data.data.user?.profileImageUrl, // 백엔드 DTO의 profileImageUrl 필드 사용
           authorId: data.data.user?.id, // 작성자 ID 추가
+          authorEmail: data.data.user?.email, // 작성자 이메일 추가
+          authorJoinDate: data.data.user?.createdAt, // 작성자 가입일 추가
           ingredients: data.data.ingredients || [],
           steps: data.data.steps || []
         })
         
-        console.log('🔍 레시피 데이터 로드 완료:', {
-          recipeId: recipe.id,
-          authorId: recipe.authorId,
-          authorNickname: recipe.nickname,
-          userData: data.data.user,
-          profileImageUrl: data.data.user?.profileImageUrl,
-          profileImage: data.data.user?.profileImage,
-          authorProfileImage: data.data.user?.authorProfileImage,
-          authorProfileUrl: data.data.user?.authorProfileUrl
-        })
+
         
         // 좋아요/북마크 상태 설정 (백엔드에서 받아온 데이터 사용)
         // 로그인한 사용자만 상태를 확인하고, 비로그인 사용자는 false로 설정
@@ -1881,12 +1918,7 @@ const loadRecipe = async () => {
           isBookmarked.value = false
         }
         
-        console.log('🔍 좋아요/북마크 상태:', {
-          isLiked: isLiked.value,
-          isBookmarked: isBookmarked.value,
-          likeCount: recipe.likeCount,
-          bookmarkCount: recipe.bookmarkCount
-        })
+
         
         // 댓글 목록 로드
         await loadComments()
@@ -1927,6 +1959,12 @@ const loadRecipe = async () => {
 }
 
 const editRecipe = () => {
+  // 관리자 또는 작성자만 수정 가능
+  if (!isAuthor.value && !isAdmin.value) {
+    alert('수정 권한이 없습니다.')
+    return
+  }
+  
   router.push({ path: '/recipe/post-edit', query: { id: recipe.id } })
 }
 
@@ -1935,19 +1973,21 @@ const confirmDelete = () => {
 }
 
 const deleteRecipe = async () => {
+  // 관리자 또는 작성자만 삭제 가능
+  if (!isAuthor.value && !isAdmin.value) {
+    alert('삭제 권한이 없습니다.')
+    showDeleteModal.value = false
+    return
+  }
+  
   try {
-    console.log('🗑️ 삭제 API 호출:', `http://localhost:8080/api/posts/delete/${recipe.id}`)
+    console.log('🗑️ 삭제 API 호출:', `/api/posts/delete/${recipe.id}`)
     
-    const response = await fetch(`http://localhost:8080/api/posts/delete/${recipe.id}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-      }
-    })
+    const response = await recipeService.deleteRecipe(recipe.id)
     
-    console.log('📡 삭제 응답 상태:', response.status, response.statusText)
 
-    if (response.ok) {
+
+    if (response.success) {
       alert('레시피가 삭제되었습니다.')
       router.push('/recipes')
     } else {
@@ -1977,41 +2017,32 @@ const goToLogin = () => {
 // 댓글 신고 기능
 const reportComment = async (comment) => {
   try {
-    if (!currentUser.value) {
+    if (!isLoggedIn.value) {
       alert('로그인이 필요합니다.')
       return
     }
 
-    const reportReason = prompt('신고 사유를 입력해주세요:')
-    if (!reportReason || !reportReason.trim()) {
+    // 중복 신고 확인
+    const response = await reportService.checkReport(comment.id)
+    
+    if (response.success && response.data) {
+      // 중복 신고인 경우 경고 모달 표시
+      showError('이미 신고한 댓글입니다. 신고가 처리된 이후에 다시 시도해주세요.')
       return
     }
 
-    const response = await fetch('http://localhost:8080/api/reports', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-      },
-      body: JSON.stringify({
-        targetType: 'COMMENT',
-        targetId: comment.id,
-        reason: reportReason.trim()
-      })
-    })
-
-    if (response.ok) {
-      alert('신고가 접수되었습니다.')
-      // 더보기 메뉴 닫기
-      comment.showMoreMenu = false
-    } else {
-      const errorData = await response.text()
-      console.error('신고 실패:', response.status, errorData)
-      alert('신고 접수에 실패했습니다.')
+    // 신고 모달 데이터 설정
+    reportModalData.value = {
+      reportType: 'COMMENT',
+      targetId: comment.id,
+      targetName: `댓글: ${comment.content.substring(0, 30)}${comment.content.length > 30 ? '...' : ''}`
     }
+    
+    // 신고 모달 표시
+    showReportModal.value = true
   } catch (error) {
     console.error('신고 에러:', error)
-    alert('신고 중 오류가 발생했습니다.')
+    showError('신고 처리 중 오류가 발생했습니다.')
   }
 }
 
@@ -2025,7 +2056,6 @@ const handleKeydown = (event) => {
 }
 
 onMounted(async () => {
-  await loadCurrentUser()
   await loadRecipe()
   // ESC 키 이벤트 리스너 추가
   document.addEventListener('keydown', handleKeydown)
@@ -2036,34 +2066,7 @@ onUnmounted(() => {
   document.removeEventListener('keydown', handleKeydown)
 })
 
-// 현재 사용자 정보 로드
-const loadCurrentUser = async () => {
-  const token = localStorage.getItem('accessToken')
-  if (!token) {
-    // 비회원인 경우 사용자 정보를 로드하지 않음
-    currentUser.value = null
-    return
-  }
-  
-  try {
-    const response = await fetch('http://localhost:8080/user/profile', {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    })
-    
-    if (response.ok) {
-      const data = await response.json()
-      currentUser.value = data.data
-      console.log('🔍 현재 사용자 정보 로드 성공:', currentUser.value)
-    } else {
-      console.error('사용자 정보 로드 실패:', response.status, response.statusText)
-    }
-  } catch (error) {
-    console.error('사용자 정보 로드 실패:', error)
-    currentUser.value = null
-  }
-}
+
 </script>
 
 <style scoped>
@@ -2654,7 +2657,6 @@ const loadCurrentUser = async () => {
 
 /* 공통 폼 스타일 */
 .comment-form,
-.reply-form,
 .comment-edit-form {
   display: flex;
   flex-direction: column;
@@ -2664,6 +2666,29 @@ const loadCurrentUser = async () => {
   background-color: #ffffff;
   border-radius: 8px;
   border: 1px solid #e0e0e0;
+}
+
+.reply-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding: 16px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  margin-left: 30px;
+  border-left: 3px solid #ff7a00;
+}
+
+.reply-form-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #666;
+  font-weight: 500;
+  margin-bottom: 4px;
 }
 
 .comment-input,
@@ -2815,26 +2840,44 @@ const loadCurrentUser = async () => {
 
 .replies-list {
   margin-top: 15px;
-  margin-left: 40px;
+  margin-left: 30px;
+  border-left: 2px solid #f0f0f0;
+  padding-left: 15px;
 }
 
 .reply-item {
-  padding: 15px;
-  background-color: #fff;
+  padding: 12px 16px;
+  background-color: #fafafa;
   border-radius: 8px;
-  margin-bottom: 10px;
-  border-left: 3px solid #e0e0e0;
-  padding-left: 20px;
+  margin-bottom: 8px;
+  border: 1px solid #e8e8e8;
   position: relative;
+  transition: all 0.2s ease;
+}
+
+.reply-item:hover {
+  background-color: #f5f5f5;
+  border-color: #d0d0d0;
+}
+
+.reply-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: #666;
+  font-weight: 500;
 }
 
 
 
 .reply-content {
-  font-size: 1rem;
-  color: #333;
-  line-height: 1.6;
-  margin-bottom: 15px;
+  font-size: 0.95rem;
+  color: #444;
+  line-height: 1.5;
+  margin-bottom: 12px;
+  margin-top: 8px;
 }
 
 .load-more-comments {
@@ -3087,6 +3130,26 @@ const loadCurrentUser = async () => {
   color: #333;
   display: flex;
   align-items: center;
+}
+
+/* 클릭 가능한 프로필 스타일 */
+.clickable-avatar {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.clickable-avatar:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.clickable-name {
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.clickable-name:hover {
+  color: #ff7a00;
 }
 
 .comment-time {
@@ -3473,5 +3536,119 @@ const loadCurrentUser = async () => {
 
 .reply-notice .v-icon {
   font-size: 16px;
+}
+
+/* 에러/성공 모달 스타일 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.cart-modal {
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  text-align: center;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #eee;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #222;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #999;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.modal-content {
+  margin-bottom: 32px;
+}
+
+.modal-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.modal-message {
+  font-size: 18px;
+  color: #333;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.btn-primary, .btn-secondary {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  min-width: 100px;
+}
+
+.btn-primary {
+  background: #007bff;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #0056b3;
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background: #545b62;
+  transform: translateY(-1px);
 }
 </style>

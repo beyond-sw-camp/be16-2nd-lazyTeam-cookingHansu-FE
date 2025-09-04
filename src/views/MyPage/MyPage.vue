@@ -8,8 +8,8 @@
         <div class="profile-info">
           <div class="profile-avatar">
             <img 
-              v-if="userProfile.profileImageUrl" 
-              :src="userProfile.profileImageUrl" 
+              v-if="userProfile.picture" 
+              :src="userProfile.picture" 
               alt="프로필 이미지"
               class="avatar-image"
             />
@@ -17,7 +17,7 @@
           </div>
           <div class="profile-details">
             <h2 class="user-name">{{ userProfile.nickname }}</h2>
-            <p class="user-type">{{ userProfile.userType }}</p>
+            <p class="user-type">{{ getUserRoleText(userProfile.role || userProfile.userType) }}</p>
             <!-- 자기소개 추가 -->
             <p v-if="userProfile.info" class="user-info">{{ userProfile.info }}</p>
           </div>
@@ -75,7 +75,8 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue';
 import Header from '@/components/Header.vue';
 import MyPosts from '@/components/mypage/MyPosts.vue';
 import PurchasedLectures from '@/components/mypage/PurchasedLectures.vue';
@@ -85,161 +86,165 @@ import Likes from '@/components/mypage/Likes.vue';
 import LikedLectures from '@/components/mypage/LikedLectures.vue';
 import ProfileEditModal from '@/components/mypage/modal/ProfileEditModal.vue';
 import WithdrawConfirmModal from '@/components/mypage/modal/WithdrawConfirmModal.vue';
-import { apiGet } from '@/utils/api';
+import { useMypageStore } from '@/store/mypage/mypage';
+import { useAuthStore } from '@/store/auth/auth';
 
-export default {
-  name: 'MyPage',
-  components: {
-    Header,
-    MyPosts,
-    PurchasedLectures,
-    SoldLectures,
-    Bookmarks,
-    Likes,
-    LikedLectures,
-    ProfileEditModal,
-    WithdrawConfirmModal
-  },
-  data() {
-    return {
-      currentTab: 'posts',
-      showProfileModal: false,
-      showWithdrawModal: false,
-      isSeller: false,
-      userProfile: {
-        nickname: '',
-        email: '',
-        info: '',
-        profileImageUrl: null,
-        userType: ''
-      },
-      tabs: [
-        { id: 'posts', name: '내 게시글' },
-        { id: 'lectures', name: '구매한 강의' },
-        { id: 'sold-lectures', name: '판매한 강의' },
-        { id: 'bookmarks', name: '게시글 북마크' },
-        { id: 'likes', name: '게시글 좋아요' },
-        { id: 'liked-lectures', name: '강의 좋아요' }
-      ],
-      message: null,
-      messageType: null
-    };
-  },
-  async mounted() {
-    await this.fetchUserProfile();
-    this.updateUserRoleFromProfile();
-    this.checkSellerRole();
-    
-         // URL 파라미터에서 탭 설정
-     this.currentTab = this.getInitialTab();
-  },
-  watch: {
-    currentTab(newTab) {
-      this.updateUrlWithTab(newTab);
-    },
-    showProfileModal(newVal) {
-      if (newVal) {
-        document.body.style.overflow = 'hidden';
-        document.body.style.position = 'fixed';
-        document.body.style.width = '100%';
-      } else {
-        document.body.style.overflow = 'auto';
-        document.body.style.position = 'static';
-        document.body.style.width = 'auto';
-      }
+// Store
+const mypageStore = useMypageStore();
+const authStore = useAuthStore();
+
+// Reactive data
+const currentTab = ref('posts');
+const showProfileModal = ref(false);
+const showWithdrawModal = ref(false);
+const isSeller = ref(false);
+const message = ref(null);
+const messageType = ref(null);
+
+const tabs = ref([
+  { id: 'posts', name: '내 게시글' },
+  { id: 'lectures', name: '구매한 강의' },
+  { id: 'sold-lectures', name: '판매한 강의' },
+  { id: 'bookmarks', name: '게시글 북마크' },
+  { id: 'likes', name: '게시글 좋아요' },
+  { id: 'liked-lectures', name: '강의 좋아요' }
+]);
+
+// Computed (authStore에서 직접 가져오기)
+const userProfile = computed(() => authStore.user);
+
+// Methods
+const getInitialTab = () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const tab = urlParams.get('tab');
+  const validTabs = ['posts', 'lectures', 'sold-lectures', 'bookmarks', 'likes', 'liked-lectures'];
+  
+  if (tab === 'sold-lectures' && !isSeller.value) {
+    return 'posts';
+  }
+  
+  return tab && validTabs.includes(tab) ? tab : 'posts';
+};
+
+const updateUrlWithTab = (tab) => {
+  const url = new URL(window.location);
+  url.searchParams.set('tab', tab);
+  window.history.replaceState({}, '', url);
+};
+
+// fetchUserProfile 제거 - authStore에서 직접 사용하므로 불필요
+
+const updateUserProfile = (updatedData) => {
+  // authStore의 사용자 정보 직접 업데이트
+  if (authStore.user) {
+    authStore.user = { ...authStore.user, ...updatedData };
+    // role 정보도 userType과 동기화
+    if (updatedData.role) {
+      authStore.user.userType = updatedData.role;
     }
-  },
-  beforeUnmount() {
+    localStorage.setItem('user', JSON.stringify(authStore.user));
+  }
+  
+  console.log('프로필 업데이트됨:', updatedData);
+};
+
+const showMessage = (messageData) => {
+  message.value = messageData.message;
+  messageType.value = messageData.type;
+  setTimeout(() => {
+    message.value = null;
+    messageType.value = null;
+  }, 3000);
+};
+
+// 사용자 역할을 한글로 변환하는 함수
+const getUserRoleText = (role) => {
+  const roleMap = {
+    'GENERAL': '일반 사용자',
+    'CHEF': '요리 전문가',
+    'OWNER': '자영업자',
+    'ADMIN': '관리자'
+  };
+  return roleMap[role] || '일반 사용자';
+};
+
+// 회원탈퇴 실패 처리
+const handleWithdrawError = (errorMessage) => {
+  showMessage({
+    type: 'error',
+    message: '회원탈퇴에 실패했습니다: ' + errorMessage
+  });
+};
+
+const checkSellerRole = () => {
+  try {
+    const token = localStorage.getItem('accessToken');
+    const userRole = localStorage.getItem('userRole');
+    
+    if (token) {
+      const parts = token.split('.');
+      
+      if (parts.length >= 2) {
+        const payload = JSON.parse(atob(parts[1]));
+        const tokenRole = payload.role;
+        
+        isSeller.value = ['CHEF', 'OWNER'].includes(tokenRole) || ['CHEF', 'OWNER'].includes(userRole);
+      } else {
+        console.error('토큰 형식이 올바르지 않습니다.');
+        isSeller.value = false;
+      }
+    } else {
+      isSeller.value = false;
+    }
+  } catch (error) {
+    console.error('토큰 파싱 오류:', error);
+    isSeller.value = false;
+  }
+};
+
+const updateUserRoleFromProfile = () => {
+  try {
+    if (userProfile.value.chef && userProfile.value.chef.approvalStatus === 'APPROVED') {
+      localStorage.setItem('userRole', 'CHEF');
+    } else if (userProfile.value.owner && userProfile.value.owner.approvalStatus === 'APPROVED') {
+      localStorage.setItem('userRole', 'OWNER');
+    }
+  } catch (error) {
+    // 에러 무시
+  }
+};
+
+// Watchers
+watch(currentTab, (newTab) => {
+  updateUrlWithTab(newTab);
+});
+
+watch(showProfileModal, (newVal) => {
+  if (newVal) {
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
+  } else {
     document.body.style.overflow = 'auto';
     document.body.style.position = 'static';
     document.body.style.width = 'auto';
-  },
-  methods: {
-      getInitialTab() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const tab = urlParams.get('tab');
-    const validTabs = ['posts', 'lectures', 'sold-lectures', 'bookmarks', 'likes', 'liked-lectures'];
-    
-    if (tab === 'sold-lectures' && !this.isSeller) {
-      return 'posts';
-    }
-    
-    return tab && validTabs.includes(tab) ? tab : 'posts';
-  },
-    updateUrlWithTab(tab) {
-      const url = new URL(window.location);
-      url.searchParams.set('tab', tab);
-      window.history.replaceState({}, '', url);
-    },
-    async fetchUserProfile() {
-      try {
-        const response = await apiGet('/api/my/profile');
-        if (response.ok) {
-          const result = await response.json();
-          this.userProfile = result.data;
-        } else {
-          console.error('프로필 조회 실패');
-        }
-      } catch (error) {
-        console.error('프로필 조회 오류:', error);
-      }
-    },
-    updateUserProfile(updatedData) {
-      this.userProfile = { ...this.userProfile, ...updatedData };
-    },
-    showMessage(message) {
-      this.message = message.message;
-      this.messageType = message.type;
-      setTimeout(() => {
-        this.message = null;
-        this.messageType = null;
-      }, 3000);
-    },
-    
-    // 회원탈퇴 실패 처리
-    handleWithdrawError(errorMessage) {
-      this.showMessage({
-        type: 'error',
-        message: '회원탈퇴에 실패했습니다: ' + errorMessage
-      });
-    },
-         checkSellerRole() {
-       try {
-         const token = localStorage.getItem('accessToken');
-         const userRole = localStorage.getItem('userRole');
-         
-         if (token) {
-           const parts = token.split('.');
-           
-           if (parts.length >= 2) {
-             const payload = JSON.parse(atob(parts[1]));
-             const tokenRole = payload.role;
-             
-             this.isSeller = ['CHEF', 'OWNER'].includes(tokenRole) || ['CHEF', 'OWNER'].includes(userRole);
-           } else {
-             console.error('토큰 형식이 올바르지 않습니다.');
-             this.isSeller = false;
-           }
-         } else {
-           this.isSeller = false;
-         }
-       } catch (error) {
-         console.error('토큰 파싱 오류:', error);
-         this.isSeller = false;
-       }
-     },
-         updateUserRoleFromProfile() {
-       try {
-         if (this.userProfile.chef && this.userProfile.chef.approvalStatus === 'APPROVED') {
-           localStorage.setItem('userRole', 'CHEF');
-         } else if (this.userProfile.owner && this.userProfile.owner.approvalStatus === 'APPROVED') {
-           localStorage.setItem('userRole', 'OWNER');
-         }
-       } catch (error) {
-       }
-     }
   }
-};
+});
+
+// Lifecycle
+onMounted(() => {
+  updateUserRoleFromProfile();
+  checkSellerRole();
+  
+  // URL 파라미터에서 탭 설정
+  currentTab.value = getInitialTab();
+});
+
+onBeforeUnmount(() => {
+  document.body.style.overflow = 'auto';
+  document.body.style.position = 'static';
+  document.body.style.width = 'auto';
+});
 </script>
 
 <style scoped>

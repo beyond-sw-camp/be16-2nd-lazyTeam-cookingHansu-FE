@@ -40,8 +40,8 @@
 
 <script>
 import Header from '@/components/Header.vue'
-
 import { useCartStore } from '@/store/cart/cart'
+import { apiPost, apiDelete } from '@/utils/api'
 
 
 export default {
@@ -90,36 +90,25 @@ export default {
 
         console.log('결제할 강의 IDs:', lectureIds);
 
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/purchase/confirm`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-          },
-          body: JSON.stringify({
-            paymentKey,
-            orderId: this.orderId,
-            amount: this.amount,
-            lectureIds
-          })
+        const response = await apiPost('/purchase/confirm', {
+          paymentKey,
+          orderId: this.orderId,
+          amount: this.amount,
+          lectureIds
         })
 
-        console.log('결제 승인 응답 상태:', response.status);
+        console.log('결제 승인 응답:', response);
+        console.log('결제 승인 응답 데이터:', response.data);
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('결제 승인 처리 실패:', response.status, errorText);
-          throw new Error(`결제 승인 처리 실패: ${response.status} - ${errorText}`);
+        // HTTP 200 응답이면 성공으로 처리 (백엔드 응답 구조에 따라 조정)
+        if (response.status === 200) {
+          console.log('결제 승인 처리 완료:', response.data);
+          
+          // 결제 성공 시 장바구니 스토어 업데이트
+          await this.updateCartStore()
         } else {
-          const result = await response.json();
-          console.log('결제 승인 처리 완료:', result);
-          
-
-          
-          // 결제 성공 시 선택된 아이템만 장바구니에서 제거
-          await this.removeSelectedItemsFromCart()
-          
-          
+          console.error('결제 승인 처리 실패:', response);
+          throw new Error(`결제 승인 처리 실패: ${response.data?.message || '알 수 없는 오류'}`);
         }
       } catch (error) {
         console.error('결제 승인 요청 중 오류:', error)
@@ -128,53 +117,23 @@ export default {
       }
     },
 
-    // 선택된 아이템들을 장바구니에서 제거
-    async removeSelectedItemsFromCart() {
+    // 장바구니 스토어 업데이트 (결제 성공 후 서버에서 자동으로 장바구니가 비워짐)
+    async updateCartStore() {
       try {
-        console.log('장바구니에서 아이템 제거 시작');
-        const selectedItems = JSON.parse(localStorage.getItem('selectedItemsForPayment') || '[]')
+        console.log('장바구니 스토어 업데이트 시작');
         
-        console.log('제거할 아이템들:', selectedItems);
-        
-        if (selectedItems.length > 0) {
-          // 서버에서 장바구니 아이템 제거
-          for (const itemId of selectedItems) {
-            try {
-              console.log(`강의 ${itemId} 장바구니에서 제거 중...`);
-              const removeResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/cart/remove`, {
-                method: 'DELETE',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
-                },
-                body: JSON.stringify({ lectureId: itemId })
-              })
-              
-              if (removeResponse.ok) {
-                console.log(`강의 ${itemId} 제거 성공`);
-              } else {
-                console.error(`강의 ${itemId} 제거 실패:`, removeResponse.status);
-              }
-            } catch (error) {
-              console.error(`강의 ${itemId} 제거 중 오류:`, error)
-            }
-          }
-          
-          // 장바구니 스토어 업데이트
-          if (this.cartStore) {
-            console.log('장바구니 스토어 업데이트 중...');
-            await this.cartStore.fetchServerCartList();
-            console.log('장바구니 스토어 업데이트 완료');
-          }
-          
-          console.log('선택된 강의들이 장바구니에서 제거되었습니다.')
+        // 장바구니 스토어 업데이트
+        if (this.cartStore) {
+          console.log('장바구니 스토어 업데이트 중...');
+          await this.cartStore.fetchServerCartList();
+          console.log('장바구니 스토어 업데이트 완료');
         }
         
         // 선택된 아이템 정보 삭제
         localStorage.removeItem('selectedItemsForPayment')
         console.log('localStorage에서 selectedItemsForPayment 삭제 완료');
       } catch (error) {
-        console.error('장바구니에서 아이템 제거 중 오류:', error)
+        console.error('장바구니 스토어 업데이트 중 오류:', error)
       }
     },
 

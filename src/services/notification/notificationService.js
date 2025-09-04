@@ -1,60 +1,25 @@
-import { apiGet, apiPost, apiPatch, apiDelete, apiPut } from '@/utils/api.js'
-import { ssePolyfillService } from './ssePolyfillService'
+import { apiClient } from '@/utils/interceptor';
+import { ssePolyfillService } from './ssePolyfillService';
 
 export const notificationService = {
   /**
-* 읽지 않은 알림 개수 조회 (헤더용 - 가벼운 API)
+   * 읽지 않은 알림 개수 조회
    * @returns {Promise<number>} 읽지 않은 알림 개수
    */
   async getUnreadCount() {
     try {
-      const response = await apiGet('/api/notifications/unread/count')
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      
-      const result = await response.json()
-      
-      // 백엔드 응답 구조에 맞게 수정
-      return result.data || 0
-    } catch (error) {
-      console.error('읽지 않은 알림 개수 조회 실패:', error)
-      return 0
-    }
-  },
-
-  /**
-   * 알림 목록 조회 (커서 기반 페이지네이션)
-   * @param {Object} params - 조회 파라미터
-   * @param {string} params.cursor - 커서 (첫 페이지는 null)
-   * @param {number} params.size - 페이지 크기 (선택)
-   * @returns {Promise<Object>} 알림 목록 및 페이지네이션 정보
-
-   * 읽지 않은 알림 개수 조회 (헤더용 - 가벼운 API)
-   * @returns {Promise<number>} 읽지 않은 알림 개수
-
-   */
-  async getUnreadCount() {
-    try {
-      const response = await apiGet('/api/notifications/unread/count')
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      
-      const result = await response.json()
+      const response = await apiClient.get('/api/notifications/unread/count')
       
       // 응답 로깅 추가
       console.log('🔍 알림 API 응답:', {
         status: response.status,
-        result: result,
-        data: result.data,
-        dataLength: result.data ? result.data.length : 0
+        result: response.data,
+        data: response.data.data,
+        dataLength: response.data.data ? response.data.data.length : 0
       });
       
       // 백엔드 응답 구조에 맞게 수정
-      return result.data || 0
+      return response.data.data || 0
     } catch (error) {
       console.error('읽지 않은 알림 개수 조회 실패:', error)
       return 0
@@ -78,16 +43,10 @@ export const notificationService = {
         endpoint += `&cursor=${cursor}`;
       }
 
-      const response = await apiGet(endpoint)
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      
-      const result = await response.json()
+      const response = await apiClient.get(endpoint)
       
       // 백엔드 응답 구조에 맞게 수정 (커서 기반)
-      const responseData = result.data || {}
+      const responseData = response.data.data || {}
       
       return {
         notifications: responseData.notifications || [],
@@ -108,10 +67,7 @@ export const notificationService = {
    */
   async markAsRead(notificationId) {
     try {
-      const response = await apiPatch(`/api/notifications/${notificationId}/read`)
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
+      await apiClient.patch(`/api/notifications/${notificationId}/read`)
     } catch (error) {
       console.error('알림 읽음 처리 실패:', error)
       throw new Error('알림 상태 업데이트에 실패했습니다.')
@@ -125,10 +81,7 @@ export const notificationService = {
    */
   async deleteNotification(notificationId) {
     try {
-      const response = await apiDelete(`/api/notifications/${notificationId}`)
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
+      await apiClient.delete(`/api/notifications/${notificationId}`)
     } catch (error) {
       console.error('알림 삭제 실패:', error)
       throw new Error('알림 삭제에 실패했습니다.')
@@ -136,17 +89,43 @@ export const notificationService = {
   },
 
   /**
-   * SSE 연결 및 알림 구독
-   * @returns {EventSourcePolyfill} SSE 연결 객체
+   * 모든 알림을 읽음으로 표시
+   * @returns {Promise<void>}
    */
-  subscribeToNotifications() {
+  async markAllAsRead() {
     try {
-      return ssePolyfillService.createAuthenticatedEventSource(
-        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/notifications/subscribe`
-      )
+      await apiClient.patch('/api/notifications/read-all')
     } catch (error) {
-      console.error('SSE 구독 시작 실패:', error)
-      throw error
+      console.error('모든 알림 읽음 처리 실패:', error)
+      throw new Error('알림 상태 업데이트에 실패했습니다.')
+    }
+  },
+
+  /**
+   * 알림 설정 조회
+   * @returns {Promise<Object>} 알림 설정
+   */
+  async getNotificationSettings() {
+    try {
+      const response = await apiClient.get('/api/notifications/settings')
+      return response.data.data || {}
+    } catch (error) {
+      console.error('알림 설정 조회 실패:', error)
+      return {}
+    }
+  },
+
+  /**
+   * 알림 설정 업데이트
+   * @param {Object} settings - 알림 설정
+   * @returns {Promise<void>}
+   */
+  async updateNotificationSettings(settings) {
+    try {
+      await apiClient.put('/api/notifications/settings', settings)
+    } catch (error) {
+      console.error('알림 설정 업데이트 실패:', error)
+      throw new Error('알림 설정 업데이트에 실패했습니다.')
     }
   },
 
@@ -160,7 +139,7 @@ export const notificationService = {
     try {
       // SSE Polyfill을 사용하여 JWT 토큰을 헤더에 포함
       const eventSource = ssePolyfillService.createAuthenticatedEventSource(
-        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/notifications/subscribe`
+        `${import.meta.env.VITE_API_BASE_URL}/api/notifications/subscribe`
       )
 
       // 연결 성공 이벤트
@@ -203,14 +182,14 @@ export const notificationService = {
     try {
       // SSE Polyfill을 사용하여 JWT 토큰을 헤더에 포함
       return ssePolyfillService.createAuthenticatedEventSource(
-        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/notifications/subscribe`
+        `${import.meta.env.VITE_API_BASE_URL}/api/notifications/subscribe`
       )
     } catch (error) {
       console.error('SSE 구독 시작 실패:', error)
       throw error
     }
   }
-}
+};
 
 /**
  * 알림 타입별 메타데이터
@@ -237,27 +216,25 @@ export const NOTIFICATION_TYPES = {
   APPROVAL: {
     name: '승인',
     icon: '✅',
-    color: '#388e3c',
-    description: '회원가입이 승인되었을 때'
+    color: '#4caf50',
+    description: '요청한 작업이 승인되었을 때'
   },
-  CHAT: {
-    name: '채팅',
-    icon: '💬',
-    color: '#1976d2',
-    description: '새로운 채팅 메시지가 도착했을 때'
+  REJECTION: {
+    name: '거절',
+    icon: '❌',
+    color: '#f44336',
+    description: '요청한 작업이 거절되었을 때'
   },
   PAYMENT: {
     name: '결제',
     icon: '💳',
-    color: '#f57c00',
-    description: '강의 결제가 완료되었을 때'
+    color: '#ff9800',
+    description: '결제 관련 알림'
   },
-  NOTICE: {
-    name: '공지사항',
-    icon: '📢',
-    color: '#7b1fa2',
-    description: '새로운 공지사항이 등록되었을 때'
+  SYSTEM: {
+    name: '시스템',
+    icon: '🔔',
+    color: '#9c27b0',
+    description: '시스템 공지사항'
   }
-}
-
-export default notificationService
+};

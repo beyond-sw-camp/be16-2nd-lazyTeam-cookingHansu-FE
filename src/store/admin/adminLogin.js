@@ -29,7 +29,7 @@ export const useAdminLoginStore = defineStore('adminLogin', {
       try {
         const response = await adminLoginService.login(email, password)
         
-        // 응답 데이터 저장 (ResponseDto로 감싸진 경우 data 필드에서 추출)
+        // 응답 데이터 저장
         const adminData = response.data || response
         
         this.admin = {
@@ -143,7 +143,7 @@ export const useAdminLoginStore = defineStore('adminLogin', {
         authStore.setAdminAuth({
           accessToken: accessToken,
           refreshToken: refreshToken,
-          expiresIn: null, // expiresIn은 로컬 스토리지에 저장되지 않음
+          expiresIn: null,
           user: {
             id: JSON.parse(adminInfo).adminId,
             email: JSON.parse(adminInfo).adminEmail,

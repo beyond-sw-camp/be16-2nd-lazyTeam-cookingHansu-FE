@@ -16,8 +16,8 @@
               alt="프로필 이미지 미리보기" 
               class="profile-image-preview"
             />
-            <div v-else-if="userData.profileImageUrl" class="profile-image-preview">
-              <img :src="userData.profileImageUrl" alt="현재 프로필 이미지" />
+            <div v-else-if="userData.picture" class="profile-image-preview">
+              <img :src="userData.picture" alt="현재 프로필 이미지" />
             </div>
             <div v-else class="profile-image-placeholder">
               <v-icon size="48" color="#ccc">mdi-account</v-icon>
@@ -222,33 +222,32 @@ export default {
 
       try {
         // 이미지 업로드 처리
-        let imageUrl = this.userData.profileImageUrl;
+        let imageUrl = this.userData.picture; // 백엔드 DTO의 picture 필드 사용
         if (this.selectedFile) {
           const fd = new FormData();
           fd.append('image', this.selectedFile);
 
           const uploadResponse = await apiPostFormData('/api/my/profile/image', fd);
 
-          if (!uploadResponse.ok) {
+          if (uploadResponse.data && uploadResponse.data.success) {
+            imageUrl = uploadResponse.data.data;
+          } else {
             throw new Error('이미지 업로드 실패');
           }
-
-          const uploadResult = await uploadResponse.json();
-          imageUrl = uploadResult.data;
         }
 
         // 프로필 업데이트 API 호출
         const updateResponse = await apiPut('/api/my/profile', {
           nickname: this.formData.nickname,
           info: this.formData.info,
-          profileImageUrl: imageUrl
+          picture: imageUrl // 백엔드 DTO의 picture 필드 사용
         });
 
-        if (!updateResponse.ok) {
+        if (!updateResponse.data || !updateResponse.data.success) {
           throw new Error('프로필 업데이트 실패');
         }
 
-        const updateResult = await updateResponse.json();
+        const updateResult = updateResponse.data;
 
         this.$emit('update', updateResult.data);
         this.$emit('showMessage', {

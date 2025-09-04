@@ -31,7 +31,11 @@ export const useNotificationStore = defineStore('notification', {
       isSubscribing: false,
       
       // 마지막 연결 시도 시간
-      lastConnectionAttempt: 0
+      lastConnectionAttempt: 0,
+      
+      // 승인 알림 모달 상태
+      showApprovalModal: false,
+      approvalNotification: null
     };
   },
 
@@ -67,6 +71,13 @@ export const useNotificationStore = defineStore('notification', {
 
     // 알림 목록 조회 (커서 기반 페이지네이션)
     async fetchNotifications(cursor = null, size = 10) {
+      // 관리자는 알림 목록 조회하지 않음
+      const authStore = useAuthStore();
+      if (authStore.user?.role === 'ADMIN' || authStore.user?.role === 'admin') {
+        console.log('관리자 - 알림 목록 조회 건너뜀 (store 레벨)');
+        return;
+      }
+      
       this._setLoading(true);
       this.error = null;
       
@@ -89,8 +100,8 @@ export const useNotificationStore = defineStore('notification', {
         // 중복 알림 정리
         this._cleanupDuplicateNotifications();
         
-        // 읽지 않은 개수 업데이트 (실제 읽지 않은 알림 개수로)
-        this._updateUnreadCount();
+        // 읽지 않은 개수는 서버에서 받은 전체 개수를 유지 (페이지네이션과 무관)
+        // this._updateUnreadCount(); // 제거 - 헤더 개수는 서버 전체 개수 유지
         
         return response;
       } catch (error) {
@@ -124,10 +135,9 @@ export const useNotificationStore = defineStore('notification', {
         const notification = this.notifications.find(n => n.id === notificationId);
         if (notification) {
           notification.isRead = true;
-          this._updateUnreadCount();
         }
         
-        // 헤더의 읽지 않은 개수도 업데이트
+        // 헤더의 읽지 않은 개수는 서버에서 전체 개수를 다시 가져와서 업데이트
         await this.fetchUnreadCount();
       } catch (error) {
         this._handleError(error, '알림 읽음 처리에 실패했습니다.');
@@ -141,9 +151,8 @@ export const useNotificationStore = defineStore('notification', {
         
         // 로컬 상태에서 제거
         this.notifications = this.notifications.filter(n => n.id !== notificationId);
-        this._updateUnreadCount();
         
-        // 헤더의 읽지 않은 개수도 업데이트
+        // 헤더의 읽지 않은 개수는 서버에서 전체 개수를 다시 가져와서 업데이트
         await this.fetchUnreadCount();
       } catch (error) {
         this._handleError(error, '알림 삭제에 실패했습니다.');
@@ -199,6 +208,11 @@ export const useNotificationStore = defineStore('notification', {
       if (notification.chatRoomId) {
         // 채팅 메시지인 경우 - 채팅방 목록 실시간 업데이트
         this._updateChatRoomList(notification);
+      }
+      
+      // 승인 알림인 경우 모달 표시
+      if (this._isApprovalNotification(notification)) {
+        this._showApprovalModal(notification);
       }
       
       // 헤더의 읽지 않은 알림 개수 즉시 업데이트
@@ -271,13 +285,15 @@ export const useNotificationStore = defineStore('notification', {
 
     // 읽지 않은 알림 개수 업데이트 (로컬 상태 기반)
     _updateUnreadCount() {
-      const unreadCount = this.notifications.filter(n => {
+      // 로컬 알림 목록에서 읽지 않은 개수 계산 (페이지네이션과 무관하게)
+      const localUnreadCount = this.notifications.filter(n => {
         // isRead가 undefined, null, false인 경우 모두 읽지 않은 것으로 처리
         return n && (n.isRead === false || n.isRead === null || n.isRead === undefined);
       }).length;
       
-      // 로컬 상태의 읽지 않은 개수 업데이트 (목록 페이지용)
-      // 헤더의 개수는 별도 API로 관리
+      // 헤더의 unreadCount는 서버에서 받은 전체 개수를 유지
+      // 로컬 계산은 목록 페이지에서만 사용
+      console.log('로컬 읽지 않은 알림 개수:', localUnreadCount, '서버 전체 개수:', this.unreadCount);
     },
 
     // SSE Polyfill 연결 시작 (중복 구독 방지)
@@ -298,6 +314,12 @@ export const useNotificationStore = defineStore('notification', {
         return;
       }
 
+      // 관리자는 알림 구독하지 않음
+      if (authStore.user?.role === 'ADMIN' || authStore.user?.role === 'admin') {
+        console.log('관리자 - 알림 구독 건너뜀 (store 레벨)');
+        return;
+      }
+
       // 마지막 연결 시도로부터 1초 이내인 경우 중지 (연속 시도 방지)
       const now = Date.now();
       if (now - this.lastConnectionAttempt < 1000) {
@@ -315,7 +337,7 @@ export const useNotificationStore = defineStore('notification', {
 
         // SSE Polyfill을 사용하여 JWT 토큰을 헤더에 포함
         this.eventSource = ssePolyfillService.createAuthenticatedEventSource(
-          `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/notifications/subscribe`
+          `${import.meta.env.VITE_API_BASE_URL}/api/notifications/subscribe`
         );
         this.isConnected = true;
 
@@ -474,11 +496,67 @@ export const useNotificationStore = defineStore('notification', {
       
       if (uniqueNotifications.length !== this.notifications.length) {
         this.notifications = uniqueNotifications;
-        this._updateUnreadCount();
+        // 중복 제거 시에는 헤더 개수를 변경하지 않음 (서버 전체 개수 유지)
       }
       
       // 메모리 정리: Set 객체 해제
       seenIds.clear();
+    },
+
+    // 공지사항 관련 알림 처리 (관리자가 공지사항 작성/수정/삭제 시)
+    async handleNoticeNotification(noticeData, action = 'create') {
+      try {
+        // NoticeResDto 구조: { id, title, content, imageUrl, createdAt }
+        // 필수 필드 검증
+        if (!noticeData.id || !noticeData.title) {
+          console.warn('공지사항 알림 처리 실패: 필수 필드가 없습니다:', noticeData);
+          return;
+        }
+        
+        // 공지사항 알림을 notifications 배열에 추가
+        const notification = {
+          id: `notice_${Date.now()}`,
+          type: 'notice',
+          content: `새로운 공지사항이 ${action === 'create' ? '작성' : action === 'update' ? '수정' : '삭제'}되었습니다: ${noticeData.title}`,
+          recipientId: 'all', // 모든 사용자에게
+          createdAt: new Date().toISOString(),
+          isRead: false,
+          noticeId: noticeData.id
+        };
+        
+        // 새 알림 처리
+        this._processNewNotification(notification);
+        
+        // 헤더의 읽지 않은 개수 즉시 업데이트
+        await this.fetchUnreadCount(true);
+        
+        console.log('🔔 공지사항 알림 처리 완료:', notification);
+      } catch (error) {
+        console.warn('공지사항 알림 처리 실패:', error);
+      }
+    },
+
+    // 승인 알림인지 확인
+    _isApprovalNotification(notification) {
+      // 승인 관련 키워드가 포함된 알림인지 확인
+      const approvalKeywords = ['승인', 'approval', 'approved', '회원가입', '가입'];
+      const content = notification.content?.toLowerCase() || '';
+      
+      return approvalKeywords.some(keyword => 
+        content.includes(keyword.toLowerCase())
+      );
+    },
+
+    // 승인 알림 모달 표시
+    _showApprovalModal(notification) {
+      this.approvalNotification = notification;
+      this.showApprovalModal = true;
+    },
+
+    // 승인 알림 모달 닫기
+    closeApprovalModal() {
+      this.showApprovalModal = false;
+      this.approvalNotification = null;
     },
 
     // 로그아웃 시 완전한 정리
@@ -493,6 +571,8 @@ export const useNotificationStore = defineStore('notification', {
       this.stopNotificationSubscription();
       this.isSubscribing = false;
       this.lastConnectionAttempt = 0;
+      this.showApprovalModal = false;
+      this.approvalNotification = null;
     }
   }
 });

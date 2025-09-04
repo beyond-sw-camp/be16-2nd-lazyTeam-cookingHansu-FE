@@ -8,9 +8,8 @@ export const useUserManagementStore = defineStore('userManagement', {
     
     // UI 상태
     loading: false,
-    error: null, // 네트워크 연결 오류
+    error: null,
     successMessage: null,
-    loadError: null, // 데이터 로딩 API 오류
     
     // 개별 사용자 로딩 상태
     loadingUsers: new Set(),
@@ -32,7 +31,6 @@ export const useUserManagementStore = defineStore('userManagement', {
     isLoading: (state) => state.loading,
     getError: (state) => state.error,
     getSuccessMessage: (state) => state.successMessage,
-    getLoadError: (state) => state.loadError,
     
     // 페이지네이션 정보
     getPaginationInfo: (state) => state.pagination,
@@ -79,36 +77,34 @@ export const useUserManagementStore = defineStore('userManagement', {
     async fetchUserList(page = 0, size = 10) {
       this._setLoading(true);
       this.error = null;
-      this.loadError = null;
       
       try {
-        const apiResponse = await userManagementService.getUserList(page, size);
-        const responseData = apiResponse.getData();
+        const response = await userManagementService.getUserList(page, size);
         
-        this.userList = responseData.content;
-        this.pagination = {
-          totalPages: responseData.totalPages,
-          currentPage: responseData.number,
-          totalElements: responseData.totalElements,
-          pageSize: size,
-        };
+        if (response.success && response.data) {
+          const responseData = response.data;
+          
+          this.userList = responseData.content || [];
+          this.pagination = {
+            totalPages: responseData.totalPages || 0,
+            currentPage: responseData.number || 0,
+            totalElements: responseData.totalElements || 0,
+            pageSize: size,
+          };
+        } else {
+          throw new Error(response.message || '사용자 목록을 불러오는데 실패했습니다.');
+        }
       } catch (error) {
         console.error('사용자 목록을 불러오는데 실패했습니다.', error);
         
-        // 네트워크 연결 오류인지 확인 (api.js에서 처리된 메시지)
-        if (error.message && (error.message.includes('서버와의 연결') || error.message.includes('네트워크 연결'))) {
-          this.error = error.message;
-        } else {
-          // API 에러는 loadError에 저장하고 빈 목록 표시
-          this.loadError = error.message || '사용자 목록을 불러오는데 실패했습니다.';
-          this.userList = [];
-          this.pagination = {
-            totalPages: 0,
-            currentPage: 0,
-            totalElements: 0,
-            pageSize: size,
-          };
-        }
+        this.error = error.message || '사용자 목록을 불러오는데 실패했습니다.';
+        this.userList = [];
+        this.pagination = {
+          totalPages: 0,
+          currentPage: 0,
+          totalElements: 0,
+          pageSize: size,
+        };
       } finally {
         this._setLoading(false);
       }
@@ -169,7 +165,6 @@ export const useUserManagementStore = defineStore('userManagement', {
       this.loading = false;
       this.error = null;
       this.successMessage = null;
-      this.loadError = null;
       this.loadingUsers.clear();
       this.pagination = {
         totalPages: 0,

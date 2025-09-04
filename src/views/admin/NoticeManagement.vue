@@ -5,7 +5,7 @@
     <p class="mb-6">공지사항을 작성하고 관리하세요</p>
 
     <!-- 작성하기 버튼 -->
-    <v-row justify="end mr-0" class="mb-4">
+    <v-row justify="end" class="mb-4 mr-0">
       <v-btn color="orange" @click="openForm">+ 새 공지사항 작성</v-btn>
     </v-row>
 

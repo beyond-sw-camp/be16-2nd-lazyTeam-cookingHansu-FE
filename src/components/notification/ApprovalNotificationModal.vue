@@ -1,9 +1,8 @@
 <template>
-  <div v-if="isVisible" class="modal-overlay" @click="handleOverlayClick">
-    <div class="modal-content" @click.stop>
+  <div v-if="isVisible" class="modal-overlay">
+    <div class="modal-content">
       <div class="modal-header">
         <h3 class="modal-title">🎉 회원가입 승인 완료</h3>
-        <button class="close-btn" @click="closeModal">×</button>
       </div>
       
       <div class="modal-body">
@@ -28,10 +27,11 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '@/store/auth/auth'
+import { useNotificationStore } from '@/store/notification/notification'
 import { useRouter } from 'vue-router'
-import { apiPost } from '@/utils/api'
+import { apiClient } from '@/utils/interceptor'
 
 const props = defineProps({
   isVisible: {
@@ -43,49 +43,101 @@ const props = defineProps({
 const emit = defineEmits(['close'])
 
 const authStore = useAuthStore()
+const notificationStore = useNotificationStore()
 const router = useRouter()
 const isLoading = ref(false)
 
 const closeModal = () => {
+  notificationStore.closeApprovalModal()
+  // 모달이 닫힐 때 스크롤 복원
+  const scrollY = document.body.style.top
+  document.body.style.position = ''
+  document.body.style.top = ''
+  document.body.style.width = ''
+  document.body.style.overflow = ''
+  window.scrollTo(0, parseInt(scrollY || '0') * -1)
   emit('close')
 }
 
-const handleOverlayClick = () => {
-  closeModal()
+// ESC 키 비활성화
+const handleKeydown = (event) => {
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    event.stopPropagation()
+  }
 }
+
+onMounted(() => {
+  document.addEventListener('keydown', handleKeydown)
+  // 모달이 표시될 때 스크롤 완전히 막기
+  const scrollY = window.scrollY
+  document.body.style.position = 'fixed'
+  document.body.style.top = `-${scrollY}px`
+  document.body.style.width = '100%'
+  document.body.style.overflow = 'hidden'
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeydown)
+  // 모달이 닫힐 때 스크롤 복원
+  const scrollY = document.body.style.top
+  document.body.style.position = ''
+  document.body.style.top = ''
+  document.body.style.width = ''
+  document.body.style.overflow = ''
+  window.scrollTo(0, parseInt(scrollY || '0') * -1)
+})
 
 const handleConfirm = async () => {
   isLoading.value = true
   
   try {
     // 1. 토큰 갱신
-    const refreshResponse = await apiPost('/user/refresh', {
+    const refreshResponse = await apiClient.post('/user/refresh', {
       refreshToken: authStore.refreshToken
     })
     
-    if (refreshResponse.ok) {
-      const refreshData = await refreshResponse.json()
-      if (refreshData.success && refreshData.data) {
-        // 새로운 토큰으로 auth store 업데이트
-        const { accessToken, refreshToken, expiresIn } = refreshData.data
-        authStore.accessToken = accessToken
-        authStore.refreshToken = refreshToken
-        authStore.expiresIn = Date.now() + expiresIn
-        
-        // 로컬 스토리지 업데이트
-        localStorage.setItem('accessToken', accessToken)
-        localStorage.setItem('refreshToken', refreshToken)
-        localStorage.setItem('expiresIn', authStore.expiresIn)
-      }
+    if (refreshResponse.data.success && refreshResponse.data.data) {
+      // 새로운 토큰으로 auth store 업데이트
+      const { accessToken, refreshToken, expiresIn } = refreshResponse.data.data
+      authStore.accessToken = accessToken
+      authStore.refreshToken = refreshToken
+      authStore.expiresIn = Date.now() + expiresIn
+      
+      // 로컬 스토리지 업데이트
+      localStorage.setItem('accessToken', accessToken)
+      localStorage.setItem('refreshToken', refreshToken)
+      localStorage.setItem('expiresIn', authStore.expiresIn)
+      
+      // 토큰 갱신 후 잠시 대기 (API 요청이 새로운 토큰을 사용하도록)
+      await new Promise(resolve => setTimeout(resolve, 100))
     }
     
     // 2. 최신 사용자 정보 조회하여 역할 갱신
     await authStore.getCurrentUser()
     
-    // 3. 모달 닫기
+    // 3. 로컬스토리지의 user 정보가 업데이트되었는지 확인하고 userRole도 업데이트
+    const updatedUser = localStorage.getItem('user')
+    if (updatedUser) {
+      try {
+        const userData = JSON.parse(updatedUser)
+        console.log('✅ 승인 후 업데이트된 사용자 정보:', userData)
+        console.log('✅ 사용자 역할:', userData.role)
+        
+        // userRole도 함께 업데이트
+        if (userData.role) {
+          localStorage.setItem('userRole', userData.role)
+          console.log('✅ userRole 업데이트 완료:', userData.role)
+        }
+      } catch (error) {
+        console.error('사용자 정보 파싱 오류:', error)
+      }
+    }
+    
+    // 4. 모달 닫기
     closeModal()
     
-    // 4. 홈페이지로 이동
+    // 5. 홈페이지로 이동
     if (router.currentRoute.value.path === '/login') {
       router.push('/')
     }
@@ -150,26 +202,7 @@ const handleConfirm = async () => {
   margin: 0;
 }
 
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  color: #999;
-  cursor: pointer;
-  padding: 0;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  transition: all 0.2s ease;
-}
 
-.close-btn:hover {
-  background-color: #f5f5f5;
-  color: #666;
-}
 
 .modal-body {
   padding: 24px;

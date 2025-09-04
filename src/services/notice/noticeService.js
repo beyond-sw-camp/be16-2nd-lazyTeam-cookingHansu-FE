@@ -1,12 +1,4 @@
-import { 
-  apiGet, 
-  apiPost, 
-  apiPostFormData, 
-  apiPut, 
-  apiPutFormData, 
-  apiDelete 
-} from '../../utils/api';
-import { handleApiResponse } from '../../models/common/ApiResponse';
+import { apiClient } from '../../utils/interceptor';
 
 // FormData 생성 헬퍼
 const createNoticeFormData = (noticeData) => {
@@ -33,33 +25,41 @@ const API_ENDPOINTS = {
 export const noticeService = {
   // 공지사항 목록 조회
   async getNoticeList(page = 0, size = 10) {
-    const response = await apiGet(`${API_ENDPOINTS.LIST}?page=${page}&size=${size}`);
-    return handleApiResponse(response);
+    const response = await apiClient.get(`${API_ENDPOINTS.LIST}?page=${page}&size=${size}`);
+    return response.data;
   },
 
   // 공지사항 상세 조회
   async getNoticeDetail(id) {
-    const response = await apiGet(`${API_ENDPOINTS.DETAIL}/${id}`);
-    return handleApiResponse(response);
+    const response = await apiClient.get(`${API_ENDPOINTS.DETAIL}/${id}`);
+    return response.data;
   },
 
   // 공지사항 생성 (관리자용)
   async createNotice(noticeData) {
     const formData = createNoticeFormData(noticeData);
-    const response = await apiPostFormData(API_ENDPOINTS.CREATE, formData);
-    return handleApiResponse(response);
+    const response = await apiClient.post(API_ENDPOINTS.CREATE, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
   },
 
   // 공지사항 수정 (관리자용)
   async updateNotice(id, noticeData) {
     const formData = createNoticeFormData(noticeData);
-    const response = await apiPutFormData(`${API_ENDPOINTS.UPDATE}/${id}`, formData);
-    return handleApiResponse(response);
+    const response = await apiClient.put(`${API_ENDPOINTS.UPDATE}/${id}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
   },
 
   // 공지사항 삭제 (관리자용)
   async deleteNotice(id) {
-    const response = await apiDelete(`${API_ENDPOINTS.DELETE}/${id}`);
-    return handleApiResponse(response);
+    const response = await apiClient.delete(`${API_ENDPOINTS.DELETE}/${id}`);
+    return response.data;
   },
 };
