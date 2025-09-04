@@ -46,7 +46,6 @@ export default {
         // 홈페이지로 이동
         this.$router.push('/');
       } catch (error) {
-        console.error('로그인 정보 정리 실패:', error);
         // 실패해도 홈페이지로 이동
         this.$router.push('/');
       }

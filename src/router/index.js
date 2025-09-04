@@ -272,7 +272,6 @@ router.beforeEach(async (to, from, next) => {
           user: user
         };
       } catch (error) {
-        console.error("Auth check failed:", error);
         // 사용자 정보 조회 실패 시 로그아웃 처리
         authStore.clearAuth();
         authCheckCache = {
@@ -397,7 +396,6 @@ router.beforeEach(async (to, from, next) => {
     try {
       // autoSelect 파라미터가 있으면 채팅방 선택 유지
       if (to.query.autoSelect === 'true') {
-        console.log('✅ 라우터 가드: autoSelect 파라미터 감지, 채팅방 선택 상태 유지');
         next();
         return;
       }
@@ -406,11 +404,10 @@ router.beforeEach(async (to, from, next) => {
       const { useChatStore } = await import('@/store/chat/chat');
       const chatStore = useChatStore();
       if (chatStore.currentRoomId) {
-        console.log('🔄 라우터 가드: 일반 페이지 이동 시 채팅방 선택 상태 초기화');
         chatStore.currentRoomId = null;
       }
     } catch (error) {
-      console.log('채팅 스토어 초기화 실패:', error);
+      // 채팅 스토어 초기화 실패는 무시
     }
   }
 

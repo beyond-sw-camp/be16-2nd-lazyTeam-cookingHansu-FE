@@ -438,7 +438,7 @@ watch(isLoggedIn, async (newValue) => {
         // SSE 연결 시작 (실시간 알림 수신용)
         notificationStore.startNotificationSubscription();
       } catch (error) {
-        console.error('로그인 후 데이터 조회 실패:', error);
+        // 데이터 조회 실패는 무시
       }
     }
   } else {
@@ -525,7 +525,7 @@ onMounted(async () => {
         // SSE 연결 시작 (실시간 알림 수신용)
         notificationStore.startNotificationSubscription();
       } catch (error) {
-        console.error('데이터 조회 실패:', error);
+        // 데이터 조회 실패는 무시
       }
     }
   }
@@ -589,7 +589,7 @@ const logout = async () => {
     // 루트 페이지로 이동 (로그아웃 후 비로그인 상태이므로 landing 페이지로 리다이렉트됨)
     router.push('/');
   } catch (error) {
-    console.error('로그아웃 실패:', error);
+    // 로그아웃 실패는 무시
   }
 }
 

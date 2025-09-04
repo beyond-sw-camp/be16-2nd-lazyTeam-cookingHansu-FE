@@ -47,7 +47,6 @@ export const useNotificationStore = defineStore('notification', {
   actions: {
     // 에러 처리 헬퍼
     _handleError(error, defaultMessage) {
-      console.error(defaultMessage, error);
       this.error = error.message || defaultMessage;
     },
 

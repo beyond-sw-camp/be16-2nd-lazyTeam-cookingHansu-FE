@@ -46,8 +46,6 @@ export const useUserManagementStore = defineStore('userManagement', {
   actions: {
     // 에러 처리 헬퍼 - 네트워크 에러는 전체 UI 에러로, API 에러는 throw만
     _handleError(error, defaultMessage) {
-      console.error(defaultMessage, error);
-      
       // 네트워크 연결 오류인지 확인 (api.js에서 처리된 메시지)
       if (error.message && (error.message.includes('서버와의 연결') || error.message.includes('네트워크 연결'))) {
         this.error = error.message || defaultMessage;

@@ -90,7 +90,6 @@ export const authService = {
       const response = await apiClient.post(API_ENDPOINTS.RESTORE_USER, restoreData);
       return handleApiResponse(response);
     } catch (error) {
-      console.error('Failed to restore user:', error);
       throw error;
     }
   }

@@ -62,8 +62,6 @@ onMounted(() => {
     ip: 'client-side' // 클라이언트에서는 실제 IP를 알 수 없음
   }
   
-  console.warn('Unauthorized access attempt detected:', accessAttempt)
-  
   // 실제 프로덕션에서는 이 정보를 서버로 전송하여 보안 로그에 기록
   // await logSecurityEvent(accessAttempt)
 })
