@@ -124,12 +124,12 @@ export const setupAxiosInterceptors = (authStore, adminLoginStore) => {
         let accessToken = localStorage.getItem('accessToken');
         
         if (accessToken && isTokenExpired(accessToken)) {
-          console.log('⚠️ 토큰 만료됨, 갱신 시도');
+          console.log('토큰 갱신 중...');
           try {
             accessToken = await refreshToken(authStore);
-            console.log('✅ 토큰 갱신 성공');
+            console.log('토큰 갱신 성공');
           } catch (error) {
-            console.error('❌ 토큰 갱신 실패:', error);
+            console.error('토큰 갱신 실패:', error);
             // 토큰 갱신 실패 시 요청 중단
             return Promise.reject(error);
           }
@@ -143,7 +143,7 @@ export const setupAxiosInterceptors = (authStore, adminLoginStore) => {
       return config;
     },
     (error) => {
-      console.error('❌ 요청 인터셉터 오류:', error);
+      console.error('요청 인터셉터 오류:', error);
       return Promise.reject(error);
     }
   );
@@ -163,6 +163,19 @@ export const setupAxiosInterceptors = (authStore, adminLoginStore) => {
         const endpoint = originalRequest.url;
         const isAdminEndpoint = endpoint.startsWith('/admin');
         
+        // 비활성화된 사용자 확인
+        if (error.response?.data?.message?.includes('INACTIVE') || 
+            error.response?.data?.data?.loginStatus === 'INACTIVE') {
+          console.log('비활성화된 사용자 감지됨');
+          // 로그인 정보 정리
+          if (authStore) {
+            authStore.clearAuth();
+          }
+          // 비활성화된 사용자는 비활성화 페이지로 리다이렉트
+          window.location.href = '/inactive-user';
+          return Promise.reject(error);
+        }
+        
         try {
           if (isAdminEndpoint) {
             // 관리자 토큰 갱신
@@ -177,7 +190,7 @@ export const setupAxiosInterceptors = (authStore, adminLoginStore) => {
           }
         } catch (refreshError) {
           // 토큰 갱신 실패 시 처리
-          console.log('토큰 갱신 실패:', refreshError.message);
+          console.log('토큰 갱신 실패');
           
           // 공개 API는 리다이렉트하지 않음 (비회원 접근 허용)
           const publicEndpoints = [

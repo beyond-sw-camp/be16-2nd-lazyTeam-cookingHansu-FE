@@ -41,7 +41,7 @@
           {{ cancelText }}
         </v-btn>
         <v-btn 
-          color="grey" 
+          :color="confirmButtonColor" 
           @click="confirm" 
           :loading="loading"
           class="confirm-btn"
@@ -111,6 +111,19 @@ const icon = computed(() => {
 });
 
 const iconColor = computed(() => {
+  switch (props.type) {
+    case 'success':
+      return 'success';
+    case 'warning':
+      return 'warning';
+    case 'error':
+      return 'error';
+    default:
+      return 'primary';
+  }
+});
+
+const confirmButtonColor = computed(() => {
   switch (props.type) {
     case 'success':
       return 'success';

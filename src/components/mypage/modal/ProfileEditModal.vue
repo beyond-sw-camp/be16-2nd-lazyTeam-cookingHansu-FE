@@ -9,7 +9,7 @@
       <div class="modal-body">
         <!-- 프로필 이미지 업로드 -->
         <div class="profile-image-section">
-          <div class="profile-image-container">
+          <div class="profile-image-container" @click="triggerFileInput">
             <img 
               v-if="profileImagePreview" 
               :src="profileImagePreview" 
@@ -22,7 +22,7 @@
             <div v-else class="profile-image-placeholder">
               <v-icon size="48" color="#ccc">mdi-account</v-icon>
             </div>
-            <div class="image-upload-overlay" @click="triggerFileInput">
+            <div class="image-upload-overlay">
               <v-icon size="24" color="white">mdi-camera</v-icon>
             </div>
           </div>
@@ -43,9 +43,9 @@
             id="nickname"
             v-model="formData.nickname" 
             type="text" 
-            placeholder="닉네임을 입력하세요 (2-20자)"
+            placeholder="닉네임을 입력하세요 (2-10자)"
             minlength="2"
-            maxlength="20"
+            maxlength="10"
             @input="validateNickname"
           />
           <small v-if="nicknameError" class="nickname-error">{{ nicknameError }}</small>
@@ -70,9 +70,9 @@
             v-model="formData.info" 
             placeholder="자기소개를 입력하세요 (선택사항)"
             rows="3"
-            maxlength="10"
+            maxlength="20"
           ></textarea>
-          <small class="char-count">{{ formData.info.length }}/10</small>
+          <small class="char-count">{{ formData.info.length }}/20</small>
         </div>
       </div>
 
@@ -88,6 +88,7 @@
 
 <script>
 import { apiPostFormData, apiPut } from '@/utils/api';
+import { useAuthStore } from '@/store/auth/auth';
 
 export default {
   name: 'ProfileEditModal',
@@ -103,6 +104,11 @@ export default {
   },
 
   emits: ['close', 'update', 'showMessage'],
+  
+  setup() {
+    const authStore = useAuthStore();
+    return { authStore };
+  },
   data() {
     return {
       loading: false,
@@ -147,8 +153,8 @@ export default {
       const nickname = this.formData.nickname.trim();
       if (nickname.length < 2) {
         this.nicknameError = '닉네임은 2자 이상 입력해주세요';
-      } else if (nickname.length > 20) {
-        this.nicknameError = '닉네임은 20자 이하로 입력해주세요';
+      } else if (nickname.length > 10) {
+        this.nicknameError = '닉네임은 10자 이하로 입력해주세요';
       } else {
         this.nicknameError = '';
       }
@@ -248,6 +254,15 @@ export default {
         }
 
         const updateResult = updateResponse.data;
+
+        // authStore 실시간 업데이트
+        if (this.authStore.user) {
+          this.authStore.user.nickname = this.formData.nickname;
+          this.authStore.user.info = this.formData.info;
+          this.authStore.user.picture = imageUrl;
+          // localStorage도 업데이트
+          localStorage.setItem('user', JSON.stringify(this.authStore.user));
+        }
 
         this.$emit('update', updateResult.data);
         this.$emit('showMessage', {

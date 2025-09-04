@@ -8,7 +8,6 @@ const API_ENDPOINTS = {
   KAKAO_LOGIN: "/user/login/kakao",
   NAVER_LOGIN: "/user/login/naver",
   LOGOUT: "/user/logout",
-
   ADD_INFO: "/user/add-info",
   REFRESH: "/user/refresh",
   CURRENT_USER_INFO: "/user/me",

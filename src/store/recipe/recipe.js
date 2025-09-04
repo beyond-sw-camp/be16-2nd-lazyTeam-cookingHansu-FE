@@ -21,7 +21,7 @@ export const useRecipeStore = defineStore('recipe', {
 
     // 필터링 및 정렬
     filters: {
-      authorType: '',
+      role: '',
       category: '',
       sort: 'latest'
     },
@@ -270,7 +270,7 @@ export const useRecipeStore = defineStore('recipe', {
     // 필터 초기화
     clearFilters() {
       this.filters = {
-        authorType: '',
+        role: '',
         category: '',
         sort: 'latest'
       };
@@ -294,7 +294,7 @@ export const useRecipeStore = defineStore('recipe', {
         pageSize: 8,
       };
       this.filters = {
-        authorType: '',
+        role: '',
         category: '',
         sort: 'latest'
       };

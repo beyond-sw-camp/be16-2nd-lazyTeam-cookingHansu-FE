@@ -210,10 +210,11 @@ export const useNotificationStore = defineStore('notification', {
         this._updateChatRoomList(notification);
       }
       
-      // 승인 알림인 경우 모달 표시
-      if (this._isApprovalNotification(notification)) {
+      // 사용자 승인 알림인 경우에만 모달 표시
+      if (this._isUserApprovalNotification(notification)) {
         this._showApprovalModal(notification);
       }
+      // 강의 승인 알림은 일반 알림으로만 처리 (모달 표시 안함)
       
       // 헤더의 읽지 않은 알림 개수 즉시 업데이트
       this.unreadCount += 1;
@@ -536,15 +537,32 @@ export const useNotificationStore = defineStore('notification', {
       }
     },
 
-    // 승인 알림인지 확인
-    _isApprovalNotification(notification) {
-      // 승인 관련 키워드가 포함된 알림인지 확인
-      const approvalKeywords = ['승인', 'approval', 'approved', '회원가입', '가입'];
+    // 사용자 승인 알림인지 확인 (모달 표시용)
+    _isUserApprovalNotification(notification) {
+      // 사용자 승인 관련 키워드가 포함된 알림인지 확인
+      const userApprovalKeywords = ['회원가입', '가입', '사용자', 'chef', 'business'];
       const content = notification.content?.toLowerCase() || '';
       
-      return approvalKeywords.some(keyword => 
+      return userApprovalKeywords.some(keyword => 
         content.includes(keyword.toLowerCase())
-      );
+      ) && content.includes('승인');
+    },
+
+    // 강의 승인 알림인지 확인 (일반 알림용)
+    _isLectureApprovalNotification(notification) {
+      // 강의 승인 관련 키워드가 포함된 알림인지 확인
+      const lectureApprovalKeywords = ['강의', 'lecture', '온라인'];
+      const content = notification.content?.toLowerCase() || '';
+      
+      return lectureApprovalKeywords.some(keyword => 
+        content.includes(keyword.toLowerCase())
+      ) && content.includes('승인');
+    },
+
+    // 승인 알림인지 확인 (기존 호환성 유지)
+    _isApprovalNotification(notification) {
+      return this._isUserApprovalNotification(notification) || 
+             this._isLectureApprovalNotification(notification);
     },
 
     // 승인 알림 모달 표시

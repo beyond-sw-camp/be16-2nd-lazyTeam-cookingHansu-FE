@@ -94,11 +94,11 @@
     />
 
     <!-- 로그인 필요 모달 -->
-    <CommonModal
+    <LoginRequiredModal
       v-model="showLoginModal"
-      type="info"
       title="로그인이 필요합니다"
-      message="게시글을 등록하려면 로그인이 필요합니다. 로그인하시겠습니까?"
+      message="게시글을 등록하려면 로그인이 필요합니다."
+      sub-message="로그인 후 레시피를 공유하고 다른 사용자들과 소통할 수 있습니다."
       confirm-text="로그인하기"
       cancel-text="취소"
       @confirm="goToLogin"
@@ -112,7 +112,7 @@ import { ref, computed, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import Header from '@/components/Header.vue';
 import Pagination from '@/components/common/Pagination.vue';
-import CommonModal from '@/components/common/CommonModal.vue';
+import LoginRequiredModal from '@/components/common/LoginRequiredModal.vue';
 import { useAuthStore } from '@/store/auth/auth';
 import { useRecipeStore } from '@/store/recipe/recipe';
 
@@ -180,7 +180,7 @@ const fetchRecipes = async () => {
 
     // 필터 설정
     const filters = {
-      authorType: selectedUserType.value || '',
+      role: selectedUserType.value || '',
       category: selectedCategory.value || '',
       sort: sortParam
     };
@@ -413,6 +413,7 @@ const onFilterChange = () => {
   background: #e66a00;
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(255, 122, 0, 0.3);
+  color: white !important;
 }
 .filter-row {
   display: flex;

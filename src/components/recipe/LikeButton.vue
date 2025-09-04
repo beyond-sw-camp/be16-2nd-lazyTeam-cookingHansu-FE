@@ -15,10 +15,26 @@
       {{ likeCount }}
     </span>
   </v-btn>
+
+  <!-- 로그인 필요 모달 -->
+  <LoginRequiredModal
+    v-model="showLoginModal"
+    title="로그인이 필요합니다"
+    message="좋아요 기능을 사용하려면 로그인이 필요합니다."
+    sub-message="로그인 후 좋아요, 북마크, 댓글 작성이 가능합니다."
+    confirm-text="로그인하기"
+    cancel-text="취소"
+    @confirm="goToLogin"
+    @cancel="showLoginModal = false"
+  />
 </template>
 
 <script setup>
 import { ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import LoginRequiredModal from '@/components/common/LoginRequiredModal.vue'
+
+const router = useRouter()
 
 // Props
 const props = defineProps({
@@ -47,6 +63,7 @@ const emit = defineEmits(['like-changed'])
 const isLiked = ref(props.initialLiked)
 const likeCount = ref(props.initialCount)
 const loading = ref(false)
+const showLoginModal = ref(false)
 
 // Watch for prop changes
 watch(() => props.initialLiked, (newVal) => {
@@ -140,10 +157,16 @@ const showErrorMessage = (message) => {
 const checkAuthentication = () => {
   const token = getAuthToken()
   if (!token) {
-    showErrorMessage('로그인이 필요한 기능입니다.')
+    showLoginModal.value = true
     return false
   }
   return true
+}
+
+// 로그인 페이지로 이동
+const goToLogin = () => {
+  router.push('/login')
+  showLoginModal.value = false
 }
 
 // 컴포넌트가 클릭될 때 인증 확인

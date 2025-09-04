@@ -267,11 +267,11 @@
   </v-navigation-drawer>
 
   <!-- 로그인 필요 모달 -->
-  <CommonModal
+  <LoginRequiredModal
     v-model="showLoginModal"
-    type="info"
     title="로그인이 필요합니다"
-    message="해당 서비스를 이용하려면 로그인이 필요합니다. 로그인하시겠습니까?"
+    message="해당 서비스를 이용하려면 로그인이 필요합니다."
+    sub-message="로그인 후 모든 기능을 이용하실 수 있습니다."
     confirm-text="로그인하기"
     cancel-text="취소"
     @confirm="goToLogin"
@@ -286,7 +286,7 @@ import { useAuthStore } from '@/store/auth/auth'
 import { useCartStore } from '@/store/cart/cart'
 import { useNotificationStore } from '@/store/notification/notification.js'
 import { useAdminLoginStore } from '@/store/admin/adminLogin'
-import CommonModal from '@/components/common/CommonModal.vue'
+import LoginRequiredModal from '@/components/common/LoginRequiredModal.vue'
 
 const router = useRouter();
 const route = useRoute();
@@ -438,7 +438,7 @@ watch(isLoggedIn, async (newValue) => {
         // SSE 연결 시작 (실시간 알림 수신용)
         notificationStore.startNotificationSubscription();
       } catch (error) {
-        console.error('🔍 Header: 로그인 후 읽지 않은 알림 개수, 장바구니 정보 조회 실패:', error);
+        console.error('로그인 후 데이터 조회 실패:', error);
       }
     }
   } else {
@@ -473,13 +473,7 @@ watch(() => adminLoginStore.isLoggedIn, async (newValue, oldValue) => {
   }
 }, { immediate: true })
 
-// isAdmin 상태 변화 감시 (디버깅용)
-watch(isAdmin, (newValue, oldValue) => {
-  // console.log('isAdmin 상태 변화:', { old: oldValue, new: newValue });
-});
-
-
-// 관리자 로그인 상태도 감시
+// 관리자 로그인 상태 감시
 watch(() => adminLoginStore.isLoggedIn, async (newValue, oldValue) => {
   if (newValue) {
     await fetchProfileInfo();
@@ -492,9 +486,9 @@ watch(() => adminLoginStore.isLoggedIn, async (newValue, oldValue) => {
   }
 }, { immediate: true })
 
-// isAdmin 상태 변화 감시 (디버깅용)
+// isAdmin 상태 변화 감시
 watch(isAdmin, (newValue, oldValue) => {
-  // console.log('isAdmin 상태 변화:', { old: oldValue, new: newValue });
+  // 관리자 상태 변경 시 필요한 처리
 });
 
 
@@ -509,7 +503,6 @@ watch(userRole, async (newRole) => {
 watch(() => route.meta, (newMeta) => {
   // 탈퇴한 사용자 확인 페이지나 알림 구독을 건너뛰어야 하는 페이지에서는 알림 구독 해제
   if (newMeta?.skipNotificationSubscription) {
-    console.log('알림 구독 건너뛰기:', route.name);
     notificationStore.disconnectFromNotificationStream();
   }
 }, { immediate: true })
@@ -532,7 +525,7 @@ onMounted(async () => {
         // SSE 연결 시작 (실시간 알림 수신용)
         notificationStore.startNotificationSubscription();
       } catch (error) {
-        console.error('🔍 Header: 읽지 않은 알림 개수, 장바구니 정보 조회 실패:', error);
+        console.error('데이터 조회 실패:', error);
       }
     }
   }
@@ -563,8 +556,10 @@ const cartCount = computed(() => {
   return cartStore.serverCartCount
 })
 
-// 장바구니 개수 변경 감시 (디버깅용)
-watch(() => cartStore.serverCartCount, (newCount, oldCount) => {})
+// 장바구니 개수 변경 감시
+watch(() => cartStore.serverCartCount, (newCount, oldCount) => {
+  // 장바구니 개수 변경 시 필요한 처리
+})
 
 // 읽지 않은 알림 개수
 const unreadCount = computed(() => {

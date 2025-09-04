@@ -60,7 +60,7 @@
     <!-- 확인 모달 -->
     <CommonModal
       v-model="showModal"
-      type="info"
+      type="success"
       title="요식업 자영업자 회원 등록"
       message="요식업 자영업자로 회원 등록하시겠습니까? 등록 후에는 관리자 승인까지 권한이 제한됩니다."
       confirm-text="YES"

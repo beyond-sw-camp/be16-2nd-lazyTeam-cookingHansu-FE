@@ -216,9 +216,16 @@
                  </div>
                </div>
               
-              <!-- 더 보기 버튼 -->
-              <div v-if="showReviewsMoreButton" class="more-button-container">
+              <!-- 더 보기 버튼 (로그인한 사용자만) -->
+              <div v-if="showReviewsMoreButton && !isGuest" class="more-button-container">
                 <button class="more-button" @click="loadMoreReviews">
+                  더 보기
+                </button>
+              </div>
+              
+              <!-- 비로그인 사용자 더보기 버튼 -->
+              <div v-if="showReviewsMoreButton && isGuest" class="more-button-container">
+                <button class="more-button" @click="showLoginRequiredModal = true">
                   더 보기
                 </button>
               </div>
@@ -300,9 +307,16 @@
                  </div>
                </div>
               
-              <!-- 더 보기 버튼 -->
-              <div v-if="showQAMoreButton" class="more-button-container">
+              <!-- 더 보기 버튼 (로그인한 사용자만) -->
+              <div v-if="showQAMoreButton && !isGuest" class="more-button-container">
                 <button class="more-button" @click="loadMoreQA">
+                  더 보기
+                </button>
+              </div>
+              
+              <!-- 비로그인 사용자 더보기 버튼 -->
+              <div v-if="showQAMoreButton && isGuest" class="more-button-container">
+                <button class="more-button" @click="showLoginRequiredModal = true">
                   더 보기
                 </button>
               </div>
@@ -371,9 +385,17 @@
               <span class="report-icon">🚨</span>
               <span>신고하기</span>
             </div>
-                         <!-- 좋아요 버튼 -->
-             <div class="like-section">
+                         <!-- 좋아요 버튼 (로그인한 사용자만) -->
+             <div v-if="!isGuest" class="like-section">
                <button class="like-button" :class="{ 'liked': isLiked }" @click="toggleLike">
+                 <span class="like-icon">❤️</span>
+                 <span class="like-count">{{ lecture.likeCount || 0 }}</span>
+               </button>
+             </div>
+             
+             <!-- 비로그인 사용자 좋아요 버튼 -->
+             <div v-if="isGuest" class="like-section">
+               <button class="like-button" @click="showLoginRequiredModal = true">
                  <span class="like-icon">❤️</span>
                  <span class="like-count">{{ lecture.likeCount || 0 }}</span>
                </button>
@@ -682,23 +704,16 @@
      </div>
 
      <!-- 로그인 필요 모달 -->
-     <div v-if="showLoginRequiredModal" class="modal-overlay" @click="showLoginRequiredModal = false">
-       <div class="cart-modal" @click.stop>
-         <div class="modal-header">
-           <h3>로그인 필요</h3>
-           <button class="close-btn" @click="showLoginRequiredModal = false">×</button>
-         </div>
-         <div class="modal-content">
-           <div class="modal-icon">🔐</div>
-           <p class="modal-message">로그인이 필요한 서비스입니다.</p>
-           <p class="modal-submessage">로그인 후 리뷰 작성과 Q&A 참여가 가능합니다.</p>
-         </div>
-         <div class="modal-actions">
-           <button class="btn-primary" @click="goToLogin">로그인하기</button>
-           <button class="btn-secondary" @click="showLoginRequiredModal = false">취소</button>
-         </div>
-       </div>
-     </div>
+     <LoginRequiredModal
+       v-model="showLoginRequiredModal"
+       title="로그인이 필요합니다"
+       message="로그인 후 리뷰 작성과 Q&A 참여가 가능합니다."
+       sub-message="로그인 후 강의 수강과 모든 기능을 이용하실 수 있습니다."
+       confirm-text="로그인하기"
+       cancel-text="취소"
+       @confirm="goToLogin"
+       @cancel="showLoginRequiredModal = false"
+     />
 
     <!-- 삭제 확인 모달 -->
     <DeleteConfirmModal
@@ -747,6 +762,7 @@ import Header from '@/components/Header.vue';
 import DeleteConfirmModal from '@/components/common/DeleteConfirmModal.vue';
 import ReportModal from '@/components/common/ReportModal.vue';
 import UserProfileModal from '@/components/common/UserProfileModal.vue';
+import LoginRequiredModal from '@/components/common/LoginRequiredModal.vue';
 
 import { useLectureStore } from '@/store/lecture/lecture';
 import { useCartStore } from '@/store/cart/cart';
@@ -759,7 +775,7 @@ import { lectureService } from '@/services/lecture/lectureService';
 
 export default {
   name: 'LectureDetail',
-  components: { Header, DeleteConfirmModal, ReportModal, UserProfileModal },
+  components: { Header, DeleteConfirmModal, ReportModal, UserProfileModal, LoginRequiredModal },
   setup() {
     const lectureStore = useLectureStore();
     const cartStore = useCartStore();

@@ -331,9 +331,9 @@
                   </div>
                 </div>
                 <div class="comment-actions">
-                  <!-- 답글 버튼 (삭제된 댓글이 아닌 경우만) -->
+                  <!-- 답글 버튼 (삭제된 댓글이 아닌 경우만, 로그인한 사용자만) -->
                   <v-btn 
-                    v-if="!comment.isDeleted"
+                    v-if="!comment.isDeleted && isLoggedIn"
                     size="small" 
                     variant="text"
                     @click="showReplyForm(comment)"
@@ -343,9 +343,21 @@
                     답글
                   </v-btn>
                   
-                  <!-- 더보기 버튼 (삭제된 댓글이 아닌 경우만) -->
+                  <!-- 비로그인 사용자 답글 버튼 -->
+                  <v-btn 
+                    v-if="!comment.isDeleted && !isLoggedIn"
+                    size="small" 
+                    variant="text"
+                    @click="showLoginModal = true"
+                    class="reply-btn"
+                    :title="`답글 개수: ${comment.replies ? comment.replies.length : 0}`"
+                  >
+                    답글
+                  </v-btn>
+                  
+                  <!-- 더보기 버튼 (삭제된 댓글이 아닌 경우만, 로그인한 사용자만) -->
                   <v-menu
-                    v-if="!comment.isDeleted"
+                    v-if="!comment.isDeleted && isLoggedIn"
                     v-model="comment.showMoreMenu"
                     :close-on-content-click="false"
                     location="bottom end"
@@ -533,9 +545,9 @@
                   </div>
                 </div>
                 <div class="comment-actions">
-                  <!-- 더보기 버튼 (삭제된 답글이 아닌 경우만) -->
+                  <!-- 더보기 버튼 (삭제된 답글이 아닌 경우만, 로그인한 사용자만) -->
                   <v-menu
-                    v-if="!reply.isDeleted"
+                    v-if="!reply.isDeleted && isLoggedIn"
                     v-model="reply.showMoreMenu"
                     :close-on-content-click="false"
                     location="bottom end"
@@ -638,7 +650,18 @@
               </div>
           
           <div v-if="comments.length > 5" class="load-more-comments">
-            <v-btn variant="outlined" @click="loadMoreComments">
+            <v-btn 
+              v-if="isLoggedIn"
+              variant="outlined" 
+              @click="loadMoreComments"
+            >
+              댓글 더보기▼
+            </v-btn>
+            <v-btn 
+              v-else
+              variant="outlined" 
+              @click="showLoginModal = true"
+            >
               댓글 더보기▼
             </v-btn>
                   </div>
@@ -675,11 +698,11 @@
     </div>
     
     <!-- 로그인 필요 모달 -->
-    <CommonModal
+    <LoginRequiredModal
       v-model="showLoginModal"
-      type="info"
       title="로그인이 필요합니다"
-      message="이 기능을 사용하려면 로그인이 필요합니다. 로그인하시겠습니까?"
+      message="이 기능을 사용하려면 로그인이 필요합니다."
+      sub-message="로그인 후 좋아요, 북마크, 댓글 작성이 가능합니다."
       confirm-text="로그인하기"
       cancel-text="취소"
       @confirm="goToLogin"
@@ -790,7 +813,7 @@
 import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
-import CommonModal from '@/components/common/CommonModal.vue'
+import LoginRequiredModal from '@/components/common/LoginRequiredModal.vue'
 import UserProfileModal from '@/components/common/UserProfileModal.vue'
 import ReportModal from '@/components/common/ReportModal.vue'
 import { useChatStore } from '@/store/chat/chat'
