@@ -76,15 +76,19 @@
                    @error="onVideoError"
                  />
                  
-                 <!-- 비디오 재생 시 표시되는 비디오 플레이어 -->
-                 <video 
-                   v-if="isVideoPlaying"
-                   ref="previewVideo" 
-                   class="preview-video" 
-                   controls
-                   @ended="onVideoEnded"
-                   @timeupdate="onVideoTimeUpdate"
-                 >
+                             <!-- 비디오 재생 시 표시되는 비디오 플레이어 -->
+            <video
+              v-if="isVideoPlaying"
+              ref="previewVideo"
+              class="preview-video"
+              controls
+              :autoplay="false"
+              :muted="false"
+              @click.stop.prevent="togglePlayPause"
+              @dblclick.stop.prevent="toggleFullscreen"
+              @ended="onVideoEnded"
+              @timeupdate="onVideoTimeUpdate"
+            >
                    <source :src="previewVideoUrl" type="video/mp4">
                    브라우저가 비디오를 지원하지 않습니다.
                  </video>
@@ -838,6 +842,7 @@ export default {
        currentQAPage: 1,
        // 비디오 재생 상태
        isVideoPlaying: false,
+       isVideoPaused: false, // 비디오 일시정지 상태 추적
        previewVideoUrl: '',
        activeLessonIndex: -1, // 현재 재생 중인 강의 인덱스
 
@@ -1054,9 +1059,12 @@ export default {
     }
   },
   watch: {
-    // previewVideoUrl이 변경될 때 썸네일 재생성
-    previewVideoUrl(newUrl) {
-      if (newUrl) {
+    // previewVideoUrl이 변경될 때 썸네일 재생성 (일시정지 상태가 아닐 때만)
+    previewVideoUrl(newUrl, oldUrl) {
+      console.log('🔍 previewVideoUrl watch 실행 - newUrl:', newUrl, 'oldUrl:', oldUrl, 'isVideoPaused:', this.isVideoPaused)
+      // 같은 URL이거나 일시정지 상태면 썸네일 재생성하지 않음
+      if (newUrl && newUrl !== oldUrl && !this.isVideoPaused) {
+        console.log('🔍 썸네일 재생성 시작')
         this.$nextTick(() => {
           if (this.$refs.hiddenVideo) {
             // 비디오가 이미 로드된 경우 썸네일 생성
@@ -1065,10 +1073,52 @@ export default {
             }
           }
         });
+      } else {
+        console.log('🔍 썸네일 재생성 건너뜀')
       }
     }
   },
   methods: {
+    // 비디오 재생/일시정지 토글
+    togglePlayPause(event) {
+      // 이벤트 전파 완전 차단
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+      }
+      
+      const video = this.$refs.previewVideo
+      if (!video) return
+
+      console.log('🔍 togglePlayPause 호출됨 - 현재 paused 상태:', video.paused)
+      console.log('🔍 현재 isVideoPaused 상태:', this.isVideoPaused)
+
+      if (video.paused) {
+        console.log('▶️ 비디오 재생 시작')
+        video.play()
+        this.isVideoPaused = false
+      } else {
+        console.log('⏸️ 비디오 일시정지')
+        video.pause()
+        this.isVideoPaused = true
+      }
+      
+      console.log('🔍 변경 후 isVideoPaused 상태:', this.isVideoPaused)
+    },
+
+    // 비디오 전체화면 토글
+    toggleFullscreen() {
+      const video = this.$refs.previewVideo
+      if (!video) return
+
+      if (document.fullscreenElement) {
+        document.exitFullscreen()
+      } else {
+        video.requestFullscreen()
+      }
+    },
+
     // 사용자 역할 확인 메서드
     async checkUserRole(lectureId) {
       try {
@@ -1579,8 +1629,10 @@ export default {
            return;
          }
          
-         // 다음 강의가 시청 가능한지 확인
-         if (nextLesson && nextLesson.videoUrl && (this.canWatchLecture || nextLesson.isPreview)) {
+         // 다음 강의가 시청 가능한지 확인 (일시정지 상태가 아닐 때만 자동 재생)
+         console.log('🔍 onVideoEnded - 다음 강의 자동 재생 시도, isVideoPaused:', this.isVideoPaused)
+         if (nextLesson && nextLesson.videoUrl && (this.canWatchLecture || nextLesson.isPreview) && !this.isVideoPaused) {
+           console.log('🔍 다음 강의 자동 재생 시작')
            this.playVideo(nextLesson, nextIndex);
            return;
          }
@@ -1594,7 +1646,8 @@ export default {
 
      // 비디오 시간 업데이트 시 처리
      onVideoTimeUpdate() {
-       if (this.$refs.previewVideo) {
+       console.log('🔍 onVideoTimeUpdate 호출됨 - isVideoPaused:', this.isVideoPaused)
+       if (this.$refs.previewVideo && !this.isVideoPaused) {
          const currentTime = this.$refs.previewVideo.currentTime;
          this.setupProgressSaveTimer(currentTime);
        }
@@ -1662,6 +1715,7 @@ export default {
      
      // 비디오 재생 메서드 (메인 영역에서 재생)
      playVideo(lesson, lessonIndex = -1) {
+       console.log('🔍 playVideo 호출됨 - lesson:', lesson.title, 'isVideoPaused:', this.isVideoPaused)
        if (lesson.videoUrl) {
          // URL이 유효한지 확인
          try {
@@ -1675,17 +1729,25 @@ export default {
            // 메인 비디오 영역에서 재생
            this.previewVideoUrl = lesson.videoUrl;
            this.isVideoPlaying = true;
+           this.isVideoPaused = false; // 비디오 재생 시 일시정지 상태 해제
            this.activeLessonIndex = lessonIndex; // 현재 재생 중인 강의 인덱스 설정
            
            // 비디오 요소가 렌더링된 후 재생
            this.$nextTick(() => {
+             console.log('🔍 $nextTick 실행')
              if (this.$refs.previewVideo) {
+               console.log('🔍 load() 호출됨')
                this.$refs.previewVideo.load();
-               this.$refs.previewVideo.play().catch(error => {
-                 console.error('비디오 재생 실패:', error);
-                 this.showError('비디오 재생에 실패했습니다.');
-                 this.isVideoPlaying = false;
-               });
+               // 일시정지 상태가 아닐 때만 재생
+               if (!this.isVideoPaused) {
+                 this.$refs.previewVideo.play().catch(error => {
+                   console.error('비디오 재생 실패:', error);
+                   this.showError('비디오 재생에 실패했습니다.');
+                   this.isVideoPlaying = false;
+                 });
+               } else {
+                 console.log('🔍 일시정지 상태이므로 자동 재생하지 않음')
+               }
              }
            });
          } catch (error) {
