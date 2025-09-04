@@ -2,7 +2,7 @@
 
 > **누구나 요리를 배우고, 나누고, 소통하는 All-in-One 요리 플랫폼**  
 > 레시피 공유부터 요리 전문가 강의까지, 한 수 배워보세요!
-<img width="800" height="1000" alt="요리한수" src="https://github.com/user-attachments/assets/67175952-18b8-463f-b010-65395f81e1c0" />
+![header_image](https://github.com/user-attachments/assets/6ef49857-5008-4695-acc0-baeaeecb24a8)
 <br>
 ---
 
@@ -216,7 +216,7 @@
 
 <details>
   <summary>ERD 보기</summary>
-   <img width="1254" height="792" alt="스크린샷 2025-08-25 오후 2 33 14" src="https://github.com/user-attachments/assets/a8ae440d-08c1-4038-879a-0b063fde7c24" />
+   <img width="5040" height="2242" alt="요리한수 (1)" src="https://github.com/user-attachments/assets/620e7b3f-28eb-40e4-865a-2b2522d143e3" />
 </details>
 <div style="font-size: 1.5em; font-weight: bold; margin-top: 20px;">
   <a href='https://www.erdcloud.com/d/25tEnmWT48D4MufsZ' style="text-decoration: none; color: inherit;">
