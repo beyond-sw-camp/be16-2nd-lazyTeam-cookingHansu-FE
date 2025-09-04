@@ -109,13 +109,6 @@
             </div>
 
             <div :class="['d-flex', msg.senderId === myId ? 'justify-end' : 'justify-start']">
-              <!-- 디버깅용 로그 -->
-              <div v-if="msg.senderId === myId" style="display: none;">
-                {{ console.log('🔍 내 메시지:', msg.senderId, '===', myId, '결과:', msg.senderId === myId) }}
-              </div>
-              <div v-else style="display: none;">
-                {{ console.log('🔍 상대방 메시지:', msg.senderId, '===', myId, '결과:', msg.senderId === myId) }}
-              </div>
               
               <!-- 내 메시지 -->
               <template v-if="msg.senderId === myId">
@@ -317,7 +310,6 @@ const myId = ref(authStore.user?.id);
 watch(() => authStore.user?.id, (newId) => {
   if (newId) {
     myId.value = newId;
-    console.log('🔍 사용자 ID 업데이트:', newId);
   } else {
     console.error('사용자 ID가 없습니다. 로그인이 필요합니다.');
     router.push('/login');
@@ -422,13 +414,6 @@ const chatMessages = computed(() => {
   // Store의 실시간 unread count 계산 사용
   const totalUnreadCount = chatStore.getUnreadCount(currentRoomId.value);
   
-  // 디버깅: unread count 상태 확인
-  console.log(`🔍 chatMessages computed 실행:`, {
-    roomId: currentRoomId.value,
-    messageCount: list.length,
-    totalUnreadCount: totalUnreadCount,
-    currentTime: new Date().toISOString()
-  });
   
   return list.map((msg) => {
     // ✅ 수정: 각 메시지별로 개별 unread count 계산
@@ -447,12 +432,6 @@ const chatMessages = computed(() => {
     // ✅ Store에서 이미 온라인 상태를 고려하여 계산했으므로 그대로 사용
     const displayUnreadCount = unreadCount;
     
-    console.log(`🔍 메시지 ${msg.id} unread 처리:`, {
-      senderId: msg.senderId,
-      myId: myId.value,
-      isMyMessage: msg.senderId === myId.value,
-      finalUnreadCount: displayUnreadCount
-    });
     
 
     
@@ -468,7 +447,6 @@ watch(
   currentRoomId,
   async (newRoomId, oldRoomId) => {
     if (newRoomId && newRoomId !== oldRoomId) {
-      console.log(`🚪 채팅방 ${newRoomId} 입장`);
       
       // 메시지가 로드될 때까지 잠시 대기
       await nextTick();
@@ -492,11 +470,9 @@ watch(
       
               // 상대방 메시지이고 현재 방에 있을 때만 읽음처리
         if (newMessage.senderId !== myId.value && newMessage.roomId === currentRoomId.value) {
-        console.log(`📥 상대방 메시지 수신: 자동 읽음 처리`);
         
         // ✅ 수정: Store의 디바운스된 읽음 처리 사용
         chatStore.queueReadForRoom(currentRoomId.value, newMessage.id);
-        console.log(`✅ 상대방 메시지 수신 후 읽음 처리 큐에 추가`);
       }
     }
   },
@@ -613,13 +589,7 @@ onMounted(() => {
   }
 
   // ✅ 추가: 개발자 도구에서 테스트할 수 있도록 전역 함수로 노출
-  if (import.meta.env.DEV) {
-    window.debugChatRoom = debugRoomState;
-    window.testUnreadCount = testUnreadCount;
-    console.log('🧪 채팅 디버깅 함수가 전역에 노출되었습니다:');
-    console.log('  - debugChatRoom(): 현재 채팅방 상태 출력');
-    console.log('  - testUnreadCount(): 실시간 unread count 테스트');
-  }
+
 
   // ✅ 제거: 컴포넌트 언마운트 시 이벤트 리스너 정리 (읽음 처리 제거)
 });
@@ -793,35 +763,7 @@ const sendMessage = async (event) => {
   }
 };
 
-// ✅ 추가: 디버깅용 - 현재 채팅방 상태 출력
-const debugRoomState = () => {
-  if (currentRoomId.value) {
-    chatStore.debugRoomState(currentRoomId.value);
-  }
-};
 
-// ✅ 추가: 실시간 unread count 테스트
-const testUnreadCount = () => {
-  if (currentRoomId.value) {
-    const unreadCount = chatStore.getUnreadCount(currentRoomId.value);
-    console.log(`🧪 실시간 unread count 테스트: ${unreadCount}`);
-    
-
-  }
-};
-
-// ✅ 추가: 테스트용 - 상대방이 메시지를 읽은 상황 시뮬레이션
-const simulateOtherUserRead = (messageId) => {
-  if (currentRoomId.value) {
-    if (messageId) {
-      return chatStore.simulateOtherUserReadMessage(currentRoomId.value, messageId);
-    } else {
-      return chatStore.simulateOtherUserReadAllMessages(currentRoomId.value);
-    }
-  }
-};
-
-// 개발자 도구에서 테스트할 수 있도록 전역 함수로 노출 (onMounted에서 통합 처리)
 
 // ✅ 추가: 컴포넌트 언마운트 시 전역 함수 제거
 onBeforeUnmount(() => {
@@ -841,7 +783,6 @@ onBeforeUnmount(() => {
   // 스크롤 타이머 정리
   if (scrollTimeout.value) clearTimeout(scrollTimeout.value);
   
-  console.log(`🧹 채팅방 상세 컴포넌트 정리 완료`);
 });
 </script>
 

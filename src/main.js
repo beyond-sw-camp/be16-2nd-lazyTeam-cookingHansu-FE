@@ -31,7 +31,6 @@ Promise.all([
   authStore.initialize(),
   adminLoginStore.initialize()
 ]).then(() => {
-  console.log('Auth and Admin initialization completed')
 }).catch((error) => {
   console.error('Initialization failed:', error)
 })

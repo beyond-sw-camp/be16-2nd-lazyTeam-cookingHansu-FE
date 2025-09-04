@@ -87,7 +87,6 @@ export const useRecipeStore = defineStore('recipe', {
           ...params
         };
 
-        console.log('🔍 레시피 목록 조회 시작:', defaultParams);
         
         const response = await recipeService.getRecipeList(defaultParams);
         
@@ -100,7 +99,6 @@ export const useRecipeStore = defineStore('recipe', {
         };
         
         this.lastUpdate = Date.now();
-        console.log('✅ 레시피 목록 조회 성공:', this.recipes.length, '개');
         
         return response;
       } catch (error) {

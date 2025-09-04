@@ -120,7 +120,6 @@ export default {
           this.bookmarks = response.data.data.content || [];
           this.totalPages = response.data.data.totalPages || 0;
           
-          console.log(`🔍 북마크: ${this.bookmarks.length}개, 총 ${response.data.data.totalElements}개`);
         } else {
           throw new Error('북마크를 불러오는데 실패했습니다.');
         }
@@ -139,8 +138,6 @@ export default {
     },
     goToPostDetail(item) {
       // Navigate to post detail page
-      console.log('🚀 북마크 클릭:', item);
-      console.log('🆔 게시글 ID:', item.id);
       
       // 여러 가능한 ID 필드 시도
       const postId = item.id || item.postId || item.recipeId;

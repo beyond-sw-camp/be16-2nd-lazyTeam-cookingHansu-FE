@@ -119,7 +119,6 @@ export default {
           this.likes = response.data.data.content || [];
           this.totalPages = response.data.data.totalPages || 0;
           
-          console.log(`🔍 강의 좋아요: ${this.likes.length}개, 총 ${response.data.data.totalElements}개`);
         } else {
           throw new Error('강의 좋아요 목록을 불러오는데 실패했습니다.');
         }

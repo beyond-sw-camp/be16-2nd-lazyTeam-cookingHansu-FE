@@ -535,7 +535,6 @@ const rejectUser = async (reason) => {
 
 // 파일 열기
 const openFile = (url) => {
-  console.log('Opening file with URL:', url); // 디버깅용
   
   if (!url || url === 'null' || url === 'undefined') {
     snackbarType.value = 'warning';

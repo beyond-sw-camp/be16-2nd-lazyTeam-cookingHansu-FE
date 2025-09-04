@@ -147,7 +147,6 @@ const updateUserProfile = (updatedData) => {
     localStorage.setItem('user', JSON.stringify(authStore.user));
   }
   
-  console.log('프로필 업데이트됨:', updatedData);
 };
 
 const showMessage = (messageData) => {

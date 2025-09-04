@@ -131,13 +131,10 @@ const userInfo = computed(() => {
   try {
     const route = router.currentRoute.value;
     const userInfoParam = route.params.userInfo || route.query.userInfo;
-    console.log('route: ', route);
-    console.log('userInfoParam: ', userInfoParam);
     
     if (userInfoParam) {
       const decoded = decodeURIComponent(userInfoParam);
       const parsed = JSON.parse(decoded);
-      console.log('parsed: ', parsed);
       
       // 프로필 이미지 URL 정규화
       const normalizedUserInfo = {
@@ -146,7 +143,6 @@ const userInfo = computed(() => {
         picture: parsed.picture || parsed.profileImageUrl || parsed.profileImage || parsed.avatar || parsed.image || '/default-avatar.png'
       };
       
-      console.log('탈퇴한 사용자 정보 (정규화됨):', normalizedUserInfo);
       return normalizedUserInfo;
     }
     
@@ -221,7 +217,6 @@ const handleSuccessConfirm = () => {
   if (authStore.user?.id) {
     try {
       notificationStore.startNotificationSubscription()
-      console.log('회원 복구 후 실시간 알림 재연결 완료')
     } catch (error) {
       console.error('실시간 알림 재연결 실패:', error)
     }

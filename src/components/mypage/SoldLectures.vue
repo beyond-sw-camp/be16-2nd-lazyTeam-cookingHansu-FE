@@ -162,19 +162,14 @@ export default {
       }
     },
     goToLectureDetail(lecture) {
-      console.log('goToLectureDetail 호출됨, lecture:', lecture);
-      console.log('강의 상태:', lecture.status);
       
       if (lecture.status === 'APPROVED') {
-        console.log('승인된 강의 - 상세 페이지로 이동');
         this.$router.push(`/lectures/${lecture.id}`);
       } else if (lecture.status === 'REJECTED') {
-        console.log('거부된 강의 - 수정 페이지로 이동');
         // 수정 후 판매된 강의 페이지로 돌아오기 위한 플래그 설정
         localStorage.setItem('lectureEditFrom', 'sold-lectures');
         this.$router.push(`/lectures/edit/${lecture.id}`);
       } else {
-        console.log('승인 대기 중인 강의 - 모달 표시');
         this.openUnapprovedModal(lecture.status);
       }
     },
@@ -182,7 +177,6 @@ export default {
       this.$router.push('/lectures/create');
     },
     openUnapprovedModal(status) {
-      console.log('openUnapprovedModal 호출됨, status:', status);
       
       if (status === 'PENDING') {
         this.modalType = 'warning';
@@ -194,14 +188,9 @@ export default {
         this.modalMessage = '이 강의는 승인이 거부되었습니다. 상세 페이지를 확인할 수 없습니다.';
       }
       
-      console.log('모달 설정:', {
-        type: this.modalType,
-        title: this.modalTitle,
-        message: this.modalMessage
-      });
+
       
       this.showUnapprovedModal = true;
-      console.log('showUnapprovedModal 상태:', this.showUnapprovedModal);
     },
     closeUnapprovedModal() {
       this.showUnapprovedModal = false;

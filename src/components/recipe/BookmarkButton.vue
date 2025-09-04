@@ -156,7 +156,6 @@ const goToLogin = () => {
 // 성공 메시지 표시
 const showSuccessMessage = (message) => {
   // 실제 구현에서는 Vuetify의 snackbar 사용
-  console.log(message)
 }
 
 // 에러 메시지 표시

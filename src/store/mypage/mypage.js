@@ -182,7 +182,6 @@ export const useMypageStore = defineStore('mypage', {
             size: response.data.size || size
           };
           
-          console.log(`🔍 내 게시글: ${this.myPosts.length}개, 총 ${this.myPostsPagination.totalElements}개`);
         } else {
           throw new Error(response.message || '게시글을 불러오는데 실패했습니다.');
         }
@@ -211,7 +210,6 @@ export const useMypageStore = defineStore('mypage', {
             size: response.data.size || size
           };
           
-          console.log(`🔍 내 강의: ${this.myLectures.length}개, 총 ${this.myLecturesPagination.totalElements}개`);
         } else {
           throw new Error(response.message || '강의를 불러오는데 실패했습니다.');
         }
@@ -240,7 +238,6 @@ export const useMypageStore = defineStore('mypage', {
             size: response.data.size || size
           };
           
-          console.log(`🔍 북마크: ${this.bookmarkedPosts.length}개, 총 ${this.bookmarkedPostsPagination.totalElements}개`);
         } else {
           throw new Error(response.message || '북마크한 게시글을 불러오는데 실패했습니다.');
         }
@@ -269,7 +266,6 @@ export const useMypageStore = defineStore('mypage', {
             size: response.data.size || size
           };
           
-          console.log(`🔍 좋아요: ${this.likedPosts.length}개, 총 ${this.likedPostsPagination.totalElements}개`);
         } else {
           throw new Error(response.message || '좋아요한 게시글을 불러오는데 실패했습니다.');
         }
@@ -298,7 +294,6 @@ export const useMypageStore = defineStore('mypage', {
             size: response.data.size || size
           };
           
-          console.log(`🔍 강의 좋아요: ${this.myLikedLectures.length}개, 총 ${this.myLikedLecturesPagination.totalElements}개`);
         } else {
           throw new Error(response.message || '좋아요한 강의를 불러오는데 실패했습니다.');
         }

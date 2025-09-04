@@ -10,13 +10,6 @@ export const notificationService = {
     try {
       const response = await apiClient.get('/api/notifications/unread/count')
       
-      // 응답 로깅 추가
-      console.log('🔍 알림 API 응답:', {
-        status: response.status,
-        result: response.data,
-        data: response.data.data,
-        dataLength: response.data.data ? response.data.data.length : 0
-      });
       
       // 백엔드 응답 구조에 맞게 수정
       return response.data.data || 0

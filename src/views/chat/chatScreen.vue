@@ -206,7 +206,6 @@ const loadMoreChatRooms = async () => {
 // ✅ [NEW] autoSelect 파라미터 감지하여 새로 생성된 채팅방 자동 선택
 const checkAutoSelect = () => {
   if (route.query.autoSelect === 'true' && rooms.value.length > 0) {
-    console.log('🔍 autoSelect 감지: 새로 생성된 채팅방 자동 선택');
     
     // roomId 파라미터가 있으면 해당 ID의 채팅방을 선택
     if (route.query.roomId) {
@@ -214,13 +213,11 @@ const checkAutoSelect = () => {
       const targetRoom = rooms.value.find(room => room.roomId === targetRoomId);
       
       if (targetRoom) {
-        console.log('✅ roomId로 정확한 채팅방 자동 선택:', targetRoom.roomId, targetRoom.otherUserName);
         chatStore.selectRoom(targetRoom.roomId);
         
         // ✅ 수정: URL 파라미터는 유지하고 채팅방만 선택
         // router.replace('/chat'); // 이 줄 제거
       } else {
-        console.log('⚠️ 지정된 roomId의 채팅방을 찾을 수 없음:', targetRoomId);
         // 에러가 있어도 URL은 정리
         router.replace('/chat');
       }
@@ -228,7 +225,6 @@ const checkAutoSelect = () => {
       // roomId가 없으면 첫 번째 채팅방을 선택 (fallback)
       const firstRoom = rooms.value[0];
       if (firstRoom) {
-        console.log('✅ 첫 번째 채팅방 자동 선택 (fallback):', firstRoom.roomId, firstRoom.otherUserName);
         chatStore.selectRoom(firstRoom.roomId);
         
         // ✅ 수정: URL 파라미터는 유지하고 채팅방만 선택
@@ -248,13 +244,10 @@ watch(rooms, (newRooms) => {
 // ✅ 추가: 라우터 변경 감지하여 채팅방 선택 초기화 (autoSelect가 아닌 경우만)
 watch(() => route.path, (newPath) => {
   if (newPath === '/chat') {
-    console.log('🔄 채팅 페이지로 라우터 변경 감지: 채팅방 선택 상태 확인');
     // autoSelect가 있으면 채팅방 선택 유지, 없으면 초기화
     if (chatStore.currentRoomId && !route.query.autoSelect) {
-      console.log('🔄 일반 페이지 이동: 채팅방 선택 상태 초기화');
       chatStore.currentRoomId = null;
     } else if (route.query.autoSelect) {
-      console.log('✅ autoSelect 파라미터 감지: 채팅방 선택 상태 유지');
     }
   }
 });
@@ -262,11 +255,9 @@ watch(() => route.path, (newPath) => {
 // ✅ 추가: route.query 변경 감지 (더 정확한 감지)
 watch(() => route.query, (newQuery, oldQuery) => {
   if (route.path === '/chat') {
-    console.log('🔄 route.query 변경 감지:', newQuery);
     
     // autoSelect가 사라졌을 때만 채팅방 선택 초기화
     if (oldQuery?.autoSelect && !newQuery.autoSelect && chatStore.currentRoomId) {
-      console.log('🔄 autoSelect 파라미터 제거됨: 채팅방 선택 상태 초기화');
       chatStore.currentRoomId = null;
     }
   }
@@ -276,17 +267,14 @@ watch(() => route.query, (newQuery, oldQuery) => {
 onMounted(async () => {
   // 로그인 상태 확인
   if (!authStore.getIsAuthenticated || !authStore.user?.id) {
-    console.log('로그인이 필요합니다. 로그인 페이지로 이동합니다.');
     router.push('/login');
     return;
   }
   
   // ✅ 추가: 페이지 진입 시 채팅방 선택 상태 초기화 (autoSelect가 아닌 경우만)
   if (chatStore.currentRoomId && !route.query.autoSelect) {
-    console.log('🔄 페이지 진입 시 채팅방 선택 상태 초기화 (일반 페이지 이동)');
     chatStore.currentRoomId = null;
   } else if (route.query.autoSelect) {
-    console.log('✅ 페이지 진입 시 autoSelect 파라미터 감지: 채팅방 선택 상태 유지');
   }
   
   await chatStore.fetchMyChatRooms();

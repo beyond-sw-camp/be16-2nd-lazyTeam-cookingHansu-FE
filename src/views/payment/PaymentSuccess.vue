@@ -81,14 +81,12 @@ export default {
 
     async approvePayment(paymentKey) {
       try {
-        console.log('결제 승인 시작:', { paymentKey, orderId: this.orderId, amount: this.amount });
         
         // 선택된 강의 ID 목록 가져오기
         const selectedItems = JSON.parse(localStorage.getItem('selectedItemsForPayment') || '[]')
         const cartItems = JSON.parse(localStorage.getItem('cartItems') || '[]')
         const lectureIds = selectedItems.length > 0 ? selectedItems : cartItems.map(item => item.id)
 
-        console.log('결제할 강의 IDs:', lectureIds);
 
         const response = await apiPost('/purchase/confirm', {
           paymentKey,
@@ -97,12 +95,9 @@ export default {
           lectureIds
         })
 
-        console.log('결제 승인 응답:', response);
-        console.log('결제 승인 응답 데이터:', response.data);
 
         // HTTP 200 응답이면 성공으로 처리 (백엔드 응답 구조에 따라 조정)
         if (response.status === 200) {
-          console.log('결제 승인 처리 완료:', response.data);
           
           // 결제 성공 시 장바구니 스토어 업데이트
           await this.updateCartStore()
@@ -120,18 +115,14 @@ export default {
     // 장바구니 스토어 업데이트 (결제 성공 후 서버에서 자동으로 장바구니가 비워짐)
     async updateCartStore() {
       try {
-        console.log('장바구니 스토어 업데이트 시작');
         
         // 장바구니 스토어 업데이트
         if (this.cartStore) {
-          console.log('장바구니 스토어 업데이트 중...');
           await this.cartStore.fetchServerCartList();
-          console.log('장바구니 스토어 업데이트 완료');
         }
         
         // 선택된 아이템 정보 삭제
         localStorage.removeItem('selectedItemsForPayment')
-        console.log('localStorage에서 selectedItemsForPayment 삭제 완료');
       } catch (error) {
         console.error('장바구니 스토어 업데이트 중 오류:', error)
       }

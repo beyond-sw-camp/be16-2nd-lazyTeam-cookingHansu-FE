@@ -101,13 +101,10 @@ const handleConfirm = async () => {
     if (updatedUser) {
       try {
         const userData = JSON.parse(updatedUser)
-        console.log('✅ 승인 후 업데이트된 사용자 정보:', userData)
-        console.log('✅ 사용자 역할:', userData.role)
         
         // userRole도 함께 업데이트
         if (userData.role) {
           localStorage.setItem('userRole', userData.role)
-          console.log('✅ userRole 업데이트 완료:', userData.role)
         }
       } catch (error) {
         console.error('사용자 정보 파싱 오류:', error)

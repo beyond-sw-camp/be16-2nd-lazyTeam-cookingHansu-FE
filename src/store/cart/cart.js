@@ -57,19 +57,14 @@ export const useCartStore = defineStore('cart', {
     async fetchServerCartList(forceRefresh = false) {
       // 캐시가 유효하고 강제 새로고침이 아닌 경우 캐시된 데이터 반환
       if (!forceRefresh && this.isCacheValid) {
-        console.log('장바구니 스토어: 캐시된 데이터 사용')
         return this.serverCartItems;
       }
 
-      console.log('장바구니 스토어: 서버에서 장바구니 목록 가져오기 시작')
       this.isLoading = true
       try {
-        console.log('장바구니 스토어: cartService.getCartList() 호출')
         const cartItems = await cartService.getCartList()
-        console.log('장바구니 스토어: 서버에서 받은 데이터:', cartItems)
         this.serverCartItems = cartItems || []
         this.lastUpdate = Date.now() // 캐시 시간 업데이트
-        console.log('장바구니 스토어: serverCartItems 업데이트 완료:', this.serverCartItems)
         return cartItems
       } catch (error) {
         console.error('장바구니 스토어: 서버 장바구니 목록 가져오기 실패:', error)
@@ -77,7 +72,6 @@ export const useCartStore = defineStore('cart', {
         throw error
       } finally {
         this.isLoading = false
-        console.log('장바구니 스토어: 로딩 상태 해제')
       }
     },
 

@@ -53,14 +53,11 @@ export default {
   },
   methods: {
     changePage(page) {
-      console.log('Pagination: 페이지 변경 요청', page, '총 페이지:', this.totalPages, '현재 페이지:', this.currentPage);
       
       // 페이지 범위 체크 및 현재 페이지와 다른지 확인
       if (page >= 1 && page <= this.totalPages && page !== this.currentPage) {
-        console.log('Pagination: 페이지 변경 이벤트 발생', page);
         this.$emit('page-change', page);
       } else {
-        console.log('Pagination: 페이지 변경 불가 (범위 초과 또는 같은 페이지)');
       }
     }
   }

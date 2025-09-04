@@ -158,13 +158,7 @@ onMounted(() => {
 // 메서드들
 const fetchRecipes = async () => {
   try {
-    console.log('🔍 API 호출 시작:', {
-      authorType: selectedUserType.value,
-      category: selectedCategory.value,
-      sort: selectedSort.value,
-      page: currentPage.value,
-      size: recipesPerPage.value
-    });
+
 
     // 정렬 옵션을 백엔드 API 형식에 맞게 변환
     let sortParam = selectedSort.value;
@@ -195,27 +189,21 @@ const fetchRecipes = async () => {
       ...filters
     });
     
-    console.log('✅ 레시피 목록 조회 완료');
     
   } catch (error) {
     console.error('❌ 레시피 목록 조회 실패:', error);
   }
 };
 const changePage = (page) => {
-  console.log('페이지 변경 요청:', page, '현재 페이지:', currentPage.value, '총 페이지:', totalPages.value);
   
   // 페이지 범위 체크
   if (page >= 1 && page <= totalPages.value && page !== currentPage.value) {
     currentPage.value = page;
-    console.log('페이지 변경됨:', currentPage.value);
   } else if (page > totalPages.value) {
-    console.log('최대 페이지 초과, 마지막 페이지로 이동');
     currentPage.value = totalPages.value;
   } else if (page < 1) {
-    console.log('최소 페이지 미만, 첫 페이지로 이동');
     currentPage.value = 1;
   } else {
-    console.log('같은 페이지이므로 변경하지 않음');
   }
 };
 

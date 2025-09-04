@@ -105,6 +105,7 @@ export const apiPostFormData = async (endpoint, formData) => {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      timeout: 60000, // 파일 업로드는 60초로 설정
     });
     return response;
   } catch (error) {
@@ -120,6 +121,7 @@ export const apiPutFormData = async (endpoint, formData) => {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      timeout: 60000, // 파일 업로드는 60초로 설정
     });
     return response;
   } catch (error) {

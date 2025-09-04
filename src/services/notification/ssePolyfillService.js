@@ -178,24 +178,9 @@ class EventSourcePolyfill {
       this.onerror(error);
     }
     
-    // 재연결 시도
-    // this.attemptReconnect(); // 재연결 로직 제거
+
   }
 
-  // attemptReconnect() { // 재연결 로직 제거
-  //   if (this.reconnectAttempts < this.maxReconnectAttempts) {
-  //     this.reconnectAttempts++;
-  //     console.log(`SSE 재연결 시도 ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
-      
-  //     setTimeout(() => {
-  //       if (!this.isConnected) {
-  //         this.connect();
-  //       }
-  //     }, this.reconnectDelay * this.reconnectAttempts);
-  //   } else {
-  //     console.error('SSE 최대 재연결 시도 횟수 초과');
-  //   }
-  // }
 
   close() {
     if (this.xhr) {
@@ -244,7 +229,6 @@ export const ssePolyfillService = {
    */
   createEventSource(url, options = {}) {
     // JWT 토큰을 헤더에 포함해야 하므로 항상 Polyfill 사용
-    console.log('🔍 SSE Polyfill 강제 사용 (JWT 토큰 인증 필요)');
     return new EventSourcePolyfill(url, options);
   },
 

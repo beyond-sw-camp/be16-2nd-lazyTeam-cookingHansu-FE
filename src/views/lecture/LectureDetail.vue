@@ -957,7 +957,6 @@ export default {
     
     // 강의 구매자인지 확인
     isPurchaser() {
-      console.log('isPurchased 값:', this.isPurchased);
       return this.isPurchased;
     },
     
@@ -1091,12 +1090,10 @@ export default {
         // TODO: 실제 로그인 API에서 사용자 정보 가져오기
         // 현재는 localStorage에서 임시로 가져옴
         const userInfo = localStorage.getItem('user');
-        console.log('🔍 checkUserRole - userInfo:', userInfo);
         
         if (userInfo) {
           const user = JSON.parse(userInfo);
           this.currentUserId = user.id;
-          console.log('🔍 checkUserRole - user:', user);
           
           // 강의 작성자인지 확인 (CHEF, OWNER 모두 자영업자/요리사)
           if (this.lecture && this.lecture.instructor && user.id === this.lecture.instructor.id) {
@@ -1105,7 +1102,6 @@ export default {
           // 관리자인지 확인 (대소문자 구분 없이)
           else if (user.role === 'ADMIN' || user.role === 'admin') {
             this.userRole = 'ADMIN';
-            console.log('✅ 관리자로 설정됨');
           }
           // 구매자인지 확인 (구매 상태는 별도로 확인)
           else if (this.isPurchased) {
@@ -1127,15 +1123,12 @@ export default {
              // 장바구니 상태 확인 (백엔드 API 사용)
     async checkCartStatus(lectureId) {
       // 비회원이나 관리자는 장바구니 조회하지 않음
-      console.log('🔍 checkCartStatus - isGuest:', this.isGuest, 'userRole:', this.userRole);
       
       // authStore에서도 관리자 체크 (대소문자 구분 없이)
       const authStore = useAuthStore();
       const isAdminFromStore = authStore.user?.role === 'ADMIN' || authStore.user?.role === 'admin';
-      console.log('🔍 checkCartStatus - isAdminFromStore:', isAdminFromStore);
       
       if (this.isGuest || this.userRole === 'ADMIN' || isAdminFromStore) {
-        console.log('✅ 장바구니 조회 건너뜀 (비회원 또는 관리자)');
         this.isInCart = false;
         return;
       }
@@ -1189,7 +1182,6 @@ export default {
         
         if (response.success) {
           const lectureData = response.data;
-          console.log('🔍 강의 데이터 로드:', lectureData);
 
 
           
@@ -1416,7 +1408,6 @@ export default {
     
          // Q&A 데이터 변환 (질문-답글 구조)
      convertQA(qaList) {
-       console.log('🔍 convertQA 시작 - 입력 데이터:', qaList);
        if (!qaList || qaList.length === 0) {
          return [];
        }
@@ -1655,7 +1646,6 @@ export default {
            // 진행도 저장 후 강의 정보 새로고침
            await this.refreshLectureProgress();
            
-           console.log('비디오 진행도 저장 완료:', currentLesson.videoId);
          } catch (error) {
            console.error('비디오 진행도 저장 실패:', error);
          }
@@ -2211,11 +2201,9 @@ export default {
           }
 
           const myId = this.authStore.user.id;
-          console.log('채팅방 생성 시작:', { myId, userId });
 
           // 채팅방 생성
           const roomId = await this.chatStore.createRoom(myId, userId);
-          console.log('채팅방 생성 성공, roomId:', roomId);
 
           // 바로 채팅방으로 이동
           this.$router.push(`/chat?autoSelect=true&roomId=${roomId}`);
@@ -2550,11 +2538,8 @@ export default {
           
           // 장바구니 스토어 업데이트
           if (this.cartStore) {
-            console.log('🛒 강의 구매: 장바구니 스토어 업데이트 시작');
             this.cartStore.updateCartItem(this.lecture.id, false); // 장바구니에 추가
-            console.log('🛒 강의 구매: updateCartItem 완료, fetchServerCartList 시작');
             await this.cartStore.fetchServerCartList(true); // 강제 새로고침
-            console.log('🛒 강의 구매: fetchServerCartList 완료, 현재 장바구니 개수:', this.cartStore.serverCartCount);
           }
           
           // 장바구니 페이지로 이동

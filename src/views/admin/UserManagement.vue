@@ -181,7 +181,6 @@ const closeSnackbar = () => {
 
 // 페이지 변경 핸들러
 const handlePageChange = (page) => {
-  console.log('페이지 변경:', page)
   userManagementStore.fetchUserList(page - 1, paginationInfo.value.pageSize)
 }
 

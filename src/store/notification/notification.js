@@ -73,7 +73,6 @@ export const useNotificationStore = defineStore('notification', {
       // 관리자는 알림 목록 조회하지 않음
       const authStore = useAuthStore();
       if (authStore.user?.role === 'ADMIN' || authStore.user?.role === 'admin') {
-        console.log('관리자 - 알림 목록 조회 건너뜀 (store 레벨)');
         return;
       }
       
@@ -293,7 +292,6 @@ export const useNotificationStore = defineStore('notification', {
       
       // 헤더의 unreadCount는 서버에서 받은 전체 개수를 유지
       // 로컬 계산은 목록 페이지에서만 사용
-      console.log('로컬 읽지 않은 알림 개수:', localUnreadCount, '서버 전체 개수:', this.unreadCount);
     },
 
     // SSE Polyfill 연결 시작 (중복 구독 방지)
@@ -316,7 +314,6 @@ export const useNotificationStore = defineStore('notification', {
 
       // 관리자는 알림 구독하지 않음
       if (authStore.user?.role === 'ADMIN' || authStore.user?.role === 'admin') {
-        console.log('관리자 - 알림 구독 건너뜀 (store 레벨)');
         return;
       }
 
@@ -365,7 +362,6 @@ export const useNotificationStore = defineStore('notification', {
                   this.fetchUnreadCount();
                 }
               } catch (parseError) {
-                console.log('🔍 알림 데이터 파싱 실패:', event.data);
               }
             }
           } catch (error) {
@@ -530,7 +526,6 @@ export const useNotificationStore = defineStore('notification', {
         // 헤더의 읽지 않은 개수 즉시 업데이트
         await this.fetchUnreadCount(true);
         
-        console.log('🔔 공지사항 알림 처리 완료:', notification);
       } catch (error) {
         console.warn('공지사항 알림 처리 실패:', error);
       }
