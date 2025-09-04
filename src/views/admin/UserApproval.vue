@@ -465,7 +465,8 @@ const showApprovalDialog = (user) => {
 const approveUser = async () => {
   try {
     // userType을 결정 (chef인지 business인지)
-    const userType = selectedUser.value.role === 'CHEF' ? 'chef' : 'business';
+    const userType = selectedUser.value.roleType;
+    
     
     await userApprovalStore.approveUser(selectedUser.value.id, userType);
     approvalDialog.value = false;
@@ -504,7 +505,7 @@ const showRejectDialog = (user) => {
 const rejectUser = async (reason) => {
   try {
     // userType을 결정 (chef인지 business인지)
-    const userType = selectedUser.value.role === 'CHEF' ? 'chef' : 'business';
+    const userType = selectedUser.value.roleType;
     
     await userApprovalStore.rejectUser(selectedUser.value.id, reason, userType);
     rejectDialog.value = false;

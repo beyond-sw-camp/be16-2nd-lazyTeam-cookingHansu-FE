@@ -49,6 +49,13 @@ const isLoading = ref(false)
 
 const closeModal = () => {
   notificationStore.closeApprovalModal()
+  // 모달이 닫힐 때 스크롤 복원
+  const scrollY = document.body.style.top
+  document.body.style.position = ''
+  document.body.style.top = ''
+  document.body.style.width = ''
+  document.body.style.overflow = ''
+  window.scrollTo(0, parseInt(scrollY || '0') * -1)
   emit('close')
 }
 
@@ -62,10 +69,23 @@ const handleKeydown = (event) => {
 
 onMounted(() => {
   document.addEventListener('keydown', handleKeydown)
+  // 모달이 표시될 때 스크롤 완전히 막기
+  const scrollY = window.scrollY
+  document.body.style.position = 'fixed'
+  document.body.style.top = `-${scrollY}px`
+  document.body.style.width = '100%'
+  document.body.style.overflow = 'hidden'
 })
 
 onUnmounted(() => {
   document.removeEventListener('keydown', handleKeydown)
+  // 모달이 닫힐 때 스크롤 복원
+  const scrollY = document.body.style.top
+  document.body.style.position = ''
+  document.body.style.top = ''
+  document.body.style.width = ''
+  document.body.style.overflow = ''
+  window.scrollTo(0, parseInt(scrollY || '0') * -1)
 })
 
 const handleConfirm = async () => {

@@ -139,7 +139,7 @@ export const useUserApprovalStore = defineStore('userApproval', {
         if (response.success) {
           // 승인된 사용자를 해당 목록에서 제거 (반응성을 위해 새 배열 생성)
           if (userType === 'chef') {
-            this.waitingChefs = [...this.waitingChefs.filter(user => user.id !== userId)];
+            this.waitingChefs = [...this.waitingChefs.filter(user => user.userId !== userId)];
             this.chefPagination.totalElements = Math.max(0, this.chefPagination.totalElements - 1);
           } else if (userType === 'business') {
             this.waitingBusinesses = [...this.waitingBusinesses.filter(user => user.id !== userId)];
@@ -169,7 +169,7 @@ export const useUserApprovalStore = defineStore('userApproval', {
         if (response.success) {
           // 거절된 사용자를 해당 목록에서 제거 (반응성을 위해 새 배열 생성)
           if (userType === 'chef') {
-            this.waitingChefs = [...this.waitingChefs.filter(user => user.id !== userId)];
+            this.waitingChefs = [...this.waitingChefs.filter(user => user.userId !== userId)];
             this.chefPagination.totalElements = Math.max(0, this.chefPagination.totalElements - 1);
           } else if (userType === 'business') {
             this.waitingBusinesses = [...this.waitingBusinesses.filter(user => user.id !== userId)];
