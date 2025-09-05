@@ -478,23 +478,17 @@ const submitPost = async () => {
     // JWT 토큰 내용 확인
     try {
       const payload = JSON.parse(atob(token.split('.')[1]))
-      console.log('🔍 JWT 토큰 페이로드:', payload)
-      console.log('🔍 사용자 ID:', payload.sub)
     } catch (e) {
-      console.log('❌ JWT 토큰 파싱 실패:', e)
     }
     
     // 백엔드 API 경로를 새로운 형식으로 시도
     let response
     let apiUrl = '/api/posts/create'
     
-    console.log('🔄 게시글 등록 시도:', apiUrl)
     response = await recipeService.createRecipe(formData)
     
-    console.log('📡 게시글 등록 최종 응답:', response)
     if (response.success) {
       const responseData = response
-      console.log('게시글 생성 응답:', responseData)
       
       // 생성된 게시글의 ID를 가져와서 상세 페이지로 이동
       if (responseData.data && responseData.data.id) {

@@ -144,6 +144,14 @@ export default {
           return;
         }
         
+        // handleGoogleLogin에서 비활성화된 회원인 경우 특별한 객체를 반환하므로 체크
+        if (user && user.isRestricted) {
+          // 비활성화된 회원인 경우 로그인 정보 정리 후 비활성화 페이지로 리다이렉트
+          authStore.clearAuth();
+          router.push('/inactive-user');
+          return;
+        }
+        
         // 사용자 상태에 따른 즉시 리다이렉트 (로그인 성공 표시 없이)
         // 백엔드에서 isNewUser 컬럼을 제거하고 DB 조회로 기존 사용자 판단
         // 프론트엔드에서는 사용자의 기본 프로필 정보 완성 여부로 판단
@@ -209,9 +217,7 @@ export default {
         }
         keysToRemove.forEach(key => sessionStorage.removeItem(key));
         
-        console.log('Google 세션 정리 완료');
       } catch (error) {
-        console.warn('Google 세션 정리 중 오류:', error);
       }
     };
     

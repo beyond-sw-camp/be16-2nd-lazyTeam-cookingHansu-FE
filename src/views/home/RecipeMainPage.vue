@@ -94,11 +94,11 @@
     />
 
     <!-- 로그인 필요 모달 -->
-    <CommonModal
+    <LoginRequiredModal
       v-model="showLoginModal"
-      type="info"
       title="로그인이 필요합니다"
-      message="게시글을 등록하려면 로그인이 필요합니다. 로그인하시겠습니까?"
+      message="게시글을 등록하려면 로그인이 필요합니다."
+      sub-message="로그인 후 레시피를 공유하고 다른 사용자들과 소통할 수 있습니다."
       confirm-text="로그인하기"
       cancel-text="취소"
       @confirm="goToLogin"
@@ -112,7 +112,7 @@ import { ref, computed, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import Header from '@/components/Header.vue';
 import Pagination from '@/components/common/Pagination.vue';
-import CommonModal from '@/components/common/CommonModal.vue';
+import LoginRequiredModal from '@/components/common/LoginRequiredModal.vue';
 import { useAuthStore } from '@/store/auth/auth';
 import { useRecipeStore } from '@/store/recipe/recipe';
 
@@ -158,13 +158,7 @@ onMounted(() => {
 // 메서드들
 const fetchRecipes = async () => {
   try {
-    console.log('🔍 API 호출 시작:', {
-      authorType: selectedUserType.value,
-      category: selectedCategory.value,
-      sort: selectedSort.value,
-      page: currentPage.value,
-      size: recipesPerPage.value
-    });
+
 
     // 정렬 옵션을 백엔드 API 형식에 맞게 변환
     let sortParam = selectedSort.value;
@@ -180,7 +174,7 @@ const fetchRecipes = async () => {
 
     // 필터 설정
     const filters = {
-      authorType: selectedUserType.value || '',
+      role: selectedUserType.value || '',
       category: selectedCategory.value || '',
       sort: sortParam
     };
@@ -195,27 +189,21 @@ const fetchRecipes = async () => {
       ...filters
     });
     
-    console.log('✅ 레시피 목록 조회 완료');
     
   } catch (error) {
     console.error('❌ 레시피 목록 조회 실패:', error);
   }
 };
 const changePage = (page) => {
-  console.log('페이지 변경 요청:', page, '현재 페이지:', currentPage.value, '총 페이지:', totalPages.value);
   
   // 페이지 범위 체크
   if (page >= 1 && page <= totalPages.value && page !== currentPage.value) {
     currentPage.value = page;
-    console.log('페이지 변경됨:', currentPage.value);
   } else if (page > totalPages.value) {
-    console.log('최대 페이지 초과, 마지막 페이지로 이동');
     currentPage.value = totalPages.value;
   } else if (page < 1) {
-    console.log('최소 페이지 미만, 첫 페이지로 이동');
     currentPage.value = 1;
   } else {
-    console.log('같은 페이지이므로 변경하지 않음');
   }
 };
 
@@ -413,6 +401,7 @@ const onFilterChange = () => {
   background: #e66a00;
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(255, 122, 0, 0.3);
+  color: white !important;
 }
 .filter-row {
   display: flex;

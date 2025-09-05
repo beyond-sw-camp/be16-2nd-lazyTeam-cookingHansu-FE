@@ -209,26 +209,18 @@ export const useChatStore = defineStore('chat', {
       this.onlineUsers[roomId] = Array.isArray(onlineUserIds) ? onlineUserIds : [];
       const nowOnline = this.isOtherOnline(roomId);
       
-      console.log(`👥 채팅방 ${roomId} 온라인 사용자 업데이트:`, onlineUserIds);
       
       if (!wasOnline && nowOnline) {
-        console.log(`🟢 상대방이 온라인이 되었습니다.`);
         if (roomId === this.currentRoomId) {
           this.$patch({});
         }
       }
       
       if (wasOnline && !nowOnline) {
-        console.log(`🔴 상대방이 오프라인이 되었습니다. 로컬 상태 갱신 시작`);
         
         this.loadChatRoomParticipants(roomId).then(() => {
-          console.log(`✅ 상대방 오프라인 후 참여자 정보 갱신 완료`);
-          
           this.invalidateUnreadCountCache(roomId);
           this.recalculateAllMessageUnreadCounts(roomId);
-          
-          const newUnreadCount = this.calculateUnreadCount(roomId);
-          console.log(`📊 상대방 오프라인 후 unread count: ${newUnreadCount}`);
           
           this.$patch({});
         }).catch(error => {
@@ -236,7 +228,6 @@ export const useChatStore = defineStore('chat', {
         });
       }
       
-      console.log(`ℹ️ 상대방 온라인 상태 변경: ${wasOnline} → ${nowOnline}`);
       
       if (roomId === this.currentRoomId) {
         this.$patch({});
@@ -256,7 +247,6 @@ export const useChatStore = defineStore('chat', {
       
       this._unreadCountCache.set(roomId, 0);
       
-      console.log(`✅ markRoomAsRead: 채팅방 ${roomId} UI 읽음 처리 완료`);
     },
 
     calculateUnreadCount(roomId) {
@@ -273,7 +263,6 @@ export const useChatStore = defineStore('chat', {
       
       const otherParticipant = participants.find(p => p.id !== userId);
       if (!otherParticipant) {
-        console.log(`⚠️ 채팅방 ${roomId} 상대방 참여자 정보 없음`);
         return 0;
       }
       
@@ -301,7 +290,6 @@ export const useChatStore = defineStore('chat', {
       const otherParticipant = participants.find(p => p.id !== userId);
       if (otherParticipant) {
         otherParticipant.lastMessageId = messageId - 1;
-        console.log(`🔄 참여자 정보 자동 업데이트: 상대방 lastMessageId = ${otherParticipant.lastMessageId}`);
         
         this.invalidateUnreadCountCache(roomId);
       }
@@ -319,7 +307,6 @@ export const useChatStore = defineStore('chat', {
         const oldLastMessageId = participant.lastMessageId || 0;
         participant.lastMessageId = lastMessageId;
         
-        console.log(`🔄 Redis 동기화: 참여자 ${participantId} lastMessageId ${oldLastMessageId} → ${lastMessageId}`);
         
         // 상대방의 읽음 상태가 변경되었을 때만 unread count 재계산
         if (participantId !== userId && oldLastMessageId !== lastMessageId) {
@@ -331,13 +318,11 @@ export const useChatStore = defineStore('chat', {
           }
         }
       } else {
-        console.log(`⚠️ Redis 동기화 실패: 참여자 ${participantId}를 찾을 수 없음`);
       }
     },
 
     // ✅ 추가: Redis에서 전체 참여자 목록 업데이트 시 실시간 동기화
     updateChatParticipantsFromRedis(roomId, participantsData) {
-      console.log(`🔄 Redis에서 참여자 목록 업데이트:`, participantsData);
       
       // 기존 참여자 정보와 비교하여 변경사항 확인
       const currentParticipants = this.participants[roomId] || [];
@@ -364,7 +349,6 @@ export const useChatStore = defineStore('chat', {
     // ✅ 추가: 참여자 정보 변경사항 확인
     checkParticipantChanges(currentParticipants, newParticipants) {
       if (currentParticipants.length !== newParticipants.length) {
-        console.log(`📊 참여자 수 변경: ${currentParticipants.length} → ${newParticipants.length}`);
         return true;
       }
       
@@ -373,12 +357,10 @@ export const useChatStore = defineStore('chat', {
         const newParticipant = newParticipants.find(p => p.id === current.id);
         
         if (!newParticipant) {
-          console.log(`📊 참여자 ${current.id} 제거됨`);
           return true;
         }
         
         if (current.lastMessageId !== newParticipant.lastMessageId) {
-          console.log(`📊 참여자 ${current.id} lastMessageId 변경: ${current.lastMessageId} → ${newParticipant.lastMessageId}`);
           return true;
         }
       }
@@ -400,7 +382,6 @@ export const useChatStore = defineStore('chat', {
       const otherParticipant = participants.find(p => p.id !== userId);
       
       if (!otherParticipant) {
-        console.log(`⚠️ 메시지 ${messageId} unread count 계산 실패: 상대방 참여자 정보 없음`);
         return 0; // 상대방 정보가 없으면 0
       }
       
@@ -409,7 +390,6 @@ export const useChatStore = defineStore('chat', {
       // 내가 보낸 메시지이고, 상대방이 읽지 않은 경우 1
       const message = this.messages[roomId]?.find(msg => msg.id === messageId);
       if (!message) {
-        console.log(`⚠️ 메시지 ${messageId} unread count 계산 실패: 메시지 정보 없음`);
         return 0;
       }
       
@@ -429,7 +409,6 @@ export const useChatStore = defineStore('chat', {
         const isOtherOnline = onlineUsers.some(user => user.userId !== userId);
         
         if (isOtherOnline) {
-          console.log(`🔍 메시지 ${messageId}: 상대방 온라인으로 인한 읽음 처리`);
           unreadCount = 0;
         }
       } else {
@@ -449,7 +428,6 @@ export const useChatStore = defineStore('chat', {
       const otherParticipant = participants.find(p => p.id !== userId);
       
       if (!otherParticipant) {
-        console.log(`⚠️ 채팅방 ${roomId} 상대방 참여자 정보 없음, unread count 재계산 스킵`);
         return;
       }
       
@@ -473,77 +451,6 @@ export const useChatStore = defineStore('chat', {
 
 
 
-    // ✅ 추가: 테스트용 - 상대방이 메시지를 읽은 상황 시뮬레이션
-    simulateOtherUserReadMessage(roomId, messageId) {
-      const userId = getMyId();
-      if (!userId) {
-        console.error('❌ 시뮬레이션 실패: 사용자 ID를 가져올 수 없습니다');
-        return;
-      }
-      
-      if (!roomId || !messageId) {
-        console.error('❌ 시뮬레이션 실패: roomId와 messageId가 필요합니다');
-        return;
-      }
-      
-      const participants = this.participants[roomId] || [];
-      const otherParticipant = participants.find(p => p.id !== userId);
-      
-      if (!otherParticipant) {
-        console.error('❌ 시뮬레이션 실패: 상대방 참여자 정보를 찾을 수 없습니다');
-        return;
-      }
-      
-      const oldLastMessageId = otherParticipant.lastMessageId || 0;
-      
-      // 상대방이 특정 메시지를 읽었다고 가정
-      otherParticipant.lastMessageId = Math.max(oldLastMessageId, messageId);
-      
-      console.log(`🧪 시뮬레이션: 상대방이 메시지 ${messageId}를 읽음`);
-      console.log(`🔄 상대방 lastMessageId: ${oldLastMessageId} → ${otherParticipant.lastMessageId}`);
-      
-      // unread count 재계산
-      this.invalidateUnreadCountCache(roomId);
-      const newUnreadCount = this.calculateUnreadCount(roomId);
-      
-      console.log(`📊 시뮬레이션 결과: unread count = ${newUnreadCount}`);
-      
-      // UI 갱신
-      if (roomId === this.currentRoomId) {
-        this.$patch({});
-      }
-      
-      return newUnreadCount;
-    },
-
-    // ✅ 추가: 테스트용 - 모든 메시지를 읽은 상황 시뮬레이션
-    simulateOtherUserReadAllMessages(roomId) {
-      const userId = getMyId();
-      if (!userId) {
-        console.error('❌ 시뮬레이션 실패: 사용자 ID를 가져올 수 없습니다');
-        return;
-      }
-      
-      if (!roomId) {
-        console.error('❌ 시뮬레이션 실패: roomId가 필요합니다');
-        return;
-      }
-      
-      const messages = this.messages[roomId] || [];
-      const myMessages = messages.filter(m => m.senderId === userId);
-      
-      if (myMessages.length === 0) {
-        console.log('🧪 시뮬레이션: 읽을 내 메시지가 없습니다');
-        return 0;
-      }
-      
-      // 가장 최신 메시지 ID 찾기
-      const latestMessageId = Math.max(...myMessages.map(m => m.id));
-      
-      console.log(`🧪 시뮬레이션: 상대방이 모든 메시지를 읽음 (최신: ${latestMessageId})`);
-      
-      return this.simulateOtherUserReadMessage(roomId, latestMessageId);
-    },
 
 
 
@@ -590,7 +497,6 @@ export const useChatStore = defineStore('chat', {
         client.connect(
           headers,
           () => {
-            console.log(`✅ 채팅방 ${roomId} WebSocket 연결 성공`);
             
             // 메시지 구독
             client.subscribe(
@@ -612,7 +518,6 @@ export const useChatStore = defineStore('chat', {
               (message) => {
                 try {
                   const onlineUsers = JSON.parse(message.body);
-                  console.log(`👥 채팅방 ${roomId} 온라인 참여자:`, onlineUsers);
                   this.updateOnlineUsers(roomId, onlineUsers);
                 } catch (error) {
                   console.error('❌ 온라인 참여자 파싱 실패:', error);
@@ -627,26 +532,14 @@ export const useChatStore = defineStore('chat', {
               (message) => {
                 try {
                   const participants = JSON.parse(message.body);
-                  console.log(`🔄 Redis에서 참여자 목록 실시간 업데이트:`, participants);
-                  
                   // Redis 업데이트 플래그 설정
                   this._isRedisUpdate = true;
                   this.updateChatParticipants(roomId, participants);
                   
-                  // ✅ 추가: Redis 동기화 후 즉시 unread count 재계산 및 UI 갱신
+                  // Redis 동기화 후 즉시 unread count 재계산 및 UI 갱신
                   setTimeout(() => {
-                    console.log(`🔄 Redis 동기화 후 강제 상태 갱신`);
                     this.invalidateUnreadCountCache(roomId);
-                    
-                    // ✅ 추가: Redis 동기화 후 unread count 재계산
                     const newUnreadCount = this.calculateUnreadCount(roomId);
-                    console.log(`📊 Redis 동기화 후 unread count: ${newUnreadCount}`);
-                    
-                    // ✅ 추가: 모든 메시지의 unread count 개별 재계산
-                    this.recalculateAllMessageUnreadCounts(roomId);
-                    
-
-                    
                     this.$patch({});
                   }, 100);
                 } catch (error) {
@@ -660,33 +553,14 @@ export const useChatStore = defineStore('chat', {
 
             // 연결 성공 후 온라인 상태 알림 및 참여자 목록 로드
             this._stompRoomId = roomId;
-            console.log(`🟢 채팅방 ${roomId}에 온라인 상태로 참여`);
             setTimeout(() => { this.sendOnlineStatus(roomId, true); }, 80);
             
-            // ✅ 추가: 참여자 목록 로드 (lastMessageId 정보 포함) - 강화된 로딩
-            console.log(`🔄 채팅방 ${roomId} 연결 후 참여자 정보 로드 시작`);
-            this.loadChatRoomParticipants(roomId).then(() => {
-              // ✅ 추가: 참여자 정보 로드 후 상태 검증
-              const participants = this.participants[roomId];
-              if (participants && participants.length > 0) {
-                console.log(`✅ 참여자 정보 로드 성공: ${participants.length}명`);
-                
-                // ✅ 추가: unread count 초기 상태 확인
-                const initialUnreadCount = this.calculateUnreadCount(roomId);
-                console.log(`📊 초기 unread count: ${initialUnreadCount}`);
-                
-
-              } else {
-                console.warn(`⚠️ 참여자 정보 로드 실패: 빈 배열 또는 undefined`);
-              }
-            }).catch(error => {
-              console.error(`❌ 채팅방 ${roomId} 참여자 정보 로드 실패:`, error);
-              
-              // ✅ 추가: 실패 시 재시도 로직
+            // 참여자 목록 로드
+            this.loadChatRoomParticipants(roomId).catch(error => {
+              // 참여자 정보 로드 실패 시 재시도
               setTimeout(() => {
-                console.log(`🔄 참여자 정보 로드 재시도...`);
                 this.loadChatRoomParticipants(roomId).catch(retryError => {
-                  console.error(`❌ 참여자 정보 로드 재시도 실패:`, retryError);
+                  // 재시도 실패는 무시
                 });
               }, 1000);
             });
@@ -694,7 +568,6 @@ export const useChatStore = defineStore('chat', {
 
           },
           async (error) => {
-            console.error(`❌ 채팅방 ${roomId} WebSocket 연결 실패:`, error);
             await this._safeDisconnect(client);
             if (this.stompClient === client) {
               this.stompClient = null;
@@ -703,7 +576,6 @@ export const useChatStore = defineStore('chat', {
           }
         );
       } catch (error) {
-        console.error('WebSocket 초기화 실패:', error);
         this.stompClient = null;
         this._stompRoomId = null;
       }
@@ -748,26 +620,15 @@ export const useChatStore = defineStore('chat', {
           const newMessages = incoming.filter(msg => !existingIds.has(msg.id));
           
           if (newMessages.length > 0) {
-            console.log(`📥 새 메시지 ${newMessages.length}개 추가`);
             this.messages[roomId] = [...current, ...newMessages];
             this.sortMessages(roomId);
-            
-            // ✅ 추가: 메시지 추가 시 unread count 캐시 무효화
             this.invalidateUnreadCountCache(roomId);
-          } else {
-            console.log(`⏭️ 새 메시지 없음, 기존 메시지 유지`);
           }
         }
         
-        // ✅ 추가: 방 입장 시 참여자 정보 강제 갱신 (새로고침/페이지 이동 대응)
-        console.log(`🔄 방 입장 시 참여자 정보 강제 갱신 시작`);
+        // 방 입장 시 참여자 정보 강제 갱신 (새로고침/페이지 이동 대응)
         try {
           await this.loadChatRoomParticipants(roomId);
-          console.log(`✅ 방 입장 시 참여자 정보 갱신 완료`);
-          
-          // ✅ 추가: 갱신 후 unread count 재계산
-          const finalUnreadCount = this.calculateUnreadCount(roomId);
-          console.log(`📊 방 입장 후 최종 unread count: ${finalUnreadCount}`);
         } catch (error) {
           console.error(`❌ 방 입장 시 참여자 정보 갱신 실패:`, error);
         }
@@ -965,7 +826,6 @@ export const useChatStore = defineStore('chat', {
       const roomId = chatMessageResponse.roomId;
       
       const isMyMessage = chatMessageResponse.senderId === userId;
-      console.log(`${isMyMessage ? '📤' : '📥'} 메시지 수신: ${isMyMessage ? '내 메시지' : '상대방 메시지'} - "${chatMessageResponse.message}"`);
 
       if (!this.messages[roomId]) this.messages[roomId] = [];
 
@@ -974,7 +834,6 @@ export const useChatStore = defineStore('chat', {
         // 내 메시지인 경우: 실제 ID로 중복 체크만
         const existingMessage = this.messages[roomId].find(msg => msg.id === chatMessageResponse.id);
         if (existingMessage) {
-          console.log(`⏭️ 내 메시지 중복 스킵: ${chatMessageResponse.id} (${chatMessageResponse.message})`);
           return;
         }
       } else {
@@ -985,7 +844,6 @@ export const useChatStore = defineStore('chat', {
         );
         
         if (existingMessage) {
-          console.log(`⏭️ 상대방 메시지 중복 스킵: ${chatMessageResponse.id} (${chatMessageResponse.message})`);
           return;
         }
       }
@@ -994,57 +852,41 @@ export const useChatStore = defineStore('chat', {
         // 내 메시지인 경우 pending 메시지를 실제 메시지로 교체
         const pendingIndex = this.messages[roomId].findIndex(m => m.isPending && m.message === chatMessageResponse.message);
         if (pendingIndex !== -1) {
-          console.log(`🔄 pending 메시지를 실제 메시지로 교체: ${chatMessageResponse.id}`);
-          
-          // ✅ 수정: 반응성을 보장하기 위해 배열 전체를 새로 생성
+          // 반응성을 보장하기 위해 배열 전체를 새로 생성
           const updatedMessages = [...this.messages[roomId]];
           updatedMessages[pendingIndex] = chatMessageResponse;
           this.messages[roomId] = updatedMessages;
           
-          // ✅ 추가: 메시지 교체 시 unread count 캐시 무효화
+          // 메시지 교체 시 unread count 캐시 무효화
           this.invalidateUnreadCountCache(roomId);
           
-          // ✅ 추가: 강제로 computed 재계산 트리거
+          // 강제로 computed 재계산 트리거
           this.$patch({});
           
-          // ✅ 추가: 참여자 정보 자동 업데이트 (Redis 동기화)
+          // 참여자 정보 자동 업데이트 (Redis 동기화)
           this.updateParticipantLastMessageId(roomId, chatMessageResponse.id);
           
           this.invalidateUnreadCountCache(roomId);
           
-          // ✅ 추가: 내 메시지 수신 후 참여자 정보 최신화 확인 (즉시 실행)
+          // 내 메시지 수신 후 참여자 정보 최신화 확인
           try {
-            console.log(`🔄 내 메시지 수신 후 참여자 정보 최신화 확인`);
             await this.loadChatRoomParticipants(roomId);
-            console.log(`✅ 참여자 정보 최신화 완료`);
-            
-            // ✅ 추가: 최종 unread count 확인
-            const finalUnreadCount = this.calculateUnreadCount(roomId);
-            console.log(`📊 최종 unread count: ${finalUnreadCount}`);
           } catch (error) {
             console.error(`❌ 참여자 정보 최신화 실패:`, error);
           }
         } else {
-          console.log(`➕ 새 메시지 추가: ${chatMessageResponse.id}`);
           this.messages[roomId].push(chatMessageResponse);
-          
-          // ✅ 추가: 메시지 추가 시 unread count 캐시 무효화
           this.invalidateUnreadCountCache(roomId);
         }
-        
-        console.log(`✅ 내 메시지 전송 완료`);
       } else {
         // 상대방 메시지는 그대로 추가
-        console.log(`➕ 상대방 메시지 추가: ${chatMessageResponse.id}`);
         this.messages[roomId].push(chatMessageResponse);
-        
-        // ✅ 추가: 메시지 추가 시 unread count 캐시 무효화
         this.invalidateUnreadCountCache(roomId);
         
-              // 상대방 메시지 수신 시 현재 방이면 읽음 처리
-      if (roomId === this.currentRoomId) {
-        // 읽음 처리는 백엔드에서 offline 시에만 처리
-      }
+        // 상대방 메시지 수신 시 현재 방이면 읽음 처리
+        if (roomId === this.currentRoomId) {
+          // 읽음 처리는 백엔드에서 offline 시에만 처리
+        }
       }
 
       // 정렬
@@ -1149,12 +991,10 @@ export const useChatStore = defineStore('chat', {
       try {
         const statusRequest = { userId };
         const endpoint = isOnline ? 'online' : 'offline';
-        console.log(`🔄 ${isOnline ? '온라인' : '오프라인'} 상태 전송 중...`);
         client.send(
           `/publish/chat-rooms/${roomId}/${endpoint}`,
           JSON.stringify(statusRequest)
         );
-        console.log(`✅ ${isOnline ? '온라인' : '오프라인'} 상태 전송 완료`);
       } catch (_e) {
         console.error(`❌ ${isOnline ? '온라인' : '오프라인'} 상태 전송 실패:`, _e);
       }
@@ -1177,8 +1017,7 @@ export const useChatStore = defineStore('chat', {
         const result = await getMyChatRooms(10, null);
         this.rooms = result.data;
         
-        // ✅ 백엔드에서 제공하는 newMessageCount 사용 (추가 계산 불필요)
-        console.log(`✅ 채팅방 목록 로드 완료: ${this.rooms.length}개 방`);
+        // 백엔드에서 제공하는 newMessageCount 사용
         
         this.roomsPagination = {
           hasNext: result.hasNext,
@@ -1204,7 +1043,7 @@ export const useChatStore = defineStore('chat', {
         const result = await getMyChatRooms(10, this.roomsPagination.nextCursor);
         
         if (result.data && result.data.length > 0) {
-          // ✅ 백엔드에서 제공하는 newMessageCount 사용 (추가 계산 불필요)
+          // 백엔드에서 제공하는 newMessageCount 사용
           this.rooms = [...this.rooms, ...result.data];
           this.roomsPagination = {
             hasNext: result.hasNext,
@@ -1305,8 +1144,6 @@ export const useChatStore = defineStore('chat', {
 
     // 채팅방 참여자 목록 업데이트 (lastMessageId 포함)
     updateChatParticipants(roomId, participants) {
-      console.log(`👥 채팅방 ${roomId} 참여자 목록 업데이트:`, participants);
-      
       // Redis에서 온 데이터인지 확인 (실시간 동기화)
       if (this._isRedisUpdate) {
         this.updateChatParticipantsFromRedis(roomId, participants);
@@ -1322,39 +1159,27 @@ export const useChatStore = defineStore('chat', {
       }
     },
 
-    // ✅ 추가: Redis 업데이트 플래그 설정
+    // Redis 업데이트 플래그 설정
     _isRedisUpdate: false,
 
-    // ✅ 추가: 채팅방 참여자 목록 로드
+    // 채팅방 참여자 목록 로드
     async loadChatRoomParticipants(roomId) {
       try {
-        console.log(`👥 채팅방 ${roomId} 참여자 목록 로드 중...`);
         const participants = await getChatRoomParticipants(roomId);
         this.participants[roomId] = participants;
-        console.log(`✅ 채팅방 ${roomId} 참여자 목록 로드 완료:`, participants);
         
-        // ✅ 추가: unread count 캐시 무효화
+        // unread count 캐시 무효화
         this.invalidateUnreadCountCache(roomId);
         
-        // ✅ 추가: 참여자 정보 로드 후 unread count 재계산
+        // 참여자 정보 로드 후 unread count 재계산
         const unreadCount = this.calculateUnreadCount(roomId);
-        console.log(`📊 참여자 정보 로드 후 unread count: ${unreadCount}`);
         
         // UI 갱신을 위해 강제 리렌더링
         this.$patch({});
-        
-        // ✅ 추가: 상세 디버깅 - 참여자 정보 로드 후 상태 확인
-        console.log(`🔍 참여자 정보 로드 후 상태:`, {
-          roomId,
-          participants: participants.map(p => ({ id: p.id, lastMessageId: p.lastMessageId })),
-          unreadCount,
-          messageCount: this.messages[roomId]?.length || 0
-        });
       } catch (error) {
         console.error(`❌ 채팅방 ${roomId} 참여자 목록 로드 실패:`, error);
       }
     },
 
-    // ✅ 제거: 연결 끊김 전 읽음 처리 함수 제거
   },
 });

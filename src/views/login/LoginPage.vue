@@ -116,7 +116,6 @@ function clearGoogleSession() {
     }
     keysToRemove.forEach(key => sessionStorage.removeItem(key));
     
-    console.log('Google 세션 정리 완료');
   } catch (error) {
     console.warn('Google 세션 정리 중 오류:', error);
   }

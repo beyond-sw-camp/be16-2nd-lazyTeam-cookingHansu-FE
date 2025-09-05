@@ -10,11 +10,11 @@
       <FormInput
         v-model="form.nickname"
         label="닉네임"
-        placeholder="닉네임을 입력하세요 (2-20자)"
+        placeholder="닉네임을 입력하세요 (2-10자)"
         :required="true"
         :has-error="errors.nickname"
         :error-message="getNicknameErrorMessage()"
-        :maxlength="20"
+        :maxlength="10"
         @input="onNicknameInput"
       />
 
@@ -176,7 +176,7 @@ function validate() {
     return false;
   }
   
-  if (nickname.length > 20) {
+  if (nickname.length > 10) {
     errors.value.nickname = true;
     return false;
   }
@@ -218,8 +218,8 @@ function getNicknameErrorMessage() {
     return "닉네임은 2자 이상이어야 합니다!";
   }
   
-  if (nickname.length > 20) {
-    return "닉네임은 20자 이하여야 합니다!";
+  if (nickname.length > 10) {
+    return "닉네임은 10자 이하여야 합니다!";
   }
   
   return "닉네임을 입력해 주세요!";

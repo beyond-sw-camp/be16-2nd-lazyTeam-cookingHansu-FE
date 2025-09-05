@@ -331,9 +331,9 @@
                   </div>
                 </div>
                 <div class="comment-actions">
-                  <!-- 답글 버튼 (삭제된 댓글이 아닌 경우만) -->
+                  <!-- 답글 버튼 (삭제된 댓글이 아닌 경우만, 로그인한 사용자만) -->
                   <v-btn 
-                    v-if="!comment.isDeleted"
+                    v-if="!comment.isDeleted && isLoggedIn"
                     size="small" 
                     variant="text"
                     @click="showReplyForm(comment)"
@@ -343,9 +343,21 @@
                     답글
                   </v-btn>
                   
-                  <!-- 더보기 버튼 (삭제된 댓글이 아닌 경우만) -->
+                  <!-- 비로그인 사용자 답글 버튼 -->
+                  <v-btn 
+                    v-if="!comment.isDeleted && !isLoggedIn"
+                    size="small" 
+                    variant="text"
+                    @click="showLoginModal = true"
+                    class="reply-btn"
+                    :title="`답글 개수: ${comment.replies ? comment.replies.length : 0}`"
+                  >
+                    답글
+                  </v-btn>
+                  
+                  <!-- 더보기 버튼 (삭제된 댓글이 아닌 경우만, 로그인한 사용자만) -->
                   <v-menu
-                    v-if="!comment.isDeleted"
+                    v-if="!comment.isDeleted && isLoggedIn"
                     v-model="comment.showMoreMenu"
                     :close-on-content-click="false"
                     location="bottom end"
@@ -533,9 +545,9 @@
                   </div>
                 </div>
                 <div class="comment-actions">
-                  <!-- 더보기 버튼 (삭제된 답글이 아닌 경우만) -->
+                  <!-- 더보기 버튼 (삭제된 답글이 아닌 경우만, 로그인한 사용자만) -->
                   <v-menu
-                    v-if="!reply.isDeleted"
+                    v-if="!reply.isDeleted && isLoggedIn"
                     v-model="reply.showMoreMenu"
                     :close-on-content-click="false"
                     location="bottom end"
@@ -638,7 +650,18 @@
               </div>
           
           <div v-if="comments.length > 5" class="load-more-comments">
-            <v-btn variant="outlined" @click="loadMoreComments">
+            <v-btn 
+              v-if="isLoggedIn"
+              variant="outlined" 
+              @click="loadMoreComments"
+            >
+              댓글 더보기▼
+            </v-btn>
+            <v-btn 
+              v-else
+              variant="outlined" 
+              @click="showLoginModal = true"
+            >
               댓글 더보기▼
             </v-btn>
                   </div>
@@ -675,11 +698,11 @@
     </div>
     
     <!-- 로그인 필요 모달 -->
-    <CommonModal
+    <LoginRequiredModal
       v-model="showLoginModal"
-      type="info"
       title="로그인이 필요합니다"
-      message="이 기능을 사용하려면 로그인이 필요합니다. 로그인하시겠습니까?"
+      message="이 기능을 사용하려면 로그인이 필요합니다."
+      sub-message="로그인 후 좋아요, 북마크, 댓글 작성이 가능합니다."
       confirm-text="로그인하기"
       cancel-text="취소"
       @confirm="goToLogin"
@@ -790,7 +813,7 @@
 import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
-import CommonModal from '@/components/common/CommonModal.vue'
+import LoginRequiredModal from '@/components/common/LoginRequiredModal.vue'
 import UserProfileModal from '@/components/common/UserProfileModal.vue'
 import ReportModal from '@/components/common/ReportModal.vue'
 import { useChatStore } from '@/store/chat/chat'
@@ -1003,7 +1026,6 @@ const isAdmin = computed(() => {
   const role = authStore.getUserRole
   const userRole = authStore.user?.role
   const isAdminRole = role === 'ADMIN' || role === 'admin'
-  console.log('🔍 관리자 체크:', { role, userRole, isAdmin: isAdminRole })
   return isAdminRole
 })
 
@@ -1137,14 +1159,12 @@ const getProfileImageUrl = (user) => {
 
 // 프로필 이미지 에러 핸들러
 const handleProfileImageError = (type) => {
-  console.log(`${type} 프로필 이미지 로드 실패`)
   if (type === 'recipe') {
     recipe.value.picture = null // 백엔드 DTO의 picture 필드 사용
   }
 }
 
 const handleCommentProfileImageError = (comment) => {
-  console.log('댓글 프로필 이미지 로드 실패:', comment.nickname)
   comment.authorProfileImage = null // 백엔드 DTO의 authorProfileImage 필드 사용
   comment.picture = null // 백엔드 DTO의 picture 필드 사용
 }
@@ -1214,7 +1234,6 @@ const followAuthor = async () => {
   
   try {
     // TODO: 팔로우 API 호출 구현
-    console.log('팔로우 기능 구현 예정:', recipe.authorId)
     alert('팔로우 기능은 준비 중입니다.')
   } catch (error) {
     console.error('팔로우 오류:', error)
@@ -1283,22 +1302,16 @@ const submitComment = async () => {
     return
   }
   
-  console.log('댓글 제출 시작:', {
-    postId: recipe.id,
-    content: newComment.value,
-    token: localStorage.getItem('accessToken') ? '있음' : '없음'
-  })
+
   
   try {
             const response = await recipeService.createComment(recipe.id, {
           content: newComment.value
         })
 
-    console.log('댓글 생성 응답:', response)
     
     if (response.success) {
       const data = response
-      console.log('댓글 생성 성공:', data)
       
       // 댓글 목록 새로고침
       await loadComments()
@@ -1380,7 +1393,6 @@ const submitReply = async (comment) => {
 
     if (response.success) {
       const data = response
-      console.log('대댓글 생성 성공:', data)
       
       // 댓글 목록 새로고침
       await loadComments()
@@ -1407,7 +1419,6 @@ const submitReply = async (comment) => {
 }
 
 const loadMoreComments = () => {
-  console.log('댓글 더 로드')
 }
 
 // 댓글 삭제
@@ -1446,15 +1457,11 @@ const deleteComment = async (commentId) => {
   const commentToDelete = comments.value.find(comment => comment.id === commentId)
   const hasReplies = commentToDelete && commentToDelete.replies && commentToDelete.replies.length > 0
   
-  console.log('삭제할 댓글:', commentToDelete)
-  console.log('답글이 있는지:', hasReplies)
-  console.log('답글 개수:', commentToDelete?.replies?.length || 0)
   
   try {
             const response = await recipeService.deleteComment(commentId)
 
     if (response.success) {
-      console.log('댓글 삭제 성공')
       
       if (hasReplies) {
         // 답글이 있으면 삭제 상태만 표시
@@ -1467,9 +1474,6 @@ const deleteComment = async (commentId) => {
             content: ''
           }
         }
-        console.log('답글이 있는 댓글 삭제 처리 완료')
-        console.log('삭제 처리 후 댓글 상태:', comments.value[commentIndex])
-        console.log('isDeleted 값:', comments.value[commentIndex]?.isDeleted)
         alert('댓글이 삭제되었습니다.')
       } else {
         // 답글이 없으면 댓글 목록 새로고침
@@ -1568,7 +1572,6 @@ const saveEditComment = async (comment) => {
 
     if (response.success) {
       const data = response
-      console.log('댓글 수정 성공:', data)
       
       // 댓글 내용 업데이트
       comment.content = comment.editText
@@ -1619,7 +1622,6 @@ const getTotalCommentCount = () => {
 
 // 댓글 목록 로드
 const loadComments = async () => {
-  console.log('댓글 목록 로드 시작, postId:', recipe.id)
   
   try {
     // 댓글 목록은 권한 없이도 조회 가능하도록 헤더를 선택적으로 설정
@@ -1631,11 +1633,9 @@ const loadComments = async () => {
     
             const response = await recipeService.getComments(recipe.id)
 
-    console.log('댓글 목록 응답:', response)
 
     if (response.success) {
       const data = response
-      console.log('댓글 목록 로드 성공:', data)
       
       if (data.data) {
         // 댓글을 오래된 순으로 정렬 (createdAt 기준 오름차순)
@@ -1678,9 +1678,7 @@ const loadComments = async () => {
               }) : []
           }
         })
-        console.log('댓글 목록 변환 완료 (오래된 순 정렬):', comments.value)
       } else {
-        console.log('댓글 데이터가 없음')
         comments.value = []
       }
     } else {
@@ -1713,7 +1711,6 @@ const toggleLike = async () => {
       } else {
         recipe.likeCount = Math.max(0, (recipe.likeCount || 0) - 1)
       }
-      console.log('좋아요 토글 성공:', isLiked.value)
     } else {
       console.error('좋아요 토글 실패')
     }
@@ -1743,7 +1740,6 @@ const toggleBookmark = async () => {
       } else {
         recipe.bookmarkCount = Math.max(0, (recipe.bookmarkCount || 0) - 1)
       }
-      console.log('북마크 토글 성공:', isBookmarked.value)
     } else {
       console.error('북마크 토글 실패')
     }
@@ -1843,21 +1839,14 @@ const loadRecipe = async () => {
 
     
     // 조회수 증가 (로그인한 일반 사용자만, 관리자 제외)
-    console.log('🔍 조회수 증가 체크:', {
-      isLoggedIn: isLoggedIn.value,
-      isAdmin: isAdmin.value,
-      userRole: authStore.getUserRole,
-      shouldIncrement: isLoggedIn.value && !isAdmin.value
-    })
+
     
     if (isLoggedIn.value && !isAdmin.value) {
       try {
         await recipeService.incrementViews(recipeId)
       } catch (error) {
-        console.log('조회수 증가 실패 (무시)', error)
       }
     } else {
-      console.log('🚫 조회수 증가 건너뜀 - 관리자 또는 비로그인')
     }
     
 
@@ -1870,7 +1859,6 @@ const loadRecipe = async () => {
     }
     
     // 레시피 상세 조회
-    console.log('🔄 레시피 상세 조회 시도:', recipeId)
     const response = await recipeService.getRecipeDetail(recipeId)
     
     if (response.success) {
@@ -1981,7 +1969,6 @@ const deleteRecipe = async () => {
   }
   
   try {
-    console.log('🗑️ 삭제 API 호출:', `/api/posts/delete/${recipe.id}`)
     
     const response = await recipeService.deleteRecipe(recipe.id)
     

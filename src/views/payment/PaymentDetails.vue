@@ -178,7 +178,6 @@ export default {
         this.loading = true;
         const lectureId = this.$route.params.lectureId;
         
-        console.log('강의 ID:', lectureId);
         
         if (!lectureId) {
           console.error('강의 ID가 없습니다.');
@@ -186,10 +185,8 @@ export default {
         }
 
         const data = await paymentService.getPaymentHistory(lectureId);
-        console.log('받은 데이터:', data);
         this.orderDetails = data;
         this.error = null;
-        console.log('orderDetails 업데이트됨:', this.orderDetails);
       } catch (error) {
         console.error('결제내역 조회 실패:', error);
         this.error = '결제내역을 불러오는데 실패했습니다.';

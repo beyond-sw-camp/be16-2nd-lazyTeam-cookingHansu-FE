@@ -692,73 +692,42 @@ export default {
 
          
                      // 백엔드로 보내는 데이터 콘솔 출력
-           console.log('=== 강의 수정 데이터 ===');
-           console.log('lectureId:', this.lectureId);
-           console.log('lectureUpdateDto:', lectureUpdateDto);
-           console.log('lectureIngredientsListDto:', lectureIngredientsListDto);
-           console.log('lectureStepDto:', lectureStepDto);
-           console.log('lectureVideoDto:', lectureVideoDto);
            
            // 각 비디오의 상세 정보 출력
-           console.log('=== 각 비디오 상세 정보 ===');
            this.formData.videos.forEach((video, index) => {
              const videoInput = this.$refs[`videoInput-${index}`];
              const hasNewVideo = videoInput && Array.isArray(videoInput) && videoInput[0] && videoInput[0].files[0];
              const hasExistingVideo = video.videoUrl && video.videoUrl.trim();
              
-             console.log(`비디오 ${index + 1}:`, {
-               title: video.title,
-               originalVideoUrl: video.videoUrl,
-               hasNewVideo: hasNewVideo,
-               hasExistingVideo: hasExistingVideo,
-               newVideoFile: hasNewVideo ? videoInput[0].files[0].name : null,
-               finalVideoUrl: hasNewVideo ? '' : (hasExistingVideo ? video.videoUrl : '')
-             });
+
            });
-                     console.log('FormData 내용:');
            let formDataEntryCount = 0;
            for (let [key, value] of formData.entries()) {
              formDataEntryCount++;
              if (value instanceof Blob) {
                // 파일인지 JSON인지 구분
                if (key === 'lectureVideoFiles' || key === 'multipartFile') {
-                 console.log(`${key}:`, `파일 (${value.size} bytes, ${value.type})`);
                } else {
                  try {
                    const text = await value.text();
                    if (text && text.trim()) {
                      const parsedData = JSON.parse(text);
-                     console.log(`${key}:`, parsedData);
                      
                      // lectureVideoDto인 경우 각 비디오의 URL 상태 확인
                      if (key === 'lectureVideoDto') {
-                       console.log('=== lectureVideoDto 내 각 비디오 URL 상태 ===');
                        parsedData.forEach((video, index) => {
-                         console.log(`DTO 비디오 ${index + 1}:`, {
-                           title: video.title,
-                           videoUrl: video.videoUrl,
-                           sequence: video.sequence,
-                           duration: video.duration
-                         });
+   
                        });
                      }
                    } else {
-                     console.log(`${key}:`, '빈 Blob');
                    }
                  } catch (parseError) {
-                   console.log(`${key}:`, 'Blob (파싱 실패)');
                  }
                }
              } else {
-               console.log(`${key}:`, value);
              }
+
            }
-          console.log(`총 FormData 항목 수: ${formDataEntryCount}`);
-          console.log('FormData 키 목록:');
-          for (let [key] of formData.entries()) {
-            console.log(`- ${key}`);
-          }
-          console.log('=====================');
          
          // API 호출
          
@@ -873,20 +842,17 @@ export default {
             
             // 제목 길이 검증 (50자 제한)
             if (hasTitle && video.title.length > 50) {
-              console.log(`비디오 ${i + 1} 제목 길이 검증 실패`);
               this.showError(`${i + 1}번째 강의의 제목은 50자 이하여야 합니다.`);
               return false;
             }
             
             // 비디오 파일이 있는데 제목이 없는 경우만 에러
             if (hasVideo && !hasTitle) {
-              console.log(`비디오 ${i + 1} 제목 검증 실패`);
               this.showError(`${i + 1}번째 강의의 제목을 입력해주세요.`);
               return false;
             }
           }
        
-       console.log('모든 유효성 검사 통과');
        return true;
     },
     
@@ -922,7 +888,6 @@ export default {
      
      // 에러 표시
      showError(message) {
-       console.log('showError 호출:', message);
        alert(message);
      },
      
@@ -1310,3 +1275,4 @@ export default {
   }
 }
 </style>
+

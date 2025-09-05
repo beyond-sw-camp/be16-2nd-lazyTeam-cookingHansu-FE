@@ -352,6 +352,7 @@ export default {
   background: #e66a00;
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(255, 122, 0, 0.3);
+  color: white !important;
 }
 
 .filter-card { background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); padding: 10px 14px 6px 14px; max-width: 1040px; margin: 0 auto 16px auto; }

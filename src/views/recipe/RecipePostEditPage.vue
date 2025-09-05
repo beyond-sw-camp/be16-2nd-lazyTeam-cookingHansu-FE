@@ -357,13 +357,10 @@ const loadPost = async () => {
 
     if (response.success) {
       const data = response
-      console.log('게시글 데이터 로드 성공:', data)
       
       if (data.data) {
         // 작성자 닉네임 저장
         post.authorNickname = data.data.user?.nickname || data.data.nickname || data.data.authorNickname
-        console.log('🔍 게시글 작성자 닉네임:', post.authorNickname)
-        console.log('🔍 게시글 전체 데이터:', data.data)
         
         // 데이터 매핑
         post.title = data.data.title || ''
@@ -512,8 +509,6 @@ const updatePost = async () => {
       return
     }
     
-    console.log('🚀 updatePost 함수 호출됨!')
-    console.log('현재 post 데이터:', post)
     
     // 이미지 처리 로직
     let thumbnailUrl = post.imageUrl || null;
@@ -521,11 +516,9 @@ const updatePost = async () => {
     // 새로운 이미지 파일이 있으면 업로드, 없으면 기존 이미지 유지
     if (post.imageFile && post.imageFile.size > 0) {
       // 새로운 이미지가 있으면 업로드 (백엔드에서 처리)
-      console.log('새로운 이미지 파일 업로드:', post.imageFile.name);
     } else if (!post.imageUrl || post.imageUrl === '') {
       // 이미지가 없으면 기본 이미지로 설정
       thumbnailUrl = defaultImageUrl;
-      console.log('기본 이미지로 설정:', defaultImageUrl);
     }
     
     // PostUpdateRequestDto에 해당하는 데이터를 하나의 객체로 만듭니다.
@@ -551,45 +544,32 @@ const updatePost = async () => {
       }))
     };
     
-    console.log('📦 requestDto 생성 완료:', requestDto)
     
     // FormData 객체를 생성합니다.
     const formData = new FormData();
-    console.log('📋 FormData 객체 생성 완료')
     
     // 1. JSON 데이터를 'request' 파트로 추가합니다.
-    console.log('🔧 FormData request 필드 추가 시도...')
     formData.append(
       'request',
       new Blob([JSON.stringify(requestDto)], { type: 'application/json' })
     );
     
-    console.log('✅ FormData request 필드 추가 완료')
     
     // 2. 썸네일 파일을 'thumbnail' 파트로 추가합니다.
     //    새로운 파일이 있을 경우에만 추가합니다.
     if (post.imageFile && post.imageFile.size > 0) {
-      console.log('새로운 썸네일 파일 전송:', post.imageFile.name, post.imageFile.size);
       formData.append('thumbnail', post.imageFile);
     } else if (!post.imageUrl || post.imageUrl === '') {
       // 이미지가 없으면 기본 이미지로 설정 (백엔드에서 처리)
-      console.log('기본 이미지로 설정 요청');
     }
     
-    // FormData 내용 확인 로그
-    console.log('FormData 내용 확인:');
-    for (let pair of formData.entries()) {
-      console.log(pair[0] + ': ' + pair[1]);
-    }
     
-    console.log('🚀 fetch 요청 시작...')
     
     const postId = route.query.id
     const response = await recipeService.updateRecipe(postId, formData)
     
     if (response.success) {
       const responseData = response
-      console.log('게시글 수정 응답:', responseData)
       alert('게시글이 수정되었습니다!')
       
       // 비밀글로 수정한 경우 마이페이지로, 공개글로 수정한 경우 상세페이지로 이동

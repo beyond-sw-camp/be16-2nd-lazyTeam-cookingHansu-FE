@@ -190,7 +190,6 @@ export default {
   initCartStore() {
     if (!this.cartStore) {
       this.cartStore = useCartStore()
-      console.log('장바구니 스토어 초기화 완료:', this.cartStore)
     }
   },
   
@@ -239,7 +238,6 @@ export default {
       await this.lectureStore.removeFromCart(lectureId);
       // 선택된 아이템에서도 제거
       this.selectedItems = this.selectedItems.filter(id => id !== lectureId)
-      console.log('강의가 장바구니에서 제거되었습니다.');
       // 모달 닫기
       this.showRemoveItemModal = false;
       // 장바구니 스토어 상태 업데이트
@@ -267,7 +265,6 @@ export default {
     try {
       await this.lectureStore.clearCart();
       this.selectedItems = [];
-      console.log('장바구니가 모두 비워졌습니다.');
       // 모달 닫기
       this.showClearCartModal = false;
       // 장바구니 스토어 상태만 업데이트 (API 호출 없음)
@@ -290,7 +287,6 @@ export default {
     this.loading = true;
     try {
       await this.cartStore.fetchServerCartList(forceRefresh);
-      console.log('장바구니 데이터 로드 완료:', this.cartItems);
     } catch (error) {
       console.error('장바구니 조회 오류:', error);
     } finally {
@@ -370,7 +366,6 @@ export default {
         lectureIds 
       })
 
-      console.log('Prepay 응답:', response)
 
       if (response.data && response.data.success) {
         return response.data
@@ -403,7 +398,6 @@ export default {
         successUrl: `${window.location.origin}/payment/PaymentSuccess`,
         failUrl: `${window.location.origin}/payment/PaymentFail`,
       }).then((result) => {
-        console.log('결제 성공:', result)
         resolve(result)
       }).catch((error) => {
         console.error('결제창 호출 실패:', error)
@@ -414,12 +408,10 @@ export default {
    },
 
    mounted() {
-     console.log('CartPage mounted 시작')
      // 장바구니 스토어 초기화
      this.initCartStore();
      // 페이지 로드 시 장바구니 데이터 가져오기 (강제 새로고침)
      this.fetchCartItems(true);
-     console.log('CartPage mounted 완료')
    }
  
  }

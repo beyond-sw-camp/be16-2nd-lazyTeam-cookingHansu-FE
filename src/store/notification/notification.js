@@ -47,7 +47,6 @@ export const useNotificationStore = defineStore('notification', {
   actions: {
     // 에러 처리 헬퍼
     _handleError(error, defaultMessage) {
-      console.error(defaultMessage, error);
       this.error = error.message || defaultMessage;
     },
 
@@ -74,7 +73,6 @@ export const useNotificationStore = defineStore('notification', {
       // 관리자는 알림 목록 조회하지 않음
       const authStore = useAuthStore();
       if (authStore.user?.role === 'ADMIN' || authStore.user?.role === 'admin') {
-        console.log('관리자 - 알림 목록 조회 건너뜀 (store 레벨)');
         return;
       }
       
@@ -210,10 +208,11 @@ export const useNotificationStore = defineStore('notification', {
         this._updateChatRoomList(notification);
       }
       
-      // 승인 알림인 경우 모달 표시
-      if (this._isApprovalNotification(notification)) {
+      // 사용자 승인 알림인 경우에만 모달 표시
+      if (this._isUserApprovalNotification(notification)) {
         this._showApprovalModal(notification);
       }
+      // 강의 승인 알림은 일반 알림으로만 처리 (모달 표시 안함)
       
       // 헤더의 읽지 않은 알림 개수 즉시 업데이트
       this.unreadCount += 1;
@@ -293,7 +292,6 @@ export const useNotificationStore = defineStore('notification', {
       
       // 헤더의 unreadCount는 서버에서 받은 전체 개수를 유지
       // 로컬 계산은 목록 페이지에서만 사용
-      console.log('로컬 읽지 않은 알림 개수:', localUnreadCount, '서버 전체 개수:', this.unreadCount);
     },
 
     // SSE Polyfill 연결 시작 (중복 구독 방지)
@@ -316,7 +314,6 @@ export const useNotificationStore = defineStore('notification', {
 
       // 관리자는 알림 구독하지 않음
       if (authStore.user?.role === 'ADMIN' || authStore.user?.role === 'admin') {
-        console.log('관리자 - 알림 구독 건너뜀 (store 레벨)');
         return;
       }
 
@@ -365,7 +362,6 @@ export const useNotificationStore = defineStore('notification', {
                   this.fetchUnreadCount();
                 }
               } catch (parseError) {
-                console.log('🔍 알림 데이터 파싱 실패:', event.data);
               }
             }
           } catch (error) {
@@ -530,21 +526,37 @@ export const useNotificationStore = defineStore('notification', {
         // 헤더의 읽지 않은 개수 즉시 업데이트
         await this.fetchUnreadCount(true);
         
-        console.log('🔔 공지사항 알림 처리 완료:', notification);
       } catch (error) {
         console.warn('공지사항 알림 처리 실패:', error);
       }
     },
 
-    // 승인 알림인지 확인
-    _isApprovalNotification(notification) {
-      // 승인 관련 키워드가 포함된 알림인지 확인
-      const approvalKeywords = ['승인', 'approval', 'approved', '회원가입', '가입'];
+    // 사용자 승인 알림인지 확인 (모달 표시용)
+    _isUserApprovalNotification(notification) {
+      // 사용자 승인 관련 키워드가 포함된 알림인지 확인
+      const userApprovalKeywords = ['회원가입', '가입', '사용자', 'chef', 'business'];
       const content = notification.content?.toLowerCase() || '';
       
-      return approvalKeywords.some(keyword => 
+      return userApprovalKeywords.some(keyword => 
         content.includes(keyword.toLowerCase())
-      );
+      ) && content.includes('승인');
+    },
+
+    // 강의 승인 알림인지 확인 (일반 알림용)
+    _isLectureApprovalNotification(notification) {
+      // 강의 승인 관련 키워드가 포함된 알림인지 확인
+      const lectureApprovalKeywords = ['강의', 'lecture', '온라인'];
+      const content = notification.content?.toLowerCase() || '';
+      
+      return lectureApprovalKeywords.some(keyword => 
+        content.includes(keyword.toLowerCase())
+      ) && content.includes('승인');
+    },
+
+    // 승인 알림인지 확인 (기존 호환성 유지)
+    _isApprovalNotification(notification) {
+      return this._isUserApprovalNotification(notification) || 
+             this._isLectureApprovalNotification(notification);
     },
 
     // 승인 알림 모달 표시

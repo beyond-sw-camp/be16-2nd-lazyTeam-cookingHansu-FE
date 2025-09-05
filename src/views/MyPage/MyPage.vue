@@ -16,8 +16,10 @@
             <div v-else class="avatar-placeholder"></div>
           </div>
           <div class="profile-details">
-            <h2 class="user-name">{{ userProfile.nickname }}</h2>
-            <p class="user-type">{{ getUserRoleText(userProfile.role || userProfile.userType) }}</p>
+            <div class="name-role-container">
+              <h2 class="user-name">{{ userProfile.nickname }}</h2>
+              <p class="user-type" :class="getRoleClass(userProfile.role || userProfile.userType)">{{ getUserRoleText(userProfile.role || userProfile.userType) }}</p>
+            </div>
             <!-- 자기소개 추가 -->
             <p v-if="userProfile.info" class="user-info">{{ userProfile.info }}</p>
           </div>
@@ -145,7 +147,6 @@ const updateUserProfile = (updatedData) => {
     localStorage.setItem('user', JSON.stringify(authStore.user));
   }
   
-  console.log('프로필 업데이트됨:', updatedData);
 };
 
 const showMessage = (messageData) => {
@@ -166,6 +167,17 @@ const getUserRoleText = (role) => {
     'ADMIN': '관리자'
   };
   return roleMap[role] || '일반 사용자';
+};
+
+// 역할별 CSS 클래스를 반환하는 함수
+const getRoleClass = (role) => {
+  const roleClassMap = {
+    'GENERAL': 'role-general',
+    'CHEF': 'role-chef',
+    'OWNER': 'role-owner',
+    'ADMIN': 'role-admin'
+  };
+  return roleClassMap[role] || 'role-general';
 };
 
 // 회원탈퇴 실패 처리
@@ -255,12 +267,27 @@ onBeforeUnmount(() => {
 }
 
 .profile-section {
-  background: #ff7a00;
-  padding: 40px 0;
-  color: #222;
-  border-radius: 8px;
+  background: linear-gradient(135deg, #ff7a00 0%, #ff9500 50%, #ffb347 100%);
+  padding: 50px 0;
+  color: #fff;
+  border-radius: 16px;
   margin: 20px auto;
   max-width: 1040px;
+  box-shadow: 0 8px 32px rgba(255, 122, 0, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.profile-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.05)"/><circle cx="10" cy="60" r="0.5" fill="rgba(255,255,255,0.05)"/><circle cx="90" cy="40" r="0.5" fill="rgba(255,255,255,0.05)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+  opacity: 0.3;
+  pointer-events: none;
 }
 
 .profile-content {
@@ -275,18 +302,24 @@ onBeforeUnmount(() => {
 .profile-info {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 24px;
+  position: relative;
+  z-index: 1;
 }
 
 .profile-avatar {
-  width: 80px;
-  height: 80px;
+  width: 100px;
+  height: 100px;
   border-radius: 50%;
-  background: white;
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #222;
+  border: 4px solid #FF6B35;
+  box-shadow: 0 8px 24px rgba(255, 107, 53, 0.3);
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
 }
 
 .avatar-image {
@@ -297,30 +330,57 @@ onBeforeUnmount(() => {
 }
 
 .avatar-placeholder {
-  font-size: 40px;
-  color: #222;
+  font-size: 48px;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.2);
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.name-role-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
 }
 
 .profile-details h2 {
-  margin: 0 0 8px 0;
-  font-size: 28px;
-  font-weight: 700;
-  color: #222;
+  margin: 0;
+  font-size: 32px;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  letter-spacing: -0.5px;
 }
 
 .user-type {
   margin: 0;
   font-size: 16px;
-  color: #222;
-  opacity: 0.8;
+  color: white;
+  font-weight: 600;
+  padding: 6px 16px;
+  border-radius: 20px;
+  display: inline-block;
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  white-space: nowrap;
 }
 
 .user-info {
   margin: 8px 0 0 0;
-  font-size: 14px;
-  color: #222;
-  opacity: 0.7;
-  line-height: 1.4;
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.6;
+  max-width: 500px;
+  word-wrap: break-word;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .profile-actions {
@@ -329,32 +389,43 @@ onBeforeUnmount(() => {
 }
 
 .edit-profile-btn {
-  background: white;
-  color: #222;
-  padding: 10px 20px;
-  border-radius: 12px;
-  font-weight: 600;
+  background: rgba(255, 255, 255, 0.95);
+  color: #ff7a00;
+  padding: 12px 24px;
+  border-radius: 25px;
+  font-weight: 700;
+  font-size: 16px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
 }
 
 .edit-profile-btn:hover {
-  background: #f0f0f0;
+  background: white;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
 }
 
 .withdraw-btn {
-  background: white;
-  color: #dc3545;
-  padding: 10px 16px;
-  border-radius: 12px;
-  font-weight: 600;
+  background: rgba(220, 53, 69, 0.9);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 25px;
+  font-weight: 700;
+  font-size: 16px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 16px rgba(220, 53, 69, 0.3);
 }
 
 .withdraw-btn:hover {
   background: #dc3545;
-  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(220, 53, 69, 0.4);
 }
 
 .tab-navigation {
@@ -387,6 +458,27 @@ onBeforeUnmount(() => {
 .tab-button.active {
   color: #ff7a00;
   border-bottom-color: #ff7a00;
+}
+
+/* 역할별 컨테이너 스타일 */
+.role-general {
+  background: linear-gradient(135deg, rgba(108, 117, 125, 0.9) 0%, rgba(73, 80, 87, 0.9) 100%);
+  border-color: rgba(108, 117, 125, 0.6) !important;
+}
+
+.role-chef {
+  background: linear-gradient(135deg, rgba(13, 110, 253, 0.9) 0%, rgba(0, 86, 179, 0.9) 100%);
+  border-color: rgba(13, 110, 253, 0.6) !important;
+}
+
+.role-owner {
+  background: linear-gradient(135deg, rgba(111, 66, 193, 0.9) 0%, rgba(88, 44, 161, 0.9) 100%);
+  border-color: rgba(111, 66, 193, 0.6) !important;
+}
+
+.role-admin {
+  background: linear-gradient(135deg, rgba(220, 53, 69, 0.9) 0%, rgba(200, 35, 51, 0.9) 100%);
+  border-color: rgba(220, 53, 69, 0.6) !important;
 }
 
 .tab-content {

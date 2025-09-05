@@ -31,10 +31,11 @@
       <FormInput
         v-model="form.businessNumber"
         label="사업자 등록번호"
-        placeholder="사업자 등록번호를 입력하세요"
+        placeholder="사업자 등록번호를 입력하세요 (예: 123-45-67890)"
         :required="true"
         :has-error="errors.businessNumber"
         error-message="사업자 등록번호를 입력해 주세요!"
+        :maxlength="12"
         @input="onBusinessNumberInput"
       />
 
@@ -60,7 +61,7 @@
     <!-- 확인 모달 -->
     <CommonModal
       v-model="showModal"
-      type="info"
+      type="success"
       title="요식업 자영업자 회원 등록"
       message="요식업 자영업자로 회원 등록하시겠습니까? 등록 후에는 관리자 승인까지 권한이 제한됩니다."
       confirm-text="YES"
@@ -251,11 +252,33 @@ function onFileSelect() {
   }
 }
 
-// 사업자 번호 입력 시 에러 제거
-function onBusinessNumberInput() {
+// 사업자 번호 입력 시 에러 제거 및 포맷팅
+function onBusinessNumberInput(event) {
   if (form.value.businessNumber && errors.value.businessNumber) {
     errors.value.businessNumber = false;
   }
+  
+  // 숫자만 추출
+  const value = event.target.value.replace(/[^0-9]/g, '');
+  
+  // 10자리로 제한
+  const limitedValue = value.substring(0, 10);
+  
+  // 하이픈 추가 (xxx-xx-xxxxx 형식)
+  let formattedValue = '';
+  if (limitedValue.length > 0) {
+    formattedValue = limitedValue.substring(0, 3);
+  }
+  if (limitedValue.length > 3) {
+    formattedValue += '-' + limitedValue.substring(3, 5);
+  }
+  if (limitedValue.length > 5) {
+    formattedValue += '-' + limitedValue.substring(5, 10);
+  }
+  
+  // 값 업데이트
+  form.value.businessNumber = formattedValue;
+  event.target.value = formattedValue;
 }
 
 // 가게 이름 입력 시 에러 제거

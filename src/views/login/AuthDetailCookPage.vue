@@ -44,7 +44,7 @@
     <!-- 확인 모달 -->
     <CommonModal
       v-model="showModal"
-      type="info"
+      type="success"
       title="요식업 종사자 회원 등록"
       message="요식업 종사자로 회원 등록하시겠습니까? 등록 후에는 관리자 승인까지 권한이 제한됩니다."
       confirm-text="YES"
@@ -148,7 +148,6 @@ async function confirmRegistration() {
 
     // 현재 사용자 ID 가져오기
     const currentUser = authStore.user;
-    console.log(currentUser, authStore.user);
     if (!currentUser || !currentUser.id) {
       throw new Error("사용자 정보를 찾을 수 없습니다.");
     }
@@ -175,7 +174,6 @@ async function confirmRegistration() {
       currentUser.id,
       formData
     );
-    console.log(registrationData, response);
 
     if (response.isSuccess()) {
       // 성공 시 localStorage 데이터 초기화

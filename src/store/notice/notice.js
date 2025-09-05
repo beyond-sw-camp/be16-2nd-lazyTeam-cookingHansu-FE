@@ -73,7 +73,6 @@ export const useNoticeStore = defineStore('notice', {
     async fetchNotices(page = 0, size = 10, forceRefresh = false) {
       // 캐시가 유효하고 강제 새로고침이 아닌 경우 캐시된 데이터 반환
       if (!forceRefresh && this.isCacheValid && page === 0) {
-        console.log('공지사항 스토어: 캐시된 데이터 사용');
         return this.notices;
       }
 
@@ -110,7 +109,6 @@ export const useNoticeStore = defineStore('notice', {
     async fetchNoticeDetail(id, forceRefresh = false) {
       // 캐시가 유효하고 강제 새로고침이 아닌 경우 캐시된 데이터 반환
       if (!forceRefresh && this.isNoticeCacheValid(id)) {
-        console.log('공지사항 스토어: 캐시된 상세 데이터 사용');
         this.currentNotice = this.noticeCache.get(id).data;
         return this.currentNotice;
       }

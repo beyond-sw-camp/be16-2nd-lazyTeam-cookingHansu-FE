@@ -110,7 +110,6 @@ export default {
       const code = urlParams.get('code');
       const error = urlParams.get('error');
 
-      console.log('code:', code);
       
       if (error) {
         throw new Error(`Kakao OAuth Error: ${error}`);
@@ -131,17 +130,22 @@ export default {
         
         // 인가 코드 추출
         authorizationCode.value = extractAuthorizationCode();
-        console.log('authorizationCode:', authorizationCode.value);
-        
         // 서버에 인가 코드 전송하여 로그인 처리
         const user = await authStore.handleNaverLogin(authorizationCode.value);
-        console.log('user: ' + user)
         
         // handleNaverLogin에서 탈퇴한 회원인 경우 특별한 객체를 반환하므로 체크
         if (user && user.isDeleted) {
           // 탈퇴한 회원인 경우 복구 페이지로 리다이렉트
           const encodedUserInfo = encodeURIComponent(JSON.stringify(user.userInfo));
           router.push(`/deleted-user-confirm/${encodedUserInfo}`);
+          return;
+        }
+        
+        // handleNaverLogin에서 비활성화된 회원인 경우 특별한 객체를 반환하므로 체크
+        if (user && user.isRestricted) {
+          // 비활성화된 회원인 경우 로그인 정보 정리 후 비활성화 페이지로 리다이렉트
+          authStore.clearAuth();
+          router.push('/inactive-user');
           return;
         }
         

@@ -8,7 +8,6 @@ const API_ENDPOINTS = {
   KAKAO_LOGIN: "/user/login/kakao",
   NAVER_LOGIN: "/user/login/naver",
   LOGOUT: "/user/logout",
-
   ADD_INFO: "/user/add-info",
   REFRESH: "/user/refresh",
   CURRENT_USER_INFO: "/user/me",
@@ -91,7 +90,6 @@ export const authService = {
       const response = await apiClient.post(API_ENDPOINTS.RESTORE_USER, restoreData);
       return handleApiResponse(response);
     } catch (error) {
-      console.error('Failed to restore user:', error);
       throw error;
     }
   }

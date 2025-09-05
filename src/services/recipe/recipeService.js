@@ -19,7 +19,7 @@ export const recipeService = {
           image: post.thumbnailUrl || '/src/assets/images/smu_mascort1.jpg',
           category: post.category,
           title: post.title,
-          authorType: post.user?.role || 'GENERAL',
+          authorType: post.role || post.user?.role || 'GENERAL',
           description: post.description,
           likes: post.likeCount || 0,
           bookmarks: post.bookmarkCount || 0,
@@ -67,7 +67,7 @@ export const recipeService = {
   // 레시피 수정
   async updateRecipe(recipeId, recipeData) {
     try {
-      const response = await apiClient.put(`/api/posts/${recipeId}`, recipeData, {
+      const response = await apiClient.put(`/api/posts/update/${recipeId}`, recipeData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -82,7 +82,7 @@ export const recipeService = {
   // 레시피 삭제
   async deleteRecipe(recipeId) {
     try {
-      const response = await apiClient.delete(`/api/posts/${recipeId}`);
+      const response = await apiClient.delete(`/api/posts/delete/${recipeId}`);
       return response.data;
     } catch (error) {
       console.error('레시피 삭제 실패:', error);

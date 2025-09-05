@@ -64,9 +64,7 @@ const openPostcode = () => {
     onclose: (state) => {
       // 팝업이 닫힐 때의 상태 처리
       if (state === 'FORCE_CLOSE') {
-        console.log('사용자가 검색을 취소했습니다.');
       } else if (state === 'COMPLETE_CLOSE') {
-        console.log('검색이 완료되었습니다.');
       }
     }
   }).open();

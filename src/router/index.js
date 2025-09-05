@@ -22,6 +22,7 @@ import AuthDetailUserPage from '@/views/login/AuthDetailUserPage.vue'
 import RegistrationCompletePage from '@/views/login/RegistrationCompletePage.vue'
 import DeletedUserConfirmPage from '@/views/login/DeletedUserConfirmPage.vue'
 import WithdrawCompletePage from '@/views/WithdrawCompletePage.vue'
+import InactiveUserPage from '@/views/InactiveUserPage.vue'
 import RecipeMainPage from '@/views/home/RecipeMainPage.vue'
 import RecipeDetailPage from '@/views/recipe/RecipeDetailPage.vue'
 
@@ -158,6 +159,15 @@ const routes = [
     component: WithdrawCompletePage,
   },
   {
+    path: "/inactive-user",
+    name: "InactiveUser",
+    component: InactiveUserPage,
+    meta: { 
+      requiresGuest: true, // 인증되지 않은 상태에서만 접근 가능
+      skipNotificationSubscription: true // 알림 구독 건너뛰기
+    },
+  },
+  {
     path: "/",
     component: MainLayout,
     children: [
@@ -222,11 +232,12 @@ router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
   const adminLoginStore = useAdminLoginStore();
 
-  // OAuth 리다이렉트 페이지와 탈퇴한 회원 확인 페이지는 인증 가드 건너뛰기
+  // OAuth 리다이렉트 페이지와 탈퇴한 회원 확인 페이지, 비활성화된 사용자 페이지는 인증 가드 건너뛰기
   if (to.name === "GoogleOAuthRedirect" || 
       to.name === "KakaoOAuthRedirect" || 
       to.name === "NaverOAuthRedirect" ||
-      to.name === "DeletedUserConfirm") {
+      to.name === "DeletedUserConfirm" ||
+      to.name === "InactiveUser") {
     next();
     return;
   }
@@ -261,7 +272,6 @@ router.beforeEach(async (to, from, next) => {
           user: user
         };
       } catch (error) {
-        console.error("Auth check failed:", error);
         // 사용자 정보 조회 실패 시 로그아웃 처리
         authStore.clearAuth();
         authCheckCache = {
@@ -386,7 +396,6 @@ router.beforeEach(async (to, from, next) => {
     try {
       // autoSelect 파라미터가 있으면 채팅방 선택 유지
       if (to.query.autoSelect === 'true') {
-        console.log('✅ 라우터 가드: autoSelect 파라미터 감지, 채팅방 선택 상태 유지');
         next();
         return;
       }
@@ -395,11 +404,10 @@ router.beforeEach(async (to, from, next) => {
       const { useChatStore } = await import('@/store/chat/chat');
       const chatStore = useChatStore();
       if (chatStore.currentRoomId) {
-        console.log('🔄 라우터 가드: 일반 페이지 이동 시 채팅방 선택 상태 초기화');
         chatStore.currentRoomId = null;
       }
     } catch (error) {
-      console.log('채팅 스토어 초기화 실패:', error);
+      // 채팅 스토어 초기화 실패는 무시
     }
   }
 

@@ -209,6 +209,15 @@ export const useAuthStore = defineStore('auth', {
         if (response.success && response.data) {
           const { accessToken, refreshToken, user, expiresIn, isRestored } = response.data;
           
+          // 사용 제한된 회원인 경우 (user 객체 안의 loginStatus 확인)
+          if (user && user.loginStatus === 'INACTIVE') {
+            // 로그인 상태를 설정하지 않고 사용 제한 정보와 함께 특별한 객체 반환
+            return { 
+              isRestricted: true, 
+              userInfo: { email: user.email, name: user.name } 
+            };
+          }
+          
           // 회원 복구 여부 확인
           if (isRestored) {
             this.isRestoredUser = true;
@@ -222,7 +231,7 @@ export const useAuthStore = defineStore('auth', {
           try {
             await this.getCurrentUser();
           } catch (error) {
-            console.error('Failed to get current user after local login:', error);
+            // 사용자 정보 조회 실패는 무시
           }
           
           return user;
@@ -230,7 +239,6 @@ export const useAuthStore = defineStore('auth', {
           throw new Error(response.message || '로그인에 실패했습니다.');
         }
       } catch (error) {
-        console.error('Local login failed:', error);
         this.error = error.message || '로그인에 실패했습니다.';
         throw error;
       } finally {
@@ -270,7 +278,7 @@ export const useAuthStore = defineStore('auth', {
             try {
               await this.getCurrentUser();
             } catch (error) {
-              console.error('Failed to get current user during initialization:', error);
+              // 사용자 정보 조회 실패는 무시
             }
             
             // 인증된 사용자의 경우 알림 구독 시작
@@ -279,7 +287,7 @@ export const useAuthStore = defineStore('auth', {
               await notificationStore.requestNotificationPermission();
               notificationStore.startNotificationSubscription();
             } catch (error) {
-              console.warn('알림 구독 시작 실패:', error);
+              // 알림 구독 실패는 무시
             }
           } else {
             // 토큰이 만료된 경우 자동 갱신 시도
@@ -292,15 +300,15 @@ export const useAuthStore = defineStore('auth', {
                 await notificationStore.requestNotificationPermission();
                 notificationStore.startNotificationSubscription();
               } catch (error) {
-                console.warn('알림 구독 시작 실패:', error);
+                // 알림 구독 실패는 무시
               }
             } catch (error) {
-              console.warn('Token refresh failed during initialization:', error.message);
+              // 토큰 갱신 실패는 무시
             }
           }
         }
       } catch (error) {
-        console.error('Auth initialization failed:', error);
+        console.error('인증 초기화 실패:', error);
       }
     },
 
@@ -328,9 +336,17 @@ export const useAuthStore = defineStore('auth', {
         if (response.success && response.data) {
           const { accessToken, refreshToken, user, expiresIn, isDeleted, socialId, oauthType, email, name, picture } = response.data;
           
+          // 사용 제한된 회원인 경우 (user 객체 안의 loginStatus 확인)
+          if (user && user.loginStatus === 'INACTIVE') {
+            // 로그인 상태를 설정하지 않고 사용 제한 정보와 함께 특별한 객체 반환
+            return { 
+              isRestricted: true, 
+              userInfo: { socialId, oauthType, email, name, picture } 
+            };
+          }
+          
           // 탈퇴한 회원인 경우
           if (isDeleted === true) {
-            console.log('탈퇴한 회원 감지됨:', { isDeleted, socialId, oauthType, email, name, picture });
             // 로그인 상태를 설정하지 않고 탈퇴한 회원 정보와 함께 특별한 객체 반환
             return { 
               isDeleted: true, 
@@ -344,7 +360,7 @@ export const useAuthStore = defineStore('auth', {
           try {
             await this.getCurrentUser();
           } catch (error) {
-            console.error(`Failed to get current user after ${provider} login:`, error);
+            // 사용자 정보 조회 실패는 무시
           }
           
           return user;
@@ -352,7 +368,6 @@ export const useAuthStore = defineStore('auth', {
           throw new Error(response.message || `${provider} 로그인에 실패했습니다.`);
         }
       } catch (error) {
-        console.error(`${provider} login failed:`, error);
         this.error = error.message || `${provider} 로그인에 실패했습니다.`;
         throw error;
       } finally {
@@ -411,10 +426,10 @@ export const useAuthStore = defineStore('auth', {
         notificationStore.requestNotificationPermission().then(() => {
           notificationStore.startNotificationSubscription();
         }).catch((error) => {
-          console.warn('알림 구독 시작 실패:', error);
+          // 알림 구독 실패는 무시
         });
       } catch (error) {
-        console.warn('알림 구독 시작 실패:', error);
+        // 알림 구독 실패는 무시
       }
     },
 
@@ -482,7 +497,6 @@ export const useAuthStore = defineStore('auth', {
           } else if (response.data.success === false && response.data.message === 'Refresh token is required') {
             return; // 에러 없이 조용히 종료
           } else {
-            console.error('Unexpected response structure:', response.data);
             throw new Error('Invalid response structure from server');
           }
           
@@ -496,12 +510,9 @@ export const useAuthStore = defineStore('auth', {
           localStorage.setItem('refreshToken', refreshToken);
           localStorage.setItem('expiresIn', this.expiresIn);
           
-          console.log('Token refresh successful');
-          
         } catch (adminError) {
           // 관리자 엔드포인트 실패 시 일반 사용자 엔드포인트로 폴백
           if (isAdmin && adminError.response?.status === 401) {
-            console.warn('Admin refresh failed, trying user refresh endpoint:', adminError.message);
             
             const userResponse = await apiClient.post('/user/refresh', {
               refreshToken: this.refreshToken
@@ -519,8 +530,6 @@ export const useAuthStore = defineStore('auth', {
               localStorage.setItem('accessToken', accessToken);
               localStorage.setItem('refreshToken', refreshToken);
               localStorage.setItem('expiresIn', this.expiresIn);
-              
-              console.log('Token refresh successful (fallback to user endpoint)');
             } else {
               throw new Error('Invalid response structure from user refresh endpoint');
             }
@@ -529,9 +538,8 @@ export const useAuthStore = defineStore('auth', {
           }
         }
         
-      } catch (error) {
-        console.error('Token refresh failed:', error);
-        throw error;
+              } catch (error) {
+          throw error;
       } finally {
         this.isRefreshing = false;
       }
@@ -545,7 +553,7 @@ export const useAuthStore = defineStore('auth', {
           const notificationStore = useNotificationStore();
           notificationStore.stopNotificationSubscription();
         } catch (error) {
-          console.warn('알림 구독 중지 실패:', error);
+          // 알림 구독 중지 실패는 무시
         }
         
         // 서버에 로그아웃 요청
@@ -553,7 +561,7 @@ export const useAuthStore = defineStore('auth', {
           await authService.logout();
         }
       } catch (error) {
-        console.error('Logout request failed:', error);
+        // 로그아웃 요청 실패는 무시
       } finally {
         // 클라이언트 상태 정리
         if (!localStorage.getItem('adminAccessToken')) {
@@ -620,7 +628,6 @@ export const useAuthStore = defineStore('auth', {
           throw new Error(response.message || '회원 탈퇴에 실패했습니다.');
         }
       } catch (error) {
-        console.error('User deletion failed:', error);
         this.error = error.message || '회원 탈퇴에 실패했습니다.';
         throw error;
       } finally {
@@ -646,7 +653,7 @@ export const useAuthStore = defineStore('auth', {
           try {
             await this.getCurrentUser();
           } catch (error) {
-            console.error('Failed to get current user after restore:', error);
+            // 사용자 정보 조회 실패는 무시
           }
           
           return { 
@@ -657,7 +664,6 @@ export const useAuthStore = defineStore('auth', {
           throw new Error(response.message || '회원 복구에 실패했습니다.');
         }
       } catch (error) {
-        console.error('User restoration failed:', error);
         this.error = error.message || '회원 복구에 실패했습니다.';
         throw error;
       } finally {
@@ -683,7 +689,6 @@ export const useAuthStore = defineStore('auth', {
     async getCurrentUser() {
       try {
         if (!this.accessToken) {
-          console.warn('Access token not available');
           return null;
         }
 
@@ -694,11 +699,9 @@ export const useAuthStore = defineStore('auth', {
           localStorage.setItem('user', JSON.stringify(this.user));
           return response.data.data;
         } else {
-          console.error('Failed to get current user:', response.data.message);
           return null;
         }
       } catch (error) {
-        console.error('Error getting current user:', error);
         throw error;
       }
     },

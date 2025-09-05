@@ -91,7 +91,7 @@ export default {
   data() {
     return {
       currentPage: 1,
-      lecturesPerPage: 6,
+      lecturesPerPage: 8,
       lectures: [],
       totalPages: 0,
       totalElements: 0,
@@ -162,19 +162,14 @@ export default {
       }
     },
     goToLectureDetail(lecture) {
-      console.log('goToLectureDetail 호출됨, lecture:', lecture);
-      console.log('강의 상태:', lecture.status);
       
       if (lecture.status === 'APPROVED') {
-        console.log('승인된 강의 - 상세 페이지로 이동');
         this.$router.push(`/lectures/${lecture.id}`);
       } else if (lecture.status === 'REJECTED') {
-        console.log('거부된 강의 - 수정 페이지로 이동');
         // 수정 후 판매된 강의 페이지로 돌아오기 위한 플래그 설정
         localStorage.setItem('lectureEditFrom', 'sold-lectures');
         this.$router.push(`/lectures/edit/${lecture.id}`);
       } else {
-        console.log('승인 대기 중인 강의 - 모달 표시');
         this.openUnapprovedModal(lecture.status);
       }
     },
@@ -182,7 +177,6 @@ export default {
       this.$router.push('/lectures/create');
     },
     openUnapprovedModal(status) {
-      console.log('openUnapprovedModal 호출됨, status:', status);
       
       if (status === 'PENDING') {
         this.modalType = 'warning';
@@ -194,14 +188,9 @@ export default {
         this.modalMessage = '이 강의는 승인이 거부되었습니다. 상세 페이지를 확인할 수 없습니다.';
       }
       
-      console.log('모달 설정:', {
-        type: this.modalType,
-        title: this.modalTitle,
-        message: this.modalMessage
-      });
+
       
       this.showUnapprovedModal = true;
-      console.log('showUnapprovedModal 상태:', this.showUnapprovedModal);
     },
     closeUnapprovedModal() {
       this.showUnapprovedModal = false;
@@ -228,8 +217,15 @@ export default {
 
 .lectures-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  max-width: 1040px;
+  margin: 0 auto 24px auto;
+  min-height: 480px;
+}
+
+.lectures-grid:empty {
+  min-height: 0;
 }
 
 .lecture-card {
@@ -237,22 +233,29 @@ export default {
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  border: 1px solid #f0f0f0;
-  transition: transform 0.2s, box-shadow 0.2s;
+  border: 1.5px solid #f3f3f3;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  height: 220px;
+  max-height: 220px;
 }
 
 .lecture-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
 .lecture-image {
   position: relative;
   width: 100%;
-  height: 180px;
+  height: 90px;
   overflow: hidden;
   cursor: pointer;
   transition: transform 0.2s;
+  border-radius: 12px 12px 0 0;
+  flex-shrink: 0;
 }
 
 .lecture-image:hover {
@@ -266,7 +269,11 @@ export default {
 }
 
 .lecture-content {
-  padding: 20px;
+  padding: 10px 12px 8px 12px;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .lecture-header {
@@ -356,6 +363,7 @@ export default {
   margin: 0 0 12px 0;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

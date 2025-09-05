@@ -101,7 +101,13 @@
             <v-icon v-else size="20" color="grey">mdi-account</v-icon>
           </v-avatar>
           
-          <span class="welcome-text">{{ userNickname }}님 환영합니다!</span>
+          <span class="welcome-text">
+            <v-tooltip :text="userNickname" location="bottom">
+              <template v-slot:activator="{ props }">
+                <span class="nickname" v-bind="props">{{ userNickname }}</span>
+              </template>
+            </v-tooltip>님 환영합니다!
+          </span>
 
           <v-btn
             variant="outlined"
@@ -267,11 +273,11 @@
   </v-navigation-drawer>
 
   <!-- 로그인 필요 모달 -->
-  <CommonModal
+  <LoginRequiredModal
     v-model="showLoginModal"
-    type="info"
     title="로그인이 필요합니다"
-    message="해당 서비스를 이용하려면 로그인이 필요합니다. 로그인하시겠습니까?"
+    message="해당 서비스를 이용하려면 로그인이 필요합니다."
+    sub-message="로그인 후 모든 기능을 이용하실 수 있습니다."
     confirm-text="로그인하기"
     cancel-text="취소"
     @confirm="goToLogin"
@@ -286,7 +292,7 @@ import { useAuthStore } from '@/store/auth/auth'
 import { useCartStore } from '@/store/cart/cart'
 import { useNotificationStore } from '@/store/notification/notification.js'
 import { useAdminLoginStore } from '@/store/admin/adminLogin'
-import CommonModal from '@/components/common/CommonModal.vue'
+import LoginRequiredModal from '@/components/common/LoginRequiredModal.vue'
 
 const router = useRouter();
 const route = useRoute();
@@ -438,7 +444,7 @@ watch(isLoggedIn, async (newValue) => {
         // SSE 연결 시작 (실시간 알림 수신용)
         notificationStore.startNotificationSubscription();
       } catch (error) {
-        console.error('🔍 Header: 로그인 후 읽지 않은 알림 개수, 장바구니 정보 조회 실패:', error);
+        // 데이터 조회 실패는 무시
       }
     }
   } else {
@@ -473,13 +479,7 @@ watch(() => adminLoginStore.isLoggedIn, async (newValue, oldValue) => {
   }
 }, { immediate: true })
 
-// isAdmin 상태 변화 감시 (디버깅용)
-watch(isAdmin, (newValue, oldValue) => {
-  // console.log('isAdmin 상태 변화:', { old: oldValue, new: newValue });
-});
-
-
-// 관리자 로그인 상태도 감시
+// 관리자 로그인 상태 감시
 watch(() => adminLoginStore.isLoggedIn, async (newValue, oldValue) => {
   if (newValue) {
     await fetchProfileInfo();
@@ -492,9 +492,9 @@ watch(() => adminLoginStore.isLoggedIn, async (newValue, oldValue) => {
   }
 }, { immediate: true })
 
-// isAdmin 상태 변화 감시 (디버깅용)
+// isAdmin 상태 변화 감시
 watch(isAdmin, (newValue, oldValue) => {
-  // console.log('isAdmin 상태 변화:', { old: oldValue, new: newValue });
+  // 관리자 상태 변경 시 필요한 처리
 });
 
 
@@ -509,7 +509,6 @@ watch(userRole, async (newRole) => {
 watch(() => route.meta, (newMeta) => {
   // 탈퇴한 사용자 확인 페이지나 알림 구독을 건너뛰어야 하는 페이지에서는 알림 구독 해제
   if (newMeta?.skipNotificationSubscription) {
-    console.log('알림 구독 건너뛰기:', route.name);
     notificationStore.disconnectFromNotificationStream();
   }
 }, { immediate: true })
@@ -532,7 +531,7 @@ onMounted(async () => {
         // SSE 연결 시작 (실시간 알림 수신용)
         notificationStore.startNotificationSubscription();
       } catch (error) {
-        console.error('🔍 Header: 읽지 않은 알림 개수, 장바구니 정보 조회 실패:', error);
+        // 데이터 조회 실패는 무시
       }
     }
   }
@@ -563,8 +562,10 @@ const cartCount = computed(() => {
   return cartStore.serverCartCount
 })
 
-// 장바구니 개수 변경 감시 (디버깅용)
-watch(() => cartStore.serverCartCount, (newCount, oldCount) => {})
+// 장바구니 개수 변경 감시
+watch(() => cartStore.serverCartCount, (newCount, oldCount) => {
+  // 장바구니 개수 변경 시 필요한 처리
+})
 
 // 읽지 않은 알림 개수
 const unreadCount = computed(() => {
@@ -594,7 +595,7 @@ const logout = async () => {
     // 루트 페이지로 이동 (로그아웃 후 비로그인 상태이므로 landing 페이지로 리다이렉트됨)
     router.push('/');
   } catch (error) {
-    console.error('로그아웃 실패:', error);
+    // 로그아웃 실패는 무시
   }
 }
 
@@ -745,7 +746,8 @@ const closeLoginModal = () => {
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  min-width: 300px;
+  min-width: 250px;
+  max-width: 400px;
 }
 
 .login-btn {
@@ -780,8 +782,17 @@ const closeLoginModal = () => {
   color: var(--color-text);
   font-size: 14px;
   white-space: nowrap;
-  flex-shrink: 0;
+  flex-shrink: 1;
   margin-right: 12px;
+  max-width: 200px;
+}
+
+.nickname {
+  display: inline-block;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: top;
 }
 
 .logout-btn {
@@ -808,41 +819,55 @@ const closeLoginModal = () => {
   }
   
   .nav-menu {
-    gap: 24px;
+    gap: 20px;
     margin: 0 16px;
+    max-width: 400px;
   }
   
   .welcome-text {
-    font-size: 13px;
+    display: none;
+  }
+  
+  .header-right {
+    min-width: 120px;
+    max-width: 200px;
   }
 }
 
-@media (max-width: 1150px) {
+@media (max-width: 1300px) {
   .welcome-text {
     display: none;
   }
   
   .user-section {
-    min-width: 250px;
+    gap: 6px;
   }
   
   .header-right {
-    min-width: 250px;
+    min-width: 120px;
+    max-width: 200px;
+  }
+  
+  .nav-menu {
+    gap: 16px;
+    max-width: 400px;
   }
 }
 
 @media (max-width: 1024px) {
   .nav-menu {
-    gap: 20px;
+    gap: 12px;
     margin: 0 12px;
+    max-width: 300px;
   }
   
   .user-section {
-    min-width: 220px;
+    gap: 4px;
   }
   
   .header-right {
-    min-width: 220px;
+    min-width: 100px;
+    max-width: 180px;
   }
 }
 

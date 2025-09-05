@@ -15,10 +15,26 @@
       북마크
     </span>
   </v-btn>
+
+  <!-- 로그인 필요 모달 -->
+  <LoginRequiredModal
+    v-model="showLoginModal"
+    title="로그인이 필요합니다"
+    message="북마크 기능을 사용하려면 로그인이 필요합니다."
+    sub-message="로그인 후 좋아요, 북마크, 댓글 작성이 가능합니다."
+    confirm-text="로그인하기"
+    cancel-text="취소"
+    @confirm="goToLogin"
+    @cancel="showLoginModal = false"
+  />
 </template>
 
 <script setup>
 import { ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import LoginRequiredModal from '@/components/common/LoginRequiredModal.vue'
+
+const router = useRouter()
 
 // Props
 const props = defineProps({
@@ -42,6 +58,7 @@ const emit = defineEmits(['bookmark-changed'])
 // Reactive data
 const isBookmarked = ref(props.initialBookmarked)
 const loading = ref(false)
+const showLoginModal = ref(false)
 
 // Watch for prop changes
 watch(() => props.initialBookmarked, (newVal) => {
@@ -124,16 +141,21 @@ const getAuthToken = () => {
 const checkAuthentication = () => {
   const token = getAuthToken()
   if (!token) {
-    showErrorMessage('로그인이 필요한 기능입니다.')
+    showLoginModal.value = true
     return false
   }
   return true
 }
 
+// 로그인 페이지로 이동
+const goToLogin = () => {
+  router.push('/login')
+  showLoginModal.value = false
+}
+
 // 성공 메시지 표시
 const showSuccessMessage = (message) => {
   // 실제 구현에서는 Vuetify의 snackbar 사용
-  console.log(message)
 }
 
 // 에러 메시지 표시

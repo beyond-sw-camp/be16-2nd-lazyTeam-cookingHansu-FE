@@ -21,7 +21,7 @@ export const useRecipeStore = defineStore('recipe', {
 
     // 필터링 및 정렬
     filters: {
-      authorType: '',
+      role: '',
       category: '',
       sort: 'latest'
     },
@@ -87,7 +87,6 @@ export const useRecipeStore = defineStore('recipe', {
           ...params
         };
 
-        console.log('🔍 레시피 목록 조회 시작:', defaultParams);
         
         const response = await recipeService.getRecipeList(defaultParams);
         
@@ -100,7 +99,6 @@ export const useRecipeStore = defineStore('recipe', {
         };
         
         this.lastUpdate = Date.now();
-        console.log('✅ 레시피 목록 조회 성공:', this.recipes.length, '개');
         
         return response;
       } catch (error) {
@@ -270,7 +268,7 @@ export const useRecipeStore = defineStore('recipe', {
     // 필터 초기화
     clearFilters() {
       this.filters = {
-        authorType: '',
+        role: '',
         category: '',
         sort: 'latest'
       };
@@ -294,7 +292,7 @@ export const useRecipeStore = defineStore('recipe', {
         pageSize: 8,
       };
       this.filters = {
-        authorType: '',
+        role: '',
         category: '',
         sort: 'latest'
       };

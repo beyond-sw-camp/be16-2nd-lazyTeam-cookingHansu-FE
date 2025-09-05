@@ -220,9 +220,16 @@
                  </div>
                </div>
               
-              <!-- 더 보기 버튼 -->
-              <div v-if="showReviewsMoreButton" class="more-button-container">
+              <!-- 더 보기 버튼 (로그인한 사용자만) -->
+              <div v-if="showReviewsMoreButton && !isGuest" class="more-button-container">
                 <button class="more-button" @click="loadMoreReviews">
+                  더 보기
+                </button>
+              </div>
+              
+              <!-- 비로그인 사용자 더보기 버튼 -->
+              <div v-if="showReviewsMoreButton && isGuest" class="more-button-container">
+                <button class="more-button" @click="showLoginRequiredModal = true">
                   더 보기
                 </button>
               </div>
@@ -304,9 +311,16 @@
                  </div>
                </div>
               
-              <!-- 더 보기 버튼 -->
-              <div v-if="showQAMoreButton" class="more-button-container">
+              <!-- 더 보기 버튼 (로그인한 사용자만) -->
+              <div v-if="showQAMoreButton && !isGuest" class="more-button-container">
                 <button class="more-button" @click="loadMoreQA">
+                  더 보기
+                </button>
+              </div>
+              
+              <!-- 비로그인 사용자 더보기 버튼 -->
+              <div v-if="showQAMoreButton && isGuest" class="more-button-container">
+                <button class="more-button" @click="showLoginRequiredModal = true">
                   더 보기
                 </button>
               </div>
@@ -375,9 +389,17 @@
               <span class="report-icon">🚨</span>
               <span>신고하기</span>
             </div>
-                         <!-- 좋아요 버튼 -->
-             <div class="like-section">
+                         <!-- 좋아요 버튼 (로그인한 사용자만) -->
+             <div v-if="!isGuest" class="like-section">
                <button class="like-button" :class="{ 'liked': isLiked }" @click="toggleLike">
+                 <span class="like-icon">❤️</span>
+                 <span class="like-count">{{ lecture.likeCount || 0 }}</span>
+               </button>
+             </div>
+             
+             <!-- 비로그인 사용자 좋아요 버튼 -->
+             <div v-if="isGuest" class="like-section">
+               <button class="like-button" @click="showLoginRequiredModal = true">
                  <span class="like-icon">❤️</span>
                  <span class="like-count">{{ lecture.likeCount || 0 }}</span>
                </button>
@@ -686,23 +708,16 @@
      </div>
 
      <!-- 로그인 필요 모달 -->
-     <div v-if="showLoginRequiredModal" class="modal-overlay" @click="showLoginRequiredModal = false">
-       <div class="cart-modal" @click.stop>
-         <div class="modal-header">
-           <h3>로그인 필요</h3>
-           <button class="close-btn" @click="showLoginRequiredModal = false">×</button>
-         </div>
-         <div class="modal-content">
-           <div class="modal-icon">🔐</div>
-           <p class="modal-message">로그인이 필요한 서비스입니다.</p>
-           <p class="modal-submessage">로그인 후 리뷰 작성과 Q&A 참여가 가능합니다.</p>
-         </div>
-         <div class="modal-actions">
-           <button class="btn-primary" @click="goToLogin">로그인하기</button>
-           <button class="btn-secondary" @click="showLoginRequiredModal = false">취소</button>
-         </div>
-       </div>
-     </div>
+     <LoginRequiredModal
+       v-model="showLoginRequiredModal"
+       title="로그인이 필요합니다"
+       message="로그인 후 리뷰 작성과 Q&A 참여가 가능합니다."
+       sub-message="로그인 후 강의 수강과 모든 기능을 이용하실 수 있습니다."
+       confirm-text="로그인하기"
+       cancel-text="취소"
+       @confirm="goToLogin"
+       @cancel="showLoginRequiredModal = false"
+     />
 
     <!-- 삭제 확인 모달 -->
     <DeleteConfirmModal
@@ -751,6 +766,7 @@ import Header from '@/components/Header.vue';
 import DeleteConfirmModal from '@/components/common/DeleteConfirmModal.vue';
 import ReportModal from '@/components/common/ReportModal.vue';
 import UserProfileModal from '@/components/common/UserProfileModal.vue';
+import LoginRequiredModal from '@/components/common/LoginRequiredModal.vue';
 
 import { useLectureStore } from '@/store/lecture/lecture';
 import { useCartStore } from '@/store/cart/cart';
@@ -763,7 +779,7 @@ import { lectureService } from '@/services/lecture/lectureService';
 
 export default {
   name: 'LectureDetail',
-  components: { Header, DeleteConfirmModal, ReportModal, UserProfileModal },
+  components: { Header, DeleteConfirmModal, ReportModal, UserProfileModal, LoginRequiredModal },
   setup() {
     const lectureStore = useLectureStore();
     const cartStore = useCartStore();
@@ -946,7 +962,6 @@ export default {
     
     // 강의 구매자인지 확인
     isPurchaser() {
-      console.log('isPurchased 값:', this.isPurchased);
       return this.isPurchased;
     },
     
@@ -1061,10 +1076,8 @@ export default {
   watch: {
     // previewVideoUrl이 변경될 때 썸네일 재생성 (일시정지 상태가 아닐 때만)
     previewVideoUrl(newUrl, oldUrl) {
-      console.log('🔍 previewVideoUrl watch 실행 - newUrl:', newUrl, 'oldUrl:', oldUrl, 'isVideoPaused:', this.isVideoPaused)
       // 같은 URL이거나 일시정지 상태면 썸네일 재생성하지 않음
       if (newUrl && newUrl !== oldUrl && !this.isVideoPaused) {
-        console.log('🔍 썸네일 재생성 시작')
         this.$nextTick(() => {
           if (this.$refs.hiddenVideo) {
             // 비디오가 이미 로드된 경우 썸네일 생성
@@ -1073,8 +1086,6 @@ export default {
             }
           }
         });
-      } else {
-        console.log('🔍 썸네일 재생성 건너뜀')
       }
     }
   },
@@ -1091,20 +1102,13 @@ export default {
       const video = this.$refs.previewVideo
       if (!video) return
 
-      console.log('🔍 togglePlayPause 호출됨 - 현재 paused 상태:', video.paused)
-      console.log('🔍 현재 isVideoPaused 상태:', this.isVideoPaused)
-
       if (video.paused) {
-        console.log('▶️ 비디오 재생 시작')
         video.play()
         this.isVideoPaused = false
       } else {
-        console.log('⏸️ 비디오 일시정지')
         video.pause()
         this.isVideoPaused = true
       }
-      
-      console.log('🔍 변경 후 isVideoPaused 상태:', this.isVideoPaused)
     },
 
     // 비디오 전체화면 토글
@@ -1125,12 +1129,10 @@ export default {
         // TODO: 실제 로그인 API에서 사용자 정보 가져오기
         // 현재는 localStorage에서 임시로 가져옴
         const userInfo = localStorage.getItem('user');
-        console.log('🔍 checkUserRole - userInfo:', userInfo);
         
         if (userInfo) {
           const user = JSON.parse(userInfo);
           this.currentUserId = user.id;
-          console.log('🔍 checkUserRole - user:', user);
           
           // 강의 작성자인지 확인 (CHEF, OWNER 모두 자영업자/요리사)
           if (this.lecture && this.lecture.instructor && user.id === this.lecture.instructor.id) {
@@ -1139,7 +1141,6 @@ export default {
           // 관리자인지 확인 (대소문자 구분 없이)
           else if (user.role === 'ADMIN' || user.role === 'admin') {
             this.userRole = 'ADMIN';
-            console.log('✅ 관리자로 설정됨');
           }
           // 구매자인지 확인 (구매 상태는 별도로 확인)
           else if (this.isPurchased) {
@@ -1161,15 +1162,12 @@ export default {
              // 장바구니 상태 확인 (백엔드 API 사용)
     async checkCartStatus(lectureId) {
       // 비회원이나 관리자는 장바구니 조회하지 않음
-      console.log('🔍 checkCartStatus - isGuest:', this.isGuest, 'userRole:', this.userRole);
       
       // authStore에서도 관리자 체크 (대소문자 구분 없이)
       const authStore = useAuthStore();
       const isAdminFromStore = authStore.user?.role === 'ADMIN' || authStore.user?.role === 'admin';
-      console.log('🔍 checkCartStatus - isAdminFromStore:', isAdminFromStore);
       
       if (this.isGuest || this.userRole === 'ADMIN' || isAdminFromStore) {
-        console.log('✅ 장바구니 조회 건너뜀 (비회원 또는 관리자)');
         this.isInCart = false;
         return;
       }
@@ -1223,7 +1221,6 @@ export default {
         
         if (response.success) {
           const lectureData = response.data;
-          console.log('🔍 강의 데이터 로드:', lectureData);
 
 
           
@@ -1450,7 +1447,6 @@ export default {
     
          // Q&A 데이터 변환 (질문-답글 구조)
      convertQA(qaList) {
-       console.log('🔍 convertQA 시작 - 입력 데이터:', qaList);
        if (!qaList || qaList.length === 0) {
          return [];
        }
@@ -1630,9 +1626,7 @@ export default {
          }
          
          // 다음 강의가 시청 가능한지 확인 (일시정지 상태가 아닐 때만 자동 재생)
-         console.log('🔍 onVideoEnded - 다음 강의 자동 재생 시도, isVideoPaused:', this.isVideoPaused)
          if (nextLesson && nextLesson.videoUrl && (this.canWatchLecture || nextLesson.isPreview) && !this.isVideoPaused) {
-           console.log('🔍 다음 강의 자동 재생 시작')
            this.playVideo(nextLesson, nextIndex);
            return;
          }
@@ -1646,7 +1640,6 @@ export default {
 
      // 비디오 시간 업데이트 시 처리
      onVideoTimeUpdate() {
-       console.log('🔍 onVideoTimeUpdate 호출됨 - isVideoPaused:', this.isVideoPaused)
        if (this.$refs.previewVideo && !this.isVideoPaused) {
          const currentTime = this.$refs.previewVideo.currentTime;
          this.setupProgressSaveTimer(currentTime);
@@ -1692,7 +1685,6 @@ export default {
            // 진행도 저장 후 강의 정보 새로고침
            await this.refreshLectureProgress();
            
-           console.log('비디오 진행도 저장 완료:', currentLesson.videoId);
          } catch (error) {
            console.error('비디오 진행도 저장 실패:', error);
          }
@@ -1715,7 +1707,6 @@ export default {
      
      // 비디오 재생 메서드 (메인 영역에서 재생)
      playVideo(lesson, lessonIndex = -1) {
-       console.log('🔍 playVideo 호출됨 - lesson:', lesson.title, 'isVideoPaused:', this.isVideoPaused)
        if (lesson.videoUrl) {
          // URL이 유효한지 확인
          try {
@@ -1734,9 +1725,7 @@ export default {
            
            // 비디오 요소가 렌더링된 후 재생
            this.$nextTick(() => {
-             console.log('🔍 $nextTick 실행')
              if (this.$refs.previewVideo) {
-               console.log('🔍 load() 호출됨')
                this.$refs.previewVideo.load();
                // 일시정지 상태가 아닐 때만 재생
                if (!this.isVideoPaused) {
@@ -1745,8 +1734,6 @@ export default {
                    this.showError('비디오 재생에 실패했습니다.');
                    this.isVideoPlaying = false;
                  });
-               } else {
-                 console.log('🔍 일시정지 상태이므로 자동 재생하지 않음')
                }
              }
            });
@@ -2257,11 +2244,9 @@ export default {
           }
 
           const myId = this.authStore.user.id;
-          console.log('채팅방 생성 시작:', { myId, userId });
 
           // 채팅방 생성
           const roomId = await this.chatStore.createRoom(myId, userId);
-          console.log('채팅방 생성 성공, roomId:', roomId);
 
           // 바로 채팅방으로 이동
           this.$router.push(`/chat?autoSelect=true&roomId=${roomId}`);
@@ -2596,11 +2581,8 @@ export default {
           
           // 장바구니 스토어 업데이트
           if (this.cartStore) {
-            console.log('🛒 강의 구매: 장바구니 스토어 업데이트 시작');
             this.cartStore.updateCartItem(this.lecture.id, false); // 장바구니에 추가
-            console.log('🛒 강의 구매: updateCartItem 완료, fetchServerCartList 시작');
             await this.cartStore.fetchServerCartList(true); // 강제 새로고침
-            console.log('🛒 강의 구매: fetchServerCartList 완료, 현재 장바구니 개수:', this.cartStore.serverCartCount);
           }
           
           // 장바구니 페이지로 이동

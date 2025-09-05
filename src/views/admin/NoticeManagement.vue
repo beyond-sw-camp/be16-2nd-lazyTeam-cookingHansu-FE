@@ -331,16 +331,10 @@ const triggerFileInput = () => {
 const handleFileChange = (event) => {
   const file = event.target.files[0];
   if (file) {
-    console.log('파일 정보:', {
-      name: file.name,
-      size: file.size,
-      sizeMB: (file.size / (1024 * 1024)).toFixed(2),
-      type: file.type
-    });
+
     
     // 파일 검증
     const validation = validateFile(file, 'IMAGE');
-    console.log('파일 검증 결과:', validation);
     
     if (!validation.isValid) {
       snackbarType.value = 'error';

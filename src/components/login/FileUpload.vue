@@ -105,7 +105,6 @@ function handleFileChange(event) {
       return;
     }
     
-    console.log('파일 선택됨:', file.name, file.size, file.type);
     emit("update:modelValue", file);
   } else {
     emit("update:modelValue", null);

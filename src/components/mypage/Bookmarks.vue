@@ -88,7 +88,7 @@ export default {
   data() {
     return {
       currentPage: 1,
-      bookmarksPerPage: 6,
+      bookmarksPerPage: 8,
       bookmarks: [],
       totalPages: 0,
       loading: false,
@@ -120,7 +120,6 @@ export default {
           this.bookmarks = response.data.data.content || [];
           this.totalPages = response.data.data.totalPages || 0;
           
-          console.log(`🔍 북마크: ${this.bookmarks.length}개, 총 ${response.data.data.totalElements}개`);
         } else {
           throw new Error('북마크를 불러오는데 실패했습니다.');
         }
@@ -139,8 +138,6 @@ export default {
     },
     goToPostDetail(item) {
       // Navigate to post detail page
-      console.log('🚀 북마크 클릭:', item);
-      console.log('🆔 게시글 ID:', item.id);
       
       // 여러 가능한 ID 필드 시도
       const postId = item.id || item.postId || item.recipeId;
@@ -271,8 +268,15 @@ export default {
 
 .bookmarks-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  max-width: 1040px;
+  margin: 0 auto 24px auto;
+  min-height: 480px;
+}
+
+.bookmarks-grid:empty {
+  min-height: 0;
 }
 
 .bookmark-card {
@@ -280,23 +284,27 @@ export default {
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  border: 1px solid #f0f0f0;
-  transition: transform 0.2s, box-shadow 0.2s;
+  border: 1.5px solid #f3f3f3;
+  transition: all 0.3s ease;
   cursor: pointer;
   display: flex;
   flex-direction: column;
+  align-items: stretch;
+  height: 220px;
+  max-height: 220px;
 }
 
 .bookmark-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
 .bookmark-image {
   position: relative;
   width: 100%;
-  height: 200px;
+  height: 90px;
   overflow: hidden;
+  border-radius: 12px 12px 0 0;
 }
 
 .bookmark-image img {
@@ -319,7 +327,8 @@ export default {
 
 
 .bookmark-content {
-  padding: 16px;
+  padding: 10px 12px 8px 12px;
+  flex-grow: 1;
 }
 
 .bookmark-header {

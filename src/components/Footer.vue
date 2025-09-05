@@ -33,7 +33,7 @@
       </div>
     </div>
     <div class="footer__copyright">
-      © 2024 요리한수. All rights reserved.
+      © 2025 요리한수. All rights reserved.
     </div>
   </footer>
 </template>
