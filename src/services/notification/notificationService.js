@@ -181,6 +181,20 @@ export const notificationService = {
       console.error('SSE 구독 시작 실패:', error)
       throw error
     }
+  },
+
+  /**
+   * SSE 연결 해제
+   * @returns {Promise<void>}
+   */
+  async disconnectNotifications() {
+    try {
+      await apiClient.post('/api/notifications/disconnect')
+      console.log('SSE 연결이 서버에서 해제되었습니다.')
+    } catch (error) {
+      console.error('SSE 연결 해제 실패:', error)
+      // 에러가 발생해도 클라이언트에서는 연결을 정리
+    }
   }
 };
 
