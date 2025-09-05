@@ -4,63 +4,73 @@
       <h2>판매한 강의</h2>
     </div>
 
-    <div class="lectures-grid">
-      <div v-for="lecture in pagedLectures" :key="lecture.id" class="lecture-card">
-        <div class="lecture-image" @click="goToLectureDetail(lecture)">
-          <img :src="lecture.thumbUrl" :alt="lecture.title" />
-        </div>
-        <div class="lecture-content">
-          <div class="lecture-header">
-            <span class="category-badge" :class="categoryClass(lecture.category)">{{ getCategoryName(lecture.category) }}</span>
-            <div class="header-right">
-              <span class="status-badge" :class="statusClass(lecture.status)">{{ getStatusName(lecture.status) }}</span>
+    <!-- 초기 로딩 상태 (데이터가 없을 때만) -->
+    <div v-if="loading && lectures.length === 0" class="loading-state">
+      <div class="loading-spinner"></div>
+      <p>강의를 불러오는 중...</p>
+    </div>
+
+    <!-- 강의 그리드 -->
+    <div v-else-if="lectures.length > 0" class="lectures-grid">
+        <div v-for="lecture in pagedLectures" :key="lecture.id" class="lecture-card">
+          <div class="lecture-image" @click="goToLectureDetail(lecture)">
+            <img :src="lecture.thumbUrl" :alt="lecture.title" />
+          </div>
+          <div class="lecture-content">
+            <div class="lecture-header">
+              <span class="category-badge" :class="categoryClass(lecture.category)">{{ getCategoryName(lecture.category) }}</span>
+              <div class="header-right">
+                <span class="status-badge" :class="statusClass(lecture.status)">{{ getStatusName(lecture.status) }}</span>
+              </div>
             </div>
-          </div>
-          <h3 class="lecture-title" @click="goToLectureDetail(lecture)">{{ lecture.title }}</h3>
-          <p class="lecture-description">{{ lecture.description }}</p>
-          <div class="lecture-price">
-            <span class="price">{{ lecture.price.toLocaleString() }}원</span>
-          </div>
-          <div class="lecture-rating-stats">
-            <div class="lecture-rating">
-              <span class="stars">
-                <span v-for="i in 5" :key="i" class="star" :class="{ filled: i <= Math.round(lecture.reviewAvg || 0) }">
-                  ★
+            <h3 class="lecture-title" @click="goToLectureDetail(lecture)">{{ lecture.title }}</h3>
+            <p class="lecture-description">{{ lecture.description }}</p>
+            <div class="lecture-price">
+              <span class="price">{{ lecture.price.toLocaleString() }}원</span>
+            </div>
+            <div class="lecture-rating-stats">
+              <div class="lecture-rating">
+                <span class="stars">
+                  <span v-for="i in 5" :key="i" class="star" :class="{ filled: i <= Math.round(lecture.reviewAvg || 0) }">
+                    ★
+                  </span>
                 </span>
-              </span>
-              <span class="rating-count">({{ lecture.reviewCount }})</span>
-            </div>
-            <div class="lecture-stats">
-              <span class="stat-item">
-                <span class="stat-icon">❤️</span>
-                {{ lecture.likeCount }}
-              </span>
-              <span class="stat-item">
-                <span class="stat-icon">💬</span>
-                {{ lecture.qnaCount }}
-              </span>
-              <span class="stat-item">
-                <span class="stat-icon">👥</span>
-                {{ lecture.purchaseCount }}
-              </span>
+                <span class="rating-count">({{ lecture.reviewCount }})</span>
+              </div>
+              <div class="lecture-stats">
+                <span class="stat-item">
+                  <span class="stat-icon">❤️</span>
+                  {{ lecture.likeCount }}
+                </span>
+                <span class="stat-item">
+                  <span class="stat-icon">💬</span>
+                  {{ lecture.qnaCount }}
+                </span>
+                <span class="stat-item">
+                  <span class="stat-icon">👥</span>
+                  {{ lecture.purchaseCount }}
+                </span>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <Pagination 
-      :current-page="currentPage"
-      :total-pages="totalPages"
-      @page-change="changePage"
-    />
-
-    <div v-if="lectures.length === 0" class="empty-state">
+    <!-- 빈 상태 -->
+    <div v-else-if="!loading && lectures.length === 0" class="empty-state">
       <div class="empty-icon">📚</div>
       <h3>아직 판매한 강의가 없어요</h3>
       <p>첫 번째 강의를 만들어서 판매를 시작해보세요!</p>
       <button class="create-lecture-btn" @click="createLecture">강의 만들기</button>
     </div>
+
+    <!-- 페이지네이션 -->
+    <Pagination 
+      v-if="lectures.length > 0"
+      :current-page="currentPage"
+      :total-pages="totalPages"
+      @page-change="changePage"
+    />
 
     <!-- 승인되지 않은 강의 안내 모달 -->
     <CommonModal
@@ -72,8 +82,6 @@
       :show-cancel-button="false"
       @confirm="closeUnapprovedModal"
     />
-
-
   </div>
 </template>
 
@@ -128,7 +136,7 @@ export default {
       }
     },
     async changePage(page) {
-      if (page >= 1 && page <= this.totalPages) {
+      if (page >= 1 && page <= this.totalPages && page !== this.currentPage) {
         this.currentPage = page;
         await this.fetchSoldLectures();
       }
