@@ -1707,7 +1707,6 @@ export default {
      
      // 비디오 재생 메서드 (메인 영역에서 재생)
      playVideo(lesson, lessonIndex = -1) {
-       console.log('🔍 playVideo 호출됨 - lesson:', lesson.title, 'isVideoPaused:', this.isVideoPaused)
        if (lesson.videoUrl) {
          // URL이 유효한지 확인
          try {
@@ -1726,9 +1725,7 @@ export default {
            
            // 비디오 요소가 렌더링된 후 재생
            this.$nextTick(() => {
-             console.log('🔍 $nextTick 실행')
              if (this.$refs.previewVideo) {
-               console.log('🔍 load() 호출됨')
                this.$refs.previewVideo.load();
                // 일시정지 상태가 아닐 때만 재생
                if (!this.isVideoPaused) {
