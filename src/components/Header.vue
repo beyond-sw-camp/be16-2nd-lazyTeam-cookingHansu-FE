@@ -102,7 +102,11 @@
           </v-avatar>
           
           <span class="welcome-text">
-            <span class="nickname">{{ userNickname }}</span>님 환영합니다!
+            <v-tooltip :text="userNickname" location="bottom">
+              <template v-slot:activator="{ props }">
+                <span class="nickname" v-bind="props">{{ userNickname }}</span>
+              </template>
+            </v-tooltip>님 환영합니다!
           </span>
 
           <v-btn
