@@ -8,8 +8,8 @@
     >
       {{ address || '클릭하여 가게 주소를 입력하세요.' }}
     </div>
-    <div v-if="hasError" class="error-message">
-      가게 주소를 입력해 주세요!
+    <div v-if="hasError" class="input-error">
+      <span class="error-icon">&#10006;</span> 가게 주소를 입력해 주세요!
     </div>
   </div>
 </template>
@@ -28,7 +28,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['update:modelValue']);
+const emit = defineEmits(['update:modelValue', 'input']);
 
 const address = ref(props.modelValue);
 
@@ -40,6 +40,7 @@ watch(() => props.modelValue, (newValue) => {
 // 로컬 상태가 변경되면 부모에게 알림
 watch(address, (newValue) => {
   emit('update:modelValue', newValue);
+  emit('input', newValue);
 });
 
 const openPostcode = () => {
@@ -60,6 +61,9 @@ const openPostcode = () => {
       if (data.buildingName) {
         address.value += ` (${data.buildingName})`;
       }
+      
+      // input 이벤트 발생시켜 에러 상태 해제
+      emit('input', address.value);
     },
     onclose: (state) => {
       // 팝업이 닫힐 때의 상태 처리
@@ -105,6 +109,7 @@ onMounted(() => {
   border-radius: 8px;
   padding: 12px 14px;
   font-size: 1.08rem;
+  margin-bottom: 4px;
   font-family: inherit;
   background: var(--color-background);
   color: var(--color-text);
@@ -123,10 +128,18 @@ onMounted(() => {
   color: #bdbdbd;
 }
 
-.error-message {
-  color: #ff884d;
-  font-size: 0.9rem;
-  margin-top: 4px;
+.input-error {
+  color: #e53935;
+  font-size: 0.97rem;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
   margin-left: 2px;
+}
+
+.error-icon {
+  font-size: 1.1em;
+  margin-right: 2px;
 }
 </style>
