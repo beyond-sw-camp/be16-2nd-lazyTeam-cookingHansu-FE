@@ -580,7 +580,7 @@
                       <!-- 삭제 버튼 (작성자만 표시) -->
                       <v-list-item
                         v-if="canEditComment(reply)"
-                        @click="deleteComment(reply.id)"
+                        @click="deleteReply(comment.id, reply.id)"
                         class="delete-menu-item"
                       >
                         <template v-slot:prepend>
@@ -649,22 +649,16 @@
                 </div>
               </div>
           
-          <div v-if="comments.length > 5" class="load-more-comments">
+          <div v-if="hasMoreComments" class="load-more-comments">
             <v-btn 
-              v-if="isLoggedIn"
               variant="outlined" 
               @click="loadMoreComments"
+              :loading="isLoadingComments"
+              :disabled="isLoadingComments"
             >
-              댓글 더보기▼
+              댓글 더보기 ({{ commentTotalElements - comments.length }}개 더)
             </v-btn>
-            <v-btn 
-              v-else
-              variant="outlined" 
-              @click="showLoginModal = true"
-            >
-              댓글 더보기▼
-            </v-btn>
-                  </div>
+          </div>
                 </div>
 
         <v-dialog v-model="showDeleteModal" max-width="400">
@@ -1051,6 +1045,14 @@ const isBookmarked = ref(null)
 
 const comments = ref([])
 
+// 댓글 페이지네이션 관련 변수들
+const commentPage = ref(0)
+const commentPageSize = ref(10)
+const commentTotalPages = ref(0)
+const commentTotalElements = ref(0)
+const hasMoreComments = ref(true)
+const isLoadingComments = ref(false)
+
 const recipe = reactive({
   id: '',
   title: '',
@@ -1311,10 +1313,35 @@ const submitComment = async () => {
 
     
     if (response.success) {
-      const data = response
+      const data = response.data
       
-      // 댓글 목록 새로고침
-      await loadComments()
+      // 즉시 UI에 새 댓글 추가
+      const newCommentData = {
+        id: data.commentId || data.id,
+        nickname: data.authorNickName || data.nickname,
+        authorUUID: data.authorId,
+        content: data.content,
+        createdAt: data.createdAt,
+        isDeleted: false,
+        showMoreMenu: false,
+        picture: data.authorProfileImage || data.picture,
+        authorProfileImage: data.authorProfileImage,
+        email: data.authorEmail,
+        joinDate: data.authorCreatedAt,
+        replies: []
+      }
+      
+      // 새 댓글을 맨 앞에 추가 (최신순이므로)
+      comments.value.unshift(newCommentData)
+      
+      // 댓글 수 증가
+      commentTotalElements.value++
+      
+      // 페이지네이션 상태 업데이트 (백그라운드에서)
+      setTimeout(async () => {
+        await loadComments(true)
+      }, 100)
+      
       newComment.value = ''
       alert('댓글이 등록되었습니다!')
     } else {
@@ -1392,10 +1419,40 @@ const submitReply = async (comment) => {
     })
 
     if (response.success) {
-      const data = response
+      const data = response.data
       
-      // 댓글 목록 새로고침
-      await loadComments()
+      // 즉시 UI에 새 답글 추가
+      const newReplyData = {
+        id: data.commentId || data.id,
+        nickname: data.authorNickName || data.nickname,
+        authorUUID: data.authorId,
+        content: data.content,
+        createdAt: data.createdAt,
+        isDeleted: false,
+        picture: data.authorProfileImage || data.picture,
+        authorProfileImage: data.authorProfileImage,
+        showMoreMenu: false,
+        email: data.authorEmail,
+        joinDate: data.authorCreatedAt
+      }
+      
+      // 해당 댓글의 replies 배열에 답글 추가
+      const parentComment = comments.value.find(c => c.id === comment.id)
+      if (parentComment) {
+        if (!parentComment.replies) {
+          parentComment.replies = []
+        }
+        parentComment.replies.push(newReplyData)
+      }
+      
+      // 댓글 수 증가
+      commentTotalElements.value++
+      
+      // 페이지네이션 상태 업데이트 (백그라운드에서)
+      setTimeout(async () => {
+        await loadComments(true)
+      }, 100)
+      
       comment.showReplyForm = false
       comment.replyText = ''
       alert('답글이 등록되었습니다!')
@@ -1418,7 +1475,47 @@ const submitReply = async (comment) => {
   }
 }
 
-const loadMoreComments = () => {
+// 더 많은 댓글 로드
+const loadMoreComments = async () => {
+  if (hasMoreComments.value && !isLoadingComments.value) {
+    await loadComments(false)
+  }
+}
+
+// 답글 삭제
+const deleteReply = async (commentId, replyId) => {
+  if (!confirm('답글을 삭제하시겠습니까?')) return
+  
+  try {
+    const response = await recipeService.deleteComment(replyId)
+    
+    if (response.success) {
+      // 즉시 UI에서 답글 제거
+      const parentComment = comments.value.find(comment => comment.id === commentId)
+      if (parentComment && parentComment.replies) {
+        const replyIndex = parentComment.replies.findIndex(reply => reply.id === replyId)
+        if (replyIndex !== -1) {
+          parentComment.replies.splice(replyIndex, 1)
+        }
+      }
+      
+      // 댓글 수 감소
+      commentTotalElements.value = Math.max(0, commentTotalElements.value - 1)
+      
+      // 페이지네이션 상태 업데이트 (백그라운드에서)
+      setTimeout(async () => {
+        await loadComments(true)
+      }, 100)
+      
+      alert('답글이 삭제되었습니다!')
+    } else {
+      console.error('답글 삭제 실패:', response.status)
+      alert('답글 삭제에 실패했습니다.')
+    }
+  } catch (error) {
+    console.error('답글 삭제 에러:', error)
+    alert('답글 삭제 중 오류가 발생했습니다.')
+  }
 }
 
 // 댓글 삭제
@@ -1476,8 +1573,20 @@ const deleteComment = async (commentId) => {
         }
         alert('댓글이 삭제되었습니다.')
       } else {
-        // 답글이 없으면 댓글 목록 새로고침
-        await loadComments()
+        // 답글이 없으면 즉시 UI에서 제거
+        const commentIndex = comments.value.findIndex(comment => comment.id === commentId)
+        if (commentIndex !== -1) {
+          comments.value.splice(commentIndex, 1)
+        }
+        
+        // 댓글 수 감소
+        commentTotalElements.value = Math.max(0, commentTotalElements.value - 1)
+        
+        // 페이지네이션 상태 업데이트 (백그라운드에서)
+        setTimeout(async () => {
+          await loadComments(true)
+        }, 100)
+        
         alert('댓글이 삭제되었습니다!')
       }
     } else {
@@ -1620,33 +1729,32 @@ const getTotalCommentCount = () => {
   return totalCount
 }
 
-// 댓글 목록 로드
-const loadComments = async () => {
+// 댓글 목록 로드 (페이지네이션)
+const loadComments = async (reset = false) => {
+  if (isLoadingComments.value) return
   
   try {
-    // 댓글 목록은 권한 없이도 조회 가능하도록 헤더를 선택적으로 설정
-    const headers = {}
-    const token = localStorage.getItem('accessToken')
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`
+    isLoadingComments.value = true
+    
+    // 초기 로드이거나 리셋인 경우 페이지를 0으로 설정
+    if (reset) {
+      commentPage.value = 0
+      comments.value = []
     }
     
-            const response = await recipeService.getComments(recipe.id)
-
+    const response = await recipeService.getComments(recipe.id, commentPage.value, commentPageSize.value)
 
     if (response.success) {
-      const data = response
+      const data = response.data
       
-      if (data.data) {
-        // 댓글을 오래된 순으로 정렬 (createdAt 기준 오름차순)
-        const sortedComments = data.data.sort((a, b) => {
-          const dateA = new Date(a.createdAt)
-          const dateB = new Date(b.createdAt)
-          return dateA - dateB // 오래된 순 (오름차순)
-        })
+      if (data && data.content) {
+        // 페이지네이션 정보 업데이트
+        commentTotalPages.value = data.totalPages
+        commentTotalElements.value = data.totalElements
+        hasMoreComments.value = commentPage.value < commentTotalPages.value - 1
         
-        comments.value = sortedComments.map(comment => {
-          
+        // 백엔드에서 이미 createdAt DESC로 정렬되어 있으므로 별도 정렬 불필요
+        const newComments = data.content.map(comment => {
           return {
             id: comment.commentId || comment.id,
             nickname: comment.authorNickName || comment.nickname,
@@ -1660,7 +1768,7 @@ const loadComments = async () => {
             email: comment.authorEmail, // 작성자 이메일
             joinDate: comment.authorCreatedAt, // 작성자 가입일
             replies: comment.childComments ? comment.childComments
-              .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)) // 대댓글도 오래된 순으로 정렬
+              .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)) // 대댓글은 오래된 순으로 정렬
               .map(reply => {
                 return {
                   id: reply.commentId || reply.id,
@@ -1678,8 +1786,19 @@ const loadComments = async () => {
               }) : []
           }
         })
+        
+        if (reset) {
+          comments.value = newComments
+        } else {
+          comments.value = [...comments.value, ...newComments]
+        }
+        
+        // 다음 페이지로 이동
+        commentPage.value++
       } else {
-        comments.value = []
+        if (reset) {
+          comments.value = []
+        }
       }
     } else {
       const errorData = await response.text()
@@ -1687,6 +1806,8 @@ const loadComments = async () => {
     }
   } catch (error) {
     console.error('댓글 목록 로드 에러:', error)
+  } finally {
+    isLoadingComments.value = false
   }
 }
 
@@ -1908,8 +2029,8 @@ const loadRecipe = async () => {
         
 
         
-        // 댓글 목록 로드
-        await loadComments()
+        // 댓글 목록 로드 (첫 페이지부터)
+        await loadComments(true)
       } else {
         throw new Error('레시피 데이터가 없습니다.')
       }
