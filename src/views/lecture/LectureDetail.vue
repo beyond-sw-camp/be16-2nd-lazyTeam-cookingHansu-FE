@@ -1076,10 +1076,8 @@ export default {
   watch: {
     // previewVideoUrl이 변경될 때 썸네일 재생성 (일시정지 상태가 아닐 때만)
     previewVideoUrl(newUrl, oldUrl) {
-      console.log('🔍 previewVideoUrl watch 실행 - newUrl:', newUrl, 'oldUrl:', oldUrl, 'isVideoPaused:', this.isVideoPaused)
       // 같은 URL이거나 일시정지 상태면 썸네일 재생성하지 않음
       if (newUrl && newUrl !== oldUrl && !this.isVideoPaused) {
-        console.log('🔍 썸네일 재생성 시작')
         this.$nextTick(() => {
           if (this.$refs.hiddenVideo) {
             // 비디오가 이미 로드된 경우 썸네일 생성
@@ -1089,7 +1087,6 @@ export default {
           }
         });
       } else {
-        console.log('🔍 썸네일 재생성 건너뜀')
       }
     }
   },
@@ -1106,20 +1103,15 @@ export default {
       const video = this.$refs.previewVideo
       if (!video) return
 
-      console.log('🔍 togglePlayPause 호출됨 - 현재 paused 상태:', video.paused)
-      console.log('🔍 현재 isVideoPaused 상태:', this.isVideoPaused)
 
       if (video.paused) {
-        console.log('▶️ 비디오 재생 시작')
         video.play()
         this.isVideoPaused = false
       } else {
-        console.log('⏸️ 비디오 일시정지')
         video.pause()
         this.isVideoPaused = true
       }
       
-      console.log('🔍 변경 후 isVideoPaused 상태:', this.isVideoPaused)
     },
 
     // 비디오 전체화면 토글
@@ -1637,9 +1629,7 @@ export default {
          }
          
          // 다음 강의가 시청 가능한지 확인 (일시정지 상태가 아닐 때만 자동 재생)
-         console.log('🔍 onVideoEnded - 다음 강의 자동 재생 시도, isVideoPaused:', this.isVideoPaused)
          if (nextLesson && nextLesson.videoUrl && (this.canWatchLecture || nextLesson.isPreview) && !this.isVideoPaused) {
-           console.log('🔍 다음 강의 자동 재생 시작')
            this.playVideo(nextLesson, nextIndex);
            return;
          }
@@ -1653,7 +1643,6 @@ export default {
 
      // 비디오 시간 업데이트 시 처리
      onVideoTimeUpdate() {
-       console.log('🔍 onVideoTimeUpdate 호출됨 - isVideoPaused:', this.isVideoPaused)
        if (this.$refs.previewVideo && !this.isVideoPaused) {
          const currentTime = this.$refs.previewVideo.currentTime;
          this.setupProgressSaveTimer(currentTime);
@@ -1721,7 +1710,6 @@ export default {
      
      // 비디오 재생 메서드 (메인 영역에서 재생)
      playVideo(lesson, lessonIndex = -1) {
-       console.log('🔍 playVideo 호출됨 - lesson:', lesson.title, 'isVideoPaused:', this.isVideoPaused)
        if (lesson.videoUrl) {
          // URL이 유효한지 확인
          try {
@@ -1740,9 +1728,7 @@ export default {
            
            // 비디오 요소가 렌더링된 후 재생
            this.$nextTick(() => {
-             console.log('🔍 $nextTick 실행')
              if (this.$refs.previewVideo) {
-               console.log('🔍 load() 호출됨')
                this.$refs.previewVideo.load();
                // 일시정지 상태가 아닐 때만 재생
                if (!this.isVideoPaused) {
@@ -1752,7 +1738,6 @@ export default {
                    this.isVideoPlaying = false;
                  });
                } else {
-                 console.log('🔍 일시정지 상태이므로 자동 재생하지 않음')
                }
              }
            });
