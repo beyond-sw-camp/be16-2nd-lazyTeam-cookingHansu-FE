@@ -91,7 +91,7 @@ export default {
   data() {
     return {
       currentPage: 1,
-      lecturesPerPage: 6,
+      lecturesPerPage: 8,
       lectures: [],
       totalPages: 0,
       totalElements: 0,
@@ -217,8 +217,15 @@ export default {
 
 .lectures-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  max-width: 1040px;
+  margin: 0 auto 24px auto;
+  min-height: 480px;
+}
+
+.lectures-grid:empty {
+  min-height: 0;
 }
 
 .lecture-card {
@@ -226,22 +233,29 @@ export default {
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  border: 1px solid #f0f0f0;
-  transition: transform 0.2s, box-shadow 0.2s;
+  border: 1.5px solid #f3f3f3;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  height: 220px;
+  max-height: 220px;
 }
 
 .lecture-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
 .lecture-image {
   position: relative;
   width: 100%;
-  height: 180px;
+  height: 90px;
   overflow: hidden;
   cursor: pointer;
   transition: transform 0.2s;
+  border-radius: 12px 12px 0 0;
+  flex-shrink: 0;
 }
 
 .lecture-image:hover {
@@ -255,7 +269,11 @@ export default {
 }
 
 .lecture-content {
-  padding: 20px;
+  padding: 10px 12px 8px 12px;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .lecture-header {
@@ -345,6 +363,7 @@ export default {
   margin: 0 0 12px 0;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
