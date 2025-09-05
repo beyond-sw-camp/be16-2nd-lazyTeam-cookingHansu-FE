@@ -101,7 +101,9 @@
             <v-icon v-else size="20" color="grey">mdi-account</v-icon>
           </v-avatar>
           
-          <span class="welcome-text">{{ userNickname }}님 환영합니다!</span>
+          <span class="welcome-text">
+            <span class="nickname">{{ userNickname }}</span>님 환영합니다!
+          </span>
 
           <v-btn
             variant="outlined"
@@ -740,7 +742,8 @@ const closeLoginModal = () => {
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  min-width: 300px;
+  min-width: 250px;
+  max-width: 400px;
 }
 
 .login-btn {
@@ -775,8 +778,17 @@ const closeLoginModal = () => {
   color: var(--color-text);
   font-size: 14px;
   white-space: nowrap;
-  flex-shrink: 0;
+  flex-shrink: 1;
   margin-right: 12px;
+  max-width: 200px;
+}
+
+.nickname {
+  display: inline-block;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: top;
 }
 
 .logout-btn {
@@ -803,41 +815,55 @@ const closeLoginModal = () => {
   }
   
   .nav-menu {
-    gap: 24px;
+    gap: 20px;
     margin: 0 16px;
+    max-width: 400px;
   }
   
   .welcome-text {
-    font-size: 13px;
+    display: none;
+  }
+  
+  .header-right {
+    min-width: 120px;
+    max-width: 200px;
   }
 }
 
-@media (max-width: 1150px) {
+@media (max-width: 1300px) {
   .welcome-text {
     display: none;
   }
   
   .user-section {
-    min-width: 250px;
+    gap: 6px;
   }
   
   .header-right {
-    min-width: 250px;
+    min-width: 120px;
+    max-width: 200px;
+  }
+  
+  .nav-menu {
+    gap: 16px;
+    max-width: 400px;
   }
 }
 
 @media (max-width: 1024px) {
   .nav-menu {
-    gap: 20px;
+    gap: 12px;
     margin: 0 12px;
+    max-width: 300px;
   }
   
   .user-section {
-    min-width: 220px;
+    gap: 4px;
   }
   
   .header-right {
-    min-width: 220px;
+    min-width: 100px;
+    max-width: 180px;
   }
 }
 
