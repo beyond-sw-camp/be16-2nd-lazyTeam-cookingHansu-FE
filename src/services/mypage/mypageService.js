@@ -68,6 +68,17 @@ export const mypageService = {
     return response.data;
   },
 
+  // 강의 삭제
+  async deleteLecture(lectureId) {
+    try {
+      const response = await apiClient.delete(`/lecture/delete/${lectureId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to delete lecture:', error);
+      throw error;
+    }
+  },
+
   // 회원 탈퇴
   async deleteUser() {
     try {

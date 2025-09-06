@@ -14,6 +14,14 @@
             <span class="category-badge" :class="categoryClass(lecture.category)">{{ getCategoryName(lecture.category) }}</span>
             <div class="header-right">
               <span class="status-badge" :class="statusClass(lecture.status)">{{ getStatusName(lecture.status) }}</span>
+              <button 
+                v-if="lecture.status === 'REJECTED'" 
+                class="delete-btn" 
+                @click.stop="openDeleteModal(lecture)"
+                title="강의 삭제"
+              >
+                삭제하기
+              </button>
             </div>
           </div>
           <h3 class="lecture-title" @click="goToLectureDetail(lecture)">{{ lecture.title }}</h3>
@@ -73,6 +81,18 @@
       @confirm="closeUnapprovedModal"
     />
 
+    <!-- 강의 삭제 확인 모달 -->
+    <CommonModal
+      v-model="showDeleteModal"
+      type="warning"
+      title="강의 삭제"
+      :message="`'${deleteTargetLecture?.title}' 강의를 정말 삭제하시겠습니까? 삭제된 강의는 복구할 수 없습니다.`"
+      confirm-text="삭제"
+      cancel-text="취소"
+      @confirm="confirmDeleteLecture"
+      @cancel="closeDeleteModal"
+    />
+
 
   </div>
 </template>
@@ -99,7 +119,9 @@ export default {
       showUnapprovedModal: false,
       modalType: 'warning',
       modalTitle: '',
-      modalMessage: ''
+      modalMessage: '',
+      showDeleteModal: false,
+      deleteTargetLecture: null
     };
   },
   computed: {
@@ -194,6 +216,38 @@ export default {
     },
     closeUnapprovedModal() {
       this.showUnapprovedModal = false;
+    },
+    openDeleteModal(lecture) {
+      this.deleteTargetLecture = lecture;
+      this.showDeleteModal = true;
+    },
+    closeDeleteModal() {
+      this.showDeleteModal = false;
+      this.deleteTargetLecture = null;
+    },
+    async confirmDeleteLecture() {
+      if (!this.deleteTargetLecture) return;
+      
+      try {
+        this.loading = true;
+        await mypageService.deleteLecture(this.deleteTargetLecture.id);
+        
+        // 삭제 성공 후 목록 새로고침
+        await this.fetchSoldLectures();
+        
+        // 모달 닫기
+        this.closeDeleteModal();
+        
+        // 성공 메시지 표시 (선택사항)
+        console.log('강의가 성공적으로 삭제되었습니다.');
+        
+      } catch (error) {
+        console.error('강의 삭제 실패:', error);
+        // 에러 처리 (선택사항)
+        alert('강의 삭제에 실패했습니다. 다시 시도해주세요.');
+      } finally {
+        this.loading = false;
+      }
     }
   }
 };
@@ -287,6 +341,27 @@ export default {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.delete-btn {
+  background: #ff3b3b;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 16px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.delete-btn:hover {
+  background: #e63434;
+  transform: translateY(-1px);
 }
 
 
