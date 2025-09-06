@@ -4,73 +4,78 @@
       <h2>북마크</h2>
     </div>
 
-    <div v-if="loading" class="loading-state">
+    <!-- 초기 로딩 상태 (데이터가 없을 때만) -->
+    <div v-if="loading && bookmarks.length === 0" class="loading-state">
       <div class="loading-spinner"></div>
       <p>북마크를 불러오는 중...</p>
     </div>
 
+    <!-- 북마크 그리드 -->
     <div v-else-if="bookmarks.length > 0" class="bookmarks-grid">
-      <div v-for="item in pagedBookmarks" :key="item.id" class="bookmark-card" @click="goToPostDetail(item)">
-        <div class="bookmark-image">
-          <img 
-            :src="item.thumbnailUrl || defaultThumbnail" 
-            :alt="item.title"
-            @error="handleImageError"
-          />
-        </div>
-        <div class="bookmark-content">
-          <div class="bookmark-header">
-            <span class="category-badge" :class="categoryClass(item.category)">{{ getCategoryName(item.category) }}</span>
-            <span class="bookmark-date">{{ formatDate(item.createdAt) }}</span>
+        <div v-for="item in pagedBookmarks" :key="item.id" class="bookmark-card" @click="goToPostDetail(item)">
+          <div class="bookmark-image">
+            <img 
+              :src="item.thumbnailUrl" 
+              :alt="item.title"
+              @error="handleImageError"
+            />
           </div>
-          <h3 class="bookmark-title">
-            <span v-if="isPrivatePost(item)" class="lock-icon">🔒</span>
-            {{ item.title }}
-          </h3>
-          <p class="bookmark-description">{{ item.description }}</p>
-          <div class="bookmark-meta">
-            <div class="author-stats">
-              <span v-if="item.writerNickname" class="author">{{ item.writerNickname }}</span>
-              <div class="bookmark-stats">
-                <span class="stat-item">
-                  <span class="stat-icon">❤️</span>
-                  {{ item.likeCount }}
-                </span>
-                <span class="stat-item">
-                  <span class="stat-icon">🔖</span>
-                  {{ item.bookmarkCount }}
-                </span>
-                <span class="stat-item">
-                  <span class="stat-icon">💬</span>
-                  {{ item.commentCount || 0 }}
-                </span>
+          <div class="bookmark-content">
+            <div class="bookmark-header">
+              <span class="category-badge" :class="categoryClass(item.category)">{{ getCategoryName(item.category) }}</span>
+              <span class="bookmark-date">{{ formatDate(item.createdAt) }}</span>
+            </div>
+            <h3 class="bookmark-title">
+              <span v-if="isPrivatePost(item)" class="lock-icon">🔒</span>
+              {{ item.title }}
+            </h3>
+            <p class="bookmark-description">{{ item.description }}</p>
+            <div class="bookmark-meta">
+              <div class="author-stats">
+                <span v-if="item.writerNickname" class="author">{{ item.writerNickname }}</span>
+                <div class="bookmark-stats">
+                  <span class="stat-item">
+                    <span class="stat-icon">❤️</span>
+                    {{ item.likeCount }}
+                  </span>
+                  <span class="stat-item">
+                    <span class="stat-icon">🔖</span>
+                    {{ item.bookmarkCount }}
+                  </span>
+                  <span class="stat-item">
+                    <span class="stat-icon">💬</span>
+                    {{ item.commentCount || 0 }}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <Pagination 
-      v-if="bookmarks.length > 0"
-      :current-page="currentPage"
-      :total-pages="totalPages"
-      @page-change="changePage"
-    />
-
-    <div v-if="!loading && bookmarks.length === 0" class="empty-state">
+    <!-- 빈 상태 -->
+    <div v-else-if="!loading && bookmarks.length === 0" class="empty-state">
       <div class="empty-icon">🔖</div>
       <h3>아직 북마크한 항목이 없어요</h3>
       <p>관심 있는 레시피를 북마크해보세요!</p>
       <button class="browse-content-btn" @click="goToRecipes">콘텐츠 둘러보기</button>
     </div>
 
+    <!-- 에러 상태 -->
     <div v-if="error" class="error-state">
       <div class="error-icon">❌</div>
       <h3>북마크를 불러오는데 실패했습니다</h3>
       <p>{{ error }}</p>
       <button @click="fetchBookmarks" class="retry-btn">다시 시도</button>
     </div>
+
+    <!-- 페이지네이션 -->
+    <Pagination 
+      v-if="bookmarks.length > 0"
+      :current-page="currentPage"
+      :total-pages="totalPages"
+      @page-change="changePage"
+    />
   </div>
 </template>
 
@@ -97,7 +102,10 @@ export default {
   },
   computed: {
     pagedBookmarks() {
-      return this.bookmarks;
+      return this.bookmarks.map(item => ({
+        ...item,
+        thumbnailUrl: this.getThumbnailUrl(item)
+      }));
     }
   },
   async mounted() {
@@ -131,7 +139,7 @@ export default {
       }
     },
     async changePage(page) {
-      if (page >= 1 && page <= this.totalPages) {
+      if (page >= 1 && page <= this.totalPages && page !== this.currentPage) {
         this.currentPage = page;
         await this.fetchBookmarks();
       }
@@ -164,6 +172,9 @@ export default {
     isPrivatePost(item) {
       // isOpen 필드로 비밀글 체크
       return item.isOpen === false;
+    },
+    getThumbnailUrl(item) {
+      return item.thumbnailUrl || item.imageUrl || item.image || item.thumbUrl || defaultThumbnail;
     },
     handleImageError(event) {
       // 이미지 로드 실패 시 기본 이미지로 대체

@@ -395,9 +395,21 @@ export const useNotificationStore = defineStore('notification', {
     },
 
     // SSE Polyfill 연결 중지
-    stopNotificationSubscription() {
+    async stopNotificationSubscription() {
       if (this.eventSource) {
-        this.eventSource.close();
+        // 서버에 연결 해제 요청
+        try {
+          await notificationService.disconnectNotifications();
+        } catch (error) {
+          console.warn('서버 연결 해제 요청 실패:', error);
+        }
+        
+        // 완전한 연결 정리
+        if (typeof this.eventSource.prepareForUnload === 'function') {
+          this.eventSource.prepareForUnload();
+        } else {
+          this.eventSource.close();
+        }
         this.eventSource = null;
         this.isConnected = false;
         this.isSubscribing = false;
@@ -442,7 +454,7 @@ export const useNotificationStore = defineStore('notification', {
     },
 
     // 스토어 초기화
-    $reset() {
+    async $reset() {
       this.notifications = [];
       this.loading = false;
       this.error = null;
@@ -450,7 +462,7 @@ export const useNotificationStore = defineStore('notification', {
       this.nextCursor = null;
       this.hasMore = true;
       this.pageSize = 10;
-      this.stopNotificationSubscription();
+      await this.stopNotificationSubscription();
       this.isSubscribing = false;
       this.lastConnectionAttempt = 0;
     },
@@ -572,7 +584,7 @@ export const useNotificationStore = defineStore('notification', {
     },
 
     // 로그아웃 시 완전한 정리
-    clearAllData() {
+    async clearAllData() {
       this.notifications = [];
       this.loading = false;
       this.error = null;
@@ -580,7 +592,7 @@ export const useNotificationStore = defineStore('notification', {
       this.nextCursor = null;
       this.hasMore = true;
       this.pageSize = 10;
-      this.stopNotificationSubscription();
+      await this.stopNotificationSubscription();
       this.isSubscribing = false;
       this.lastConnectionAttempt = 0;
       this.showApprovalModal = false;

@@ -71,7 +71,7 @@ export const useNoticeStore = defineStore('notice', {
 
     // 공지사항 목록 조회 (캐싱 적용)
     async fetchNotices(page = 0, size = 10, forceRefresh = false) {
-      // 캐시가 유효하고 강제 새로고침이 아닌 경우 캐시된 데이터 반환
+      // 캐시가 유효하고 강제 새로고침이 아닌 경우 캐시된 데이터 반환 (첫 페이지만)
       if (!forceRefresh && this.isCacheValid && page === 0) {
         return this.notices;
       }
@@ -92,12 +92,17 @@ export const useNoticeStore = defineStore('notice', {
             totalElements: responseData.totalElements || 0,
             pageSize: size,
           };
+          
+          // 페이지 변경 시 캐시 무효화 (다른 페이지로 이동한 경우)
+          if (page !== 0) {
+            this.lastUpdate = null;
+          } else {
+            // 첫 페이지인 경우에만 캐시 시간 업데이트
+            this.lastUpdate = Date.now();
+          }
         } else {
           throw new Error(response.message || '공지사항 목록을 불러오는데 실패했습니다.');
         }
-        
-        // 캐시 시간 업데이트
-        this.lastUpdate = Date.now();
       } catch (error) {
         this._handleError(error, '공지사항 목록을 불러오는데 실패했습니다.');
       } finally {

@@ -4,72 +4,77 @@
       <h2>강의 좋아요</h2>
     </div>
 
-    <div v-if="loading" class="loading-state">
+    <!-- 초기 로딩 상태 (데이터가 없을 때만) -->
+    <div v-if="loading && likes.length === 0" class="loading-state">
       <div class="loading-spinner"></div>
       <p>강의 좋아요 목록을 불러오는 중...</p>
     </div>
 
+    <!-- 강의 그리드 -->
     <div v-else-if="likes.length > 0" class="lectures-grid">
-      <div v-for="lecture in pagedLikes" :key="lecture.id" class="lecture-card">
-        <div class="lecture-image" @click="goToLectureDetail(lecture.id)">
-          <img :src="lecture.thumbUrl || defaultThumbnail" :alt="lecture.title" @error="handleImageError" />
-        </div>
-        <div class="lecture-content">
-          <div class="lecture-header">
-            <span class="category-badge" :class="categoryClass(lecture.category)">{{ getCategoryName(lecture.category) }}</span>
-            <span class="like-date">{{ formatDate(lecture.createdAt || lecture.date) }}</span>
+        <div v-for="lecture in pagedLikes" :key="lecture.id" class="lecture-card">
+          <div class="lecture-image" @click="goToLectureDetail(lecture.id)">
+            <img :src="lecture.thumbUrl || defaultThumbnail" :alt="lecture.title" @error="handleImageError" />
           </div>
-          <h3 class="lecture-title" @click="goToLectureDetail(lecture.id)">{{ lecture.title }}</h3>
-          <p class="lecture-description">{{ lecture.description }}</p>
-          <div class="lecture-rating-stats">
-            <div class="lecture-rating">
-              <span class="stars">
-                <span v-for="i in 5" :key="i" class="star" :class="{ filled: i <= Math.round(lecture.reviewAvg || 0) }">★</span>
-              </span>
-              <span class="rating-count">({{ lecture.reviewCount || 0 }})</span>
+          <div class="lecture-content">
+            <div class="lecture-header">
+              <span class="category-badge" :class="categoryClass(lecture.category)">{{ getCategoryName(lecture.category) }}</span>
+              <span class="like-date">{{ formatDate(lecture.createdAt || lecture.date) }}</span>
             </div>
-            <div class="lecture-stats">
-              <span class="stat-item">
-                <span class="stat-icon">❤️</span>
-                {{ lecture.likeCount || 0 }}
-              </span>
-              <span class="stat-item">
-                <span class="stat-icon">💬</span>
-                {{ lecture.qnaCount || 0 }}
-              </span>
-              <span class="stat-item">
-                <span class="stat-icon">👥</span>
-                {{ lecture.purchaseCount || 0 }}
-              </span>
+            <h3 class="lecture-title" @click="goToLectureDetail(lecture.id)">{{ lecture.title }}</h3>
+            <p class="lecture-description">{{ lecture.description }}</p>
+            <div class="lecture-rating-stats">
+              <div class="lecture-rating">
+                <span class="stars">
+                  <span v-for="i in 5" :key="i" class="star" :class="{ filled: i <= Math.round(lecture.reviewAvg || 0) }">★</span>
+                </span>
+                <span class="rating-count">({{ lecture.reviewCount || 0 }})</span>
+              </div>
+              <div class="lecture-stats">
+                <span class="stat-item">
+                  <span class="stat-icon">❤️</span>
+                  {{ lecture.likeCount || 0 }}
+                </span>
+                <span class="stat-item">
+                  <span class="stat-icon">💬</span>
+                  {{ lecture.qnaCount || 0 }}
+                </span>
+                <span class="stat-item">
+                  <span class="stat-icon">👥</span>
+                  {{ lecture.purchaseCount || 0 }}
+                </span>
+              </div>
             </div>
-          </div>
-          <div class="lecture-bottom">
-            <div class="lecture-date">{{ lecture.date || '' }}</div>
+            <div class="lecture-bottom">
+              <div class="lecture-date">{{ lecture.date || '' }}</div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <Pagination 
-      v-if="likes.length > 0"
-      :current-page="currentPage"
-      :total-pages="totalPages"
-      @page-change="changePage"
-    />
-
-    <div v-if="!loading && likes.length === 0" class="empty-state">
+    <!-- 빈 상태 -->
+    <div v-else-if="!loading && likes.length === 0" class="empty-state">
       <div class="empty-icon">📚</div>
       <h3>아직 좋아요한 강의가 없어요</h3>
       <p>마음에 드는 강의에 좋아요를 눌러보세요!</p>
       <button class="browse-content-btn" @click="goToLectures">강의 둘러보기</button>
     </div>
 
+    <!-- 에러 상태 -->
     <div v-if="error" class="error-state">
       <div class="error-icon">❌</div>
       <h3>강의 좋아요 목록을 불러오는데 실패했습니다</h3>
       <p>{{ error }}</p>
       <button @click="fetchLikes" class="retry-btn">다시 시도</button>
     </div>
+
+    <!-- 페이지네이션 -->
+    <Pagination 
+      v-if="likes.length > 0"
+      :current-page="currentPage"
+      :total-pages="totalPages"
+      @page-change="changePage"
+    />
   </div>
 </template>
 
@@ -130,7 +135,7 @@ export default {
       }
     },
     async changePage(page) {
-      if (page >= 1 && page <= this.totalPages) {
+      if (page >= 1 && page <= this.totalPages && page !== this.currentPage) {
         this.currentPage = page;
         await this.fetchLikes();
       }

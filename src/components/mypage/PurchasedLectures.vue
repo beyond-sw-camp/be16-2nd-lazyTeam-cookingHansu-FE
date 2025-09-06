@@ -4,7 +4,14 @@
       <h2>구매한 강의</h2>
     </div>
 
-    <div v-if="ready" class="lectures-grid">
+    <!-- 초기 로딩 상태 (데이터가 없을 때만) -->
+    <div v-if="loading && lectures.length === 0" class="loading-state">
+      <div class="loading-spinner"></div>
+      <p>강의를 불러오는 중...</p>
+    </div>
+
+    <!-- 강의 그리드 -->
+    <div v-else-if="ready && lectures.length > 0" class="lectures-grid">
       <div v-for="lecture in pagedLectures" :key="lecture.id" class="lecture-card">
         <div class="lecture-image" @click="goToLectureDetail(lecture.id)">
           <img :src="lecture.thumbUrl" :alt="lecture.title" />
@@ -49,19 +56,21 @@
       </div>
     </div>
 
-    <Pagination 
-      v-if="ready"
-      :current-page="currentPage"
-      :total-pages="totalPages"
-      @page-change="changePage"
-    />
-
-    <div v-if="ready && lectures.length === 0" class="empty-state">
+    <!-- 빈 상태 -->
+    <div v-else-if="ready && lectures.length === 0" class="empty-state">
       <div class="empty-icon">📚</div>
       <h3>아직 구매한 강의가 없어요</h3>
       <p>관심 있는 강의를 구매하고 학습을 시작해보세요!</p>
       <button class="browse-lectures-btn" @click="goToLectures">강의 둘러보기</button>
     </div>
+
+    <!-- 페이지네이션 -->
+    <Pagination 
+      v-if="ready && lectures.length > 0"
+      :current-page="currentPage"
+      :total-pages="totalPages"
+      @page-change="changePage"
+    />
   </div>
 </template>
 
@@ -117,7 +126,7 @@ export default {
       }
     },
     async changePage(page) {
-      if (page >= 1 && page <= this.totalPages) {
+      if (page >= 1 && page <= this.totalPages && page !== this.currentPage) {
         this.currentPage = page;
         await this.fetchPurchasedLectures();
       }
