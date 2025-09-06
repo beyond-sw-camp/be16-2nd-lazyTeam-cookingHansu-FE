@@ -421,11 +421,13 @@ const addVideo = () => {
     sequence: formData.videos.length + 1
   });
   videoFiles.value.push(null);
+  console.log('비디오 추가됨:', formData.videos);
 };
 
 const removeVideo = (index) => {
   formData.videos.splice(index, 1);
   videoFiles.value.splice(index, 1);
+  console.log('비디오 삭제됨:', formData.videos);
 };
 
 const handleVideoFileChange = (event, index) => {
@@ -463,10 +465,12 @@ const addIngredient = () => {
     ingredientsName: '',
     amount: ''
   });
+  console.log('재료 추가됨:', formData.ingredients);
 };
 
 const removeIngredient = (index) => {
   formData.ingredients.splice(index, 1);
+  console.log('재료 삭제됨:', formData.ingredients);
 };
 
 // 조리 순서 관련 메서드
@@ -523,6 +527,13 @@ const submitForm = async () => {
   if (!checkTotalFileSize()) {
     return;
   }
+
+  // 등록 전 폼 데이터 콘솔 출력
+  console.log('=== 강의 등록 전 폼 데이터 ===');
+  console.log('formData:', formData);
+  console.log('thumbnailFile:', thumbnailFile.value);
+  console.log('videoFiles:', videoFiles.value);
+  console.log('==============================');
 
   isSubmitting.value = true;
 
@@ -586,18 +597,47 @@ const submitForm = async () => {
   } catch (error) {
     console.error('강의 등록 오류:', error);
     
+    // 서버 응답 에러 상세 정보 로깅
+    if (error.response) {
+      console.log('서버 응답 상태:', error.response.status);
+      console.log('서버 응답 데이터:', error.response.data);
+      console.log('서버 응답 헤더:', error.response.headers);
+    }
+    
     // 스토어에서 에러 메시지 가져오기
     const errorMessage = lectureStore.getError || error.message || '강의 등록 중 오류가 발생했습니다.';
     
+    // 서버 응답에서 에러 메시지 추출
+    let serverErrorMessage = '';
+    if (error.response && error.response.data) {
+      if (typeof error.response.data === 'string') {
+        serverErrorMessage = error.response.data;
+      } else if (error.response.data.message) {
+        serverErrorMessage = error.response.data.message;
+      } else if (error.response.data.error) {
+        serverErrorMessage = error.response.data.error;
+      }
+    }
+    
+    // 400 에러 처리 (재료목록/조리순서 필수)
+    if (error.response && error.response.status === 400) {
+      if (serverErrorMessage.includes('재료목록은 필수입니다')) {
+        showModalDialog('error', '재료목록 필수', '최소 1개 이상의 재료를 등록해주세요.', '확인', '', false);
+      } else if (serverErrorMessage.includes('재료순서는 필수입니다')) {
+        showModalDialog('error', '조리순서 필수', '최소 1개 이상의 조리순서를 등록해주세요.', '확인', '', false);
+      } else {
+        showModalDialog('error', '입력 오류', serverErrorMessage || '입력한 정보를 다시 확인해주세요.', '확인', '', false);
+      }
+    }
     // 413 에러 처리 (파일 크기 초과)
-    if (errorMessage.includes('파일 크기가 너무 큽니다') || errorMessage.includes('413')) {
+    else if (errorMessage.includes('파일 크기가 너무 큽니다') || errorMessage.includes('413')) {
       showModalDialog('error', '파일 크기 오류', '업로드한 파일의 크기가 서버에서 허용하는 최대 크기를 초과했습니다. 파일 크기를 줄이거나 압축 후 다시 시도해주세요.', '확인', '', false);
     }
     // 415 에러 처리 (파일 타입 불일치)
     else if (errorMessage.includes('415')) {
       showModalDialog('error', '파일 타입 오류', '업로드한 파일의 타입이 서버에서 지원하지 않는 형식입니다. 썸네일은 PNG, JPG, JPEG, BMP, 동영상은 MP4, MOV, AVI 파일만 업로드 가능합니다.', '확인', '', false);
     } else {
-      showModalDialog('error', '등록 실패', errorMessage, '확인', '', false);
+      showModalDialog('error', '등록 실패', serverErrorMessage || errorMessage, '확인', '', false);
     }
   } finally {
     isSubmitting.value = false;
