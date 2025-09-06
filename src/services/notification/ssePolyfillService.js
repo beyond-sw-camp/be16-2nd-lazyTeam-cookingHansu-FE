@@ -17,15 +17,29 @@ class EventSourcePolyfill {
     
     this.xhr = null;
     this.isConnected = false;
+    this.isClosed = false; // 연결 종료 상태 추적
     
     // 중복 처리 방지를 위한 처리된 데이터 추적
     this.processedData = new Set();
     this.processedDataMaxSize = 100; // 최대 100개까지만 추적하여 메모리 누수 방지
     
+    // 연결 정리를 위한 타이머들
+    this.heartbeatTimer = null;
+    this.reconnectTimer = null;
+    this.cleanupTimer = null;
+    
+    // 페이지 언로드 시 정리를 위한 플래그
+    this.isPageUnloading = false;
+    
     this.connect();
   }
 
   connect() {
+    // 이미 연결되어 있거나 종료된 경우 중복 연결 방지
+    if (this.isConnected || this.isClosed || this.isPageUnloading) {
+      return;
+    }
+    
     try {
       this.xhr = new XMLHttpRequest();
       this.xhr.open('GET', this.url, true);
@@ -72,6 +86,9 @@ class EventSourcePolyfill {
         
         // 응답 데이터 처리
         this._processResponse();
+        
+        // 하트비트 타이머 시작 (30초마다 연결 상태 확인)
+        this.startHeartbeat();
       } else if (this.xhr.status === 401) {
         console.error('🔍 SSE 인증 실패 (401):', {
           status: this.xhr.status,
@@ -183,12 +200,7 @@ class EventSourcePolyfill {
 
 
   close() {
-    if (this.xhr) {
-      this.xhr.abort();
-      this.xhr = null;
-    }
-    this.readyState = 2; // CLOSED
-    this.isConnected = false;
+    this.cleanup();
     
     // 중복 처리 방지 데이터 정리
     this.processedData.clear();
@@ -215,7 +227,121 @@ class EventSourcePolyfill {
 
   removeEventListener(event, callback) {
   }
+
+  // 하트비트 시작 (연결 상태 주기적 확인)
+  startHeartbeat() {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+    }
+    
+    this.heartbeatTimer = setInterval(() => {
+      if (this.isClosed || this.isPageUnloading) {
+        this.stopHeartbeat();
+        return;
+      }
+      
+      // 연결 상태 확인
+      if (this.xhr && this.xhr.readyState === 4) {
+        // 연결이 끊어진 경우 재연결 시도
+        if (!this.isConnected) {
+          console.log('🔍 SSE 연결 끊어짐 감지, 재연결 시도...');
+          this.reconnect();
+        }
+      }
+    }, 30000); // 30초마다 확인
+  }
+
+  // 하트비트 중지
+  stopHeartbeat() {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
+  }
+
+  // 재연결 시도
+  reconnect() {
+    if (this.isClosed || this.isPageUnloading || this.reconnectTimer) {
+      return;
+    }
+    
+    this.reconnectTimer = setTimeout(() => {
+      if (!this.isClosed && !this.isPageUnloading) {
+        console.log('🔍 SSE 재연결 시도...');
+        this.cleanup();
+        this.connect();
+      }
+      this.reconnectTimer = null;
+    }, 5000); // 5초 후 재연결 시도
+  }
+
+  // 완전한 연결 정리
+  cleanup() {
+    this.isConnected = false;
+    this.isClosed = true;
+    
+    // 모든 타이머 정리
+    this.stopHeartbeat();
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    if (this.cleanupTimer) {
+      clearTimeout(this.cleanupTimer);
+      this.cleanupTimer = null;
+    }
+    
+    // XHR 연결 정리
+    if (this.xhr) {
+      this.xhr.abort();
+      this.xhr = null;
+    }
+    
+    // 메모리 정리
+    if (this.processedData) {
+      this.processedData.clear();
+    }
+  }
+
+  // 페이지 언로드 시 정리
+  prepareForUnload() {
+    this.isPageUnloading = true;
+    this.cleanup();
+  }
 }
+
+// 전역 SSE 연결 관리
+const activeConnections = new Set();
+
+// 페이지 언로드 시 모든 SSE 연결 정리
+window.addEventListener('beforeunload', () => {
+  activeConnections.forEach(connection => {
+    if (connection && typeof connection.prepareForUnload === 'function') {
+      connection.prepareForUnload();
+    }
+  });
+  activeConnections.clear();
+});
+
+// 페이지 숨김 시 연결 정리 (모바일에서 앱 전환 시)
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    // 페이지가 숨겨진 경우 연결 상태만 확인
+    activeConnections.forEach(connection => {
+      if (connection && connection.isConnected) {
+        // 연결은 유지하되 하트비트만 일시 중지
+        connection.stopHeartbeat();
+      }
+    });
+  } else {
+    // 페이지가 다시 보이는 경우 하트비트 재시작
+    activeConnections.forEach(connection => {
+      if (connection && connection.isConnected) {
+        connection.startHeartbeat();
+      }
+    });
+  }
+});
 
 /**
  * SSE Polyfill 서비스
@@ -229,7 +355,9 @@ export const ssePolyfillService = {
    */
   createEventSource(url, options = {}) {
     // JWT 토큰을 헤더에 포함해야 하므로 항상 Polyfill 사용
-    return new EventSourcePolyfill(url, options);
+    const connection = new EventSourcePolyfill(url, options);
+    activeConnections.add(connection);
+    return connection;
   },
 
   /**
@@ -255,7 +383,16 @@ export const ssePolyfillService = {
       }
     };
     
-    return this.createEventSource(url, options);
+    const connection = this.createEventSource(url, options);
+    
+    // 연결 종료 시 전역 관리에서 제거
+    const originalClose = connection.close.bind(connection);
+    connection.close = () => {
+      activeConnections.delete(connection);
+      originalClose();
+    };
+    
+    return connection;
   }
 };
 

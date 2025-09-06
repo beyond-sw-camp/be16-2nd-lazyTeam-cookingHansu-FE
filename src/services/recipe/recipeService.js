@@ -112,10 +112,15 @@ export const recipeService = {
     }
   },
 
-  // 댓글 목록 조회
-  async getComments(postId) {
+  // 댓글 목록 조회 (페이지네이션)
+  async getComments(postId, page = 0, size = 10) {
     try {
-      const response = await apiClient.get(`/post/comment/list/${postId}`);
+      const response = await apiClient.get(`/post/comment/list/${postId}`, {
+        params: {
+          page: page,
+          size: size
+        }
+      });
       return response.data;
     } catch (error) {
       console.error('댓글 목록 조회 실패:', error);

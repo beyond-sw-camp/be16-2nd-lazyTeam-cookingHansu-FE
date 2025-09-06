@@ -53,11 +53,14 @@ export default {
   },
   methods: {
     changePage(page) {
+      // 페이지 범위 체크
+      if (page < 1 || page > this.totalPages) {
+        return;
+      }
       
-      // 페이지 범위 체크 및 현재 페이지와 다른지 확인
-      if (page >= 1 && page <= this.totalPages && page !== this.currentPage) {
+      // 현재 페이지와 다른지 확인
+      if (page !== this.currentPage) {
         this.$emit('page-change', page);
-      } else {
       }
     }
   }

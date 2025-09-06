@@ -4,7 +4,8 @@
       <h2>내 게시글</h2>
     </div>
 
-    <div v-if="loading" class="loading-state">
+    <!-- 초기 로딩 상태 (데이터가 없을 때만) -->
+    <div v-if="loading && posts.length === 0" class="loading-state">
       <div class="loading-spinner"></div>
       <p>게시글을 불러오는 중...</p>
       <button class="write-post-btn" @click="goToRecipePostWrite">
@@ -13,6 +14,7 @@
       </button>
     </div>
 
+    <!-- 게시글 그리드 -->
     <div v-else-if="posts.length > 0" class="posts-grid">
       <div v-for="post in pagedPosts" :key="post.id" class="post-card" @click="goToPostDetail(post)">
         <div class="post-image">
@@ -52,22 +54,14 @@
       </div>
     </div>
 
-    <!-- 삭제 확인 모달 제거 -->
-
-    <!-- 페이지네이션 -->
-    <Pagination 
-      v-if="posts.length > 0"
-      :current-page="currentPage"
-      :total-pages="totalPages"
-      @page-change="changePage"
-    />
-
-    <div v-if="!loading && posts.length === 0" class="empty-state">
+    <!-- 빈 상태 -->
+    <div v-else-if="!loading && posts.length === 0" class="empty-state">
       <div class="empty-icon">📝</div>
       <h3>아직 작성한 게시글이 없어요</h3>
       <p>첫 번째 게시글을 작성해보세요!</p>
     </div>
 
+    <!-- 에러 상태 -->
     <div v-if="error" class="error-state">
       <div class="error-icon">❌</div>
       <h3>게시글을 불러오는데 실패했습니다</h3>
@@ -78,6 +72,14 @@
         게시글 작성하기
       </button>
     </div>
+
+    <!-- 페이지네이션 -->
+    <Pagination 
+      v-if="posts.length > 0"
+      :current-page="currentPage"
+      :total-pages="totalPages"
+      @page-change="changePage"
+    />
   </div>
 </template>
 
@@ -120,7 +122,7 @@ const fetchPosts = async () => {
 };
 
 const changePage = async (page) => {
-  if (page >= 1 && page <= totalPages.value) {
+  if (page >= 1 && page <= totalPages.value && page !== currentPage.value) {
     currentPage.value = page;
     await fetchPosts();
   }

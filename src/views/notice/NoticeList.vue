@@ -107,15 +107,17 @@ const isAdmin = computed(() => {
 const paginationInfo = computed(() => noticeStore.getPaginationInfo);
 
 // 현재 페이지 (store와 동기화)
-const currentPage = computed({
-  get: () => noticeStore.getPaginationInfo.currentPage + 1,
-  set: (value) => {
-    noticeStore.fetchNotices(value - 1, 10);
-  }
+const currentPage = computed(() => {
+  return noticeStore.getPaginationInfo.currentPage + 1;
 });
 
 // 페이지 변경 핸들러
 const handlePageChange = (page) => {
+  // 현재 페이지와 같은 페이지를 클릭한 경우 무시
+  if (page === currentPage.value) {
+    return;
+  }
+  
   noticeStore.fetchNotices(page - 1, 10);
   // 페이지 변경 시 바로 상단으로 스크롤
   window.scrollTo(0, 0);
