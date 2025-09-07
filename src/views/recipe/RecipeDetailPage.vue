@@ -171,7 +171,7 @@
                   </div>
                   <div class="stat-item">
                     <v-icon color="grey" size="20">mdi-comment</v-icon>
-                    <span class="stat-count">{{ recipe.commentCount || getTotalCommentCount() }}</span>
+                    <span class="stat-count">{{ recipe.commentCount || 0 }}</span>
                   </div>
                 </div>
                 
@@ -250,7 +250,7 @@
         </div>
         
         <div class="comments-section">
-          <h3 class="comments-title">댓글 ({{ recipe.commentCount || getTotalCommentCount() }})</h3>
+          <h3 class="comments-title">댓글 ({{ recipe.commentCount || 0 }})</h3>
           
           <!-- 댓글 작성 폼 (로그인한 사용자만 보임) -->
           <div v-if="isLoggedIn" class="comment-form">
@@ -1334,8 +1334,8 @@ const submitComment = async () => {
       // 새 댓글을 맨 앞에 추가 (최신순이므로)
       comments.value.unshift(newCommentData)
       
-      // 댓글 수 증가
-      commentTotalElements.value++
+      // 백엔드 commentCount 증가
+      recipe.commentCount = (recipe.commentCount || 0) + 1
       
       // 페이지네이션 상태 업데이트 (백그라운드에서)
       setTimeout(async () => {
@@ -1445,8 +1445,8 @@ const submitReply = async (comment) => {
         parentComment.replies.push(newReplyData)
       }
       
-      // 댓글 수 증가
-      commentTotalElements.value++
+      // 백엔드 commentCount 증가
+      recipe.commentCount = (recipe.commentCount || 0) + 1
       
       // 페이지네이션 상태 업데이트 (백그라운드에서)
       setTimeout(async () => {
@@ -1499,8 +1499,8 @@ const deleteReply = async (commentId, replyId) => {
         }
       }
       
-      // 댓글 수 감소
-      commentTotalElements.value = Math.max(0, commentTotalElements.value - 1)
+      // 백엔드 commentCount 감소
+      recipe.commentCount = Math.max(0, (recipe.commentCount || 0) - 1)
       
       // 페이지네이션 상태 업데이트 (백그라운드에서)
       setTimeout(async () => {
@@ -1579,8 +1579,8 @@ const deleteComment = async (commentId) => {
           comments.value.splice(commentIndex, 1)
         }
         
-        // 댓글 수 감소
-        commentTotalElements.value = Math.max(0, commentTotalElements.value - 1)
+        // 백엔드 commentCount 감소
+        recipe.commentCount = Math.max(0, (recipe.commentCount || 0) - 1)
         
         // 페이지네이션 상태 업데이트 (백그라운드에서)
         setTimeout(async () => {
@@ -1706,28 +1706,7 @@ const saveEditComment = async (comment) => {
   }
 }
 
-// 전체 댓글수 계산 (댓글 + 대댓글)
-const getTotalCommentCount = () => {
-  let totalCount = 0
-  
-  comments.value.forEach(comment => {
-    // 삭제되지 않은 댓글만 카운트
-    if (!comment.isDeleted) {
-      totalCount++
-    }
-    
-    // 삭제되지 않은 답글은 댓글 삭제 여부와 관계없이 카운트
-    if (comment.replies && Array.isArray(comment.replies)) {
-      comment.replies.forEach(reply => {
-        if (!reply.isDeleted) {
-          totalCount++
-        }
-      })
-    }
-  })
-  
-  return totalCount
-}
+// getTotalCommentCount 함수 제거됨 - 백엔드 DTO의 commentCount 사용
 
 // 댓글 목록 로드 (페이지네이션)
 const loadComments = async (reset = false) => {
