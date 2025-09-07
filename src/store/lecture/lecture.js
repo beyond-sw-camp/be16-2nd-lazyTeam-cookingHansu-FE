@@ -190,7 +190,10 @@ export const useLectureStore = defineStore('lecture', {
         const response = await lectureService.deleteLecture(lectureId);
         // 삭제 후 목록에서 제거
         this.lectures = this.lectures.filter(lecture => lecture.lectureId !== lectureId);
-        this.lectureList.content = this.lectureList.content.filter(lecture => lecture.lectureId !== lectureId);
+        // lectureList.content가 존재하는지 확인 후 필터링
+        if (this.lectureList.content && Array.isArray(this.lectureList.content)) {
+          this.lectureList.content = this.lectureList.content.filter(lecture => lecture.lectureId !== lectureId);
+        }
         return response;
       } catch (error) {
         this.error = error.message || '강의 삭제에 실패했습니다.';
