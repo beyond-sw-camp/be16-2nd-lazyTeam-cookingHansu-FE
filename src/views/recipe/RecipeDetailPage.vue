@@ -1733,38 +1733,47 @@ const loadComments = async (reset = false) => {
         hasMoreComments.value = commentPage.value < commentTotalPages.value - 1
         
         // 백엔드에서 이미 createdAt DESC로 정렬되어 있으므로 별도 정렬 불필요
-        const newComments = data.content.map(comment => {
-          return {
-            id: comment.commentId || comment.id,
-            nickname: comment.authorNickName || comment.nickname,
-            authorUUID: comment.authorId, // 작성자 UUID (authorId가 UUID 타입)
-            content: comment.content,
-            createdAt: comment.createdAt,
-            isDeleted: comment.isDeleted || false, // 삭제 상태 추가
-            showMoreMenu: false, // 더보기 메뉴 상태
-            picture: comment.authorProfileImage || comment.picture, // 백엔드 DTO의 authorProfileImage 필드 사용
-            authorProfileImage: comment.authorProfileImage, // 백엔드 DTO의 authorProfileImage 필드 사용
-            email: comment.authorEmail, // 작성자 이메일
-            joinDate: comment.authorCreatedAt, // 작성자 가입일
-            replies: comment.childComments ? comment.childComments
-              .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)) // 대댓글은 오래된 순으로 정렬
-              .map(reply => {
-                return {
-                  id: reply.commentId || reply.id,
-                  nickname: reply.authorNickName || reply.nickname,
-                  authorUUID: reply.authorId, // 답글 작성자 UUID (authorId가 UUID 타입)
-                  content: reply.content,
-                  createdAt: reply.createdAt,
-                  isDeleted: reply.isDeleted || false, // 답글 삭제 상태도 추가
-                  picture: reply.authorProfileImage || reply.picture, // 백엔드 DTO의 authorProfileImage 필드 사용
-                  authorProfileImage: reply.authorProfileImage, // 백엔드 DTO의 authorProfileImage 필드 사용
-                  showMoreMenu: false, // 더보기 메뉴 상태
-                  email: reply.authorEmail, // 답글 작성자 이메일
-                  joinDate: reply.authorCreatedAt // 답글 작성자 가입일
-                }
-              }) : []
-          }
-        })
+        const newComments = data.content
+          .filter(comment => {
+            // isDeleted가 true이고 childComments가 없는 댓글만 제외
+            // isDeleted가 true이지만 childComments가 있는 댓글은 유지 (삭제된 댓글입니다 표시)
+            if (comment.isDeleted && (!comment.childComments || comment.childComments.length === 0)) {
+              return false
+            }
+            return true
+          })
+          .map(comment => {
+            return {
+              id: comment.commentId || comment.id,
+              nickname: comment.authorNickName || comment.nickname,
+              authorUUID: comment.authorId, // 작성자 UUID (authorId가 UUID 타입)
+              content: comment.content,
+              createdAt: comment.createdAt,
+              isDeleted: comment.isDeleted || false, // 삭제 상태 추가
+              showMoreMenu: false, // 더보기 메뉴 상태
+              picture: comment.authorProfileImage || comment.picture, // 백엔드 DTO의 authorProfileImage 필드 사용
+              authorProfileImage: comment.authorProfileImage, // 백엔드 DTO의 authorProfileImage 필드 사용
+              email: comment.authorEmail, // 작성자 이메일
+              joinDate: comment.authorCreatedAt, // 작성자 가입일
+              replies: comment.childComments ? comment.childComments
+                .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)) // 대댓글은 오래된 순으로 정렬
+                .map(reply => {
+                  return {
+                    id: reply.commentId || reply.id,
+                    nickname: reply.authorNickName || reply.nickname,
+                    authorUUID: reply.authorId, // 답글 작성자 UUID (authorId가 UUID 타입)
+                    content: reply.content,
+                    createdAt: reply.createdAt,
+                    isDeleted: reply.isDeleted || false, // 답글 삭제 상태도 추가
+                    picture: reply.authorProfileImage || reply.picture, // 백엔드 DTO의 authorProfileImage 필드 사용
+                    authorProfileImage: reply.authorProfileImage, // 백엔드 DTO의 authorProfileImage 필드 사용
+                    showMoreMenu: false, // 더보기 메뉴 상태
+                    email: reply.authorEmail, // 답글 작성자 이메일
+                    joinDate: reply.authorCreatedAt // 답글 작성자 가입일
+                  }
+                }) : []
+            }
+          })
         
         if (reset) {
           comments.value = newComments
