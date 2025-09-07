@@ -4,7 +4,7 @@
       <h2>판매한 강의</h2>
     </div>
 
-    <!-- 초기 로딩 상태 (데이터가 없을 때만) -->
+    <!-- 초기 로딩 상태 -->
     <div v-if="loading && lectures.length === 0" class="loading-state">
       <div class="loading-spinner"></div>
       <p>강의를 불러오는 중...</p>
@@ -12,52 +12,74 @@
 
     <!-- 강의 그리드 -->
     <div v-else-if="lectures.length > 0" class="lectures-grid">
-        <div v-for="lecture in pagedLectures" :key="lecture.id" class="lecture-card">
-          <div class="lecture-image" @click="goToLectureDetail(lecture)">
-            <img :src="lecture.thumbUrl" :alt="lecture.title" />
+      <div v-for="lecture in pagedLectures" :key="lecture.id" class="lecture-card">
+        <div class="lecture-image" @click="goToLectureDetail(lecture)">
+          <img :src="lecture.thumbUrl" :alt="lecture.title" />
+        </div>
+        <div class="lecture-content">
+          <div class="lecture-header">
+            <span class="category-badge" :class="categoryClass(lecture.category)">
+              {{ getCategoryName(lecture.category) }}
+            </span>
+            <div class="header-right">
+              <span class="status-badge" :class="statusClass(lecture.status)">
+                {{ getStatusName(lecture.status) }}
+              </span>
+              <button 
+                v-if="lecture.status === 'REJECTED'" 
+                class="delete-btn" 
+                @click.stop="openDeleteModal(lecture)"
+                title="강의 삭제"
+              >
+                삭제하기
+              </button>
+            </div>
           </div>
-          <div class="lecture-content">
-            <div class="lecture-header">
-              <span class="category-badge" :class="categoryClass(lecture.category)">{{ getCategoryName(lecture.category) }}</span>
-              <div class="header-right">
-                <span class="status-badge" :class="statusClass(lecture.status)">{{ getStatusName(lecture.status) }}</span>
-              </div>
+
+          <h3 class="lecture-title" @click="goToLectureDetail(lecture)">
+            {{ lecture.title }}
+          </h3>
+          <p class="lecture-description">{{ lecture.description }}</p>
+
+          <div class="lecture-price">
+            <span class="price">{{ lecture.price.toLocaleString() }}원</span>
+          </div>
+
+          <div class="lecture-rating-stats">
+            <div class="lecture-rating">
+              <span class="stars">
+                <span
+                  v-for="i in 5"
+                  :key="i"
+                  class="star"
+                  :class="{ filled: i <= Math.round(lecture.reviewAvg || 0) }"
+                >
+                  ★
+                </span>
+              </span>
+              <span class="rating-count">({{ lecture.reviewCount }})</span>
             </div>
-            <h3 class="lecture-title" @click="goToLectureDetail(lecture)">{{ lecture.title }}</h3>
-            <p class="lecture-description">{{ lecture.description }}</p>
-            <div class="lecture-price">
-              <span class="price">{{ lecture.price.toLocaleString() }}원</span>
-            </div>
-            <div class="lecture-rating-stats">
-              <div class="lecture-rating">
-                <span class="stars">
-                  <span v-for="i in 5" :key="i" class="star" :class="{ filled: i <= Math.round(lecture.reviewAvg || 0) }">
-                    ★
-                  </span>
-                </span>
-                <span class="rating-count">({{ lecture.reviewCount }})</span>
-              </div>
-              <div class="lecture-stats">
-                <span class="stat-item">
-                  <span class="stat-icon">❤️</span>
-                  {{ lecture.likeCount }}
-                </span>
-                <span class="stat-item">
-                  <span class="stat-icon">💬</span>
-                  {{ lecture.qnaCount }}
-                </span>
-                <span class="stat-item">
-                  <span class="stat-icon">👥</span>
-                  {{ lecture.purchaseCount }}
-                </span>
-              </div>
+            <div class="lecture-stats">
+              <span class="stat-item">
+                <span class="stat-icon">❤️</span>
+                {{ lecture.likeCount }}
+              </span>
+              <span class="stat-item">
+                <span class="stat-icon">💬</span>
+                {{ lecture.qnaCount }}
+              </span>
+              <span class="stat-item">
+                <span class="stat-icon">👥</span>
+                {{ lecture.purchaseCount }}
+              </span>
             </div>
           </div>
         </div>
       </div>
+    </div>
 
     <!-- 빈 상태 -->
-    <div v-else-if="!loading && lectures.length === 0" class="empty-state">
+    <div v-else class="empty-state">
       <div class="empty-icon">📚</div>
       <h3>아직 판매한 강의가 없어요</h3>
       <p>첫 번째 강의를 만들어서 판매를 시작해보세요!</p>
@@ -78,12 +100,25 @@
       :type="modalType"
       :title="modalTitle"
       :message="modalMessage"
-      :confirm-text="'확인'"
+      confirm-text="확인"
       :show-cancel-button="false"
       @confirm="closeUnapprovedModal"
     />
+
+    <!-- 강의 삭제 확인 모달 -->
+    <CommonModal
+      v-model="showDeleteModal"
+      type="warning"
+      title="강의 삭제"
+      :message="`'${deleteTargetLecture?.title}' 강의를 정말 삭제하시겠습니까? 삭제된 강의는 복구할 수 없습니다.`"
+      confirm-text="삭제"
+      cancel-text="취소"
+      @confirm="confirmDeleteLecture"
+      @cancel="closeDeleteModal"
+    />
   </div>
 </template>
+
 
 <script>
 import Pagination from '../common/Pagination.vue';
@@ -107,7 +142,9 @@ export default {
       showUnapprovedModal: false,
       modalType: 'warning',
       modalTitle: '',
-      modalMessage: ''
+      modalMessage: '',
+      showDeleteModal: false,
+      deleteTargetLecture: null
     };
   },
   computed: {
@@ -202,6 +239,38 @@ export default {
     },
     closeUnapprovedModal() {
       this.showUnapprovedModal = false;
+    },
+    openDeleteModal(lecture) {
+      this.deleteTargetLecture = lecture;
+      this.showDeleteModal = true;
+    },
+    closeDeleteModal() {
+      this.showDeleteModal = false;
+      this.deleteTargetLecture = null;
+    },
+    async confirmDeleteLecture() {
+      if (!this.deleteTargetLecture) return;
+      
+      try {
+        this.loading = true;
+        await mypageService.deleteLecture(this.deleteTargetLecture.id);
+        
+        // 삭제 성공 후 목록 새로고침
+        await this.fetchSoldLectures();
+        
+        // 모달 닫기
+        this.closeDeleteModal();
+        
+        // 성공 메시지 표시 (선택사항)
+        console.log('강의가 성공적으로 삭제되었습니다.');
+        
+      } catch (error) {
+        console.error('강의 삭제 실패:', error);
+        // 에러 처리 (선택사항)
+        alert('강의 삭제에 실패했습니다. 다시 시도해주세요.');
+      } finally {
+        this.loading = false;
+      }
     }
   }
 };
@@ -295,6 +364,27 @@ export default {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.delete-btn {
+  background: #ff3b3b;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 16px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.delete-btn:hover {
+  background: #e63434;
+  transform: translateY(-1px);
 }
 
 
