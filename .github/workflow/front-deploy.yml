@@ -4,7 +4,7 @@ name: deploy to s3, cloutFront
 on:
   push:
     branches:
-      - develop
+      - develop 
 
 jobs:
    build-and-deploy:
