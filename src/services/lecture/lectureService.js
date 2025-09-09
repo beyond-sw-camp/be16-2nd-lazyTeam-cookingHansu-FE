@@ -133,6 +133,7 @@ export const lectureService = {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
+        timeout: 300000, // 5분으로 설정 (대용량 파일 업로드 고려)
       });
       return response.data;
     } catch (error) {
@@ -159,6 +160,7 @@ export const lectureService = {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
+        timeout: 300000, // 5분으로 설정 (대용량 파일 업로드 고려)
       });
       return response.data;
     } catch (error) {

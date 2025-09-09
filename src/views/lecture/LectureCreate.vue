@@ -538,6 +538,8 @@ const submitForm = async () => {
   isSubmitting.value = true;
 
   try {
+    // 업로드 시작 알림
+    showModalDialog('info', '업로드 시작', '파일 업로드를 시작합니다. 대용량 파일의 경우 시간이 오래 걸릴 수 있습니다.', '확인', '', false);
     const formDataToSend = new FormData();
 
     // ✅ JSON은 반드시 Blob(application/json)으로
@@ -628,6 +630,10 @@ const submitForm = async () => {
       } else {
         showModalDialog('error', '입력 오류', serverErrorMessage || '입력한 정보를 다시 확인해주세요.', '확인', '', false);
       }
+    }
+    // 타임아웃 에러 처리
+    else if (error.code === 'ECONNABORTED' || errorMessage.includes('timeout')) {
+      showModalDialog('error', '업로드 시간 초과', '파일 업로드 시간이 초과되었습니다. 네트워크 상태를 확인하고 파일 크기를 줄인 후 다시 시도해주세요.', '확인', '', false);
     }
     // 413 에러 처리 (파일 크기 초과)
     else if (errorMessage.includes('파일 크기가 너무 큽니다') || errorMessage.includes('413')) {
