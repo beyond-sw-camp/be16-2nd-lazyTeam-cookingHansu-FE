@@ -1929,8 +1929,8 @@ const isMobile = () => {
 
 const copyToClipboard = async () => {
   try {
-    const shareText = `${getShareText()}\n\n${getShareUrl()}`
-    await navigator.clipboard.writeText(shareText)
+    const shareUrl = getShareUrl()
+    await navigator.clipboard.writeText(shareUrl)
     alert('링크가 클립보드에 복사되었습니다!')
   } catch (error) {
     console.error('클립보드 복사 실패:', error)

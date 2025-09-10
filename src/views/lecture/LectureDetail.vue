@@ -1846,8 +1846,8 @@ export default {
 
     async copyToClipboard() {
       try {
-        const shareText = `${this.getShareText()}\n\n${this.getShareUrl()}`;
-        await navigator.clipboard.writeText(shareText);
+        const shareUrl = this.getShareUrl();
+        await navigator.clipboard.writeText(shareUrl);
         this.showNotification({
           title: '링크 복사',
           icon: '🔗',

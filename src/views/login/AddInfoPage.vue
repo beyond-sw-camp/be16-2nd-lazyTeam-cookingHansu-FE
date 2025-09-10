@@ -16,7 +16,6 @@
           :has-error="errors.nickname"
           :error-message="getNicknameErrorMessage()"
           :maxlength="10"
-          :disabled="nicknameVerified"
           @input="onNicknameInput"
         />
         <v-btn
@@ -272,9 +271,10 @@ function onNicknameInput() {
     errors.value.nickname = false;
   }
   
-  // 닉네임이 변경되면 검증 상태 초기화
+  // 닉네임이 변경되면 검증 상태 초기화 (검증 완료된 상태에서 변경 시)
   if (nicknameVerified.value) {
     nicknameVerified.value = false;
+    console.log('닉네임이 변경되어 중복확인이 필요합니다.');
   }
   nicknameError.value = "";
 }
