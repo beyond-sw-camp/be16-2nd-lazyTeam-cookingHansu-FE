@@ -24,10 +24,10 @@
           </div>
           
           <!-- 모두 읽음 버튼 -->
-          <div v-if="hasUnreadNotifications" class="mark-all-read-section">
+          <div v-if="filteredNotifications.length > 0" class="mark-all-read-section">
             <button 
               class="mark-all-read-btn"
-              @click="handleMarkAllAsRead"
+              @click="handleDeleteAllNotifications"
               :disabled="loading"
             >
               <span class="mark-all-read-icon">✓</span>
@@ -137,9 +137,9 @@ const filteredNotifications = computed(() => {
   )
 })
 
-// 안읽은 알림이 있는지 확인
-const hasUnreadNotifications = computed(() => {
-  return filteredNotifications.value.some(notification => !notification.isRead)
+// 알림이 있는지 확인 (삭제 버튼 표시용)
+const hasNotifications = computed(() => {
+  return filteredNotifications.value.length > 0
 })
 
 // 메서드
@@ -265,12 +265,16 @@ const handleDeleteNotification = async (notificationId) => {
   }
 }
 
-// 모든 알림 읽음 처리
-const handleMarkAllAsRead = async () => {
+// 모든 알림 삭제 처리
+const handleDeleteAllNotifications = async () => {
+  if (!confirm('모든 알림을 삭제하시겠습니까?')) {
+    return
+  }
+  
   try {
-    await notificationStore.markAllAsRead()
+    await notificationStore.deleteAllNotifications()
   } catch (error) {
-    console.error('❌ 모든 알림 읽음 처리 실패:', error)
+    console.error('❌ 모든 알림 삭제 실패:', error)
   }
 }
 
@@ -318,7 +322,7 @@ onMounted(async () => {
 }
 
 .notification-container {
-  max-width: 900px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 40px 20px;
 }
@@ -344,7 +348,8 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 24px;
-  gap: 16px;
+  gap: 20px;
+  flex-wrap: wrap;
 }
 
 .notification-filters {

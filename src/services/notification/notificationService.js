@@ -81,16 +81,17 @@ export const notificationService = {
     }
   },
 
+
   /**
-   * 모든 알림을 읽음으로 표시
+   * 모든 알림 삭제
    * @returns {Promise<void>}
    */
-  async markAllAsRead() {
+  async deleteAllNotifications() {
     try {
-      await apiClient.patch('/api/notifications/read-all')
+      await apiClient.delete('/api/notifications/delete-all')
     } catch (error) {
-      console.error('모든 알림 읽음 처리 실패:', error)
-      throw new Error('알림 상태 업데이트에 실패했습니다.')
+      console.error('모든 알림 삭제 실패:', error)
+      throw new Error('알림 삭제에 실패했습니다.')
     }
   },
 

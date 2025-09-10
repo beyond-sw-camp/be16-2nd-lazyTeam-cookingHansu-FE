@@ -157,20 +157,23 @@ export const useNotificationStore = defineStore('notification', {
       }
     },
 
-    // 모든 알림 읽음 처리
-    async markAllAsRead() {
+
+    // 모든 알림 삭제 (실제로는 삭제하지만 버튼은 "모두 읽음"으로 표시)
+    async deleteAllNotifications() {
       try {
-        await notificationService.markAllAsRead();
+        await notificationService.deleteAllNotifications();
         
-        // 로컬 상태에서 모든 알림을 읽음으로 표시
-        this.notifications.forEach(notification => {
-          notification.isRead = true;
-        });
+        // 로컬 상태에서 모든 알림 제거
+        this.notifications = [];
         
         // 헤더의 읽지 않은 개수를 0으로 설정
         this.unreadCount = 0;
+        
+        // 페이지네이션 상태 초기화
+        this.nextCursor = null;
+        this.hasNext = true;
       } catch (error) {
-        this._handleError(error, '모든 알림 읽음 처리에 실패했습니다.');
+        this._handleError(error, '모든 알림 삭제에 실패했습니다.');
         throw error;
       }
     },
