@@ -488,12 +488,10 @@ watch(
     if (!rid) return;
     if (!didInitialBottomScroll.value && len > 0) {
       await nextTick();
-      // 메시지 로드 완료 후 약간의 지연을 두고 스크롤
-      setTimeout(() => {
-        jumpToBottomInstant();
-        didInitialBottomScroll.value = true;
-        updateStickiness();
-      }, 50);
+      // 메시지 로드 완료 후 즉시 스크롤
+      jumpToBottomInstant();
+      didInitialBottomScroll.value = true;
+      updateStickiness();
     }
   }
 );
@@ -610,13 +608,11 @@ watch(currentRoomId, async (newRoomId, oldRoomId) => {
     didInitialBottomScroll.value = false;
     shouldStickToBottom.value = true;
     
-    // 채팅방 입장 시 즉시 맨 아래로 스크롤
+    // 채팅방 입장 시 즉시 맨 아래로 스크롤 (지연 없이)
     await nextTick();
-    setTimeout(() => {
-      jumpToBottomInstant();
-      didInitialBottomScroll.value = true;
-      updateStickiness();
-    }, 100);
+    jumpToBottomInstant();
+    didInitialBottomScroll.value = true;
+    updateStickiness();
   }
 });
 
