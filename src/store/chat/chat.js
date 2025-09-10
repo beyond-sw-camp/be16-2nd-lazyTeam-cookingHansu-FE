@@ -957,10 +957,7 @@ export const useChatStore = defineStore('chat', {
       // UI 읽음 처리
       this.markRoomAsRead(roomId);
 
-      if (this.messages[roomId] !== undefined) {
-        await this.connectWebSocket(roomId);
-        return;
-      }
+      // 항상 최신 메시지를 서버에서 가져옴 (오프라인 메시지 포함)
       await this.fetchChatHistory(roomId);
     },
 
@@ -1080,25 +1077,7 @@ export const useChatStore = defineStore('chat', {
           minLoadingTime
         ]);
         
-        // 서버에서 최신 메시지 로드 후 기존 메시지와 병합
-        const serverMessages = result.data || [];
-        const existingMessages = this.messages[roomId] || [];
-        
-        // 기존 메시지와 서버 메시지를 병합 (중복 제거)
-        const messageMap = new Map();
-        
-        // 기존 메시지 먼저 추가
-        existingMessages.forEach(msg => {
-          messageMap.set(msg.id, msg);
-        });
-        
-        // 서버 메시지 추가 (기존 메시지 덮어쓰기)
-        serverMessages.forEach(msg => {
-          messageMap.set(msg.id, msg);
-        });
-        
-        // Map을 배열로 변환하여 저장
-        this.messages[roomId] = Array.from(messageMap.values());
+        this.messages[roomId] = result.data || [];
         
         this.sortMessages(roomId);
 
