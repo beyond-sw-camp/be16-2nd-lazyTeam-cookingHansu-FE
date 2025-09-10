@@ -290,6 +290,8 @@ export default {
   line-height: 1.3;
   cursor: pointer;
   transition: color 0.2s;
+  flex-shrink: 0;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

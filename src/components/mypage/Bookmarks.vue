@@ -393,6 +393,8 @@ export default {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
