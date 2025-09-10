@@ -10,30 +10,27 @@
       <!-- 알림 내용 -->
       <div class="notification-content">
         <!-- 알림 필터 및 액션 버튼 -->
-        <div class="notification-header-actions">
-          <div class="notification-filters">
-            <button 
-              v-for="filter in filters" 
-              :key="filter.type"
-              :class="['filter-btn', { active: activeFilter === filter.type }]"
-              @click="setActiveFilter(filter.type)"
-            >
-              <span class="filter-icon">{{ filter.icon }}</span>
-              {{ filter.label }}
-            </button>
-          </div>
+        <div class="notification-filters">
+          <button 
+            v-for="filter in filters" 
+            :key="filter.type"
+            :class="['filter-btn', { active: activeFilter === filter.type }]"
+            @click="setActiveFilter(filter.type)"
+          >
+            <span class="filter-icon">{{ filter.icon }}</span>
+            {{ filter.label }}
+          </button>
           
           <!-- 모두 읽음 버튼 -->
-          <div v-if="filteredNotifications.length > 0" class="mark-all-read-section">
-            <button 
-              class="mark-all-read-btn"
-              @click="handleDeleteAllNotifications"
-              :disabled="loading"
-            >
-              <span class="mark-all-read-icon">✓</span>
-              모두 읽음
-            </button>
-          </div>
+          <button 
+            v-if="filteredNotifications.length > 0"
+            class="mark-all-read-btn"
+            @click="handleDeleteAllNotifications"
+            :disabled="loading"
+          >
+            <span class="mark-all-read-icon">✓</span>
+            모두 읽음
+          </button>
         </div>
 
         <!-- 알림 목록 -->
@@ -322,7 +319,7 @@ onMounted(async () => {
 }
 
 .notification-container {
-  max-width: 900px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 40px 20px;
 }
@@ -343,23 +340,12 @@ onMounted(async () => {
   font-size: 1.1rem;
 }
 
-.notification-header-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 24px;
-  gap: 20px;
-  flex-wrap: wrap;
-}
-
 .notification-filters {
   display: flex;
   gap: 8px;
+  margin-bottom: 24px;
   padding: 0 4px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  flex: 1;
+  flex-wrap: wrap;
 }
 
 .notification-filters::-webkit-scrollbar {
@@ -398,11 +384,6 @@ onMounted(async () => {
   font-size: 1rem;
 }
 
-.mark-all-read-section {
-  display: flex;
-  align-items: center;
-}
-
 .mark-all-read-btn {
   display: flex;
   align-items: center;
@@ -417,6 +398,7 @@ onMounted(async () => {
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .mark-all-read-btn:hover:not(:disabled) {
