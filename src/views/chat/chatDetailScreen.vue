@@ -488,19 +488,26 @@ watch(
     if (!rid) return;
     if (!didInitialBottomScroll.value && len > 0) {
       await nextTick();
-      jumpToBottomInstant();      // ✅ 모션 없이 즉시 바닥
-      didInitialBottomScroll.value = true;
+      // 메시지 로드 완료 후 약간의 지연을 두고 스크롤
+      setTimeout(() => {
+        jumpToBottomInstant();
+        didInitialBottomScroll.value = true;
+        updateStickiness();
+      }, 50);
     }
   }
 );
 
+// 메시지 변경 시 스크롤 (중복 제거)
 watch(
   chatMessages,
   async () => {
     await nextTick();
     if (!didInitialBottomScroll.value) return;
     if (isPrepending.value) return;
-    if (shouldStickToBottom.value) scrollToBottom("auto");
+    if (shouldStickToBottom.value) {
+      scrollToBottom("auto");
+    }
   },
   { deep: true }
 );
@@ -594,36 +601,14 @@ onMounted(() => {
   // ✅ 제거: 컴포넌트 언마운트 시 이벤트 리스너 정리 (읽음 처리 제거)
 });
 
-// 메시지가 새로 도착했을 때 자동 스크롤
-watch(chatMessages, (newMessages, oldMessages) => {
-  if (!oldMessages || newMessages.length === 0) return;
-  if (newMessages.length > oldMessages.length) {
-    nextTick(() => {
-      if (shouldStickToBottom.value) {
-        scrollToBottom("auto");
-      }
-    });
-  }
-}, { deep: true });
+// 중복된 메시지 스크롤 이벤트 제거 (위의 watch에서 처리)
 
-// 채팅방이 변경되거나 초기 로딩 시 스크롤을 맨 아래로 이동
+// 채팅방 변경 시 초기화
 watch(currentRoomId, async (newRoomId, oldRoomId) => {
   if (newRoomId && newRoomId !== oldRoomId) {
-    await nextTick();
-    setTimeout(() => {
-      scrollToBottom("auto");
-      updateStickiness();
-    }, 100);
-  }
-});
-
-// 메시지가 처음 로드되었을 때 스크롤을 맨 아래로 이동
-watch(() => chatMessages.value.length, (newLength, oldLength) => {
-  if (oldLength === 0 && newLength > 0) {
-    nextTick(() => {
-      scrollToBottom("auto");
-      updateStickiness();
-    });
+    // 채팅방 변경 시 초기화
+    didInitialBottomScroll.value = false;
+    shouldStickToBottom.value = true;
   }
 });
 
