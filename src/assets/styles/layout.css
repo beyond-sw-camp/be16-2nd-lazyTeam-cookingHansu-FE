@@ -1,0 +1,29 @@
+:root {
+    --color-primary: #FF6B35;
+    --color-white: #FFFFFF;
+    --color-background: #F8F9FA;
+    --color-text: #495057;
+    --color-success: #28A745;
+  }
+  
+  body {
+    font-family: 'Noto Sans', sans-serif;
+    background-color: var(--color-background);
+    color: var(--color-text);
+  }
+  
+  .v-application {
+    background-color: var(--color-background) !important;
+  }
+  
+  .v-card, .v-navigation-drawer {
+    border-radius: 12px !important;
+  }
+  
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--color-primary);
+  }
