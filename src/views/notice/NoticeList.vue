@@ -159,12 +159,9 @@ onMounted(async () => {
 
 // 라우트 변경 감지하여 공지사항 페이지 진입 시 최신 데이터 가져오기
 watch(() => route.path, async (newPath, oldPath) => {
-  // 공지사항 목록 페이지로 진입할 때
+  // 공지사항 목록 페이지로 진입할 때마다 갱신
   if (newPath === '/notice') {
-    // 상세 페이지에서 돌아온 경우가 아닌 경우에만 갱신
-    if (!oldPath || !oldPath.startsWith('/notice/')) {
-      await noticeStore.fetchNotices(0, 10);
-    }
+    await noticeStore.fetchNotices(0, 10);
   }
 });
 
