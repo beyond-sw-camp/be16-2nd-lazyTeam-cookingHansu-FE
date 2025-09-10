@@ -171,7 +171,7 @@ export const useNotificationStore = defineStore('notification', {
         
         // 페이지네이션 상태 초기화
         this.nextCursor = null;
-        this.hasNext = false;
+        this.hasMore = false;
       } catch (error) {
         this._handleError(error, '모든 알림 삭제에 실패했습니다.');
         throw error;
