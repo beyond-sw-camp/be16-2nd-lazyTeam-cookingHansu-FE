@@ -60,7 +60,7 @@
       @prev="onPrev" 
       @next="onNext" 
       next-text="다음"
-      :next-disabled="!isNextEnabled"
+      :disabled="!isNextEnabled"
     />
 
     <!-- 처음으로 돌아가기 확인 모달 -->
