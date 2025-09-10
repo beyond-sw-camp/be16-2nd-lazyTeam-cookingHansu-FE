@@ -78,7 +78,6 @@
                    preload="metadata"
                    muted
                    playsinline
-                   crossOrigin="anonymous"
                    style="position:absolute; left:-9999px; width:1px; height:1px;"
                    @loadedmetadata="captureFirstFrame"
                    @error="onVideoError"
