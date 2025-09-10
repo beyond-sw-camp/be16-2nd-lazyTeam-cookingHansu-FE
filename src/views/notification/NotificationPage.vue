@@ -208,7 +208,20 @@ const handleNotificationClick = async (notification) => {
       router.push('/mypage?tab=lectures')
       break
     case 'APPROVAL':
-      // 승인 알림은 읽음 처리만 (모달은 자동으로 표시됨)
+      // 강의 승인 알림인지 확인
+      if (notification.content && notification.content.includes('강의')) {
+        // 강의 승인 알림의 경우 해당 강의로 이동
+        if (notification.targetId) {
+          router.push(`/lectures/${notification.targetId}`)
+        } else if (notification.relatedId) {
+          router.push(`/lectures/${notification.relatedId}`)
+        } else {
+          router.push('/lectures')
+        }
+      } else {
+        // 일반 승인 알림은 읽음 처리만 (모달은 자동으로 표시됨)
+        break
+      }
       break
     case 'NOTICE':
       if (notification.relatedId) {

@@ -37,17 +37,17 @@
                                                  <div v-if="!isVideoPlaying" class="video-thumbnail-container">
                   <!-- 영상 썸네일 표시 -->
                   <img
-                    v-if="lecture.image && lecture.image !== '/smu_mascort1.jpg'"
-                    :src="lecture.image"
-                    alt="강의 썸네일"
+                    v-if="videoThumb"
+                    :src="videoThumb"
+                    alt="강의 영상 썸네일"
                     class="preview-thumbnail"
                     decoding="async"
                     loading="lazy"
                   />
                   <img
-                    v-else-if="videoThumb"
-                    :src="videoThumb"
-                    alt="강의 영상 썸네일"
+                    v-else-if="lecture.image && lecture.image !== '/smu_mascort1.jpg'"
+                    :src="lecture.image"
+                    alt="강의 썸네일"
                     class="preview-thumbnail"
                     decoding="async"
                     loading="lazy"

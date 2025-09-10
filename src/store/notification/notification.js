@@ -212,7 +212,6 @@ export const useNotificationStore = defineStore('notification', {
       if (this._isUserApprovalNotification(notification)) {
         this._showApprovalModal(notification);
       }
-      // 강의 승인 알림은 일반 알림으로만 처리 (모달 표시 안함)
       
       // 헤더의 읽지 않은 알림 개수 즉시 업데이트
       this.unreadCount += 1;
