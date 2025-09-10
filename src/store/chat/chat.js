@@ -1080,10 +1080,25 @@ export const useChatStore = defineStore('chat', {
           minLoadingTime
         ]);
         
-        // 기존 메시지가 있으면 유지하고, 없으면 새로 로드
-        if (!this.messages[roomId] || this.messages[roomId].length === 0) {
-          this.messages[roomId] = result.data || [];
-        }
+        // 서버에서 최신 메시지 로드 후 기존 메시지와 병합
+        const serverMessages = result.data || [];
+        const existingMessages = this.messages[roomId] || [];
+        
+        // 기존 메시지와 서버 메시지를 병합 (중복 제거)
+        const messageMap = new Map();
+        
+        // 기존 메시지 먼저 추가
+        existingMessages.forEach(msg => {
+          messageMap.set(msg.id, msg);
+        });
+        
+        // 서버 메시지 추가 (기존 메시지 덮어쓰기)
+        serverMessages.forEach(msg => {
+          messageMap.set(msg.id, msg);
+        });
+        
+        // Map을 배열로 변환하여 저장
+        this.messages[roomId] = Array.from(messageMap.values());
         
         this.sortMessages(roomId);
 
