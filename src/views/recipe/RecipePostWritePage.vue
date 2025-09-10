@@ -124,7 +124,7 @@
                       <v-text-field 
                         v-model="post.cookTime" 
                         label="조리시간" 
-                        placeholder="30분" 
+                        placeholder="30" 
                         variant="outlined"
                         type="number" 
                         min="1"
