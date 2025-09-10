@@ -116,7 +116,7 @@ import LoginRequiredModal from '@/components/common/LoginRequiredModal.vue';
 import { useAuthStore } from '@/store/auth/auth';
 import { useRecipeStore } from '@/store/recipe/recipe';
 
-const defaultThumbnail = '/src/assets/images/smu_mascort1.jpg';
+const defaultThumbnail = '/smu_mascort1.jpg';
 
 // 스토어 사용
 const authStore = useAuthStore();

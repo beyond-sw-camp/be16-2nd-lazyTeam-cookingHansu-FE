@@ -826,7 +826,7 @@ const authStore = useAuthStore()
 const { isConnected: notificationConnected } = useNotifications()
 
 // 기본 썸네일 이미지
-const defaultThumbnail = '/src/assets/images/smu_mascort1.jpg'
+const defaultThumbnail = '/smu_mascort1.jpg'
 
 const loading = ref(true)
 const error = ref(null)

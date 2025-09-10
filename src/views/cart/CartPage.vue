@@ -196,14 +196,14 @@ export default {
   // 썸네일 URL 처리 (없거나 깨진 경우 기본 이미지 반환)
   getThumbnailUrl(thumbnailUrl) {
     if (!thumbnailUrl || thumbnailUrl === 'undefined' || thumbnailUrl === 'null') {
-      return '/src/assets/images/smu_mascort1.jpg'
+      return '/smu_mascort1.jpg'
     }
     return thumbnailUrl
   },
 
   // 이미지 로드 에러 처리
   handleImageError(event) {
-    event.target.src = '/src/assets/images/smu_mascort1.jpg'
+    event.target.src = '/smu_mascort1.jpg'
   },
 
   // 가격 포맷 (예: 20000 → 20,000)

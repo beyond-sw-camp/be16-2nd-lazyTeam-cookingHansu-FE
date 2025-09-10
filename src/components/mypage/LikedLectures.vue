@@ -82,7 +82,7 @@
 import Pagination from '../common/Pagination.vue';
 import { apiGet } from '@/utils/api';
 
-const defaultThumbnail = '/src/assets/images/smu_mascort1.jpg';
+const defaultThumbnail = '/smu_mascort1.jpg';
 
 export default {
   name: 'LikedLectures',

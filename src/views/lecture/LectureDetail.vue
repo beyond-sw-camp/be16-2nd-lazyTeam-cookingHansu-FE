@@ -37,7 +37,15 @@
                                                  <div v-if="!isVideoPlaying" class="video-thumbnail-container">
                   <!-- 영상 썸네일 표시 -->
                   <img
-                    v-if="videoThumb"
+                    v-if="lecture.image && lecture.image !== '/smu_mascort1.jpg'"
+                    :src="lecture.image"
+                    alt="강의 썸네일"
+                    class="preview-thumbnail"
+                    decoding="async"
+                    loading="lazy"
+                  />
+                  <img
+                    v-else-if="videoThumb"
                     :src="videoThumb"
                     alt="강의 영상 썸네일"
                     class="preview-thumbnail"
@@ -46,7 +54,7 @@
                   />
                   <img
                     v-else
-                    :src="lecture.image || '/src/assets/images/smu_mascort1.jpg'"
+                    :src="'/smu_mascort1.jpg'"
                     alt="기본 썸네일"
                     class="preview-thumbnail"
                     decoding="async"
@@ -1251,7 +1259,7 @@ export default {
               ratingCount: lectureData.reviewCount,
               students: lectureData.purchaseCount || 0, // 구매한 수강생 수
               // 장바구니용 필드들
-              image: lectureData.thumbUrl || '/src/assets/images/smu_mascort1.jpg', // 썸네일 URL
+              image: lectureData.thumbUrl || '/smu_mascort1.jpg', // 썸네일 URL
               teacher: lectureData.name, // 강사명
               // 강사 프로필 이미지 URL 추가
               submittedByProfile: lectureData.submittedByProfile,

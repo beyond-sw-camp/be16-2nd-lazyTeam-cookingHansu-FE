@@ -16,7 +16,7 @@ export const recipeService = {
         ...response.data,
         content: (response.data.content || response.data.data?.content || []).map(post => ({
           id: post.id,
-          image: post.thumbnailUrl || '/src/assets/images/smu_mascort1.jpg',
+          image: post.thumbnailUrl || '/smu_mascort1.jpg',
           category: post.category,
           title: post.title,
           authorType: post.role || post.user?.role || 'GENERAL',

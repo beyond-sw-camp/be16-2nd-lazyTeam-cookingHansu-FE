@@ -61,7 +61,7 @@
     <!-- 강의 카드 리스트 -->
     <div v-else-if="pagedLectures.length > 0" class="lecture-grid">
       <div v-for="lecture in pagedLectures" :key="lecture.id" class="lecture-card" @click="handleCardClick(lecture)">
-        <img :src="lecture.thumbUrl || '/src/assets/images/smu_mascort1.jpg'" class="lecture-img" />
+        <img :src="lecture.thumbUrl || '/smu_mascort1.jpg'" class="lecture-img" />
         <div class="card-content">
           <div class="category-row">
             <span class="category-badge" :class="categoryClass(lecture.category)">{{ getCategoryName(lecture.category) }}</span>

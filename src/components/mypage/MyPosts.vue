@@ -89,7 +89,7 @@ import { useRouter } from 'vue-router';
 import Pagination from '../common/Pagination.vue';
 import { useMypageStore } from '@/store/mypage/mypage';
 
-const defaultThumbnail = '/src/assets/images/smu_mascort1.jpg';
+const defaultThumbnail = '/smu_mascort1.jpg';
 
 // Store & Router
 const mypageStore = useMypageStore();
