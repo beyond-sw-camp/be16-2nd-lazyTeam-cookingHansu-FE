@@ -157,6 +157,24 @@ export const useNotificationStore = defineStore('notification', {
       }
     },
 
+    // 모든 알림 읽음 처리
+    async markAllAsRead() {
+      try {
+        await notificationService.markAllAsRead();
+        
+        // 로컬 상태에서 모든 알림을 읽음으로 표시
+        this.notifications.forEach(notification => {
+          notification.isRead = true;
+        });
+        
+        // 헤더의 읽지 않은 개수를 0으로 설정
+        this.unreadCount = 0;
+      } catch (error) {
+        this._handleError(error, '모든 알림 읽음 처리에 실패했습니다.');
+        throw error;
+      }
+    },
+
     // 새 알림 처리 헬퍼 메서드
     _processNewNotification(notification) {
       // 중복 알림 방지: ID 기반으로만 체크

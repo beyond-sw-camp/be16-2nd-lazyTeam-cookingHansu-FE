@@ -9,17 +9,31 @@
 
       <!-- 알림 내용 -->
       <div class="notification-content">
-        <!-- 알림 필터 -->
-        <div class="notification-filters">
-          <button 
-            v-for="filter in filters" 
-            :key="filter.type"
-            :class="['filter-btn', { active: activeFilter === filter.type }]"
-            @click="setActiveFilter(filter.type)"
-          >
-            <span class="filter-icon">{{ filter.icon }}</span>
-            {{ filter.label }}
-          </button>
+        <!-- 알림 필터 및 액션 버튼 -->
+        <div class="notification-header-actions">
+          <div class="notification-filters">
+            <button 
+              v-for="filter in filters" 
+              :key="filter.type"
+              :class="['filter-btn', { active: activeFilter === filter.type }]"
+              @click="setActiveFilter(filter.type)"
+            >
+              <span class="filter-icon">{{ filter.icon }}</span>
+              {{ filter.label }}
+            </button>
+          </div>
+          
+          <!-- 모두 읽음 버튼 -->
+          <div v-if="hasUnreadNotifications" class="mark-all-read-section">
+            <button 
+              class="mark-all-read-btn"
+              @click="handleMarkAllAsRead"
+              :disabled="loading"
+            >
+              <span class="mark-all-read-icon">✓</span>
+              모두 읽음
+            </button>
+          </div>
         </div>
 
         <!-- 알림 목록 -->
@@ -121,6 +135,11 @@ const filteredNotifications = computed(() => {
   return notificationStore.notifications.filter(
     notification => notification.targetType === activeFilter.value
   )
+})
+
+// 안읽은 알림이 있는지 확인
+const hasUnreadNotifications = computed(() => {
+  return filteredNotifications.value.some(notification => !notification.isRead)
 })
 
 // 메서드
@@ -246,6 +265,15 @@ const handleDeleteNotification = async (notificationId) => {
   }
 }
 
+// 모든 알림 읽음 처리
+const handleMarkAllAsRead = async () => {
+  try {
+    await notificationStore.markAllAsRead()
+  } catch (error) {
+    console.error('❌ 모든 알림 읽음 처리 실패:', error)
+  }
+}
+
 const loadMore = async () => {
   loading.value = true
   try {
@@ -311,14 +339,22 @@ onMounted(async () => {
   font-size: 1.1rem;
 }
 
+.notification-header-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  gap: 16px;
+}
+
 .notification-filters {
   display: flex;
   gap: 8px;
-  margin-bottom: 24px;
   padding: 0 4px;
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  flex: 1;
 }
 
 .notification-filters::-webkit-scrollbar {
@@ -355,6 +391,42 @@ onMounted(async () => {
 
 .filter-icon {
   font-size: 1rem;
+}
+
+.mark-all-read-section {
+  display: flex;
+  align-items: center;
+}
+
+.mark-all-read-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border: 2px solid #4caf50;
+  border-radius: 25px;
+  background: white;
+  color: #4caf50;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.mark-all-read-btn:hover:not(:disabled) {
+  background: #4caf50;
+  color: white;
+}
+
+.mark-all-read-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mark-all-read-icon {
+  font-size: 1rem;
+  font-weight: bold;
 }
 
 .notification-content {
@@ -611,6 +683,18 @@ onMounted(async () => {
   .filter-btn {
     padding: 8px 12px;
     font-size: 0.85rem;
+  }
+
+  .notification-header-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .mark-all-read-btn {
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    justify-content: center;
   }
 }
 </style>
