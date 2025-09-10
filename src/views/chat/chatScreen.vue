@@ -82,7 +82,7 @@
                       <div class="flex-grow-1 min-width-0 d-flex flex-column" style="width: 0;">
                         <div class="d-flex justify-space-between align-start mb-1">
                           <div class="text-subtitle-1 font-weight-bold text-truncate" style="flex: 1; margin-right: 8px;">
-                            {{ chat.customRoomName || chat.otherUserName }}
+                            {{ chat.customRoomName || chat.otherUserNickname || chat.otherUserName }}
                           </div>
                           <div class="d-flex align-center flex-shrink-0">
                             <span class="text-caption text-grey-darken-1 mr-1">

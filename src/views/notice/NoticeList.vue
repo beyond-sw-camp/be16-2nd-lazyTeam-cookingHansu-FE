@@ -157,10 +157,21 @@ onMounted(async () => {
   restoreScrollPosition();
 });
 
-// 라우트 변경 감지하여 공지사항 페이지 진입 시 최신 데이터 가져오기 (중복 호출 방지)
+// 라우트 변경 감지하여 공지사항 페이지 진입 시 최신 데이터 가져오기
 watch(() => route.path, async (newPath, oldPath) => {
-  // /notice로 진입할 때만 호출하고, 같은 페이지 내에서는 중복 호출 방지
-  if (newPath === '/notice' && oldPath !== '/notice') {
+  // 공지사항 목록 페이지로 진입할 때
+  if (newPath === '/notice') {
+    // 상세 페이지에서 돌아온 경우가 아닌 경우에만 갱신
+    if (!oldPath || !oldPath.startsWith('/notice/')) {
+      await noticeStore.fetchNotices(0, 10);
+    }
+  }
+});
+
+// 페이지 가시성 변경 감지 (탭 전환 시 갱신)
+watch(() => document.visibilityState, async (newState) => {
+  if (newState === 'visible' && route.path === '/notice') {
+    // 탭이 다시 활성화되면 최신 데이터 가져오기
     await noticeStore.fetchNotices(0, 10);
   }
 });

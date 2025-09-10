@@ -7,16 +7,40 @@
     <form class="form-content" @submit.prevent="onNext">
       <UserInfoDisplay :user-info="userInfo" />
 
-      <FormInput
-        v-model="form.nickname"
-        label="닉네임"
-        placeholder="닉네임을 입력하세요 (2-10자)"
-        :required="true"
-        :has-error="errors.nickname"
-        :error-message="getNicknameErrorMessage()"
-        :maxlength="10"
-        @input="onNicknameInput"
-      />
+      <div class="nickname-container">
+        <FormInput
+          v-model="form.nickname"
+          label="닉네임"
+          placeholder="닉네임을 입력하세요 (2-10자)"
+          :required="true"
+          :has-error="errors.nickname"
+          :error-message="getNicknameErrorMessage()"
+          :maxlength="10"
+          :disabled="nicknameVerified"
+          @input="onNicknameInput"
+        />
+        <v-btn
+          v-if="!nicknameVerified && form.nickname.trim().length >= 2"
+          :loading="checkingNickname"
+          :disabled="checkingNickname || form.nickname.trim().length < 2"
+          color="primary"
+          variant="outlined"
+          size="small"
+          class="nickname-check-btn"
+          @click="checkNickname"
+        >
+          {{ checkingNickname ? '확인 중...' : '중복 확인' }}
+        </v-btn>
+        <v-chip
+          v-if="nicknameVerified"
+          color="success"
+          size="small"
+          class="nickname-verified-chip"
+        >
+          <v-icon start>mdi-check</v-icon>
+          사용 가능
+        </v-chip>
+      </div>
 
       <FormInput
         v-model="form.info"
@@ -32,7 +56,12 @@
       <RoleSelector v-model="form.role" :roles="roles" :required="true" />
     </form>
 
-    <FormButtons @prev="onPrev" @next="onNext" next-text="다음" />
+    <FormButtons 
+      @prev="onPrev" 
+      @next="onNext" 
+      next-text="다음"
+      :next-disabled="!isNextEnabled"
+    />
 
     <!-- 처음으로 돌아가기 확인 모달 -->
     <CommonModal
@@ -49,9 +78,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/store/auth/auth";
+import { authService } from "@/services/auth/authService";
 import ProgressStep from "@/components/login/ProgressStep.vue";
 import LoginLayout from "@/components/login/LoginLayout.vue";
 import UserInfoDisplay from "@/components/login/UserInfoDisplay.vue";
@@ -80,12 +110,56 @@ const showBox = ref(true);
 const progressAnimate = ref(false);
 const showGoBackModal = ref(false);
 
+// 닉네임 중복검증 관련 상태
+const nicknameVerified = ref(false);
+const checkingNickname = ref(false);
+const nicknameError = ref("");
+
 // 백엔드 엔티티에 맞는 역할 옵션
 const roles = [
   { value: "GENERAL", label: "일반 사용자", desc: "레시피 공유 및 강의 수강" },
   { value: "CHEF", label: "요식업 종사자", desc: "요리사, 요리연구가" },
   { value: "OWNER", label: "요식업 자영업자", desc: "식당, 카페 운영자" },
 ];
+
+// 다음 버튼 활성화 조건
+const isNextEnabled = computed(() => {
+  return nicknameVerified.value && form.value.role;
+});
+
+// 닉네임 중복검증 함수
+async function checkNickname() {
+  const nickname = form.value.nickname.trim();
+  
+  if (nickname.length < 2) {
+    nicknameError.value = "닉네임은 2자 이상이어야 합니다.";
+    return;
+  }
+  
+  checkingNickname.value = true;
+  nicknameError.value = "";
+  
+  try {
+    const response = await authService.checkNicknameAvailability(nickname);
+    
+    if (response.success && response.data === true) {
+      nicknameVerified.value = true;
+      errors.value.nickname = false;
+      nicknameError.value = "";
+    } else {
+      nicknameVerified.value = false;
+      errors.value.nickname = true;
+      nicknameError.value = "이미 사용 중인 닉네임입니다.";
+    }
+  } catch (error) {
+    console.error("닉네임 중복검증 실패:", error);
+    nicknameVerified.value = false;
+    errors.value.nickname = true;
+    nicknameError.value = "닉네임 확인 중 오류가 발생했습니다.";
+  } finally {
+    checkingNickname.value = false;
+  }
+}
 
 onMounted(() => {
   // 인증 상태 확인
@@ -192,11 +266,17 @@ function validate() {
   return true;
 }
 
-// 닉네임 입력 시 에러 제거
+// 닉네임 입력 시 에러 제거 및 검증 상태 초기화
 function onNicknameInput() {
   if (form.value.nickname && errors.value.nickname) {
     errors.value.nickname = false;
   }
+  
+  // 닉네임이 변경되면 검증 상태 초기화
+  if (nicknameVerified.value) {
+    nicknameVerified.value = false;
+  }
+  nicknameError.value = "";
 }
 
 // 간단 소개 입력 시 에러 제거
@@ -209,6 +289,11 @@ function onInfoInput() {
 // 닉네임 에러 메시지 생성
 function getNicknameErrorMessage() {
   const nickname = form.value.nickname.trim();
+  
+  // 중복검증 에러가 있으면 우선 표시
+  if (nicknameError.value) {
+    return nicknameError.value;
+  }
   
   if (!nickname) {
     return "닉네임을 입력해 주세요!";
@@ -277,5 +362,23 @@ function onNext() {
   flex-direction: column;
   gap: 12px;
   overflow-y: auto;
+}
+
+.nickname-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nickname-check-btn {
+  align-self: flex-end;
+  margin-top: -8px;
+  min-width: 100px;
+}
+
+.nickname-verified-chip {
+  align-self: flex-end;
+  margin-top: -8px;
 }
 </style>

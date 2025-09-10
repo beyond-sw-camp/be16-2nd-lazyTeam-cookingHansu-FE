@@ -9,6 +9,7 @@ const API_ENDPOINTS = {
   NAVER_LOGIN: "/user/login/naver",
   LOGOUT: "/user/logout",
   ADD_INFO: "/user/add-info",
+  CHECK_NICKNAME: "/user/add-info/check-nickname",
   REFRESH: "/user/refresh",
   CURRENT_USER_INFO: "/user/me",
   RESTORE_USER: "/user/restore",
@@ -88,6 +89,18 @@ export const authService = {
   async restoreUser(restoreData) {
     try {
       const response = await apiClient.post(API_ENDPOINTS.RESTORE_USER, restoreData);
+      return handleApiResponse(response);
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // 닉네임 중복 확인
+  async checkNicknameAvailability(nickname) {
+    try {
+      const response = await apiClient.get(API_ENDPOINTS.CHECK_NICKNAME, {
+        params: { nickname }
+      });
       return handleApiResponse(response);
     } catch (error) {
       throw error;
