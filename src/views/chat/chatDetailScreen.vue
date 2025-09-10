@@ -603,12 +603,20 @@ onMounted(() => {
 
 // 중복된 메시지 스크롤 이벤트 제거 (위의 watch에서 처리)
 
-// 채팅방 변경 시 초기화
+// 채팅방 변경 시 초기화 및 즉시 스크롤
 watch(currentRoomId, async (newRoomId, oldRoomId) => {
   if (newRoomId && newRoomId !== oldRoomId) {
     // 채팅방 변경 시 초기화
     didInitialBottomScroll.value = false;
     shouldStickToBottom.value = true;
+    
+    // 채팅방 입장 시 즉시 맨 아래로 스크롤
+    await nextTick();
+    setTimeout(() => {
+      jumpToBottomInstant();
+      didInitialBottomScroll.value = true;
+      updateStickiness();
+    }, 100);
   }
 });
 
