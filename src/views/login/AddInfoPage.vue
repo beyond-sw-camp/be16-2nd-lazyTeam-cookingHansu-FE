@@ -102,7 +102,7 @@ const authStore = useAuthStore();
 const form = ref({
   nickname: "",
   info: "",
-  role: "GENERAL",
+  role: "",
 });
 const errors = ref({ nickname: false, info: false });
 const userInfo = ref(null);
@@ -199,7 +199,7 @@ onMounted(() => {
     if (savedData) {
       form.value.nickname = savedData.nickname || currentUser.name || "";
       form.value.info = savedData.info || "";
-      form.value.role = savedData.role || "GENERAL";
+      form.value.role = savedData.role || "";
     } else {
       // 기본 닉네임으로 이름 설정
       form.value.nickname = currentUser.name || "";
