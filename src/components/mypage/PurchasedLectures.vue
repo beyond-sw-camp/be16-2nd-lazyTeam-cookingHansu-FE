@@ -290,6 +290,9 @@ export default {
   line-height: 1.3;
   cursor: pointer;
   transition: color 0.2s;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .lecture-title:hover {
